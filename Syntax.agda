@@ -134,7 +134,7 @@ subst-args σ nil = nil
 subst-args σ (cons A As) = cons (subst-arg σ A) (subst-args σ As)
 
 subst-zero : ∀ {Γ} → AST Γ → Subst (suc Γ) Γ
-subst-zero M = M • ren (↑ 0)
+subst-zero M = M • ids
 
 _ : ∀{Δ}{x : Var Δ} → ∣ subst-zero (` x) ∣ Z ≡ (` x)
 _ = refl
@@ -152,28 +152,25 @@ _[_] : ∀ {Γ}
    → AST Γ
 _[_] N M =  ⟪ subst-zero M ⟫ N
 
+drop : ∀{Γ Σ} → (k : ℕ) → Rename (k + Γ) Σ → Rename Γ Σ
+drop zero ρ = ρ
+drop {Γ} (suc k) (↑ k')
+   rewrite +-comm k' (suc (k + Γ)) | +-comm (k + Γ) k' =
+   drop k (↑ {k + Γ} (suc k'))
+drop (suc k) (x · ρ) = drop k ρ
+
 seq : ∀{Γ Δ Σ} → Rename Γ Δ → Rename Δ Σ → Rename Γ Σ
-{-
-seq ρ₁ (⇡ k) = incs k ρ₁
-seq ρ₁ (x · ρ₂) = {!!}
--}
-
-take : ∀{Γ Σ} → (k : ℕ) → Rename (k + Γ) Σ → Rename Γ Σ
-take zero ρ = ρ
-take {Γ} (suc k) (↑ zero) = take k (↑ 1)
-take {Γ} (suc k) (↑ (suc k')) rewrite +-comm k' (suc (k + Γ)) =
-  take k {!!}
-take (suc k) (x · ρ) = take k ρ
-
-seq (↑ k) ρ₂ = {!!}
+seq (↑ k) ρ₂ = drop k ρ₂
 seq (x · ρ₁) ρ₂ = ⟦ ρ₂ ⟧ x · seq ρ₁ ρ₂
-
 
 infixr 5 _⨟_
 _⨟_ : ∀{Γ Δ Σ} → Subst Γ Δ → Subst Δ Σ → Subst Γ Σ
-ren ρ ⨟ ren ρ' = {!!}
-ren ρ ⨟ M • τ = {!!}
-x • σ ⨟ τ = {!!}
+ren ρ ⨟ ren ρ' = ren (seq ρ ρ')
+_⨟_ {Γ}{Δ}{Σ} (ren ρ) (M • τ)
+    with Δ | ρ 
+... | _ | ↑ {Γ} k = {!!}
+... | _ | _·_ {Δ = Γ'} x ρ' = {!!} • {!!}
+M • σ ⨟ τ = ⟪ τ ⟫ M • (σ ⨟ τ)
 
 sub-head : ∀ {Γ Δ} {M : AST Δ}{σ : Subst Γ Δ}
          → ⟪ M • σ ⟫ (` Z) ≡ M
