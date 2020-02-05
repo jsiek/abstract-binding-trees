@@ -1,4 +1,6 @@
+{-
 open import Variables
+-}
 
 open import Data.Bool
 open import Data.List using (List; []; _∷_)
@@ -9,91 +11,71 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
 open import Relation.Nullary using (¬_)
-
+{-
+import Relation.Binary.HeterogeneousEquality as HEq
+open HEq using (_≅_; ≅-to-≡; reflexive)
+  renaming (refl to hrefl; cong to hcong)
+open HEq.≅-Reasoning renaming (begin_ to hbegin_; _∎ to _□)
+-}
 
 module Syntax (Op : Set) (sig : Op → List ℕ) where
 
-data Args (Γ : ℕ) : (sig : List ℕ) → Set
+Var : Set
+Var = ℕ
 
-data AST : ℕ → Set where
+data Args : (sig : List ℕ) → Set
 
-  `_ : ∀{Γ} → (x : Var Γ) → AST Γ
+data AST : Set where
 
-  _⦅_⦆ : ∀{Γ} → (op : Op) → Args Γ (sig op) → AST Γ
+  `_ : ∀ (x : Var) → AST
+
+  _⦅_⦆ : (op : Op) → Args (sig op) → AST
 
 
-data Arg  (Γ : ℕ) : (sig : ℕ) → Set where
-  ast : AST Γ → Arg Γ 0
-  bind : ∀{n} → Arg (suc Γ) n → Arg Γ (suc n)
+data Arg : (sig : ℕ) → Set where
+  ast : AST → Arg 0
+  bind : ∀{n} → Arg n → Arg (suc n)
 
-data Args Γ where
-  nil : Args Γ []
-  cons : ∀{n bs} → Arg Γ n → Args Γ bs → Args Γ (n ∷ bs)
+data Args where
+  nil : Args []
+  cons : ∀{n bs} → Arg n → Args bs → Args (n ∷ bs)
 
-bind-arg : ∀{Γ m} → (n : ℕ) → Arg (n + Γ) m → Arg Γ (n + m)
-bind-arg {Γ} zero A = A
-bind-arg {Γ}{m} (suc n) A
-    with bind-arg {Γ}{suc m} n (bind A)
+bind-arg : ∀{m} → (n : ℕ) → Arg m → Arg (n + m)
+bind-arg  zero A = A
+bind-arg {m} (suc n) A
+    with bind-arg {suc m} n (bind A)
 ... | ih rewrite +-suc n m = ih
 
-bind-ast : ∀{Γ} → (n : ℕ) → AST (n + Γ) → Arg Γ n
-bind-ast {Γ} n M
+bind-ast : ∀(n : ℕ) → AST → Arg n
+bind-ast n M
     with bind-arg n (ast M)
 ... | A rewrite +-identityʳ n = A
 
+shift : (k : ℕ) → Var → Var
+shift k x = k + x
+
 infixr 6 _·_
-data Rename : ℕ → ℕ → Set where
-  ↑ : ∀{Γ} → (k : ℕ) → Rename Γ (k + Γ)
-  _·_ : ∀{Γ Δ} → Var Δ → Rename Γ Δ → Rename (suc Γ) Δ
 
+data Rename : Set where
+  ↑ : ∀ (k : ℕ) → Rename
+  _·_ : Var → Rename → Rename
 
+⟦_⟧ :  Rename → Var → Var
+⟦ ↑ k ⟧ x = shift k x
+⟦ y · ρ ⟧ 0 = y
+⟦ y · ρ ⟧ (suc x) = ⟦ ρ ⟧ x
 
-⟦_⟧ : ∀{Γ Δ} → Rename Γ Δ → Var Γ → Var Δ
-⟦ ↑ 0 ⟧ x = x
-⟦ ↑ (suc k) ⟧ x = S (⟦ ↑ k ⟧ x)
-⟦ y · ρ ⟧ Z = y
-⟦ y · ρ ⟧ (S x) = ⟦ ρ ⟧ x
-
-infixr 6 _•_
-
-data Subst : ℕ → ℕ → Set where
-  ren :  ∀{Γ Δ} → Rename Γ Δ → Subst Γ Δ
-  _•_ : ∀{Γ Δ} → (AST Δ) → Subst Γ Δ → Subst (suc Γ) Δ
-
-∣_∣ : ∀{Γ Δ} → Subst Γ Δ → Var Γ → AST Δ
-∣ ren ρ ∣ x =  ` (⟦ ρ ⟧ x)
-∣ M • σ ∣ Z = M
-∣ M • σ ∣ (S x) = ∣ σ ∣ x
-
-ids : ∀{Γ} → Subst Γ Γ
-ids {Γ} = ren (↑ 0)
-
-rename : ∀ {Γ Δ}
-     → Rename Γ  Δ
-       -------------
-     → AST Γ → AST Δ
-ren-arg : ∀ {Γ Δ n}
-     → Rename Γ  Δ
-       -----------------
-     → Arg Γ n → Arg Δ n
-ren-args : ∀ {Γ Δ S}
-      → Rename Γ Δ
-        -------------------
-      → Args Γ S → Args Δ S
-
-inc : ∀ {Γ Δ} → Rename Γ Δ → Rename Γ (suc Δ)
+inc : Rename → Rename
 inc (↑ k) = ↑ (suc k)
-inc (x · ρ) = S x · inc ρ
+inc (x · ρ) = suc x · inc ρ
 
-incs : ∀ {Γ Δ} → (k : ℕ) → Rename Γ Δ → Rename Γ (k + Δ)
-incs zero ρ = ρ
-incs (suc k) ρ = inc (incs k ρ)
+ext : Rename → Rename
+ext (↑ k) = 0 · ↑ (suc k)
+ext (x · ρ) = 0 · suc x · inc ρ
 
-ext : ∀ {Γ Δ} → Rename Γ Δ
-    ----------------------
-  → Rename (suc Γ) (suc Δ)
-ext (↑ k) = Z · ↑ (suc k)
-ext (x · ρ) = Z · S x · inc ρ
+rename : Rename → AST → AST
+ren-arg : ∀ {n}→ Rename → Arg n → Arg n
+ren-args : ∀ {S} → Rename → Args S → Args S
 
 rename ρ (` x) = ` ⟦ ρ ⟧ x
 rename ρ (o ⦅ As ⦆) = o ⦅ ren-args ρ As ⦆
@@ -104,25 +86,34 @@ ren-arg ρ (bind A) = bind (ren-arg (ext ρ) A)
 ren-args ρ nil = nil
 ren-args ρ (cons A As) = cons (ren-arg ρ A) (ren-args ρ As)
 
-exts : ∀ {Γ Δ}
-   → Subst Γ Δ
-     ----------------------
-   → Subst (suc Γ) (suc Δ)
-exts (ren ρ) = ren (ext ρ)
-exts (M • σ) = rename (↑ 1) M • exts σ
+{-
 
-⟪_⟫ : ∀ {Γ Δ}
-  → Subst Γ Δ
-    -------------
-  → AST Γ → AST Δ
-subst-arg : ∀ {Γ Δ n}
-  → Subst Γ Δ
-    -----------------
-  → Arg Γ n → Arg Δ n
-subst-args : ∀ {Γ Δ S}
-  → Subst Γ Δ
-    -------------------
-  → Args Γ S → Args Δ S
+ Substitutions in normal form.
+
+-}
+
+infixr 6 _•_
+
+data Subst : Set  where
+  ⇑ : (k : ℕ) → Subst
+  _•_ : AST → Subst → Subst
+
+∣_∣ : Subst → Var → AST
+∣ ⇑ k ∣ x = ` shift k x
+∣ M • σ ∣ 0 = M
+∣ M • σ ∣ (suc x) = ∣ σ ∣ x
+
+incs : Subst → Subst
+incs (⇑ k) = ⇑ (suc k)
+incs (M • σ) =  rename (↑ 1) M • incs σ
+
+exts : Subst → Subst
+exts (⇑ k) = ` 0 • ⇑ (suc k)
+exts (M • σ) = ` 0 • incs (M • σ)
+
+⟪_⟫ : Subst → AST → AST
+subst-arg : ∀{n} → Subst → Arg n → Arg n
+subst-args : ∀{S} → Subst → Args S → Args S
 
 ⟪ σ ⟫ (` x) = ∣ σ ∣ x
 ⟪ σ ⟫ (o ⦅ As ⦆) = o ⦅ subst-args σ As ⦆
@@ -133,75 +124,189 @@ subst-arg σ (bind M) = bind (subst-arg (exts σ) M)
 subst-args σ nil = nil
 subst-args σ (cons A As) = cons (subst-arg σ A) (subst-args σ As)
 
-subst-zero : ∀ {Γ} → AST Γ → Subst (suc Γ) Γ
+ids : Subst
+ids = ⇑ 0
+
+subst-zero : AST → Subst
 subst-zero M = M • ids
 
-_ : ∀{Δ}{x : Var Δ} → ∣ subst-zero (` x) ∣ Z ≡ (` x)
+_ : ∀{x : Var} → ∣ subst-zero (` x) ∣ 0 ≡ (` x)
 _ = refl
 
-_ : ∀{Δ}{x : Var (suc Δ)} → ∣ subst-zero (` x) ∣ (S Z) ≡ ` Z
+_ : ∀{x : Var} → ∣ subst-zero (` x) ∣ 1 ≡ ` 0
 _ = refl
 
-_ : ∀{Δ}{x : Var (suc (suc Δ))} → ∣ subst-zero (` x) ∣ (S (S Z)) ≡ ` (S Z)
-_ = refl
-
-_[_] : ∀ {Γ}
-   → AST (suc Γ)
-   → AST Γ
-     ---------
-   → AST Γ
+_[_] : AST → AST → AST
 _[_] N M =  ⟪ subst-zero M ⟫ N
 
-drop : ∀{Γ Σ} → (k : ℕ) → Rename (k + Γ) Σ → Rename Γ Σ
-drop zero ρ = ρ
-drop {Γ} (suc k) (↑ k')
-   rewrite +-comm k' (suc (k + Γ)) | +-comm (k + Γ) k' =
-   drop k (↑ {k + Γ} (suc k'))
-drop (suc k) (x · ρ) = drop k ρ
-
-seq : ∀{Γ Δ Σ} → Rename Γ Δ → Rename Δ Σ → Rename Γ Σ
-seq (↑ k) ρ₂ = drop k ρ₂
-seq (x · ρ₁) ρ₂ = ⟦ ρ₂ ⟧ x · seq ρ₁ ρ₂
+drop : (k : ℕ) → Subst → Subst
+drop k (⇑ k') = ⇑ (k + k')
+drop zero (M • σ) = M • σ
+drop (suc k) (M • σ) = drop k σ
 
 infixr 5 _⨟_
-_⨟_ : ∀{Γ Δ Σ} → Subst Γ Δ → Subst Δ Σ → Subst Γ Σ
-ren ρ ⨟ ren ρ' = ren (seq ρ ρ')
-_⨟_ {Γ}{Δ}{Σ} (ren ρ) (M • τ)
-    with Δ | ρ 
-... | _ | ↑ {Γ} k = {!!}
-... | _ | _·_ {Δ = Γ'} x ρ' = {!!} • {!!}
-M • σ ⨟ τ = ⟪ τ ⟫ M • (σ ⨟ τ)
 
-sub-head : ∀ {Γ Δ} {M : AST Δ}{σ : Subst Γ Δ}
-         → ⟪ M • σ ⟫ (` Z) ≡ M
+_⨟_ : Subst → Subst → Subst
+⇑ k ⨟ τ = drop k τ
+(M • σ) ⨟ τ = ⟪ τ ⟫ M • (σ ⨟ τ)
+
+sub-head : ∀{M : AST}{σ : Subst}
+         → ⟪ M • σ ⟫ (` 0) ≡ M
 sub-head = refl
 
-Z-shift : ∀{Γ}{x : Var (suc Γ)}
-        → ∣ ((` Z) • ren (↑ 1)) ∣ x ≡ ∣ ids ∣ x
-Z-shift {Γ} {Z} = refl
-Z-shift {Γ} {S x} = refl
+sub-tail : ∀{M : AST} {σ : Subst}
+         → (⇑ 1 ⨟ M • σ) ≡ σ
+sub-tail {σ = ⇑ k} = refl
+sub-tail {σ = M • σ} = refl
+
+shift-shift : ∀(k k' : ℕ){x : Var}
+            → shift (k + k') x ≡ shift k (shift k' x)
+shift-shift zero k' = refl
+shift-shift (suc k) k' = cong suc (shift-shift k k')
+
+drop-add : ∀{x : Var} (k : ℕ) (σ : Subst)
+         → ∣ drop k σ ∣ x ≡ ∣ σ ∣ (shift k x)
+drop-add {x} k (⇑ k') rewrite +-comm k k' | +-assoc k' k x = refl
+drop-add {x} zero (M • σ) = refl
+drop-add {x} (suc k) (M • σ) = drop-add k σ
+
+sub-η : ∀ (σ : Subst) (x : Var)
+      → ∣ (⟪ σ ⟫ (` 0) • (⇑ 1 ⨟ σ)) ∣ x ≡ ∣ σ ∣ x
+sub-η σ 0 = refl
+sub-η σ (suc x) = drop-add 1 σ
+
+Z-shift : ∀{x : Var}
+        → ∣ ` 0 • ⇑ 1 ∣ x ≡ ∣ ids ∣ x
+Z-shift {0} = refl
+Z-shift {suc x} = refl
+
+sub-idL : (σ : Subst)
+       → ids ⨟ σ ≡ σ
+sub-idL (⇑ k) = refl
+sub-idL (M • σ) = refl
+
+sub-dist :  ∀ {σ : Subst} {τ : Subst} {M : AST}
+         → ((M • σ) ⨟ τ) ≡ ((⟪ τ ⟫ M) • (σ ⨟ τ))
+sub-dist = refl
+
+sub-op : ∀ {σ : Subst} {o : Op}{Ms : Args (sig o)}
+        → ⟪ σ ⟫ (o ⦅ Ms ⦆)  ≡ o ⦅ subst-args σ Ms ⦆
+sub-op = refl        
+
+rename→subst : Rename → Subst
+rename→subst (↑ k) = ⇑ k 
+rename→subst (x · ρ) = ` x • rename→subst ρ
+
+incs-rename-inc : ∀ ρ → incs (rename→subst ρ) ≡ rename→subst (inc ρ)
+incs-rename-inc (↑ k) = refl
+incs-rename-inc (x · ρ) = cong (_•_ (` suc x)) (incs-rename-inc ρ)
+
+exts-rename-ext : ∀ ρ → exts (rename→subst ρ) ≡ rename→subst (ext ρ)
+exts-rename-ext (↑ k) = refl
+exts-rename-ext (x · ρ) = cong (λ □ → (` 0) • (` suc x) • □) (incs-rename-inc ρ)
+
+rename-subst-interp : ∀ ρ x → (` ⟦ ρ ⟧ x) ≡ ∣ rename→subst ρ ∣ x
+rename-subst-interp (↑ k) x = refl
+rename-subst-interp (y · ρ) zero = refl
+rename-subst-interp (y · ρ) (suc x) = rename-subst-interp ρ x
+
+rename-subst : ∀ ρ M → rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
+ren-arg-subst : ∀ {n} ρ A → ren-arg {n} ρ A ≡ subst-arg (rename→subst ρ) A
+ren-args-subst : ∀ {S} ρ As → ren-args {S} ρ As ≡ subst-args (rename→subst ρ) As
+
+rename-subst (↑ k) (` x) = refl
+rename-subst (y · ρ) (` zero) = refl
+rename-subst (y · ρ) (` suc x) = rename-subst-interp ρ x
+rename-subst ρ (op ⦅ As ⦆) = cong (λ □ → op ⦅ □ ⦆) (ren-args-subst ρ As)
+
+ren-arg-subst ρ (ast M) = cong ast (rename-subst ρ M)
+ren-arg-subst ρ (bind A) =
+  let IH = ren-arg-subst (ext ρ) A in
+  begin
+     bind (ren-arg (ext ρ) A)                       ≡⟨ cong bind IH ⟩
+     bind (subst-arg (rename→subst (ext ρ)) A)      ≡⟨ cong (λ □ → bind (subst-arg □ A)) (sym (exts-rename-ext ρ)) ⟩
+     bind (subst-arg (exts (rename→subst ρ)) A)     ∎
+ren-args-subst ρ nil = refl
+ren-args-subst ρ (cons A As) =
+  cong₂ cons (ren-arg-subst ρ A) (ren-args-subst ρ As)
+
+incs=⨟⇑ : ∀ σ → incs σ ≡ σ ⨟ ⇑ 1
+incs=⨟⇑ (⇑ k) rewrite +-comm k 1 = refl
+incs=⨟⇑ (M • σ) = cong₂ _•_ (rename-subst (↑ 1) M) (incs=⨟⇑ σ)
+
+exts-cons-shift : (σ : Subst)
+                → exts σ ≡ (` 0 • (σ ⨟ ⇑ 1))
+exts-cons-shift (⇑ k) rewrite +-comm k 1 = refl
+exts-cons-shift (M • σ) =
+  begin
+    (` 0) • rename (↑ 1) M • incs σ       ≡⟨ cong (λ □ → (` 0) • □ • incs σ) (rename-subst (↑ 1) M) ⟩
+    (` 0) • ⟪ ⇑ 1 ⟫ M • incs σ            ≡⟨ cong (λ □ → (` 0) • ⟪ ⇑ 1 ⟫ M • □) (incs=⨟⇑ σ) ⟩
+    (` 0) • ⟪ ⇑ 1 ⟫ M • (σ ⨟ ⇑ 1)         ∎
+
+seq-subst : ∀ σ τ x → ∣ σ ⨟ τ ∣ x ≡ ⟪ τ ⟫ (∣ σ ∣ x)
+seq-subst (⇑ k) τ x = drop-add k τ
+seq-subst (M • σ) τ zero = refl
+seq-subst (M • σ) τ (suc x) =           begin
+    ∣ ⟪ τ ⟫ M • (σ ⨟ τ) ∣ (suc x)        ≡⟨ refl ⟩
+    ∣ (σ ⨟ τ) ∣ x                        ≡⟨ seq-subst σ τ x ⟩
+    ⟪ τ ⟫ (∣ σ ∣ x)                      ≡⟨ refl ⟩
+    ⟪ τ ⟫ (∣ M • σ ∣ (suc x))            ∎
+
+exts-ids : ∀{σ : Subst} → (∀ x → ∣ σ ∣ x ≡ ` x) → (∀ x → ∣ exts σ ∣ x ≡ ` x)
+exts-ids {⇑ k} id zero = refl
+exts-ids {M • σ} id zero = refl
+exts-ids {σ} id (suc x) =
+  begin
+     ∣ exts σ ∣ (suc x)                    ≡⟨ cong (λ □ → ∣ □ ∣ (suc x)) (exts-cons-shift σ) ⟩
+     ∣ ` 0 • (σ ⨟ ⇑ 1) ∣ (suc x)           ≡⟨ refl ⟩
+     ∣ σ ⨟ ⇑ 1 ∣ x                         ≡⟨ seq-subst σ (⇑ 1) x ⟩
+     ⟪ ⇑ 1 ⟫ (∣ σ ∣ x)                    ≡⟨ cong (λ □ → ⟪ ⇑ 1 ⟫ □ ) (id x) ⟩
+     ⟪ ⇑ 1 ⟫ (` x)                       ≡⟨ refl ⟩
+     ` (suc x)
+  ∎
+
+sub-id' : ∀ {M : AST} {σ : Subst}
+         → (∀ x → ∣ σ ∣ x ≡ ` x)
+         → ⟪ σ ⟫ M ≡ M
+sub-arg-id : ∀{n} {A : Arg n} {σ : Subst}
+         → (∀ x → ∣ σ ∣ x ≡ ` x)
+         → subst-arg σ A ≡ A
+subs-id : ∀{S} {Ms : Args S} {σ : Subst}
+         → (∀ x → ∣ σ ∣ x ≡ ` x)
+         → subst-args σ Ms ≡ Ms
+
+sub-id' {` x} id = id x
+sub-id' {op ⦅ As ⦆} id = cong (λ □ → op ⦅ □ ⦆) (subs-id id)
+
+sub-arg-id {A = ast M} id = cong ast (sub-id' id)
+sub-arg-id {A = bind A}{σ} id = cong bind (sub-arg-id (exts-ids {σ = σ} id) )
+
+subs-id {Ms = nil} id = refl
+subs-id {Ms = cons A Ms} id = cong₂ cons (sub-arg-id id) (subs-id id)
+
+sub-id : ∀ {M : AST} 
+         → ⟪ ids ⟫ M ≡ M
+sub-id = sub-id' λ x → refl
+
+rename-id : {M : AST} → rename (↑ 0) M ≡ M
+rename-id {M} =
+  begin
+    rename (↑ 0) M         ≡⟨ rename-subst (↑ 0) M ⟩
+    ⟪ ⇑ 0 ⟫ M              ≡⟨ sub-id' (λ x → refl) ⟩
+    M                      ∎
+
+sub-idR : ∀ {σ : Subst} {x : Var}
+       → ∣ (σ ⨟ ids) ∣ x ≡ ∣ σ ∣ x
+sub-idR {σ}{x} =
+  begin
+    ∣ (σ ⨟ ids) ∣ x        ≡⟨ seq-subst σ ids x ⟩
+    ⟪ ids ⟫ (∣ σ ∣ x)      ≡⟨ sub-id ⟩
+    ∣ σ ∣ x
+  ∎
+
 
 
 {-
-rename : ∀ {Γ Δ}
-     → Rename Γ  Δ
-       -------------
-     → AST Γ → AST Δ
-rename-arg : ∀ {Γ Δ n}
-     → Rename Γ  Δ
-       -----------------
-     → Arg Γ n → Arg Δ n
-renames : ∀ {Γ Δ S}
-      → Rename Γ Δ
-        -------------------
-      → Args Γ S → Args Δ S
-
-rename ρ (` x)          =  ` (ρ x)
-rename ρ (o ⦅ As ⦆)     =  o ⦅ renames ρ As ⦆
-rename-arg ρ (ast M)    =  ast (rename ρ M)
-rename-arg ρ (bind A)   = bind (rename-arg (ext ρ) A)
-renames ρ nil           = nil
-renames ρ (cons A As) = cons (rename-arg ρ A) (renames ρ As)
 
 exts : ∀ {Γ Δ}
    → Subst Γ Δ
