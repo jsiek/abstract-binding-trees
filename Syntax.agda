@@ -43,14 +43,14 @@ bind-ast {Γ} n M
 
 infixr 6 _·_
 data Rename : ℕ → ℕ → Set where
-  ⇡ : ∀{Γ} → (k : ℕ) → Rename Γ (k + Γ)
+  ↑ : ∀{Γ} → (k : ℕ) → Rename Γ (k + Γ)
   _·_ : ∀{Γ Δ} → Var Δ → Rename Γ Δ → Rename (suc Γ) Δ
 
 
 
 ⟦_⟧ : ∀{Γ Δ} → Rename Γ Δ → Var Γ → Var Δ
-⟦ ⇡ 0 ⟧ x = x
-⟦ ⇡ (suc k) ⟧ x = S (⟦ ⇡ k ⟧ x)
+⟦ ↑ 0 ⟧ x = x
+⟦ ↑ (suc k) ⟧ x = S (⟦ ↑ k ⟧ x)
 ⟦ y · ρ ⟧ Z = y
 ⟦ y · ρ ⟧ (S x) = ⟦ ρ ⟧ x
 
@@ -64,6 +64,9 @@ data Subst : ℕ → ℕ → Set where
 ∣ ren ρ ∣ x =  ` (⟦ ρ ⟧ x)
 ∣ M • σ ∣ Z = M
 ∣ M • σ ∣ (S x) = ∣ σ ∣ x
+
+ids : ∀{Γ} → Subst Γ Γ
+ids {Γ} = ren (↑ 0)
 
 rename : ∀ {Γ Δ}
      → Rename Γ  Δ
@@ -79,7 +82,7 @@ ren-args : ∀ {Γ Δ S}
       → Args Γ S → Args Δ S
 
 inc : ∀ {Γ Δ} → Rename Γ Δ → Rename Γ (suc Δ)
-inc (⇡ k) = ⇡ (suc k)
+inc (↑ k) = ↑ (suc k)
 inc (x · ρ) = S x · inc ρ
 
 incs : ∀ {Γ Δ} → (k : ℕ) → Rename Γ Δ → Rename Γ (k + Δ)
@@ -89,7 +92,7 @@ incs (suc k) ρ = inc (incs k ρ)
 ext : ∀ {Γ Δ} → Rename Γ Δ
     ----------------------
   → Rename (suc Γ) (suc Δ)
-ext (⇡ k) = Z · ⇡ (suc k)
+ext (↑ k) = Z · ↑ (suc k)
 ext (x · ρ) = Z · S x · inc ρ
 
 rename ρ (` x) = ` ⟦ ρ ⟧ x
@@ -106,7 +109,7 @@ exts : ∀ {Γ Δ}
      ----------------------
    → Subst (suc Γ) (suc Δ)
 exts (ren ρ) = ren (ext ρ)
-exts (M • σ) = rename (⇡ 1) M • exts σ
+exts (M • σ) = rename (↑ 1) M • exts σ
 
 ⟪_⟫ : ∀ {Γ Δ}
   → Subst Γ Δ
@@ -131,7 +134,7 @@ subst-args σ nil = nil
 subst-args σ (cons A As) = cons (subst-arg σ A) (subst-args σ As)
 
 subst-zero : ∀ {Γ} → AST Γ → Subst (suc Γ) Γ
-subst-zero M = M • ren (⇡ 0)
+subst-zero M = M • ren (↑ 0)
 
 _ : ∀{Δ}{x : Var Δ} → ∣ subst-zero (` x) ∣ Z ≡ (` x)
 _ = refl
@@ -155,7 +158,13 @@ seq ρ₁ (⇡ k) = incs k ρ₁
 seq ρ₁ (x · ρ₂) = {!!}
 -}
 
-seq (⇡ k) ρ₂ = {!!}
+take : ∀{Γ Σ} → (k : ℕ) → Rename (k + Γ) Σ → Rename Γ Σ
+take zero ρ = ρ
+take {Γ} (suc k) (↑ zero) = {!!}
+take {Γ} (suc k) (↑ (suc k')) = {!!}
+take (suc k) (x · ρ) = take k ρ
+
+seq (↑ k) ρ₂ = {!!}
 seq (x · ρ₁) ρ₂ = ⟦ ρ₂ ⟧ x · seq ρ₁ ρ₂
 
 
@@ -169,7 +178,10 @@ sub-head : ∀ {Γ Δ} {M : AST Δ}{σ : Subst Γ Δ}
          → ⟪ M • σ ⟫ (` Z) ≡ M
 sub-head = refl
 
-
+Z-shift : ∀{Γ}{x : Var (suc Γ)}
+        → ∣ ((` Z) • ren (↑ 1)) ∣ x ≡ ∣ ids ∣ x
+Z-shift {Γ} {Z} = refl
+Z-shift {Γ} {S x} = refl
 
 
 {-
