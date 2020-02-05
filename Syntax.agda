@@ -161,7 +161,8 @@ seq ρ₁ (x · ρ₂) = {!!}
 take : ∀{Γ Σ} → (k : ℕ) → Rename (k + Γ) Σ → Rename Γ Σ
 take zero ρ = ρ
 take {Γ} (suc k) (↑ zero) = take k (↑ 1)
-take {Γ} (suc k) (↑ (suc k')) = {!!}
+take {Γ} (suc k) (↑ (suc k')) rewrite +-comm k' (suc (k + Γ)) =
+  take k {!!}
 take (suc k) (x · ρ) = take k ρ
 
 seq (↑ k) ρ₂ = {!!}
