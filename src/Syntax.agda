@@ -540,6 +540,12 @@ substitution : ∀{M : ABT}{N : ABT}{L : ABT}
 substitution {M}{N}{L} =
    sym (subst-commute{N = M}{M = N}{σ = subst-zero L})
 
+exts-sub-cons : ∀ σ N V → ⟪ exts σ ⟫ N [ V ] ≡ ⟪ V • σ ⟫ N
+exts-sub-cons σ N V
+    rewrite sub-sub {N}{exts σ}{subst-zero V}
+    | exts-cons-shift σ
+    | sub-assoc {σ} {⇑ 1} {V • ⇑ 0}
+    | sub-idR σ = refl
 
 {-------------------------------------------------------------------------------
  Extra Things
