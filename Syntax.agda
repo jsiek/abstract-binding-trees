@@ -403,14 +403,6 @@ sub-idR : ∀ σ → σ ⨟ ids ≡ σ
 sub-idR (⇑ k) rewrite +-comm k 0 = refl
 sub-idR (M • σ) rewrite sub-id {M} | sub-idR σ = refl
 
-exts-ext : ∀ σ τ → ((x : ℕ) → ∣ σ ∣ x ≡ ∣ τ ∣ x)
-         → ((x : ℕ) → ∣ exts σ ∣ x ≡ ∣ exts τ ∣ x)
-exts-ext σ τ eq 0
-    rewrite exts-cons-shift σ | exts-cons-shift τ = refl
-exts-ext σ τ eq (suc x)
-    rewrite exts-cons-shift σ | exts-cons-shift τ
-          | seq-subst σ (⇑ 1) x | seq-subst τ (⇑ 1) x | eq x = refl
-
 exts-0 : ∀ σ → ∣ exts σ ∣ 0 ≡ ` 0
 exts-0 σ rewrite exts-cons-shift σ = refl
 
@@ -552,6 +544,14 @@ substitution {M}{N}{L} =
 {-------------------------------------------------------------------------------
  Extra Things
 -------------------------------------------------------------------------------}
+
+exts-ext : ∀ σ τ → ((x : ℕ) → ∣ σ ∣ x ≡ ∣ τ ∣ x)
+         → ((x : ℕ) → ∣ exts σ ∣ x ≡ ∣ exts τ ∣ x)
+exts-ext σ τ eq 0
+    rewrite exts-cons-shift σ | exts-cons-shift τ = refl
+exts-ext σ τ eq (suc x)
+    rewrite exts-cons-shift σ | exts-cons-shift τ
+          | seq-subst σ (⇑ 1) x | seq-subst τ (⇑ 1) x | eq x = refl
 
 subst-extensionality : ∀{M : ABT}{σ τ : Subst}
     → (∀ x → ∣ σ ∣ x ≡ ∣ τ ∣ x)
