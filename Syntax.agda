@@ -304,6 +304,13 @@ sub-idR {σ}{x} =
     ∣ σ ∣ x
   ∎
 
+exts-ext : ∀ σ τ 
+         → ((x : ℕ) → ∣ σ ∣ x ≡ ∣ τ ∣ x)
+         → ((x : ℕ) → ∣ exts σ ∣ x ≡ ∣ exts τ ∣ x)
+exts-ext (⇑ k) (⇑ k₁) x = {!!}
+exts-ext (⇑ k) (x₁ • τ) x = {!!}
+exts-ext (x₁ • σ) τ x = {!!}
+
 
 subst-extensionality : ∀{M : AST}{σ τ : Subst}
     → (∀ x → ∣ σ ∣ x ≡ ∣ τ ∣ x)
@@ -318,9 +325,11 @@ sub-args-ext : ∀{S} {Ms : Args S} {σ τ : Subst}
 subst-extensionality {` x} {σ} {τ} eq = eq x
 subst-extensionality {op ⦅ As ⦆} {σ} {τ} eq = cong (λ □ → op ⦅ □ ⦆) (sub-args-ext eq)
 
-sub-arg-ext {A = A} eq = {!!}
+sub-arg-ext {A = ast M} eq = cong ast (subst-extensionality {M} eq)
+sub-arg-ext {A = bind A} eq = cong bind (sub-arg-ext {!!})
 
-sub-args-ext eq = {!!}
+sub-args-ext {Ms = nil} eq = refl
+sub-args-ext {Ms = cons A Ms} eq = cong₂ cons (sub-arg-ext eq) (sub-args-ext eq)
 
 
 sub-sub : ∀{M : AST} {σ₁ : Subst}{σ₂ : Subst} 
