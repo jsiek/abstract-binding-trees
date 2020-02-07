@@ -57,9 +57,10 @@ and `sig` complete, we can instantiate and import the `Syntax` module.
 
 As mentioned above, the `Syntax` module defines an `ABT` data type,
 which we now look at in more detail. The constructor for variables,
-written `\` n`, takes one parameter, the natural number that is the de
-Bruijn index. The constructor for operator nodes, written `op ⦅ args ⦆`
-takes the operator and the arguments, which we explain below.
+the grave accent, takes one parameter, the natural number that is the
+de Bruijn index for the variable. The constructor for operator nodes,
+written `op ⦅ args ⦆` takes the operator and the arguments, which we
+explain below.
 
     Var : Set
     Var = ℕ
