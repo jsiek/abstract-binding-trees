@@ -122,18 +122,55 @@ The library defines the notation `⟪ σ ⟫ M` for applying a substitution
 In general, substitution replaces a variable `i` with
 the ith term in the substitution:
 
-    ⟪ M₀ • ... • Mᵢ • ... ⟫ (` i) ≡ Mᵢ
+    ⟪ M₀ • … • Mᵢ • … ⟫ (` i) ≡ Mᵢ
 
 The next example involves variables and application.
 
     ⟪ M • L • id ⟫ (` 1 · ` 0) ≡ L · M
 
-In general, applying a substitution to application obeys
-the following equation.
+In general, substitution acts on application according to the
+following equation.
 
     ⟪ σ ⟫ (L · M) ≡ (⟪ σ ⟫ L) · (⟪ σ ⟫ M)
 
-Substitution on lambda abstractions is more interesting because it
-brings a variable into scope.
+The action of substitution on lambda abstractions is more interesting
+because the lambda brings a variable into scope. Consider the following
+substitution.
+
+    σ ≡ M₀ • M₁ • … 
+
+To transport this substitution across a lambda abstraction, we need to
+do two things. First, inside the lambda, the de Bruijn index 0 is
+bound to the lambda's parameter, and should not be changed by the
+substitution. So index 0 of the new substitution should map to 0.
+Second, as the substitution σ moves over the lambda, each of the `Mᵢ`
+terms moves further away from the bindings of its free
+variables. Thus, to make sure the free variables in `Mᵢ` still point
+to the appropriate bindings, they all need to incremented by one.  The
+library defines the shift operator, written `↑ k`, that adds `k` to
+every free variable in a term.  Putting these two actions together,
+the library defines a function named `exts` that transports a
+substitution σ across one lambda abstraction.
+
+    exts σ ≡ ` 0 • ⟪ ↑ 1 ⟫ M₀ • ⟪ ↑ 1 ⟫ M₁ • …
+
+In general, substitution acts on lambda abstractions according
+to the following equation.
+
+    ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ exts σ ⟫ N)
+
+Even more generally, and recalling the way in which we defined lambda
+abstraction in terms of an ABT operator node, each occurence of the
+`bind` argument constructor causes substitution to introduce one
+`exts` around the substitution.
+
+Last but not least, the library introduces the notation `N [ M ]`
+for the common case of subtituting `M` for de Bruijn index 0
+inside `N`.
+
+    N [ M ] ≡ ⟪ M • id ⟫ N
+
+## Properties of Substitution
+
 
 UNDER CONSTRUCTION
