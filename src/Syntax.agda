@@ -13,13 +13,13 @@ module Syntax (Op : Set) (sig : Op → List ℕ) where
 Var : Set
 Var = ℕ
 
-data Args : (sig : List ℕ) → Set
+data Args : List ℕ → Set
 
 data ABT : Set where
   `_ : Var → ABT
   _⦅_⦆ : (op : Op) → Args (sig op) → ABT
 
-data Arg : (sig : ℕ) → Set where
+data Arg : ℕ → Set where
   ast : ABT → Arg 0
   bind : ∀{n} → Arg n → Arg (suc n)
 
@@ -249,11 +249,11 @@ subst-arg σ (bind M) = bind (subst-arg (exts σ) M)
 subst-args σ nil = nil
 subst-args σ (cons A As) = cons (subst-arg σ A) (subst-args σ As)
 
-ids : Subst
-ids = ⇑ 0
+id : Subst
+id = ⇑ 0
 
 subst-zero : ABT → Subst
-subst-zero M = M • ids
+subst-zero M = M • id
 
 _ : ∀{x : Var} → ∣ subst-zero (` x) ∣ 0 ≡ (` x)
 _ = refl
@@ -296,12 +296,12 @@ sub-η σ 0 = refl
 sub-η σ (suc x) = drop-add 1 σ
 
 Z-shift : ∀{x : Var}
-        → ∣ ` 0 • ⇑ 1 ∣ x ≡ ∣ ids ∣ x
+        → ∣ ` 0 • ⇑ 1 ∣ x ≡ ∣ id ∣ x
 Z-shift {0} = refl
 Z-shift {suc x} = refl
 
 sub-idL : (σ : Subst)
-       → ids ⨟ σ ≡ σ
+       → id ⨟ σ ≡ σ
 sub-idL (⇑ k) = refl
 sub-idL (M • σ) = refl
 
@@ -364,10 +364,10 @@ seq-subst (M • σ) τ zero = refl
 seq-subst (M • σ) τ (suc x) = seq-subst σ τ x
 
 exts-ids : ∀{σ : Subst} → (∀ x → ∣ σ ∣ x ≡ ` x) → (∀ x → ∣ exts σ ∣ x ≡ ` x)
-exts-ids {σ} id zero
+exts-ids {σ} is-id zero
     rewrite exts-cons-shift σ = refl
-exts-ids {σ} id (suc x)
-    rewrite exts-cons-shift σ | seq-subst σ (⇑ 1) x | id x = refl
+exts-ids {σ} is-id (suc x)
+    rewrite exts-cons-shift σ | seq-subst σ (⇑ 1) x | is-id x = refl
 
 sub-id' : ∀ {M : ABT} {σ : Subst}
          → (∀ x → ∣ σ ∣ x ≡ ` x)
@@ -379,17 +379,18 @@ subs-id : ∀{S} {Ms : Args S} {σ : Subst}
          → (∀ x → ∣ σ ∣ x ≡ ` x)
          → subst-args σ Ms ≡ Ms
 
-sub-id' {` x} id = id x
-sub-id' {op ⦅ As ⦆} id = cong (λ □ → op ⦅ □ ⦆) (subs-id id)
+sub-id' {` x} is-id = is-id x
+sub-id' {op ⦅ As ⦆} is-id = cong (λ □ → op ⦅ □ ⦆) (subs-id is-id)
 
-sub-arg-id {A = ast M} id = cong ast (sub-id' id)
-sub-arg-id {A = bind A}{σ} id = cong bind (sub-arg-id (exts-ids {σ = σ} id) )
+sub-arg-id {A = ast M} is-id = cong ast (sub-id' is-id)
+sub-arg-id {A = bind A}{σ} is-id =
+    cong bind (sub-arg-id (exts-ids {σ = σ} is-id) )
 
-subs-id {Ms = nil} id = refl
-subs-id {Ms = cons A Ms} id = cong₂ cons (sub-arg-id id) (subs-id id)
+subs-id {Ms = nil} is-id = refl
+subs-id {Ms = cons A Ms} is-id = cong₂ cons (sub-arg-id is-id) (subs-id is-id)
 
 sub-id : ∀ {M : ABT} 
-         → ⟪ ids ⟫ M ≡ M
+         → ⟪ id ⟫ M ≡ M
 sub-id = sub-id' λ x → refl
 
 rename-id : {M : ABT} → rename (↑ 0) M ≡ M
@@ -399,7 +400,7 @@ rename-id {M} =
     ⟪ ⇑ 0 ⟫ M              ≡⟨ sub-id' (λ x → refl) ⟩
     M                      ∎
 
-sub-idR : ∀ σ → σ ⨟ ids ≡ σ 
+sub-idR : ∀ σ → σ ⨟ id ≡ σ 
 sub-idR (⇑ k) rewrite +-comm k 0 = refl
 sub-idR (M • σ) rewrite sub-id {M} | sub-idR σ = refl
 

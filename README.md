@@ -64,8 +64,76 @@ explain below.
 
     Var : Set
     Var = ℕ
-    
+
+    data Arg : ℕ → Set 
+    data Args : List ℕ → Set
+
     data ABT : Set where
       `_ : Var → ABT
       _⦅_⦆ : (op : Op) → Args (sig op) → ABT
 
+The `Args` data type is just a list representation, with constructors
+`nil` and `cons`. However, it is parameterized by the list of numbers
+that controls its length and binding structure. For each number in the
+list, there is one element in the `Args`. 
+
+    data Args where
+      nil : Args []
+      cons : ∀{n ls} → Arg n → Args ls → Args (n ∷ ls)
+
+Each element of `Args` is an argument, defined by the `Arg` data type.
+It is parameterized by a number that says how many variable bindings
+come into scope. The `bind` constructor represents a variable binding
+and decrements the number. The `ast` constructor is allowed with the
+count reaches `0` and contains the abstract binding tree for the
+child.
+
+    data Arg where
+      ast : ABT → Arg 0
+      bind : ∀{n} → Arg n → Arg (suc n)
+
+This use of `Args` and `Arg` makes for rather verbose notation for
+abstract binding trees. Therefore we recommend that you use Agda's
+pattern synonyms to introduce more concise syntax. For example, to use
+`ƛ N` as the notation for lambda abstractions, you would define the
+following pattern.
+
+    pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
+
+To use the syntax `L · M` for the application of function `L` to
+argument `M`, you would write:
+
+    infixl 7  _·_
+    pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
+
+## Substitution
+
+The library define a type `Subst` to represent mappings from de Bruijn
+indices to ABTs. The identity subtitution is `id`, it maps each
+variable to itself. Given some substitution `σ`, the substitution `M • σ`
+maps `0` to the ABT `M` and the rest of the integers according to `σ`.
+
+The library defines the notation `⟪ σ ⟫ M` for applying a substitution
+`σ` to a term `M`. For example.
+
+    ⟪ M • L • id ⟫ (` 0) ≡ M
+    ⟪ M • L • id ⟫ (` 1) ≡ L
+
+In general, substitution replaces a variable `i` with
+the ith term in the substitution:
+
+    ⟪ M₀ • ... • Mᵢ • ... ⟫ (` i) ≡ Mᵢ
+
+The next example involves variables and application.
+
+    ⟪ M • L • id ⟫ (` 1 · ` 0) ≡ L · M
+
+In general, applying a substitution to application obeys
+the following equation.
+
+    ⟪ σ ⟫ (L · M) ≡ (⟪ σ ⟫ L) · (⟪ σ ⟫ M)
+
+Substitution on lambda abstractions is more interesting because it
+brings a variable into scope.
+
+UNDER CONSTRUCTION
