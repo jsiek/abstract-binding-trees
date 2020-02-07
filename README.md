@@ -175,10 +175,39 @@ For example, β reduction would be expressed as
     (ƛ N) M -→ N [ M ]
 
 
-## Properties of Substitution
+## Important Properties of Substitution
 
-    (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ] ≡ ⟪ σ ⟫ (N [ M ])         (subst-commute)
+A fundamental property of (single) substitution is that two
+substitutions commute with one another if the variables
+are different, a property known as the Substitution Lemma
+in Barendregt's The Lambda Calculus.
 
-    ⟪ exts σ ⟫ N [ V ] ≡ ⟪ V • σ ⟫ N                     (exts-sub-cons)
+    M[ x := N ][ y := L ] ≡ M[ y := L ][ x := N[ y := L] ]
+
+The Substitution Lemma is used, for example, in the proof of confluence
+of the untyped lambda calculus.
+
+Converting the Substitution Lemma to our notation and to Bruijn
+indices (let `x` be index 0 and `y` be index 1), we obtain
+
+    M[ N ][ L ] ≡ (⟪ ` 0 • N • id ⟫ M) [ N [ L ] ]
+
+Generalizing the subtitution by `L` to any simulaneous substitution
+`σ`, we have the following theorem which is provided by the library.
+
+    ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]         (commute-subst)
+
+The proof of this theorem is somewhat long and technical, so it is
+nice to reuse this theorem instead of having to prove it yourself.
+
+The need for a slightly different property, shown below, arises in
+proofs based logical relations. The proof of this is also provided in
+the library, using the same infrastructe needed to prove
+`commute-subst`.
+
+    (⟪ exts σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N                    (exts-sub-cons)
+
+
+## Going Deeper
 
 UNDER CONSTRUCTION

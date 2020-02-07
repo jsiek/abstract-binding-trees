@@ -520,6 +520,10 @@ subst-commute {N}{M}{σ} rewrite exts-cons-shift σ
   | drop-0 σ
   = refl
 
+commute-subst : ∀{N : ABT}{M : ABT}{σ : Subst }
+    → ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]
+commute-subst {N}{M}{σ} = sym (subst-commute {N}{M}{σ})
+
 rename-subst-commute : ∀{N : ABT}{M : ABT}{ρ : Rename }
     → (rename (ext ρ) N) [ rename ρ M ] ≡ rename ρ (N [ M ])
 rename-subst-commute{N}{M}{ρ}
@@ -541,7 +545,7 @@ substitution : ∀{M : ABT}{N : ABT}{L : ABT}
 substitution {M}{N}{L} =
    sym (subst-commute{N = M}{M = N}{σ = subst-zero L})
 
-exts-sub-cons : ∀ σ N V → ⟪ exts σ ⟫ N [ V ] ≡ ⟪ V • σ ⟫ N
+exts-sub-cons : ∀ σ N V → (⟪ exts σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N
 exts-sub-cons σ N V
     rewrite sub-sub {N}{exts σ}{subst-zero V}
     | exts-cons-shift σ
