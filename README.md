@@ -170,7 +170,15 @@ inside `N`.
 
     N [ M ] ≡ ⟪ M • id ⟫ N
 
+For example, β reduction would be expressed as
+
+    (ƛ N) M -→ N [ M ]
+
+
 ## Properties of Substitution
 
+    (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ] ≡ ⟪ σ ⟫ (N [ M ])         (subst-commute)
+
+    ⟪ exts σ ⟫ N [ V ] ≡ ⟪ V • σ ⟫ N                     (exts-sub-cons)
 
 UNDER CONSTRUCTION
