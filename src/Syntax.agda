@@ -16,7 +16,7 @@ Var = ℕ
 data Args : (sig : List ℕ) → Set
 
 data ABT : Set where
-  `_ : ∀ (x : Var) → ABT
+  `_ : Var → ABT
   _⦅_⦆ : (op : Op) → Args (sig op) → ABT
 
 data Arg : (sig : ℕ) → Set where
