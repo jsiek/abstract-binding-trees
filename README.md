@@ -112,7 +112,7 @@ in the file [`Lambda.agda`](./src/Lambda.agda).
 ## Substitution
 
 The library define a type `Subst` to represent mappings from de Bruijn
-indices to ABTs. The identity subtitution is `id`, it maps each
+indices to ABTs. The identity substitution is `id`, it maps each
 variable to itself. Given some substitution `σ`, the substitution `M • σ`
 maps `0` to the ABT `M` and the rest of the integers according to `σ`.
 
@@ -164,12 +164,12 @@ to the following equation.
     ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ exts σ ⟫ N)
 
 Even more generally, and recalling the way in which we defined lambda
-abstraction in terms of an ABT operator node, each occurence of the
+abstraction in terms of an ABT operator node, each occurrence of the
 `bind` argument constructor causes substitution to introduce one
 `exts` around the substitution.
 
 Last but not least, the library introduces the notation `N [ M ]`
-for the common case of subtituting `M` for de Bruijn index 0
+for the common case of substituting `M` for de Bruijn index 0
 inside `N`.
 
     N [ M ] ≡ ⟪ M • id ⟫ N
@@ -196,7 +196,7 @@ indices (let `x` be index 0 and `y` be index 1), we obtain
 
     M[ N ][ L ] ≡ (⟪ ` 0 • N • id ⟫ M) [ N [ L ] ]
 
-Generalizing the subtitution by `L` to any simulaneous substitution
+Generalizing the substitution by `L` to any simultaneous substitution
 `σ`, we have the following theorem which is provided by the library.
 
     ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]         (commute-subst)
@@ -263,4 +263,3 @@ automatically taken into account when you use `refl` to prove an
 equality in Agda. The equations that are not definitional equalities
 are marked with a dagger symbol (†), and must be applied using
 explicit rewrites or equational reasoning.
-
