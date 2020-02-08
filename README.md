@@ -137,17 +137,18 @@ The action of substitution on lambda abstractions is more interesting
 because the lambda brings a variable into scope. Consider the following
 substitution.
 
-    σ ≡ M₀ • M₁ • … 
+    σ ≡ M₀ • M₁ • M₂ • … 
 
 To transport this substitution across a lambda abstraction, we need to
 do two things. First, inside the lambda, the de Bruijn index 0 is
 bound to the lambda's parameter, and should not be changed by the
-substitution. So index 0 of the new substitution should map to 0.
+substitution. So index 0 of the new substitution should map to 0
+and index 1, 2, and so on should map to M₀, M₁, M₂, and so on.
 Second, as the substitution σ moves over the lambda, each of the `Mᵢ`
-terms moves further away from the bindings of its free
-variables. Thus, to make sure the free variables in `Mᵢ` still point
-to the appropriate bindings, they all need to incremented by one.  The
-library defines the shift operator, written `↑ k`, that adds `k` to
+terms moves further away from the bindings of their free
+variables. Thus, to make sure the free variables in each `Mᵢ` still point
+to the appropriate bindings, they all need to be incremented by one.  The
+library defines a shift operator, written `↑ k`, that adds `k` to
 every free variable in a term.  Putting these two actions together,
 the library defines a function named `exts` that transports a
 substitution σ across one lambda abstraction.
@@ -202,12 +203,12 @@ nice to reuse this theorem instead of having to prove it yourself.
 
 The need for a slightly different property, shown below, arises in
 proofs based logical relations. The proof of this is also provided in
-the library, using the same infrastructe needed to prove
+the library, using the same infrastructure needed to prove
 `commute-subst`.
 
-    (⟪ exts σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N                    (exts-sub-cons)
+    (⟪ exts σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N                   (exts-sub-cons)
 
 
 ## Going Deeper
 
-UNDER CONSTRUCTION
+
