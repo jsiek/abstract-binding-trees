@@ -127,7 +127,17 @@ The library defines the notation `⟪ σ ⟫ M` for applying a substitution
 In general, substitution replaces a variable `i` with
 the ith ABT in the substitution:
 
-    ⟪ M₀ • … • Mᵢ • … ⟫ (` i) ≡ Mᵢ
+    ⟪ M₀ • … • Mᵢ • … • Mⱼ • id ⟫ (` i) ≡ Mᵢ
+
+unless `i > j` where Mⱼ is the last ABT before the terminating `id`,
+in which case the result is `i - (j + 1)`
+
+    ⟪ M₀ • … • Mᵢ • … • Mⱼ • id ⟫ (` i) ≡ ` (i - (j + 1))
+
+The reason that the substitution subtracts `j + 1` from variables
+greater than `j` is that we typically perform substition when removing
+bindings from around a term, and so the remaining variables in the
+term become closer to their bindings.
 
 The next two examples involves variables and application.
 
@@ -180,6 +190,10 @@ For example, β reduction would be expressed as
 
     (ƛ N) M -→ N [ M ]
 
+The following is an example of β reduction.
+The inner ƛ is applied to `M`.
+
+    (ƛ ((ƛ (` 0 · ` 1)) · M)) · L —→ (ƛ (M · ` 0)) · L
 
 ## Important Properties of Substitution
 
