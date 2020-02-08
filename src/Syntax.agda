@@ -63,7 +63,7 @@ inc (x •ᵣ ρ) = suc x •ᵣ inc ρ
 
 ext : Rename → Rename
 ext (↑ᵣ k) = 0 •ᵣ ↑ᵣ (suc k)
-ext (x •ᵣ ρ) = 0 •ᵣ suc x •ᵣ inc ρ
+ext (x •ᵣ ρ) = 0 •ᵣ inc (x •ᵣ ρ)
 
 rename : Rename → ABT → ABT
 ren-arg : ∀ {n}→ Rename → Arg n → Arg n

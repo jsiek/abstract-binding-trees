@@ -36,6 +36,27 @@ sub-app = λ L M σ → refl
 sub-lam : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ exts σ ⟫ N)
 sub-lam = λ N σ → refl 
 
+_ : ∀ M L → ⟪ M • L • id ⟫ (` 0) ≡ M
+_ = λ M L → refl
+
+_ : ∀ M L → ⟪ M • L • id ⟫ (` 1) ≡ L
+_ = λ M L → refl
+
+_ : ∀ M L → ⟪ M • L • id ⟫ (` 2) ≡ ` 0
+_ = λ M L → refl
+
+_ : ∀ M L → ⟪ M • L • id ⟫ (` 3) ≡ ` 1
+_ = λ M L → refl
+
+_ : ∀ M L → ⟪ M • L • id ⟫ (` 1 · ` 0) ≡ L · M
+_ = λ M L → refl
+
+_ : ∀ M → ⟪ M • id ⟫ (` 1 · ` 0) ≡ ` 0 · M
+_ = λ M → refl
+
+_ : ∀ N L → ((` 1 · ` 0) [ N ] ) [ L ] ≡ (L · N [ L ])
+_ = λ N L → refl
+
 infix 2 _—→_
 
 data _—→_ : Term → Term → Set where

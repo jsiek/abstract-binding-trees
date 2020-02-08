@@ -114,20 +114,22 @@ in the file [`Lambda.agda`](./src/Lambda.agda).
 The library defines a type `Subst` to represent mappings from de Bruijn
 indices to ABTs. The identity substitution is `id`, it maps each
 variable to itself. Given some substitution `σ`, the substitution `M • σ`
-maps `0` to the ABT `M` and the rest of the integers according to `σ`.
+maps `0` to the ABT `M` and each number `n` greater than zero to `σ (n - 1)`.
 
 The library defines the notation `⟪ σ ⟫ M` for applying a substitution
 `σ` to an ABT `M`. For example.
 
     ⟪ M • L • id ⟫ (` 0) ≡ M
     ⟪ M • L • id ⟫ (` 1) ≡ L
+    ⟪ M • L • id ⟫ (` 2) ≡ ` 0
+    ⟪ M • L • id ⟫ (` 3) ≡ ` 1
 
 In general, substitution replaces a variable `i` with
 the ith ABT in the substitution:
 
     ⟪ M₀ • … • Mᵢ • … ⟫ (` i) ≡ Mᵢ
 
-The next example involves variables and application.
+The next two examples involves variables and application.
 
     ⟪ M • L • id ⟫ (` 1 · ` 0) ≡ L · M
 
