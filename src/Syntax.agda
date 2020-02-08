@@ -237,17 +237,17 @@ exts (↑ k) = ` 0 • ↑ (suc k)
 exts (M • σ) = ` 0 • incs (M • σ)
 
 ⟪_⟫ : Subst → ABT → ABT
-subst-arg : ∀{n} → Subst → Arg n → Arg n
-subst-args : ∀{S} → Subst → Args S → Args S
+⟪_⟫ₐ : ∀{n} → Subst → Arg n → Arg n
+⟪_⟫₊ : ∀{S} → Subst → Args S → Args S
 
 ⟪ σ ⟫ (` x) = ∣ σ ∣ x
-⟪ σ ⟫ (o ⦅ As ⦆) = o ⦅ subst-args σ As ⦆
+⟪ σ ⟫ (o ⦅ As ⦆) = o ⦅ ⟪ σ ⟫₊ As ⦆
 
-subst-arg σ (ast M) = ast (⟪ σ ⟫ M)
-subst-arg σ (bind M) = bind (subst-arg (exts σ) M)
+⟪ σ ⟫ₐ (ast M) = ast (⟪ σ ⟫ M)
+⟪ σ ⟫ₐ (bind M) = bind (⟪ (exts σ) ⟫ₐ M)
 
-subst-args σ nil = nil
-subst-args σ (cons A As) = cons (subst-arg σ A) (subst-args σ As)
+⟪ σ ⟫₊ nil = nil
+⟪ σ ⟫₊ (cons A As) = cons (⟪ σ ⟫ₐ A) (⟪ σ ⟫₊ As)
 
 id : Subst
 id = ↑ 0
@@ -309,9 +309,21 @@ sub-dist :  ∀ {σ : Subst} {τ : Subst} {M : ABT}
          → ((M • σ) ⨟ τ) ≡ ((⟪ τ ⟫ M) • (σ ⨟ τ))
 sub-dist = refl
 
-sub-op : ∀ {σ : Subst} {o : Op}{Ms : Args (sig o)}
-        → ⟪ σ ⟫ (o ⦅ Ms ⦆)  ≡ o ⦅ subst-args σ Ms ⦆
-sub-op = refl        
+sub-op : ∀ {σ op args} → ⟪ σ ⟫ (op ⦅ args ⦆) ≡ op ⦅ ⟪ σ ⟫₊ args ⦆
+sub-op = refl
+
+sub-ast : ∀ {σ M} → ⟪ σ ⟫ₐ (ast M) ≡ ast (⟪ σ ⟫ M)
+sub-ast = refl
+
+sub-bind : ∀ {σ n arg} → ⟪ σ ⟫ₐ (bind {n} arg) ≡ bind (⟪ exts σ ⟫ₐ arg)
+sub-bind = refl
+
+sub-nil : ∀ {σ} → ⟪ σ ⟫₊ nil ≡ nil
+sub-nil = refl
+
+sub-cons : ∀{σ n bs arg args}
+         → ⟪ σ ⟫₊ (cons {n}{bs} arg args) ≡ cons (⟪ σ ⟫ₐ arg) (⟪ σ ⟫₊ args)
+sub-cons = refl
 
 rename→subst : Rename → Subst
 rename→subst (↑ᵣ k) = ↑ k 
@@ -331,8 +343,8 @@ rename-subst-interp (y •ᵣ ρ) zero = refl
 rename-subst-interp (y •ᵣ ρ) (suc x) = rename-subst-interp ρ x
 
 rename-subst : ∀ ρ M → rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
-ren-arg-subst : ∀ {n} ρ A → ren-arg {n} ρ A ≡ subst-arg (rename→subst ρ) A
-ren-args-subst : ∀ {S} ρ As → ren-args {S} ρ As ≡ subst-args (rename→subst ρ) As
+ren-arg-subst : ∀ {n} ρ A → ren-arg {n} ρ A ≡ ⟪ (rename→subst ρ) ⟫ₐ A
+ren-args-subst : ∀ {S} ρ As → ren-args {S} ρ As ≡ ⟪ rename→subst ρ ⟫₊ As
 
 rename-subst (↑ᵣ k) (` x) = refl
 rename-subst (y •ᵣ ρ) (` zero) = refl
@@ -344,8 +356,8 @@ ren-arg-subst ρ (bind A) =
   let IH = ren-arg-subst (ext ρ) A in
   begin
      bind (ren-arg (ext ρ) A)                       ≡⟨ cong bind IH ⟩
-     bind (subst-arg (rename→subst (ext ρ)) A)      ≡⟨ cong (λ □ → bind (subst-arg □ A)) (sym (exts-rename-ext ρ)) ⟩
-     bind (subst-arg (exts (rename→subst ρ)) A)     ∎
+     bind (⟪ rename→subst (ext ρ) ⟫ₐ A)             ≡⟨ cong (λ □ → bind (⟪ □ ⟫ₐ A)) (sym (exts-rename-ext ρ)) ⟩
+     bind (⟪ exts (rename→subst ρ) ⟫ₐ A)            ∎
 ren-args-subst ρ nil = refl
 ren-args-subst ρ (cons A As) =
   cong₂ cons (ren-arg-subst ρ A) (ren-args-subst ρ As)
@@ -374,10 +386,10 @@ sub-id' : ∀ {M : ABT} {σ : Subst}
          → ⟪ σ ⟫ M ≡ M
 sub-arg-id : ∀{n} {A : Arg n} {σ : Subst}
          → (∀ x → ∣ σ ∣ x ≡ ` x)
-         → subst-arg σ A ≡ A
+         → ⟪ σ ⟫ₐ A ≡ A
 subs-id : ∀{S} {Ms : Args S} {σ : Subst}
          → (∀ x → ∣ σ ∣ x ≡ ` x)
-         → subst-args σ Ms ≡ Ms
+         → ⟪ σ ⟫₊ Ms ≡ Ms
 
 sub-id' {` x} is-id = is-id x
 sub-id' {op ⦅ As ⦆} is-id = cong (λ □ → op ⦅ □ ⦆) (subs-id is-id)
@@ -418,11 +430,11 @@ commute-subst-rename : ∀{M : ABT}{σ : Subst}
 commute-subst-rename-arg : ∀{n}{A : Arg n}{σ : Subst}
                         {ρ : Rename}
      → (∀{x : Var} → ∣ exts σ ∣ (⟦ ρ ⟧ x) ≡ rename ρ (∣ σ ∣ x))
-     → subst-arg (exts σ) (ren-arg ρ A) ≡ ren-arg ρ (subst-arg σ A)
+     → ⟪ exts σ ⟫ₐ (ren-arg ρ A) ≡ ren-arg ρ (⟪ σ ⟫ₐ A)
 commute-subst-renames : ∀{S}{Ms : Args S}{σ : Subst}
                         {ρ : Rename}
      → (∀{x : Var} → ∣ exts σ ∣ (⟦ ρ ⟧ x) ≡ rename ρ (∣ σ ∣ x))
-     → subst-args (exts σ) (ren-args ρ Ms) ≡ ren-args ρ (subst-args σ Ms)
+     → ⟪ exts σ ⟫₊ (ren-args ρ Ms) ≡ ren-args ρ (⟪ σ ⟫₊ Ms)
 commute-subst-rename {` x} r = r
 commute-subst-rename {op ⦅ As ⦆} r =
     cong (λ □ → op ⦅ □ ⦆) (commute-subst-renames r)
@@ -488,9 +500,9 @@ exts-seq {M • σ₁} {σ₂} rewrite exts-0 σ₂
 sub-sub : ∀{M : ABT} {σ₁ : Subst}{σ₂ : Subst} 
             → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
 sub-sub-arg : ∀{n}{A : Arg n} {σ₁ : Subst}{σ₂ : Subst} 
-            → subst-arg σ₂ (subst-arg σ₁ A) ≡ subst-arg (σ₁ ⨟ σ₂) A
+            → ⟪ σ₂ ⟫ₐ (⟪ σ₁ ⟫ₐ A) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ₐ A
 sub-subs : ∀{S}{Ms : Args S} {σ₁ : Subst}{σ₂ : Subst} 
-            → subst-args σ₂ (subst-args σ₁ Ms) ≡ subst-args (σ₁ ⨟ σ₂) Ms
+            → ⟪ σ₂ ⟫₊ (⟪ σ₁ ⟫₊ Ms) ≡ ⟪ σ₁ ⨟ σ₂ ⟫₊ Ms
 sub-sub {` x} {σ₁} {σ₂} rewrite seq-subst σ₁ σ₂ x = refl
 sub-sub {op ⦅ As ⦆} {σ₁} {σ₂} = cong (λ □ → op ⦅ □ ⦆) (sub-subs {Ms = As})
 sub-sub-arg {.0} {ast M} {σ₁} {σ₂} = cong ast (sub-sub{M})
@@ -569,13 +581,14 @@ subst-extensionality : ∀{M : ABT}{σ τ : Subst}
     → ⟪ σ ⟫ M ≡ ⟪ τ ⟫ M
 sub-arg-ext : ∀{n} {A : Arg n} {σ τ : Subst}
          → (∀ x → ∣ σ ∣ x ≡ ∣ τ ∣ x)
-         → subst-arg σ A ≡ subst-arg τ A
+         → ⟪ σ ⟫ₐ A ≡ ⟪ τ ⟫ₐ A
 sub-args-ext : ∀{S} {Ms : Args S} {σ τ : Subst}
          → (∀ x → ∣ σ ∣ x ≡ ∣ τ ∣ x)
-         → subst-args σ Ms ≡ subst-args τ Ms
+         → ⟪ σ ⟫₊ Ms ≡ ⟪ τ ⟫₊ Ms
 
 subst-extensionality {` x} {σ} {τ} eq = eq x
-subst-extensionality {op ⦅ As ⦆} {σ} {τ} eq = cong (λ □ → op ⦅ □ ⦆) (sub-args-ext eq)
+subst-extensionality {op ⦅ As ⦆} {σ} {τ} eq =
+    cong (λ □ → op ⦅ □ ⦆) (sub-args-ext eq)
 
 sub-arg-ext {A = ast M} eq = cong ast (subst-extensionality {M} eq)
 sub-arg-ext {A = bind A}{σ}{τ} eq = cong bind (sub-arg-ext (exts-ext σ τ eq))

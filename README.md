@@ -202,13 +202,61 @@ The proof of this theorem is somewhat long and technical, so it is
 nice to reuse this theorem instead of having to prove it yourself.
 
 The need for a slightly different property, shown below, arises in
-proofs based logical relations. The proof of this is also provided in
-the library, using the same infrastructure needed to prove
-`commute-subst`.
+proofs based on logical relations. A simultaneous substitution
+followed by a single substitution can be combined into one
+simultaneous substitution as follows.
 
-    (⟪ exts σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N                   (exts-sub-cons)
+    (⟪ exts σ ⟫ N) [ M ] ≡ ⟪ M • σ ⟫ N                   (exts-sub-cons)
 
+The proof of this property is also provided in the library, using the
+same infrastructure needed to prove `commute-subst`.
 
 ## Going Deeper
 
+You may very well have need of other equations involving
+substitutions. If those equations only involve the following
+substitution operators, then there is a decidable algorithm for
+proving or disproving the equations.
+
+    id
+    ↑ k
+    M • σ
+    σ₁ ⨟ σ₂
+
+We have already discussed the first three operators: identity `id`,
+shift `↑ k`, and cons `M • σ`. The fourth, `σ₁ ⨟ σ₂`, is composition.
+It applies `σ₁` and then `σ₂`. These four operators form the σ algebra
+due to Abadi, Cardelli, Curien, and Levy (1991).  The `exts` function
+is not part of the σ algebra but it is equivalent to the following σ
+algebra expression.
+
+    (exts-cons-shift)†     exts σ ≡ ` 0 • (σ ⨟ ↑ 1)
+
+The equations of the σ algebra, adapted to ABTs, are as follows.
+
+    (sub-head)  ⟪ M • σ ⟫ (` Z)        ≡ M
+    (sub-tail)  ↑ 1 ⨟ (M • σ)           ≡ σ
+    (Z-shift)†  (` Z) • ↑ 1             ≡ id
+    (sub-η)†    (⟪ σ ⟫ (` Z)) • (↑ ⨟ σ)  ≡ σ
+
+    (sub-op)    ⟪ σ ⟫ (op ⦅ args ⦆)     ≡ op ⦅ ⟪ σ ⟫₊ args ⦆
+    (sub-nil)   ⟪ σ ⟫₊ nil             ≡ nil
+    (sub-cons)  ⟪ σ ⟫₊ (cons arg args) ≡ cons (⟪ σ ⟫ₐ arg) (⟪ σ ⟫₊ args)
+    (sub-ast)   ⟪ σ ⟫ₐ (ast M)         ≡ ast (⟪ σ ⟫ M)
+    (sub-bind)  ⟪ σ ⟫ₐ (bind arg)      ≡ bind (⟪ exts σ ⟫ₐ arg)
+    
+    (sub-sub)†  ⟪ τ ⟫ ⟪ σ ⟫ M  ≡ ⟪ σ ⨟ τ ⟫ M
+
+    (sub-idL)†   id ⨟ σ        ≡ σ
+    (sub-idR)†   σ ⨟ id        ≡ σ
+    (sub-assoc)† (σ ⨟ τ) ⨟ θ    ≡ σ ⨟ (τ ⨟ θ)
+    (sub-dist)   (M • σ) ⨟ τ    ≡ (⟪ τ ⟫ M) • (σ ⨟ τ)
+
+When the equations are applied from left to right, they form a rewrite
+system that decides whether any two substitutions are equal.  Many of
+the equations above are definitional equalities, so they are
+automatically taken into account when you use `refl` to prove an
+equality in Agda. The equations that are not definitional equalities
+are marked with a dagger symbol (†), and must be applied using
+explicit rewrites or equational reasoning.
 
