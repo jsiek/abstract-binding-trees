@@ -117,13 +117,13 @@ variable to itself. Given some substitution `σ`, the substitution `M • σ`
 maps `0` to the ABT `M` and the rest of the integers according to `σ`.
 
 The library defines the notation `⟪ σ ⟫ M` for applying a substitution
-`σ` to a term `M`. For example.
+`σ` to an ABT `M`. For example.
 
     ⟪ M • L • id ⟫ (` 0) ≡ M
     ⟪ M • L • id ⟫ (` 1) ≡ L
 
 In general, substitution replaces a variable `i` with
-the ith term in the substitution:
+the ith ABT in the substitution:
 
     ⟪ M₀ • … • Mᵢ • … ⟫ (` i) ≡ Mᵢ
 
@@ -148,11 +148,11 @@ bound to the lambda's parameter, and should not be changed by the
 substitution. So index 0 of the new substitution should map to 0
 and index 1, 2, and so on should map to M₀, M₁, M₂, and so on.
 Second, as the substitution σ moves over the lambda, each of the `Mᵢ`
-terms moves further away from the bindings of their free
+moves further away from the bindings of their free
 variables. Thus, to make sure the free variables in each `Mᵢ` still point
 to the appropriate bindings, they all need to be incremented by one.  The
 library defines a shift operator, written `↑ k`, that adds `k` to
-every free variable in a term.  Putting these two actions together,
+every free variable in an ABT.  Putting these two actions together,
 the library defines a function named `exts` that transports a
 substitution σ across one lambda abstraction.
 
