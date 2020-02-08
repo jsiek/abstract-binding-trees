@@ -15,10 +15,10 @@ An abstract binding tree `ABT` consists of two kinds of nodes:
 * Operators: An operator node is tagged with the kind of operator and
   it has zero or more children, depending on the kind of operator.
 
-The `ABT` data type is defined in the `Syntax` module, which is
-parameterized by the kinds of operators and their signatures, which
-specifies things like the number of child nodes for each kind of
-operator.
+The `ABT` data type is defined in the [`Syntax`](./src/Syntax.agda)
+module, which is parameterized by the kinds of operators and their
+signatures, which specifies things like the number of child nodes for
+each kind of operator.
 
 To specify the operators, create a data type definition with one
 constructor for each kind. Using the lambda calculus as an example,
