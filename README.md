@@ -198,8 +198,9 @@ Generalizing the subtitution by `L` to any simulaneous substitution
 
     ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]         (commute-subst)
 
-The proof of this theorem is somewhat long and technical, so it is
-nice to reuse this theorem instead of having to prove it yourself.
+Setting up all the infrastructure necessary to prove this theorem is a
+fair bit of work, so it is nice to reuse this theorem instead of
+having to prove it yourself.
 
 The need for a slightly different property, shown below, arises in
 proofs based on logical relations. A simultaneous substitution
