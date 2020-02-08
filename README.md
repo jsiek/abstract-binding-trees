@@ -106,6 +106,9 @@ argument `M`, you would write:
     infixl 7  _·_
     pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
 
+The complete Agda code for this lambda calculus example is
+in the file [`Lambda.agda`](./src/Lambda.agda).
+
 ## Substitution
 
 The library define a type `Subst` to represent mappings from de Bruijn
@@ -227,7 +230,7 @@ proving or disproving the equations.
 We have already discussed the first three operators: identity `id`,
 shift `↑ k`, and cons `M • σ`. The fourth, `σ₁ ⨟ σ₂`, is composition.
 It applies `σ₁` and then `σ₂`. These four operators form the σ algebra
-due to Abadi, Cardelli, Curien, and Levy (1991).  The `exts` function
+of Abadi, Cardelli, Curien, and Levy (1991). The `exts` function
 is not part of the σ algebra but it is equivalent to the following σ
 algebra expression.
 
