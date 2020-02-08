@@ -84,7 +84,7 @@ list, there is one element in the `Args`.
 Each element of `Args` is an argument, defined by the `Arg` data type.
 It is parameterized by a number that says how many variable bindings
 come into scope. The `bind` constructor represents a variable binding
-and decrements the number. The `ast` constructor is allowed with the
+and decrements the number. The `ast` constructor is allowed when the
 count reaches `0` and contains the abstract binding tree for the
 child.
 
@@ -145,8 +145,8 @@ substitution.
 To transport this substitution across a lambda abstraction, we need to
 do two things. First, inside the lambda, the de Bruijn index 0 is
 bound to the lambda's parameter, and should not be changed by the
-substitution. So index 0 of the new substitution should map to 0
-and index 1, 2, and so on should map to M₀, M₁, M₂, and so on.
+substitution. So index 0 of the new substitution should map 0 to 0
+whereas index 1, 2, etc. should map to M₀, M₁, M₂, and so on.
 Second, as the substitution σ moves over the lambda, each of the `Mᵢ`
 moves further away from the bindings of their free
 variables. Thus, to make sure the free variables in each `Mᵢ` still point
