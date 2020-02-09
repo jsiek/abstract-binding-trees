@@ -210,7 +210,7 @@ of the untyped lambda calculus.
 Converting the Substitution Lemma to our notation and to Bruijn
 indices (let `x` be index 0 and `y` be index 1), we obtain
 
-    M[ N ][ L ] ≡ (⟪ ` 0 • N • id ⟫ M) [ N [ L ] ]
+    M[ N ][ L ] ≡ (⟪ ` 0 • L • id ⟫ M) [ N [ L ] ]
 
 Generalizing the substitution by `L` to any simultaneous substitution
 `σ`, we have the following theorem which is provided by the library.
