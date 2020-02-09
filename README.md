@@ -139,7 +139,7 @@ greater than `j` is that we typically perform substition when removing
 bindings from around a term, and so the remaining variables in the
 term become closer to their bindings.
 
-The next two examples involves variables and application.
+The next example involves variables and application.
 
     ⟪ M • L • id ⟫ (` 1 · ` 0) ≡ L · M
 
