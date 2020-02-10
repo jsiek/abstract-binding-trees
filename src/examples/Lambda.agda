@@ -5,7 +5,7 @@
 
 -}
 
-module Lambda where
+module examples.Lambda where
 
 import Syntax
 open import Data.Empty using (⊥; ⊥-elim)
