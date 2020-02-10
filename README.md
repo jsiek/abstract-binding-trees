@@ -107,7 +107,7 @@ argument `M`, you would write:
     pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
 
 The complete Agda code for this lambda calculus example is
-in the file [`Lambda.agda`](./examples/Lambda.agda).
+in the file [`Lambda.agda`](./src/examples/Lambda.agda).
 
 ## Substitution
 
