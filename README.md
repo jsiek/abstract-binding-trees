@@ -170,6 +170,11 @@ lambda abstraction.
 
     exts σ ≡ ` 0 • ⟪ ↑ 1 ⟫ M₀ • ⟪ ↑ 1 ⟫ M₁ • …
 
+So we have the following two equations about `exts`:
+
+    (exts-0)  ⟪ exts σ ⟫ (` 0) ≡ ` 0
+    (exts-s)  ⟪ exts σ ⟫ (` (suc x)) ≡ rename (↑ᵣ 1) (⟪ σ ⟫ (` x))
+
 In general, substitution acts on lambda abstractions according
 to the following equation.
 

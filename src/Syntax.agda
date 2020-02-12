@@ -416,10 +416,17 @@ sub-idR : ∀ σ → σ ⨟ id ≡ σ
 sub-idR (↑ k) rewrite +-comm k 0 = refl
 sub-idR (M • σ) rewrite sub-id {M} | sub-idR σ = refl
 
-exts-0 : ∀ σ → ∣ exts σ ∣ 0 ≡ ` 0
+exts-0' : ∀ σ → ∣ exts σ ∣ 0 ≡ ` 0
+exts-0' σ rewrite exts-cons-shift σ = refl
+
+exts-0 : ∀ σ → ⟪ exts σ ⟫ (` 0) ≡ ` 0
 exts-0 σ rewrite exts-cons-shift σ = refl
 
-exts-s : ∀ σ x → ∣ exts σ ∣ (suc x) ≡ rename (↑ᵣ 1) (∣ σ ∣ x)
+exts-s' : ∀ σ x → ∣ exts σ ∣ (suc x) ≡ rename (↑ᵣ 1) (∣ σ ∣ x)
+exts-s' σ x rewrite exts-cons-shift σ | rename-subst (↑ᵣ 1) (∣ σ ∣ x)
+    | seq-subst σ (↑ 1) x = refl
+
+exts-s : ∀ σ x → ⟪ exts σ ⟫ (` (suc x)) ≡ rename (↑ᵣ 1) (⟪ σ ⟫ (` x))
 exts-s σ x rewrite exts-cons-shift σ | rename-subst (↑ᵣ 1) (∣ σ ∣ x)
     | seq-subst σ (↑ 1) x = refl
 
@@ -487,14 +494,14 @@ drop-exts (suc k) (M • ρ) = drop-incs k ρ
 incs-seq : ∀ ρ₁ ρ₂ → (incs ρ₁ ⨟ exts ρ₂) ≡ incs (ρ₁ ⨟ ρ₂)
 incs-seq (↑ k) ρ₂ = drop-exts k ρ₂
 incs-seq (M • ρ₁) ρ₂ rewrite incs-seq ρ₁ ρ₂
-    | commute-subst-rename {M}{ρ₂}{↑ᵣ 1} (λ {x} → exts-s ρ₂ x) = refl
+    | commute-subst-rename {M}{ρ₂}{↑ᵣ 1} (λ {x} → exts-s' ρ₂ x) = refl
 
 exts-seq : ∀ {σ₁ : Subst} {σ₂ : Subst}
          → exts σ₁ ⨟ exts σ₂ ≡ exts (σ₁ ⨟ σ₂)
 exts-seq {↑ k} {σ₂} rewrite exts-cons-shift σ₂ | exts-cons-shift (drop k σ₂)
     | drop-seq k σ₂ (↑ 1) = refl
-exts-seq {M • σ₁} {σ₂} rewrite exts-0 σ₂
-    | commute-subst-rename {M}{σ₂}{↑ᵣ 1} (λ {x} → exts-s σ₂ x)
+exts-seq {M • σ₁} {σ₂} rewrite exts-0' σ₂
+    | commute-subst-rename {M}{σ₂}{↑ᵣ 1} (λ {x} → exts-s' σ₂ x)
     | incs-seq σ₁ σ₂ = refl
 
 sub-sub : ∀{M : ABT} {σ₁ : Subst}{σ₂ : Subst} 
