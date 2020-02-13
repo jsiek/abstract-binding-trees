@@ -285,7 +285,7 @@ substitution, named `rename→subst`, and the following equation that
 relates the application of a renaming to the application of the
 corresponding substitution.
 
-    (rename-subst)    rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
+    (rename-subst)     rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
 
 For example, from this equation we have
 
@@ -294,7 +294,7 @@ For example, from this equation we have
 Combining this with the `(exts-suc)` equation, we can express `exts`
 in terms of `rename`.
 
-    ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
+    (exts-suc-rename)   ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
 
 
 ## Going Deeper

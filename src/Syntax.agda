@@ -462,7 +462,7 @@ exts-suc' : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟦ σ ⟧ 
 exts-suc' σ x rewrite exts-cons-shift σ | rename-subst (↑ 1) (⟦ σ ⟧ x)
     | seq-subst σ (↑ 1) x = refl
 
-exts-suc-rename : ∀ σ x → ⟪ exts σ ⟫ (` (suc x)) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
+exts-suc-rename : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
 exts-suc-rename σ x rewrite exts-cons-shift σ | rename-subst (↑ 1) (⟦ σ ⟧ x)
     | seq-subst σ (↑ 1) x = refl
 
