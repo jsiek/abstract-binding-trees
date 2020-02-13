@@ -291,6 +291,11 @@ For example, from this equation we have
 
     rename (↑ 1) M ≡ ⟪ ↑ 1 ⟫ M
 
+Combining this with the `(exts-suc)` equation, we can express `exts`
+in terms of `rename`.
+
+    ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
+
 
 ## Going Deeper
 
