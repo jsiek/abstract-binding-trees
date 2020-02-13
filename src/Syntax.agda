@@ -294,7 +294,7 @@ abstract
   (M • σ) ⨟ τ = ⟪ τ ⟫ M • (σ ⨟ τ)
 
   sub-head : (M : ABT) (σ : Subst)
-           → ⟪ M • σ ⟫ (` 0) ≡ M
+           → ⟦ M • σ ⟧ 0 ≡ M
   sub-head M σ = refl
 
   sub-tail : (M : ABT) (σ : Subst)
@@ -319,7 +319,7 @@ abstract
   sub-η σ 0 = refl
   sub-η σ (suc x) = drop-add 1 σ
 
-  Z-shift : ∀ x → ⟪ ` 0 • ↑ 1 ⟫ (` x) ≡ ` x
+  Z-shift : ∀ x → ⟦ ` 0 • ↑ 1 ⟧ x ≡ ` x
   Z-shift 0 = refl
   Z-shift (suc x) = refl
 

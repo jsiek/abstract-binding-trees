@@ -315,10 +315,10 @@ algebra expression.
 
 The equations of the σ algebra, adapted to ABTs, are as follows.
 
-    (sub-head)  ⟪ M • σ ⟫ (` 0)         ≡ M
-    (sub-tail)  ↑ 1 ⨟ (M • σ)           ≡ σ
-    (Z-shift)†  ⟪ ` 0 • ↑ 1 ⟫ (` x)     ≡ ` x
-    (sub-η)†    (⟪ σ ⟫ (` 0)) • (↑ ⨟ σ)  ≡ σ
+    (sub-head)  ⟦ M • σ ⟧ 0                   ≡ M
+    (sub-tail)  ↑ 1 ⨟ (M • σ)                 ≡ σ
+    (Z-shift)†  ⟦ ` 0 • ↑ 1 ⟧ x               ≡ ` x
+    (sub-η)†    ⟦ (⟪ σ ⟫ (` 0)) • (↑ ⨟ σ) ⟧ x ≡ ⟦ σ ⟧ x
 
     (sub-op)    ⟪ σ ⟫ (op ⦅ args ⦆)     ≡ op ⦅ ⟪ σ ⟫₊ args ⦆
     (sub-nil)   ⟪ σ ⟫₊ nil             ≡ nil
