@@ -1,7 +1,7 @@
 {-
 
   This is an example of using Abstract Binding Trees to define the
-  untyped lambda calculus.
+  lambda calculus.
 
 -}
 
@@ -22,7 +22,9 @@ sig op-lam = 1 ∷ []
 sig op-app = 0 ∷ 0 ∷ []
 
 open Syntax Op sig
-  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; _•_; id)
+  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; _•_; id; ↑;
+         exts-0; exts-suc;
+         Rename; ⦉_⦊; ext; ext-0; ext-suc; rename)
   renaming (ABT to Term)
 
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
@@ -83,3 +85,139 @@ data _—→_ : Term → Term → Set where
 _ : ∀ L M → (ƛ ((ƛ (` 0 · ` 1)) · M)) · L
          —→ (ƛ (M · ` 0)) · L
 _ = λ L M → ξ-·₁ (ξ-ƛ β-ƛ)
+
+
+data Type : Set where
+  Bot   : Type
+  _⇒_   : Type → Type → Type
+
+data Context : Set where
+  ∅   : Context
+  _,_ : Context → Type → Context
+
+infix  4  _∋_⦂_
+
+data _∋_⦂_ : Context → ℕ → Type → Set where
+
+  Z : ∀ {Γ A}
+      ------------------
+    → Γ , A ∋ 0 ⦂ A
+
+  S : ∀ {Γ x A B}
+    → Γ ∋ x ⦂ A
+      ------------------
+    → Γ , B ∋ (suc x) ⦂ A
+
+infix  4  _⊢_⦂_
+
+data _⊢_⦂_ : Context → Term → Type → Set where
+
+  ⊢` : ∀ {Γ x A}
+    → Γ ∋ x ⦂ A
+      -----------
+    → Γ ⊢ ` x ⦂ A
+
+  ⊢ƛ : ∀ {Γ N A B}
+    → Γ , A ⊢ N ⦂ B
+      -------------------
+    → Γ ⊢ ƛ N ⦂ A ⇒ B
+
+  ⊢· : ∀ {Γ L M A B}
+    → Γ ⊢ L ⦂ A ⇒ B
+    → Γ ⊢ M ⦂ A
+      -------------
+    → Γ ⊢ L · M ⦂ B
+
+data Value : Term → Set where
+
+  V-ƛ : ∀ {N : Term}
+      ---------------------------
+    → Value (ƛ N)
+
+data Progress (M : Term) : Set where
+
+  step : ∀ {N}
+    → M —→ N
+      ----------
+    → Progress M
+
+  done :
+      Value M
+      ----------
+    → Progress M
+
+progress : ∀ {M A}
+  → ∅ ⊢ M ⦂ A
+    ----------
+  → Progress M
+progress (⊢` ())
+progress (⊢ƛ ⊢N)                            =  done V-ƛ
+progress (⊢· ⊢L ⊢M)
+    with progress ⊢L
+... | step L—→L′                            =  step (ξ-·₁ L—→L′)
+... | done V-ƛ                              =  step β-ƛ
+
+WTRename : Context → Rename → Context → Set
+WTRename Γ ρ Δ = ∀ {x A} → Γ ∋ x ⦂ A → Δ ∋ ⦉ ρ ⦊ x ⦂ A
+
+ext-pres : ∀ {Γ Δ ρ B}
+  → WTRename Γ ρ Δ
+    --------------------------------
+  → WTRename (Γ , B) (ext ρ) (Δ , B)
+ext-pres {ρ = ρ } ⊢ρ Z
+    rewrite ext-0 ρ =  Z
+ext-pres {ρ = ρ } ⊢ρ (S {x = x} ∋x)
+    rewrite ext-suc ρ x =  S (⊢ρ ∋x)
+
+rename-pres : ∀ {Γ Δ ρ M A}
+  → WTRename Γ ρ Δ
+  → Γ ⊢ M ⦂ A
+    ------------------
+  → Δ ⊢ rename ρ M ⦂ A
+rename-pres ⊢ρ (⊢` ∋w)           =  ⊢` (⊢ρ ∋w)
+rename-pres {ρ = ρ} ⊢ρ (⊢ƛ ⊢N)   =  ⊢ƛ (rename-pres (ext-pres {ρ = ρ} ⊢ρ) ⊢N)
+rename-pres ⊢ρ (⊢· ⊢L ⊢M)        =  ⊢· (rename-pres ⊢ρ ⊢L) (rename-pres ⊢ρ ⊢M)
+
+WTSubst : Context → Subst → Context → Set
+WTSubst Γ σ Δ = ∀ {A x} → Γ ∋ x ⦂ A → Δ ⊢ ⟪ σ ⟫ (` x) ⦂ A
+
+exts-pres : ∀ {Γ Δ σ B}
+  → WTSubst Γ σ Δ
+    --------------------------------
+  → WTSubst (Γ , B) (exts σ) (Δ , B)
+exts-pres {σ = σ} Γ⊢σ Z
+    rewrite exts-0 σ = ⊢` Z
+exts-pres {σ = σ} Γ⊢σ (S {x = x} ∋x)
+    rewrite exts-suc σ x = rename-pres S (Γ⊢σ ∋x)
+
+subst : ∀ {Γ Δ σ N A}
+  → WTSubst Γ σ Δ
+  → Γ ⊢ N ⦂ A
+    ---------------
+  → Δ ⊢ ⟪ σ ⟫ N ⦂ A
+subst Γ⊢σ (⊢` eq)              = Γ⊢σ eq
+subst {σ = σ} Γ⊢σ (⊢ƛ ⊢N)      = ⊢ƛ (subst (exts-pres {σ = σ} Γ⊢σ) ⊢N) 
+subst Γ⊢σ (⊢· ⊢L ⊢M)           = ⊢· (subst Γ⊢σ ⊢L) (subst Γ⊢σ ⊢M) 
+
+substitution : ∀{Γ A B M N}
+   → Γ ⊢ M ⦂ A
+   → (Γ , A) ⊢ N ⦂ B
+     ---------------
+   → Γ ⊢ N [ M ] ⦂ B
+substitution {Γ}{A}{B}{M}{N} ⊢M ⊢N = subst G ⊢N
+    where
+    G : ∀ {A₁ : Type} {x : ℕ}
+      → (Γ , A) ∋ x ⦂ A₁ → Γ ⊢ ⟪ M • ↑ 0 ⟫ (` x) ⦂ A₁
+    G {A₁} {zero} Z = ⊢M
+    G {A₁} {suc x} (S ∋x) = ⊢` ∋x
+
+preserve : ∀ {Γ M N A}
+  → Γ ⊢ M ⦂ A
+  → M —→ N
+    ----------
+  → Γ ⊢ N ⦂ A
+preserve (⊢· ⊢L ⊢M) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L—→L′) ⊢M
+preserve (⊢· ⊢L ⊢M) (ξ-·₂ M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′)
+preserve (⊢ƛ ⊢M) (ξ-ƛ M—→N) = ⊢ƛ (preserve ⊢M M—→N)
+preserve (⊢· (⊢ƛ ⊢N) ⊢M) β-ƛ = substitution ⊢M ⊢N
+
