@@ -1,8 +1,8 @@
 # Abstract Binding Trees
 
-This is an Agda library for abstract binding trees as in Robert
-Harper's book Practical Foundations for Programming Languages.  An
-abstract binding tree (ABT) is a generic form of abstract syntax tree
+This is an Agda library for abstract binding trees as in Chapter 1 of
+Robert Harper's book _Practical Foundations for Programming
+Languages_.  An abstract binding tree (ABT) is an abstract syntax tree
 that also knows about binders and variables. Thus, this library also
 defines substitution on ABTs and provides theorems about substitution.
 The library represents variables using de Bruijn indices.
@@ -109,37 +109,48 @@ argument `M`, you would write:
 The complete Agda code for this lambda calculus example is
 in the file [`Lambda.agda`](./src/examples/Lambda.agda).
 
+
 ## Substitution
 
-The library defines a type `Subst` to represent mappings from de Bruijn
-indices to ABTs. The identity substitution is `id`, it maps each
-variable to itself. Given some substitution `σ`, the substitution `M • σ`
-maps `0` to the ABT `M` and each number `n` greater than zero to `σ (n - 1)`.
+The library defines a type `Subst`, for _substitution_, to represent
+mappings from de Bruijn indices to ABTs. The identity substitution is
+`id`, it maps each variable to itself. Given some substitution `σ`,
+the substitution `M • σ` maps `0` to the ABT `M` and each number `n`
+greater than zero to `σ (n - 1)`.
 
-The library defines the notation `⟪ σ ⟫ M` for applying a substitution
-`σ` to an ABT `M`. For example.
+The library defines the notation `⟦ σ ⟧ x` for applying a substitution
+`σ` to a variable `x`.
 
-    ⟪ M • L • id ⟫ (` 0) ≡ M
-    ⟪ M • L • id ⟫ (` 1) ≡ L
-    ⟪ M • L • id ⟫ (` 2) ≡ ` 0
-    ⟪ M • L • id ⟫ (` 3) ≡ ` 1
+For example.
+
+    ⟦ M • L • id ⟧ 0 ≡ M
+    ⟦ M • L • id ⟧ 1 ≡ L
+    ⟦ M • L • id ⟧ 2 ≡ ` 0
+    ⟦ M • L • id ⟧ 3 ≡ ` 1
 
 In general, substitution replaces a variable `i` with
 the ith ABT in the substitution:
 
-    ⟪ M₀ • … • Mᵢ • … • Mⱼ • id ⟫ (` i) ≡ Mᵢ
+    ⟦ M₀ • … • Mᵢ • … • Mⱼ • id ⟧ i ≡ Mᵢ
 
 unless `i > j` where Mⱼ is the last ABT before the terminating `id`,
 in which case the result is `i - (j + 1)`
 
-    ⟪ M₀ • … • Mᵢ • … • Mⱼ • id ⟫ (` i) ≡ ` (i - (j + 1))
+    ⟦ M₀ • … • Mᵢ • … • Mⱼ • id ⟧ i ≡ ` (i - (j + 1))
 
 The reason that the substitution subtracts `j + 1` from variables
 greater than `j` is that we typically perform substition when removing
 bindings from around a term, and so the remaining variables in the
 term become closer to their bindings.
 
-The next example involves variables and application.
+The library defines the notation `⟪ σ ⟫ M` for applying a substitution
+`σ` to an ABT `M`. When `M` is a variable, we have
+`⟪ σ ⟫ x ≡ ` ⟦ σ ⟧ x`. For example:
+
+    ⟪ M • L • id ⟫ (` 0) ≡ ` (⟦ M • L • id ⟧ 0) ≡ M
+
+Next suppose `M` is an application with variables in the operator and
+argument positions.
 
     ⟪ M • L • id ⟫ (` 1 · ` 0) ≡ L · M
 
@@ -172,8 +183,8 @@ lambda abstraction.
 
 So we have the following two equations about `exts`:
 
-    (exts-0)  ⟪ exts σ ⟫ (` 0) ≡ ` 0
-    (exts-s)  ⟪ exts σ ⟫ (` (suc x)) ≡ rename (↑ᵣ 1) (⟪ σ ⟫ (` x))
+    (exts-0)    ⟦ exts σ ⟧ 0 ≡ 0
+    (exts-suc)  ⟦ exts σ ⟧ (suc x) ≡ ⟪ ↑ 1 ⟫ (⟪ σ ⟫ (` x))
 
 In general, substitution acts on lambda abstractions according
 to the following equation.
@@ -200,6 +211,7 @@ The inner ƛ is applied to `M`.
 
     (ƛ ((ƛ (` 0 · ` 1)) · M)) · L —→ (ƛ (M · ` 0)) · L
 
+
 ## Important Properties of Substitution
 
 A fundamental property of (single) substitution is that two
@@ -215,14 +227,14 @@ of the untyped lambda calculus.
 Converting the Substitution Lemma to our notation and to Bruijn
 indices (let `x` be index 0 and `y` be index 1), we obtain
 
-    M[ N ][ L ] ≡ (⟪ ` 0 • L • id ⟫ M) [ N [ L ] ]
+    M[ N ][ L ] ≡ (⟪ exts (L • id) ⟫ M) [ N [ L ] ]
 
 Generalizing the substitution by `L` to any simultaneous substitution
 `σ`, we have the following theorem which is provided by the library.
 
     ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]         (commute-subst)
 
-Setting up all the infrastructure necessary to prove this theorem is a
+Setting up the infrastructure necessary to prove this theorem is a
 fair bit of work, so it is nice to reuse this theorem instead of
 having to prove it yourself.
 
@@ -235,6 +247,50 @@ simultaneous substitution as follows.
 
 The proof of this property is also provided in the library, using the
 same infrastructure needed to prove `commute-subst`.
+
+
+## Renaming, a special case of substitution
+
+We refer to the special case of a substitution that maps variables to
+variables as a _renaming_. In some situations, it helps to prove
+lemmas about renaming on the way to proving the corresponding lemmas
+about substitutions. For example, in
+[`Lambda.agda`](./src/examples/Lambda.agda) we define a simple type
+system for the lambda calculus and prove type safety via the standard
+progress and preservation lemmas. For the preservation lemma, one must
+prove that substitution preserves typing. That proof goes through more
+smoothly if we first prove that renaming preserves typing.
+
+We use much of the same syntax for renamings: `id` is the identity
+renaming, `x • ρ` maps `0` to `x` and each number `n` greater than
+zero to `ρ (n - 1)`. To apply a renaming `ρ` to a variable `x`, the
+library defines the notation `⦉ ρ ⦊ x`. Similar to the `exts` function
+for substitutions, the library defines an `ext` function that
+transports a renaming across one binder, providing the following
+equations.
+
+    (ext-0)     ⦉ ext ρ ⦊ 0 ≡ 0
+    (ext-suc)   ⦉ ext ρ ⦊ (suc x) ≡ suc (⦉ ρ ⦊ x)
+
+To apply a renaming `ρ` to a term `M`, the library defines the
+`rename` function. This function is quite similar to the `⟪_⟫`
+function for substitutions, except that when it goes under a binder,
+it uses `ext` instead of `exts`.  For example, here is the equation
+for renaming applied to a lambda abstraction.
+
+    rename ρ (ƛ N) ≡ ƛ (rename (ext ρ) N)
+
+The library provides a function for converting a renaming to a
+substitution, named `rename→subst`, and the following equation that
+relates the application of a renaming to the application of the
+corresponding substitution.
+
+    (rename-subst)    rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
+
+For example, from this equation we have
+
+    rename (↑ 1) M ≡ ⟪ ↑ 1 ⟫ M
+
 
 ## Going Deeper
 
@@ -259,10 +315,10 @@ algebra expression.
 
 The equations of the σ algebra, adapted to ABTs, are as follows.
 
-    (sub-head)  ⟪ M • σ ⟫ (` Z)        ≡ M
+    (sub-head)  ⟪ M • σ ⟫ (` 0)         ≡ M
     (sub-tail)  ↑ 1 ⨟ (M • σ)           ≡ σ
-    (Z-shift)†  (` Z) • ↑ 1             ≡ id
-    (sub-η)†    (⟪ σ ⟫ (` Z)) • (↑ ⨟ σ)  ≡ σ
+    (Z-shift)†  ⟪ ` 0 • ↑ 1 ⟫ (` x)     ≡ ` x
+    (sub-η)†    (⟪ σ ⟫ (` 0)) • (↑ ⨟ σ)  ≡ σ
 
     (sub-op)    ⟪ σ ⟫ (op ⦅ args ⦆)     ≡ op ⦅ ⟪ σ ⟫₊ args ⦆
     (sub-nil)   ⟪ σ ⟫₊ nil             ≡ nil

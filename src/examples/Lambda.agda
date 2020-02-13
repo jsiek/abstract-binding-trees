@@ -11,7 +11,7 @@ import Syntax
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 
 data Op : Set where
   op-lam : Op
@@ -23,8 +23,8 @@ sig op-app = 0 ∷ 0 ∷ []
 
 open Syntax Op sig
   using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; _•_; id; ↑;
-         exts-0; exts-suc;
-         Rename; ⦉_⦊; ext; ext-0; ext-suc; rename)
+         exts-0; exts-suc; ⟦_⟧;
+         Rename; ⦉_⦊; ext; ext-0; ext-suc; rename; rename-subst)
   renaming (ABT to Term)
 
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
@@ -38,16 +38,19 @@ sub-app = λ L M σ → refl
 sub-lam : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ exts σ ⟫ N)
 sub-lam = λ N σ → refl 
 
-_ : ∀ M L → ⟪ M • L • id ⟫ (` 0) ≡ M
+ren-lam : ∀ (N : Term) (ρ : Rename) → rename ρ (ƛ N) ≡ ƛ (rename (ext ρ) N)
+ren-lam = λ N σ → refl 
+
+_ : ∀ M L → ⟦ M • L • id ⟧ 0 ≡ M
 _ = λ M L → refl
 
-_ : ∀ M L → ⟪ M • L • id ⟫ (` 1) ≡ L
+_ : ∀ M L → ⟦ M • L • id ⟧ 1 ≡ L
 _ = λ M L → refl
 
-_ : ∀ M L → ⟪ M • L • id ⟫ (` 2) ≡ ` 0
+_ : ∀ M L → ⟦ M • L • id ⟧ 2 ≡ ` 0
 _ = λ M L → refl
 
-_ : ∀ M L → ⟪ M • L • id ⟫ (` 3) ≡ ` 1
+_ : ∀ M L → ⟦ M • L • id ⟧ 3 ≡ ` 1
 _ = λ M L → refl
 
 _ : ∀ M L → ⟪ M • L • id ⟫ (` 1 · ` 0) ≡ L · M
@@ -188,7 +191,8 @@ exts-pres : ∀ {Γ Δ σ B}
 exts-pres {σ = σ} Γ⊢σ Z
     rewrite exts-0 σ = ⊢` Z
 exts-pres {σ = σ} Γ⊢σ (S {x = x} ∋x)
-    rewrite exts-suc σ x = rename-pres S (Γ⊢σ ∋x)
+    rewrite exts-suc σ x
+    | sym (rename-subst (↑ 1) (⟦ σ ⟧ x)) = rename-pres S (Γ⊢σ ∋x)
 
 subst : ∀ {Γ Δ σ N A}
   → WTSubst Γ σ Δ
