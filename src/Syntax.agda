@@ -627,17 +627,17 @@ data WF-args : ℕ → {bs : List ℕ} → Args bs → Set
 data WF : ℕ → ABT → Set 
 
 data WF-arg where
-  WF-ast : ∀ {n} M → WF n M → WF-arg n (ast M)
-  WF-bind : ∀ {n b} (A : Arg b) → WF-arg (suc n) A → WF-arg n (bind A)
+  WF-ast : ∀ {n} {M} → WF n M → WF-arg n (ast M)
+  WF-bind : ∀ {n b} {A : Arg b} → WF-arg (suc n) A → WF-arg n (bind A)
 
 data WF-args where
   WF-nil : ∀{n} → WF-args n nil
-  WF-cons : ∀{n b bs} (A : Arg b) (As : Args bs)
+  WF-cons : ∀{n b bs} {A : Arg b} {As : Args bs}
           → WF-arg n A → WF-args n As → WF-args n (cons A As)
 
 data WF where
   WF-var : ∀ {n} x → x < n → WF n (` x)
-  WF-op : ∀ {n} (op : Op) (args : Args (sig op))
+  WF-op : ∀ {n} {op : Op} {args : Args (sig op)}
         → WF-args n args
         → WF n (op ⦅ args ⦆)
 
@@ -659,17 +659,16 @@ WF-ren-args : ∀ {Γ Δ ρ bs}{As : Args bs} → WFRename Γ ρ Δ
    → WF-args Γ As → WF-args Δ (ren-args ρ As)
 
 WF-rename {ρ = ρ} ⊢ρ (WF-var x x<Γ) = WF-var (⦉ ρ ⦊ x) (⊢ρ x<Γ)
-WF-rename {ρ = ρ} ⊢ρ (WF-op op As wfAs) =
-    WF-op op (ren-args ρ As) (WF-ren-args ⊢ρ wfAs)
+WF-rename {Γ}{Δ}{ρ = ρ} ⊢ρ (WF-op {Γ}{op}{As} wfAs) =
+    WF-op {Δ}{op}{ren-args ρ As} (WF-ren-args ⊢ρ wfAs)
 
-WF-ren-arg {ρ = ρ} ⊢ρ (WF-ast M wfM) = WF-ast (rename ρ M) (WF-rename ⊢ρ wfM)
-WF-ren-arg {ρ = ρ} ⊢ρ (WF-bind A wfA) =
-    WF-bind (ren-arg (ext ρ) A) (WF-ren-arg (WF-ext ⊢ρ) wfA)
+WF-ren-arg {ρ = ρ} ⊢ρ (WF-ast wfM) = WF-ast (WF-rename ⊢ρ wfM)
+WF-ren-arg {ρ = ρ} ⊢ρ (WF-bind wfA) =
+    WF-bind (WF-ren-arg (WF-ext ⊢ρ) wfA)
 
 WF-ren-args {ρ = ρ} ⊢ρ WF-nil = WF-nil
-WF-ren-args {ρ = ρ} ⊢ρ (WF-cons A As wfA wfAs) =
-    WF-cons (ren-arg ρ A) (ren-args ρ As)
-            (WF-ren-arg ⊢ρ wfA) (WF-ren-args ⊢ρ wfAs)
+WF-ren-args {ρ = ρ} ⊢ρ (WF-cons wfA wfAs) =
+    WF-cons (WF-ren-arg ⊢ρ wfA) (WF-ren-args ⊢ρ wfAs)
 
 WFSubst : ℕ → Subst → ℕ → Set
 WFSubst Γ σ Δ = ∀ {x} → x < Γ → WF Δ (⟦ σ ⟧ x)
@@ -688,18 +687,17 @@ WF-exts {σ = σ} wfσ (s≤s (s≤s {m = m} x<Γ)) rewrite exts-suc-rename σ m
     WF-rename (λ {x} → s≤s) (wfσ {m} (s≤s x<Γ))
 
 WF-subst Γ⊢σ:Δ (WF-var x x<Γ) = Γ⊢σ:Δ x<Γ
-WF-subst {σ = σ} Γ⊢σ:Δ (WF-op op As wfAs) =
-    WF-op op (⟪ σ ⟫₊ As) (WF-subst-args Γ⊢σ:Δ wfAs)
+WF-subst {σ = σ} Γ⊢σ:Δ (WF-op wfAs) =
+    WF-op (WF-subst-args Γ⊢σ:Δ wfAs)
 
-WF-subst-arg {σ = σ} Γ⊢σ:Δ (WF-ast M wfM) =
-    WF-ast (⟪ σ ⟫ M) (WF-subst Γ⊢σ:Δ wfM)
-WF-subst-arg {σ = σ} Γ⊢σ:Δ (WF-bind A wfA) =
-    WF-bind (⟪ exts σ ⟫ₐ A) (WF-subst-arg (WF-exts Γ⊢σ:Δ) wfA)
+WF-subst-arg {σ = σ} Γ⊢σ:Δ (WF-ast wfM) =
+    WF-ast (WF-subst Γ⊢σ:Δ wfM)
+WF-subst-arg {σ = σ} Γ⊢σ:Δ (WF-bind wfA) =
+    WF-bind (WF-subst-arg (WF-exts Γ⊢σ:Δ) wfA)
 
 WF-subst-args Γ⊢σ:Δ WF-nil = WF-nil
-WF-subst-args {σ = σ} Γ⊢σ:Δ (WF-cons A As wfA wfAs) =
-    WF-cons (⟪ σ ⟫ₐ A) (⟪ σ ⟫₊ As)
-            (WF-subst-arg Γ⊢σ:Δ wfA) (WF-subst-args Γ⊢σ:Δ wfAs) 
+WF-subst-args {σ = σ} Γ⊢σ:Δ (WF-cons wfA wfAs) =
+    WF-cons (WF-subst-arg Γ⊢σ:Δ wfA) (WF-subst-args Γ⊢σ:Δ wfAs) 
 
 {-------------------------------------------------------------------------------
  Extra Things
