@@ -767,3 +767,8 @@ plug-args (tcons L Cs eq) M rewrite eq =
 plug-args (ccons C Ls eq) M rewrite eq =
    cons (plug-arg C M) Ls
 
+cargs-not-empty : ¬ CArgs []
+cargs-not-empty (tcons (ast _) _ ())
+cargs-not-empty (tcons (bind _) _ ())
+cargs-not-empty (ccons (CAst _) _ ())
+cargs-not-empty (ccons (CBind _) _ ())
