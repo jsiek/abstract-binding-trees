@@ -732,3 +732,38 @@ abstract
   sub-args-ext {Ms = nil} eq = refl
   sub-args-ext {Ms = cons A Ms} eq = cong₂ cons (sub-arg-ext eq) (sub-args-ext eq)
 
+{-------------------------------------------------------------------------------
+  Contexts and Plug
+ ------------------------------------------------------------------------------}
+
+data CArgs : (sig : List ℕ) → Set
+
+data Ctx : Set where
+  CHole : Ctx
+  COp : (op : Op) → CArgs (sig op) → Ctx
+
+data CArg : (n : ℕ) → Set where
+  CAst : Ctx → CArg 0
+  CBind : ∀{n} → CArg n → CArg (suc n)
+
+data CArgs where
+  tcons : ∀{n}{bs bs'} → Arg n → CArgs bs → bs' ≡ (n ∷ bs)
+        → CArgs bs'
+  ccons : ∀{n}{bs bs'} → CArg n → Args bs → bs' ≡ (n ∷ bs)
+        → CArgs bs'  
+
+plug : Ctx → ABT → ABT
+plug-arg : ∀ {n} → CArg n → ABT → Arg n
+plug-args : ∀ {bs} → CArgs bs → ABT → Args bs
+
+plug CHole M = M
+plug (COp op args) M = op ⦅ plug-args args M ⦆
+
+plug-arg (CAst C) M = ast (plug C M)
+plug-arg (CBind C) M = bind (plug-arg C M)
+
+plug-args (tcons L Cs eq) M rewrite eq =
+   cons L (plug-args Cs M)
+plug-args (ccons C Ls eq) M rewrite eq =
+   cons (plug-arg C M) Ls
+
