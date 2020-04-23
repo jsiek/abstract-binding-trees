@@ -1,4 +1,3 @@
-open import Data.Bool using ()
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; pred; _≤_; _<_; s≤s; z≤n)
 open import Data.Nat.Properties

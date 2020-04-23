@@ -1,14 +1,14 @@
 {-
 
   This is an example of using Abstract Binding Trees to define the
-  lambda calculus.
+  simply-typed lambda calculus and prove type safety via progress and
+  preservation.
 
 -}
 
 module examples.Lambda where
 
 import Syntax
-open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
