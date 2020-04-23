@@ -21,10 +21,11 @@ sig : Op → List ℕ
 sig op-lam = 1 ∷ []
 sig op-app = 0 ∷ 0 ∷ []
 
-open Syntax Op sig
-  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; _•_; id; ↑;
-         exts-0; exts-suc-rename; ⟦_⟧;
-         Rename; ⦉_⦊; ext; ext-0; ext-suc; rename)
+open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext; ext-0; ext-suc)
+
+open Syntax.OpSig Op sig
+  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; 
+         exts-0; exts-suc-rename; ⟦_⟧; rename)
   renaming (ABT to Term)
 
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
@@ -223,4 +224,3 @@ preserve (⊢· ⊢L ⊢M) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L—→
 preserve (⊢· ⊢L ⊢M) (ξ-·₂ M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′)
 preserve (⊢ƛ ⊢M) (ξ-ƛ M—→N) = ⊢ƛ (preserve ⊢M M—→N)
 preserve (⊢· (⊢ƛ ⊢N) ⊢M) β-ƛ = substitution ⊢M ⊢N
-

@@ -6,7 +6,8 @@ open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
-open import Relation.Nullary using (¬_)
+open import Relation.Nullary using (¬_; Dec; yes; no)
+open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
 
 module Syntax where
 
@@ -643,6 +644,53 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
           → WF-args n args
           → WF n (op ⦅ args ⦆)
 
+  WF? : (n : ℕ) → (M : ABT) → Dec (WF n M)
+  WF-arg? : (n : ℕ) → {b : ℕ} → (A : Arg b) → Dec (WF-arg n A)
+  WF-args? : (n : ℕ) → {bs : List ℕ} → (As : Args bs) → Dec (WF-args n As)
+  WF? n (` x)
+      with suc x ≤? n
+  ... | yes x<n = yes (WF-var x x<n)
+  ... | no ¬x<n = no G
+      where G : ¬ WF n (` x)
+            G (WF-var x lt) = ¬x<n lt
+  WF? n (op ⦅ As ⦆)
+      with WF-args? n As
+  ... | yes wf = yes (WF-op wf)
+  ... | no ¬wf = no G
+      where G : ¬ WF n (op ⦅ As ⦆)
+            G (WF-op wf) = ¬wf wf
+  WF-arg? n (ast M)
+      with WF? n M
+  ... | yes wf = yes (WF-ast wf)
+  ... | no ¬wf = no G
+      where G : ¬ WF-arg n (ast M)
+            G (WF-ast wf) = ¬wf wf
+  WF-arg? n (bind A)
+      with WF-arg? (suc n) A
+  ... | yes wf = yes (WF-bind wf)
+  ... | no ¬wf = no G
+      where G : ¬ WF-arg n (bind A)
+            G (WF-bind wf) = ¬wf wf
+
+  WF-args? n nil = yes WF-nil
+  WF-args? n (cons A As)
+      with WF-arg? n A
+  ... | no ¬wf = no G
+      where G : ¬ WF-args n (cons A As)
+            G (WF-cons wfA wfAs) = ¬wf wfA
+  ... | yes wfA
+      with WF-args? n As
+  ... | no ¬wf = no G
+      where G : ¬ WF-args n (cons A As)
+            G (WF-cons wfA wfAs) = ¬wf wfAs
+  ... | yes wfAs = yes (WF-cons wfA wfAs)
+
+  WF-rel : (M : ABT) {n : ℕ} → .(WF n M) → WF n M
+  WF-rel M {n} wfM
+      with WF? n M
+  ... | yes wf = wf
+  ... | no ¬wf = ⊥-elimi (¬wf wfM)
+
   WFRename : ℕ → Rename → ℕ → Set
   WFRename Γ ρ Δ = ∀ {x} → x < Γ → (⦉ ρ ⦊ x) < Δ
 
@@ -775,16 +823,16 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   cargs-not-empty (ccons (CAst _) _ ())
   cargs-not-empty (ccons (CBind _) _ ())
 
-  depth : Ctx → ℕ
-  depth-arg : ∀{n} → CArg n → ℕ
-  depth-args : ∀{bs} → CArgs bs → ℕ
+  ctx-depth : Ctx → ℕ
+  ctx-depth-arg : ∀{n} → CArg n → ℕ
+  ctx-depth-args : ∀{bs} → CArgs bs → ℕ
 
-  depth CHole = 0
-  depth (COp op args) = depth-args args
-  depth-arg (CAst C) = depth C
-  depth-arg (CBind arg) = suc (depth-arg arg) 
-  depth-args (tcons arg cargs _) = depth-args cargs
-  depth-args (ccons carg args _) = depth-arg carg
+  ctx-depth CHole = 0
+  ctx-depth (COp op args) = ctx-depth-args args
+  ctx-depth-arg (CAst C) = ctx-depth C
+  ctx-depth-arg (CBind arg) = suc (ctx-depth-arg arg) 
+  ctx-depth-args (tcons arg cargs _) = ctx-depth-args cargs
+  ctx-depth-args (ccons carg args _) = ctx-depth-arg carg
 
   data WF-Ctx : ℕ → Ctx → Set
   data WF-CArg : ℕ → ∀{b} → CArg b → Set
@@ -816,15 +864,15 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
   WF-plug : ∀{C : Ctx}{N : ABT}{k}
      → WF-Ctx k C
-     → WF (k + depth C) N
+     → WF (k + ctx-depth C) N
      → WF k (plug C N)
   WF-plug-arg : ∀{b}{A : CArg b}{N : ABT}{k}
      → WF-CArg k A
-     → WF (k + depth-arg A) N
+     → WF (k + ctx-depth-arg A) N
      → WF-arg k (plug-arg A N)
   WF-plug-args : ∀{bs}{Cs : CArgs bs}{N : ABT}{k}
      → WF-CArgs k Cs
-     → WF (k + depth-args Cs) N
+     → WF (k + ctx-depth-args Cs) N
      → WF-args k (plug-args Cs N)
      
   WF-plug {CHole} {N} {k} wfC wfN
@@ -836,8 +884,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   WF-plug-arg {suc n} {CBind A} {N} {k} (WF-c-bind wfA) wfN =
       WF-bind (WF-plug-arg wfA wfN')
       where
-      wfN' : WF (suc k + depth-arg A) N
-      wfN' rewrite +-suc k (depth-arg A) = wfN
+      wfN' : WF (suc k + ctx-depth-arg A) N
+      wfN' rewrite +-suc k (ctx-depth-arg A) = wfN
   WF-plug-args {b ∷ bs} {tcons A Cs refl} {N} {k} (WF-tcons wfA wfCs) wfN =
       WF-cons wfA (WF-plug-args {Cs = Cs} wfCs wfN)
   WF-plug-args {b ∷ bs} {ccons C As refl} {N} {k} (WF-ccons wfC wfAs) wfN =
