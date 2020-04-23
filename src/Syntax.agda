@@ -1,3 +1,5 @@
+{-# OPTIONS --rewriting #-}
+
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; pred; _≤_; _<_; s≤s; z≤n)
 open import Data.Nat.Properties
@@ -9,6 +11,9 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
 
 module Syntax where
+
+open import Agda.Builtin.Equality
+open import Agda.Builtin.Equality.Rewrite
 
 Var : Set
 Var = ℕ
@@ -69,6 +74,8 @@ abstract
   ext-suc (↑ k) x = refl
   ext-suc (x₁ • ρ) zero = refl
   ext-suc (x₁ • ρ) (suc x) = inc-suc ρ x
+
+{-# REWRITE ext-0 ext-suc #-}
 
 module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
@@ -134,6 +141,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     ext-cons-shift (↑ k) rewrite +-comm k 1 = refl
     ext-cons-shift (x • ρ) rewrite inc=⨟ᵣ↑ ρ = refl
 
+    {- REWRITE ext-cons-shift -}
+    
   private
 
     dropr-add : ∀{x : Var} (k : ℕ) (σ : Rename)
@@ -304,6 +313,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     sub-tail M (↑ k) = refl
     sub-tail M (L • σ) = refl
 
+    {-# REWRITE sub-tail #-}
+
     sub-suc : (M : ABT) (σ : Subst) (x : Var)
              → ⟪ M • σ ⟫ (` suc x) ≡ ⟪ σ ⟫ (` x)
     sub-suc M σ x = refl
@@ -325,6 +336,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     Z-shift 0 = refl
     Z-shift (suc x) = refl
 
+    {-# REWRITE Z-shift #-}
+
   abstract
     shift : ∀ x k → ⟪ ↑ k ⟫ (` x) ≡ ` (k + x)
     shift x k = refl
@@ -333,6 +346,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
            → id ⨟ σ ≡ σ
     sub-idL (↑ k) = refl
     sub-idL (M • σ) = refl
+
+    {-# REWRITE sub-idL #-}
 
     sub-dist :  ∀ {σ : Subst} {τ : Subst} {M : ABT}
              → ((M • σ) ⨟ τ) ≡ ((⟪ τ ⟫ M) • (σ ⨟ τ))
@@ -452,6 +467,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     sub-idR (↑ k) rewrite +-comm k 0 = refl
     sub-idR (M • σ) rewrite sub-id {M} | sub-idR σ = refl
 
+    {-# REWRITE sub-idR #-}
+    
   exts-0 : ∀ σ → ⟦ exts σ ⟧ 0 ≡ ` 0
   exts-0 σ rewrite exts-cons-shift σ = refl
 
@@ -484,8 +501,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
        cong bind (commute-subst-rename-arg G)
        where
        G : ∀{x} → ⟦ exts (exts σ) ⟧ (⦉ ext ρ ⦊ x) ≡ rename (ext ρ) (⟦ exts σ ⟧ x)
-       G {zero} rewrite ext-0 ρ | exts-cons-shift σ | ext-0 ρ = refl
-       G {suc x} rewrite ext-suc ρ x | exts-cons-shift (exts σ)
+       G {zero} rewrite exts-cons-shift σ = refl
+       G {suc x} rewrite exts-cons-shift (exts σ)
           | seq-subst (exts σ) (↑ 1) (⦉ ρ ⦊ x) | r {x}
           | exts-cons-shift σ | seq-subst σ (↑ 1) x
           | sym (rename-subst (↑ 1) (rename ρ (⟦ σ ⟧ x)))
@@ -559,6 +576,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   sub-subs {.[]} {nil} {σ₁} {σ₂} = refl
   sub-subs {.(_ ∷ _)} {cons A Ms} {σ₁} {σ₂} = cong₂ cons sub-sub-arg sub-subs
 
+  {- REWRITE sub-sub -}
+
   abstract
     sub-assoc : ∀ {σ τ θ : Subst}
               → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
@@ -567,6 +586,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
         rewrite sub-sub {M}{τ}{θ}
         | sub-assoc {σ}{τ}{θ} = refl
 
+    {-# REWRITE sub-assoc #-}
+    
   exts-suc : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ ⟪ ↑ 1 ⟫ (⟪ σ ⟫ (` x))
   exts-suc σ x rewrite exts-cons-shift σ | sub-sub {` x}{σ}{↑ 1} = refl
 
@@ -581,7 +602,6 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     subst-commute {N}{M}{σ} rewrite exts-cons-shift σ
       | sub-sub {N}{(` 0) • (σ ⨟ ↑ 1)}{⟪ σ ⟫ M • ↑ 0 }
       | sub-sub {N}{M • ↑ 0}{σ}
-      | sub-assoc {σ}{↑ 1}{ ⟪ σ ⟫ M • ↑ 0}
       | sub-idR σ
       | drop-0 σ
       = refl
@@ -601,8 +621,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
         | drop-0 (rename→subst ρ)
         | sym (exts-rename-ext ρ)
         | exts-cons-shift (rename→subst ρ)
-        | sub-assoc {rename→subst ρ} {↑ 1} {⟪ rename→subst ρ ⟫ M • ↑ 0}
-        | sub-idR (rename→subst ρ) = refl
+        = refl
 
   _〔_〕 : ABT → ABT → ABT
   _〔_〕 N M = ⟪ exts (subst-zero M) ⟫ N
@@ -616,9 +635,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     exts-sub-cons : ∀ σ N V → (⟪ exts σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N
     exts-sub-cons σ N V
         rewrite sub-sub {N}{exts σ}{subst-zero V}
-        | exts-cons-shift σ
-        | sub-assoc {σ} {↑ 1} {V • ↑ 0}
-        | sub-idR σ = refl
+        | exts-cons-shift σ = refl
 
   {----------------------------------------------------------------------------
     Well-formed Abstract Binding Trees
