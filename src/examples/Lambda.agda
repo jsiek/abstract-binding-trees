@@ -6,7 +6,12 @@
 
 -}
 
+{-# OPTIONS --rewriting #-}
+
 module examples.Lambda where
+
+open import Agda.Builtin.Equality
+open import Agda.Builtin.Equality.Rewrite
 
 import Syntax
 open import Data.List using (List; []; _∷_)
@@ -27,6 +32,8 @@ open Syntax.OpSig Op sig
   using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; 
          exts-0; exts-suc-rename; ⟦_⟧; rename)
   renaming (ABT to Term)
+
+{-# REWRITE ext-0 ext-suc exts-0 exts-suc-rename #-}
 
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
 
@@ -168,10 +175,8 @@ ext-pres : ∀ {Γ Δ ρ B}
   → WTRename Γ ρ Δ
     --------------------------------
   → WTRename (Γ , B) (ext ρ) (Δ , B)
-ext-pres {ρ = ρ } ⊢ρ Z
-    rewrite ext-0 ρ =  Z
-ext-pres {ρ = ρ } ⊢ρ (S {x = x} ∋x)
-    rewrite ext-suc ρ x =  S (⊢ρ ∋x)
+ext-pres {ρ = ρ } ⊢ρ Z =  Z
+ext-pres {ρ = ρ } ⊢ρ (S {x = x} ∋x) =  S (⊢ρ ∋x)
 
 rename-pres : ∀ {Γ Δ ρ M A}
   → WTRename Γ ρ Δ
@@ -189,10 +194,8 @@ exts-pres : ∀ {Γ Δ σ B}
   → WTSubst Γ σ Δ
     --------------------------------
   → WTSubst (Γ , B) (exts σ) (Δ , B)
-exts-pres {σ = σ} Γ⊢σ Z
-    rewrite exts-0 σ = ⊢` Z
-exts-pres {σ = σ} Γ⊢σ (S {x = x} ∋x)
-    rewrite exts-suc-rename σ x = rename-pres S (Γ⊢σ ∋x)
+exts-pres {σ = σ} Γ⊢σ Z = ⊢` Z
+exts-pres {σ = σ} Γ⊢σ (S {x = x} ∋x) = rename-pres S (Γ⊢σ ∋x)
 
 subst : ∀ {Γ Δ σ N A}
   → WTSubst Γ σ Δ

@@ -344,4 +344,6 @@ the equations above are definitional equalities, so they are
 automatically taken into account when you use `refl` to prove an
 equality in Agda. The equations that are not definitional equalities
 are marked with a dagger symbol (†), and must be applied using
-explicit rewrites or equational reasoning.
+explicit rewrites, equational reasoning, or by using Agda's `--rewriting`
+option. An example of using `--rewriting` is in
+[`Lambda.agda`](./src/examples/Lambda.agda).
