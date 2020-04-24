@@ -26,7 +26,7 @@ sig : Op → List ℕ
 sig op-lam = 1 ∷ []
 sig op-app = 0 ∷ 0 ∷ []
 
-open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext; ext-0; ext-suc)
+open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext)
 
 open Syntax.OpSig Op sig
   using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; ⟦_⟧; rename)

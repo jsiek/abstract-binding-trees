@@ -221,14 +221,17 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     ren-assoc : ∀ {σ τ θ : Rename}
               → (σ ⨟ᵣ τ) ⨟ᵣ θ ≡ σ ⨟ᵣ τ ⨟ᵣ θ
     ren-assoc {↑ k} {τ} {θ} = sym (dropr-seq k τ θ)
-    ren-assoc {x • σ} {τ} {θ} rewrite seq-rename τ θ x | ren-assoc {σ}{τ}{θ} = refl
+    ren-assoc {x • σ} {τ} {θ}
+        rewrite seq-rename τ θ x | ren-assoc {σ}{τ}{θ} = refl
+
+    {-# REWRITE ren-assoc #-}
 
     compose-ext : ∀{ρ₁ ρ₂ : Rename}
                 → (ext ρ₁ ⨟ᵣ ext ρ₂) ≡ ext (ρ₁ ⨟ᵣ ρ₂)
     compose-ext {ρ₁}{ρ₂} rewrite ext-cons-shift ρ₁ | ext-cons-shift ρ₂
-        | ext-cons-shift (ρ₁ ⨟ᵣ ρ₂) | ren-assoc {ρ₁} {↑ 1} {ρ₂ ⨟ᵣ ↑ 1}
-        | ren-assoc {ρ₁}{↑ 1}{0 • (ρ₂ ⨟ᵣ ↑ 1)} | dropr-0 (ρ₂ ⨟ᵣ ↑ 1)
-        | ren-assoc {ρ₁}{ρ₂}{↑ 1} = refl
+        | ext-cons-shift (ρ₁ ⨟ᵣ ρ₂)
+        | dropr-0 (ρ₂ ⨟ᵣ ↑ 1)
+        = refl
 
     compose-rename : ∀{M : ABT}{ρ₁ ρ₂ : Rename}
       → rename ρ₂ (rename ρ₁ M) ≡ rename (ρ₁ ⨟ᵣ ρ₂) M
@@ -237,7 +240,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     compose-rename-args : ∀{S}{As : Args S}{ρ₁ ρ₂ : Rename}
       → ren-args ρ₂ (ren-args ρ₁ As) ≡ ren-args (ρ₁ ⨟ᵣ ρ₂) As
     compose-rename {` x} {ρ₁} {ρ₂} = cong `_ (sym (seq-rename ρ₁ ρ₂ x))
-    compose-rename {op ⦅ As ⦆} {ρ₁} {ρ₂} = cong (λ □ → op ⦅ □ ⦆) compose-rename-args
+    compose-rename {op ⦅ As ⦆} {ρ₁} {ρ₂} =
+        cong (λ □ → op ⦅ □ ⦆) compose-rename-args
     compose-rename-arg {.0} {ast M} {ρ₁} {ρ₂} = cong ast compose-rename
     compose-rename-arg {.(suc _)} {bind A} {ρ₁} {ρ₂}
         rewrite sym (compose-ext {ρ₁}{ρ₂}) = cong bind compose-rename-arg
@@ -404,9 +408,10 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   ren-arg-subst ρ (bind A) =
     let IH = ren-arg-subst (ext ρ) A in
     begin
-       bind (ren-arg (ext ρ) A)                       ≡⟨ cong bind IH ⟩
-       bind (⟪ rename→subst (ext ρ) ⟫ₐ A)             ≡⟨ cong (λ □ → bind (⟪ □ ⟫ₐ A)) (sym (exts-rename-ext ρ)) ⟩
-       bind (⟪ exts (rename→subst ρ) ⟫ₐ A)            ∎
+       bind (ren-arg (ext ρ) A)                  ≡⟨ cong bind IH ⟩
+       bind (⟪ rename→subst (ext ρ) ⟫ₐ A)        ≡⟨ cong (λ □ → bind (⟪ □ ⟫ₐ A))
+                                                      (sym (exts-rename-ext ρ)) ⟩
+       bind (⟪ exts (rename→subst ρ) ⟫ₐ A)       ∎
   ren-args-subst ρ nil = refl
   ren-args-subst ρ (cons A As) =
     cong₂ cons (ren-arg-subst ρ A) (ren-args-subst ρ As)
@@ -466,6 +471,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
       ⟪ ↑ 0 ⟫ M              ≡⟨ refl {- sub-id' (λ x → refl)-} ⟩
       M                      ∎
 
+  {-# REWRITE rename-id #-}
+    
   abstract
     sub-idR : ∀ σ → σ ⨟ id ≡ σ 
     sub-idR (↑ k) rewrite +-comm k 0 = refl
@@ -504,8 +511,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     commute-subst-rename {` x} r = r
     commute-subst-rename {op ⦅ As ⦆} r =
         cong (λ □ → op ⦅ □ ⦆) (commute-subst-renames r)
-    commute-subst-rename-arg {.0} {ast M}{σ} r
-        rewrite commute-subst-rename {M}{σ} r = refl
+    commute-subst-rename-arg {.0} {ast M}{σ}{ρ} r
+        rewrite commute-subst-rename {M}{σ}{ρ} r = refl
     commute-subst-rename-arg {.(suc _)} {bind A}{σ}{ρ} r =
        cong bind (commute-subst-rename-arg (λ {x} → G{x}))
        where
@@ -728,7 +735,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   WF-rename {Γ}{Δ}{ρ = ρ} ⊢ρ (WF-op {Γ}{op}{As} wfAs) =
       WF-op {Δ}{op}{ren-args ρ As} (WF-ren-args ⊢ρ wfAs)
 
-  WF-ren-arg {ρ = ρ} ⊢ρ (WF-ast wfM) = WF-ast (WF-rename ⊢ρ wfM)
+  WF-ren-arg {ρ = ρ} ⊢ρ (WF-ast wfM) = WF-ast (WF-rename {ρ = ρ} ⊢ρ wfM)
   WF-ren-arg {ρ = ρ} ⊢ρ (WF-bind wfA) =
       WF-bind (WF-ren-arg (WF-ext ⊢ρ) wfA)
 
@@ -748,9 +755,9 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   WF-exts : ∀{Γ Δ σ}
      → WFSubst Γ σ Δ
      → WFSubst (suc Γ) (exts σ) (suc Δ)
-  WF-exts {σ = σ} wfσ (s≤s z≤n) rewrite exts-0 σ = WF-var zero (s≤s z≤n)
+  WF-exts {σ = σ} wfσ (s≤s z≤n) = WF-var zero (s≤s z≤n)
   WF-exts {σ = σ} wfσ (s≤s (s≤s {m = m} x<Γ)) rewrite exts-suc-rename σ m =
-      WF-rename (λ {x} → s≤s) (wfσ {m} (s≤s x<Γ))
+      WF-rename {ρ = ↑ 1} (λ {x} → s≤s) (wfσ {m} (s≤s x<Γ))
 
   WF-subst Γ⊢σ:Δ (WF-var x x<Γ) = Γ⊢σ:Δ x<Γ
   WF-subst {σ = σ} Γ⊢σ:Δ (WF-op wfAs) =
@@ -792,14 +799,18 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     subst-extensionality {op ⦅ As ⦆} {σ} {τ} eq =
         cong (λ □ → op ⦅ □ ⦆) (sub-args-ext eq)
 
-    sub-arg-ext {A = ast M}{σ}{τ} eq = cong ast (subst-extensionality {M}{σ}{τ} eq)
-    sub-arg-ext {A = bind A}{σ}{τ} eq = cong bind (sub-arg-ext (exts-ext σ τ eq))
+    sub-arg-ext {A = ast M}{σ}{τ} eq =
+        cong ast (subst-extensionality {M}{σ}{τ} eq)
+    sub-arg-ext {A = bind A}{σ}{τ} eq =
+        cong bind (sub-arg-ext (exts-ext σ τ eq))
 
     sub-args-ext {Ms = nil} eq = refl
-    sub-args-ext {Ms = cons A Ms} eq = cong₂ cons (sub-arg-ext eq) (sub-args-ext eq)
+    sub-args-ext {Ms = cons A Ms} eq =
+        cong₂ cons (sub-arg-ext eq) (sub-args-ext eq)
 
   {----------------------------------------------------------------------------
     Contexts and Plug
+    (for expressing contextual equivalence, not for evaluation contexts)
    ---------------------------------------------------------------------------}
 
   data CArgs : (sig : List ℕ) → Set

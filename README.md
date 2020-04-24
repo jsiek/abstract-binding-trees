@@ -322,8 +322,8 @@ The equations of the σ algebra, adapted to ABTs, are as follows.
 
     (sub-head)  ⟦ M • σ ⟧ 0                   ≡ M
     (sub-tail)  ↑ 1 ⨟ (M • σ)                 ≡ σ
-    (Z-shift)   ⟦ ` 0 • ↑ 1 ⟧ x               ≡ ` x
-    (sub-η)     ⟦ (⟪ σ ⟫ (` 0)) • (↑ ⨟ σ) ⟧ x ≡ ⟦ σ ⟧ x
+    (Z-shift)†  ⟦ ` 0 • ↑ 1 ⟧ x               ≡ ` x
+    (sub-η)†    ⟦ (⟪ σ ⟫ (` 0)) • (↑ ⨟ σ) ⟧ x ≡ ⟦ σ ⟧ x
 
     (sub-op)    ⟪ σ ⟫ (op ⦅ args ⦆)     ≡ op ⦅ ⟪ σ ⟫₊ args ⦆
     (sub-nil)   ⟪ σ ⟫₊ nil             ≡ nil
@@ -331,17 +331,21 @@ The equations of the σ algebra, adapted to ABTs, are as follows.
     (sub-ast)   ⟪ σ ⟫ₐ (ast M)         ≡ ast (⟪ σ ⟫ M)
     (sub-bind)  ⟪ σ ⟫ₐ (bind arg)      ≡ bind (⟪ exts σ ⟫ₐ arg)
     
-    (sub-sub)   ⟪ τ ⟫ ⟪ σ ⟫ M  ≡ ⟪ σ ⨟ τ ⟫ M
+    (sub-sub)†  ⟪ τ ⟫ ⟪ σ ⟫ M  ≡ ⟪ σ ⨟ τ ⟫ M
 
-    (sub-idL)   id ⨟ σ        ≡ σ
-    (sub-idR)   σ ⨟ id        ≡ σ
-    (sub-assoc) (σ ⨟ τ) ⨟ θ    ≡ σ ⨟ (τ ⨟ θ)
-    (sub-dist)  (M • σ) ⨟ τ    ≡ (⟪ τ ⟫ M) • (σ ⨟ τ)
+    (sub-idL)†   id ⨟ σ        ≡ σ
+    (sub-idR)†   σ ⨟ id        ≡ σ
+    (sub-assoc)† (σ ⨟ τ) ⨟ θ    ≡ σ ⨟ (τ ⨟ θ)
+    (sub-dist)   (M • σ) ⨟ τ    ≡ (⟪ τ ⟫ M) • (σ ⨟ τ)
 
 When the equations are applied from left to right, they form a rewrite
 system that decides whether any two substitutions are equal.  Many of
 the equations of the σ algebra are definitional equalities, so they
 are automatically taken into account when you use `refl` to prove an
-equality in Agda. The equations that are not definitional equalities
-have been added to Agda's rewrites using the `--rewriting` option, so
-they are also automatically taken into account when you use `refl`.
+equality in Agda. The σ algebra equations that are not definitional
+equalities are marked with a †. They have been added to Agda's
+rewrites using the `--rewriting` option, so if you add the
+`--rewriting` option to the top of your Agda files, then they will
+also automatically be taken into account when you use
+`refl`. Otherwise, you will need to manually apply the equations
+marked with †.
