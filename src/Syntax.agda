@@ -332,6 +332,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     sub-η σ 0 = refl
     sub-η σ (suc x) = drop-add 1 σ
 
+    {-# REWRITE sub-η #-}
+    
     Z-shift : ∀ x → ⟦ ` 0 • ↑ 1 ⟧ x ≡ ` x
     Z-shift 0 = refl
     Z-shift (suc x) = refl
@@ -455,23 +457,27 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
            → ⟪ id ⟫ M ≡ M
   sub-id = sub-id' λ x → refl
 
+  {-# REWRITE sub-id #-}
+
   rename-id : {M : ABT} → rename (↑ 0) M ≡ M
   rename-id {M} =
     begin
       rename (↑ 0) M         ≡⟨ rename-subst (↑ 0) M ⟩
-      ⟪ ↑ 0 ⟫ M              ≡⟨ sub-id' (λ x → refl) ⟩
+      ⟪ ↑ 0 ⟫ M              ≡⟨ refl {- sub-id' (λ x → refl)-} ⟩
       M                      ∎
 
   abstract
     sub-idR : ∀ σ → σ ⨟ id ≡ σ 
     sub-idR (↑ k) rewrite +-comm k 0 = refl
-    sub-idR (M • σ) rewrite sub-id {M} | sub-idR σ = refl
+    sub-idR (M • σ) rewrite sub-idR σ = refl
 
     {-# REWRITE sub-idR #-}
     
   exts-0 : ∀ σ → ⟦ exts σ ⟧ 0 ≡ ` 0
   exts-0 σ rewrite exts-cons-shift σ = refl
 
+  {-# REWRITE exts-0 #-}
+    
   exts-suc' : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟦ σ ⟧ x)
   exts-suc' σ x rewrite exts-cons-shift σ | rename-subst (↑ 1) (⟦ σ ⟧ x)
       | seq-subst σ (↑ 1) x = refl
@@ -480,6 +486,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   exts-suc-rename σ x rewrite exts-cons-shift σ | rename-subst (↑ 1) (⟦ σ ⟧ x)
       | seq-subst σ (↑ 1) x = refl
 
+  {-# REWRITE exts-suc-rename #-}
+  
   abstract
     commute-subst-rename : ∀{M : ABT}{σ : Subst}
                             {ρ : Rename}
@@ -496,9 +504,10 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     commute-subst-rename {` x} r = r
     commute-subst-rename {op ⦅ As ⦆} r =
         cong (λ □ → op ⦅ □ ⦆) (commute-subst-renames r)
-    commute-subst-rename-arg {.0} {ast M} r = cong ast (commute-subst-rename {M} r)
+    commute-subst-rename-arg {.0} {ast M}{σ} r
+        rewrite commute-subst-rename {M}{σ} r = refl
     commute-subst-rename-arg {.(suc _)} {bind A}{σ}{ρ} r =
-       cong bind (commute-subst-rename-arg G)
+       cong bind (commute-subst-rename-arg (λ {x} → G{x}))
        where
        G : ∀{x} → ⟦ exts (exts σ) ⟧ (⦉ ext ρ ⦊ x) ≡ rename (ext ρ) (⟦ exts σ ⟧ x)
        G {zero} rewrite exts-cons-shift σ = refl
@@ -522,9 +531,11 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     drop-0 (↑ k) = refl
     drop-0 (M • ρ) = refl
 
+    {-# REWRITE drop-0 #-}
+
     drop-drop : ∀ k k' ρ → drop (k + k') ρ ≡ drop k (drop k' ρ)
     drop-drop k k' (↑ k₁) rewrite +-assoc k k' k₁ = refl
-    drop-drop zero k' (M • ρ) rewrite drop-0 (drop k' (M • ρ)) = refl
+    drop-drop zero k' (M • ρ) = refl
     drop-drop (suc k) zero (M • ρ) rewrite +-comm k 0 = refl
     drop-drop (suc k) (suc k') (M • ρ)
         with drop-drop (suc k) k' ρ
@@ -569,42 +580,35 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
               → ⟪ σ₂ ⟫₊ (⟪ σ₁ ⟫₊ Ms) ≡ ⟪ σ₁ ⨟ σ₂ ⟫₊ Ms
   sub-sub {` x} {σ₁} {σ₂} rewrite seq-subst σ₁ σ₂ x = refl
   sub-sub {op ⦅ As ⦆} {σ₁} {σ₂} = cong (λ □ → op ⦅ □ ⦆) (sub-subs {Ms = As})
-  sub-sub-arg {.0} {ast M} {σ₁} {σ₂} = cong ast (sub-sub{M})
+  sub-sub-arg {.0} {ast M} {σ₁} {σ₂} = cong ast (sub-sub{M}{σ₁}{σ₂})
   sub-sub-arg {.(suc _)} {bind A} {σ₁} {σ₂}
       rewrite sub-sub-arg {A = A}{exts σ₁}{exts σ₂}
       | exts-seq {σ₁} {σ₂} = cong bind refl
   sub-subs {.[]} {nil} {σ₁} {σ₂} = refl
   sub-subs {.(_ ∷ _)} {cons A Ms} {σ₁} {σ₂} = cong₂ cons sub-sub-arg sub-subs
 
-  {- REWRITE sub-sub -}
+  {-# REWRITE sub-sub #-}
 
   abstract
     sub-assoc : ∀ {σ τ θ : Subst}
               → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
     sub-assoc {↑ k} {τ} {θ} = sym (drop-seq k τ θ)
     sub-assoc {M • σ} {τ} {θ}
-        rewrite sub-sub {M}{τ}{θ}
-        | sub-assoc {σ}{τ}{θ} = refl
+        rewrite sub-assoc {σ}{τ}{θ} = refl
 
     {-# REWRITE sub-assoc #-}
     
-  exts-suc : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ ⟪ ↑ 1 ⟫ (⟪ σ ⟫ (` x))
-  exts-suc σ x rewrite exts-cons-shift σ | sub-sub {` x}{σ}{↑ 1} = refl
+  exts-suc : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ ⟦ σ ⨟ ↑ 1 ⟧ x
+  exts-suc σ x rewrite exts-cons-shift σ = refl
 
   abstract
     subst-zero-exts-cons : ∀{σ : Subst}{M : ABT}
                          → exts σ ⨟ subst-zero M ≡ M • σ
-    subst-zero-exts-cons {σ}{M} rewrite exts-cons-shift σ
-      | sub-assoc {σ} {↑ 1} {M • ↑ 0} | sub-idR σ = refl
+    subst-zero-exts-cons {σ}{M} rewrite exts-cons-shift σ = refl
 
     subst-commute : ∀{N : ABT}{M : ABT}{σ : Subst }
         → (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ] ≡ ⟪ σ ⟫ (N [ M ])
-    subst-commute {N}{M}{σ} rewrite exts-cons-shift σ
-      | sub-sub {N}{(` 0) • (σ ⨟ ↑ 1)}{⟪ σ ⟫ M • ↑ 0 }
-      | sub-sub {N}{M • ↑ 0}{σ}
-      | sub-idR σ
-      | drop-0 σ
-      = refl
+    subst-commute {N}{M}{σ} rewrite exts-cons-shift σ = refl
 
   commute-subst : ∀{N : ABT}{M : ABT}{σ : Subst }
       → ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]
@@ -616,9 +620,6 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     rename-subst-commute{N}{M}{ρ}
         rewrite rename-subst ρ M | rename-subst (ext ρ) N
         | rename-subst ρ (⟪ M • ↑ 0 ⟫ N)
-        | sub-sub {N} {rename→subst (ext ρ)} {⟪ rename→subst ρ ⟫ M • ↑ 0}
-        | sub-sub {N} {M • ↑ 0} {rename→subst ρ}
-        | drop-0 (rename→subst ρ)
         | sym (exts-rename-ext ρ)
         | exts-cons-shift (rename→subst ρ)
         = refl
@@ -634,8 +635,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   abstract
     exts-sub-cons : ∀ σ N V → (⟪ exts σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N
     exts-sub-cons σ N V
-        rewrite sub-sub {N}{exts σ}{subst-zero V}
-        | exts-cons-shift σ = refl
+        rewrite exts-cons-shift σ = refl
 
   {----------------------------------------------------------------------------
     Well-formed Abstract Binding Trees
@@ -757,7 +757,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
       WF-op (WF-subst-args Γ⊢σ:Δ wfAs)
 
   WF-subst-arg {σ = σ} Γ⊢σ:Δ (WF-ast wfM) =
-      WF-ast (WF-subst Γ⊢σ:Δ wfM)
+      WF-ast (WF-subst {σ = σ} Γ⊢σ:Δ wfM)
   WF-subst-arg {σ = σ} Γ⊢σ:Δ (WF-bind wfA) =
       WF-bind (WF-subst-arg (WF-exts Γ⊢σ:Δ) wfA)
 
@@ -792,7 +792,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     subst-extensionality {op ⦅ As ⦆} {σ} {τ} eq =
         cong (λ □ → op ⦅ □ ⦆) (sub-args-ext eq)
 
-    sub-arg-ext {A = ast M} eq = cong ast (subst-extensionality {M} eq)
+    sub-arg-ext {A = ast M}{σ}{τ} eq = cong ast (subst-extensionality {M}{σ}{τ} eq)
     sub-arg-ext {A = bind A}{σ}{τ} eq = cong bind (sub-arg-ext (exts-ext σ τ eq))
 
     sub-args-ext {Ms = nil} eq = refl

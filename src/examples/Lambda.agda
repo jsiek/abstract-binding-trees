@@ -29,11 +29,8 @@ sig op-app = 0 ∷ 0 ∷ []
 open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext; ext-0; ext-suc)
 
 open Syntax.OpSig Op sig
-  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; 
-         exts-0; exts-suc-rename; ⟦_⟧; rename)
+  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; ⟦_⟧; rename)
   renaming (ABT to Term)
-
-{-# REWRITE ext-0 ext-suc exts-0 exts-suc-rename #-}
 
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
 
@@ -203,15 +200,15 @@ subst : ∀ {Γ Δ σ N A}
     ---------------
   → Δ ⊢ ⟪ σ ⟫ N ⦂ A
 subst Γ⊢σ (⊢` eq)              = Γ⊢σ eq
-subst {σ = σ} Γ⊢σ (⊢ƛ ⊢N)      = ⊢ƛ (subst (exts-pres {σ = σ} Γ⊢σ) ⊢N) 
-subst Γ⊢σ (⊢· ⊢L ⊢M)           = ⊢· (subst Γ⊢σ ⊢L) (subst Γ⊢σ ⊢M) 
+subst {σ = σ} Γ⊢σ (⊢ƛ ⊢N)      = ⊢ƛ (subst {σ = exts σ} (exts-pres {σ = σ} Γ⊢σ) ⊢N) 
+subst {σ = σ} Γ⊢σ (⊢· ⊢L ⊢M)   = ⊢· (subst {σ = σ} Γ⊢σ ⊢L) (subst {σ = σ} Γ⊢σ ⊢M) 
 
 substitution : ∀{Γ A B M N}
    → Γ ⊢ M ⦂ A
    → (Γ , A) ⊢ N ⦂ B
      ---------------
    → Γ ⊢ N [ M ] ⦂ B
-substitution {Γ}{A}{B}{M}{N} ⊢M ⊢N = subst G ⊢N
+substitution {Γ}{A}{B}{M}{N} ⊢M ⊢N = subst {σ = M • ↑ 0} G ⊢N
     where
     G : ∀ {A₁ : Type} {x : ℕ}
       → (Γ , A) ∋ x ⦂ A₁ → Γ ⊢ ⟪ M • ↑ 0 ⟫ (` x) ⦂ A₁
