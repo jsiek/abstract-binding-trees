@@ -173,9 +173,9 @@ do two things. First, inside the lambda, the de Bruijn index 0 is
 bound to the lambda's parameter, and should not be changed by the
 substitution. So the new substitution should map 0 to 0 and map the
 rest of the natural numbers to M₀, M₁, M₂, ….  Second, as the
-substitution σ moves over the lambda, each of the `Mᵢ` moves further
-away from the bindings of their free variables. Thus, to make sure the
-free variables in each `Mᵢ` still point to the appropriate bindings,
+substitution σ moves over the lambda, each of the `Mᵢ` in the substitution
+moves further away from the bindings of their free variables. Thus, to make
+sure the free variables in each `Mᵢ` still point to the appropriate bindings,
 they all need to be incremented by one.  The library defines a shift
 operator, written `↑ k`, that adds `k` to every free variable in an
 ABT.  Putting these two actions together, the library defines a
