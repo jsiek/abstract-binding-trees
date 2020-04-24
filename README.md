@@ -172,7 +172,7 @@ To transport this substitution across a lambda abstraction, we need to
 do two things. First, inside the lambda, the de Bruijn index 0 is
 bound to the lambda's parameter, and should not be changed by the
 substitution. So the new substitution should map 0 to 0 and map the
-rest of the natural numbers to M₀, M₁, M₂, ….  Second, as the
+rest of the natural numbers to M₀, M₁, M₂ and so on.  Second, as the
 substitution σ moves over the lambda, each of the `Mᵢ` in the substitution
 moves further away from the bindings of their free variables. Thus, to make
 sure the free variables in each `Mᵢ` still point to the appropriate bindings,
@@ -187,7 +187,7 @@ lambda abstraction.
 So we have the following two equations about `exts`:
 
     (exts-0)     ⟦ exts σ ⟧ 0 ≡ 0
-    (exts-suc)†  ⟦ exts σ ⟧ (suc x) ≡ ⟦ σ ⨟ ↑ 1 ⟧ x
+    (exts-suc)‡  ⟦ exts σ ⟧ (suc x) ≡ ⟦ σ ⨟ ↑ 1 ⟧ x
 
 where the operation `σ₁ ⨟ σ₂` composes two substitutions by applying
 `σ₁` and then `σ₂`.
@@ -220,7 +220,7 @@ The inner ƛ is applied to `M`.
 
 ## Important Properties of Substitution
 
-A fundamental property of (single) substitution is that two
+An important property of (single) substitution is that two
 substitutions commute with one another if the variables
 are different, a property known as the Substitution Lemma
 in Barendregt's The Lambda Calculus.
