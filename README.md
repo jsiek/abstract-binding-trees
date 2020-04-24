@@ -183,8 +183,8 @@ lambda abstraction.
 
 So we have the following two equations about `exts`:
 
-    (exts-0)    ⟦ exts σ ⟧ 0 ≡ 0
-    (exts-suc)  ⟦ exts σ ⟧ (suc x) ≡ ⟦ σ ⨟ ↑ 1 ⟧ x
+    (exts-0)     ⟦ exts σ ⟧ 0 ≡ 0
+    (exts-suc)†  ⟦ exts σ ⟧ (suc x) ≡ ⟦ σ ⨟ ↑ 1 ⟧ x
 
 where the operation `σ₁ ⨟ σ₂` composes two substitutions by applying
 `σ₁` and then `σ₂`.
@@ -235,7 +235,7 @@ indices (let `x` be index 0 and `y` be index 1), we obtain
 Generalizing the substitution by `L` to any simultaneous substitution
 `σ`, we have the following theorem which is provided by the library.
 
-    ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]         (commute-subst)
+    (commute-subst)†    ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]
 
 Setting up the infrastructure necessary to prove this theorem is a
 fair bit of work, so it is nice to reuse this theorem instead of
@@ -246,7 +246,7 @@ proofs based on logical relations. A simultaneous substitution
 followed by a single substitution can be combined into one
 simultaneous substitution as follows.
 
-    (⟪ exts σ ⟫ N) [ M ] ≡ ⟪ M • σ ⟫ N                   (exts-sub-cons)
+    (exts-sub-cons)†    (⟪ exts σ ⟫ N) [ M ] ≡ ⟪ M • σ ⟫ N
 
 The proof of this property is also provided in the library, using the
 same infrastructure needed to prove `commute-subst`.
@@ -288,7 +288,7 @@ substitution, named `rename→subst`, and the following equation that
 relates the application of a renaming to the application of the
 corresponding substitution.
 
-    (rename-subst)     rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
+    (rename-subst)†     rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
 
 For example, from this equation we have
 
@@ -316,7 +316,7 @@ These four operators form the σ algebra of Abadi, Cardelli, Curien,
 and Levy (1991). The `exts` function is not part of the σ algebra but
 it is equivalent to the following σ algebra expression.
 
-    (exts-cons-shift)     exts σ ≡ ` 0 • (σ ⨟ ↑ 1)
+    (exts-cons-shift)†     exts σ ≡ ` 0 • (σ ⨟ ↑ 1)
 
 The equations of the σ algebra, adapted to ABTs, are as follows.
 
