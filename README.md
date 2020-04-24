@@ -145,7 +145,10 @@ term become closer to their bindings.
 
 The library defines the notation `⟪ σ ⟫ M` for applying a substitution
 `σ` to an ABT `M`. When `M` is a variable, we have
-`⟪ σ ⟫ x ≡ ` ⟦ σ ⟧ x`. For example:
+
+    ⟪ σ ⟫ x ≡ ` ⟦ σ ⟧ x
+
+For example:
 
     ⟪ M • L • id ⟫ (` 0) ≡ ` (⟦ M • L • id ⟧ 0) ≡ M
 
