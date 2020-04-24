@@ -235,7 +235,7 @@ indices (let `x` be index 0 and `y` be index 1), we obtain
 Generalizing the substitution by `L` to any simultaneous substitution
 `σ`, we have the following theorem which is provided by the library.
 
-    (commute-subst)†    ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]
+    (commute-subst)‡    ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]
 
 Setting up the infrastructure necessary to prove this theorem is a
 fair bit of work, so it is nice to reuse this theorem instead of
@@ -246,7 +246,7 @@ proofs based on logical relations. A simultaneous substitution
 followed by a single substitution can be combined into one
 simultaneous substitution as follows.
 
-    (exts-sub-cons)†    (⟪ exts σ ⟫ N) [ M ] ≡ ⟪ M • σ ⟫ N
+    (exts-sub-cons)‡    (⟪ exts σ ⟫ N) [ M ] ≡ ⟪ M • σ ⟫ N
 
 The proof of this property is also provided in the library, using the
 same infrastructure needed to prove `commute-subst`.
@@ -288,7 +288,7 @@ substitution, named `rename→subst`, and the following equation that
 relates the application of a renaming to the application of the
 corresponding substitution.
 
-    (rename-subst)†     rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
+    (rename-subst)‡     rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
 
 For example, from this equation we have
 
@@ -316,7 +316,7 @@ These four operators form the σ algebra of Abadi, Cardelli, Curien,
 and Levy (1991). The `exts` function is not part of the σ algebra but
 it is equivalent to the following σ algebra expression.
 
-    (exts-cons-shift)†     exts σ ≡ ` 0 • (σ ⨟ ↑ 1)
+    (exts-cons-shift)‡     exts σ ≡ ` 0 • (σ ⨟ ↑ 1)
 
 The equations of the σ algebra, adapted to ABTs, are as follows.
 
@@ -342,10 +342,14 @@ When the equations are applied from left to right, they form a rewrite
 system that decides whether any two substitutions are equal.  Many of
 the equations of the σ algebra are definitional equalities, so they
 are automatically taken into account when you use `refl` to prove an
-equality in Agda. The σ algebra equations that are not definitional
-equalities are marked with a †. They have been added to Agda's
-rewrites using the `--rewriting` option, so if you add the
-`--rewriting` option to the top of your Agda files, then they will
-also automatically be taken into account when you use
-`refl`. Otherwise, you will need to manually apply the equations
-marked with †.
+equality in Agda.
+
+† The σ algebra equations that are not definitional equalities are
+  marked with a †. They have been added to Agda's rewrites using the
+  `--rewriting` option, so if you add the `--rewriting` option to the
+  top of your Agda files, then they will also automatically be taken
+  into account when you use `refl`. Otherwise, you will need to
+  manually apply the equations marked with †.
+
+‡ These equations are neither definitional nor have they been added to
+  Agda's rewrites, so you will need to apply them manually.
