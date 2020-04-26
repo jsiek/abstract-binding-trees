@@ -51,16 +51,18 @@ named `op-let`, and add the following line to the `sig` function.
 This says that a `let` has two child, the right-hand side and the
 body.  The `let` does not bring any variable bindings into scope for
 the right-hand side, but it does for the body expression.  With `Op`
-and `sig` complete, we can instantiate and import the `Syntax` module.
+and `sig` complete, we can instantiate and import the `Syntax` module
+and its inner module `OpSig`.
 
-    open import Syntax Op sig
+    open import Syntax
+    open Syntax.OpSig Op sig
 
-As mentioned above, the `Syntax` module defines an `ABT` data type,
-which we now look at in more detail. The constructor for variables,
-the grave accent, takes one parameter, the natural number that is the
-de Bruijn index for the variable. The constructor for operator nodes,
-written `op ⦅ args ⦆` takes the operator and the arguments, which we
-explain below.
+The `Syntax.OpSig` module defines an `ABT` data type, which we now
+look at in more detail. The constructor for variables, the grave
+accent, takes one parameter, the natural number that is the de Bruijn
+index for the variable. The constructor for operator nodes, written
+`op ⦅ args ⦆` takes the operator and the arguments, which we explain
+below.
 
     Var : Set
     Var = ℕ
