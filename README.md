@@ -304,6 +304,12 @@ in terms of `rename`.
 
     (exts-suc-rename)   ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
 
+Analogous to the `commute-subst` theorem mentioned above,
+renaming also commutes with single substitution.
+
+    (rename-subst-commute)‡
+        (rename (ext ρ) N) [ rename ρ M ] ≡ rename ρ (N [ M ])
+
 
 ## Going Deeper
 

@@ -1,7 +1,8 @@
 {-# OPTIONS --rewriting #-}
 
+open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.List using (List; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _+_; pred; _≤_; _<_; s≤s; z≤n)
+open import Data.Nat using (ℕ; zero; suc; _+_; pred; _≤_; _<_; _≟_; s≤s; z≤n)
 open import Data.Nat.Properties
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
@@ -124,14 +125,16 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
   abstract
 
-    ren-head  : ∀{M : ABT}{ρ : Rename}{x : Var}
+    ren-head  : ∀{ρ : Rename}{x : Var}
              → rename (x • ρ) (` 0) ≡ ` x
     ren-head = refl
 
-    ren-tail : ∀{M : ABT} {ρ : Rename}{x : Var}
+    ren-tail : ∀{ρ : Rename}{x : Var}
              → (↑ 1 ⨟ᵣ x • ρ) ≡ ρ
     ren-tail {ρ = ↑ k} = refl
     ren-tail {ρ = x • ρ} = refl
+
+    {-# REWRITE ren-tail #-}
 
     inc=⨟ᵣ↑ : ∀ ρ → inc ρ ≡ ρ ⨟ᵣ ↑ 1
     inc=⨟ᵣ↑ (↑ k) rewrite +-comm k 1 = refl
@@ -918,3 +921,47 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   WF-plug-args {b ∷ bs} {ccons C As refl} {N} {k} (WF-ccons wfC wfAs) wfN =
       WF-cons (WF-plug-arg wfC wfN) wfAs
 
+  {----------------------------------------------------------------------------
+   Free variables
+  ----------------------------------------------------------------------------}
+
+  FV? : ABT → Var → Bool
+  FV-arg? : ∀{b} → Arg b → Var → Bool
+  FV-args? : ∀{bs} → Args bs → Var → Bool
+  FV? (` x) y
+      with x ≟ y
+  ... | yes xy = true
+  ... | no xy = false
+  FV? (op ⦅ As ⦆) y = FV-args? As y
+  FV-arg? (ast M) y = FV? M y
+  FV-arg? (bind A) y = FV-arg? A (suc y)
+  FV-args? nil y = false
+  FV-args? (cons A As) y = FV-arg? A y ∨ FV-args? As y
+
+  {----------------------------------------------------------------------------
+   Convert Function to Renaming
+  ----------------------------------------------------------------------------}
+
+  private
+    make-ren : (Var → Var) → ℕ → ℕ → Rename
+    make-ren ρ x zero = ↑ 0
+    make-ren ρ x (suc m) = ρ x • make-ren ρ (suc x) m
+
+    ⦉make-ren⦊ : ∀{m}{x}{i}{ρ}
+       → x < m
+       → ⦉ make-ren ρ i m ⦊ x ≡ ρ (x + i)
+    ⦉make-ren⦊ {suc m} {zero} {i} {ρ} x<m = refl
+    ⦉make-ren⦊ {suc m} {suc x} {i} {ρ} x<m
+        with ⦉make-ren⦊ {m} {x} {suc i} {ρ} (≤-pred x<m)
+    ... | IH rewrite +-suc x i = 
+        IH
+     
+  make-renaming : (Var → Var) → ℕ → Rename
+  make-renaming ρ Γ = make-ren ρ 0 Γ
+
+  ⦉make-renaming⦊ : ∀{Γ}{x}{ρ}
+     → x < Γ
+     → ⦉ make-renaming ρ Γ ⦊ x ≡ ρ x
+  ⦉make-renaming⦊ {Γ}{x}{ρ} x<Γ
+      with ⦉make-ren⦊ {i = 0}{ρ} x<Γ
+  ... | mr rewrite +-comm x 0 = mr
