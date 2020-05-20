@@ -6,6 +6,10 @@
 
 -}
 
+{-# OPTIONS --rewriting #-}
+open import Agda.Builtin.Equality
+open import Agda.Builtin.Equality.Rewrite
+
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
 
@@ -32,12 +36,11 @@ module GenericSub
     drop zero (x • σ) = x • σ
     drop (suc k) (x • σ) = drop k σ
 
-  abstract
-    infixr 5 _⨟_
+  infixr 5 _⨟_
 
-    _⨟_ : Substitution V → Substitution V → Substitution V
-    ↑ k ⨟ σ = drop k σ
-    (v • σ₁) ⨟ σ₂ = (apply σ₂ v) • (σ₁ ⨟ σ₂)
+  _⨟_ : Substitution V → Substitution V → Substitution V
+  ↑ k ⨟ σ = drop k σ
+  (v • σ₁) ⨟ σ₂ = (apply σ₂ v) • (σ₁ ⨟ σ₂)
 
 module FoldMonad (V : Set) (C : Set) (ret : V → C) where
 
@@ -124,6 +127,7 @@ module Subst
   subst : Subst → ABT → ABT
   subst = SubFold.fold
 
+
 module LambdaExample where
 
   data Op : Set where
@@ -145,7 +149,7 @@ module LambdaExample where
   M₀ = (` 0) · (` 1)
 
   M₁ : ABT
-  M₁ = ƛ (` 0) · (` 1)
+  M₁ = ƛ ((` 0) · (` 1))
 
   open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
   open Rename Op sig
@@ -153,14 +157,23 @@ module LambdaExample where
   _ : rename (↑ 1) M₀ ≡ (` 1) · (` 2)
   _ = refl
 
-  _ : rename (↑ 1) M₁ ≡ ƛ (` 0) · (` 2)
+  _ : rename (↑ 1) M₁ ≡ ƛ ((` 0) · (` 2))
   _ = refl
-
 
   open Subst Op sig
 
-  _ : subst (` 2 • id) M₀ ≡ (` 2) · (` 0)
+  σ₀ : Substitution ABT
+  σ₀ = ` 3 • id
+
+  _ : subst σ₀ M₀ ≡ (` 3) · (` 0)
   _ = refl
+
+  _ : subst σ₀ M₁ ≡ ƛ ((` 0) · (` 4))
+  _ = refl
+
+  _ : ⟪ σ₀ ⟫ M₁ ≡ ƛ ((` 0) · (` 4))
+  _ rewrite exts-cons-shift σ₀ = refl
+
 
 module ArithExample where
 
