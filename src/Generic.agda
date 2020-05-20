@@ -21,12 +21,12 @@ module GenericSub
   (Op : Set)
   (sig : Op → List ℕ)
   (V : Set)
-  (var-fun : Var → V)
+  (var→val : Var → V)
   (apply : Substitution V → V → V)
   where
 
   ⧼_⧽ : Substitution V → Var → V
-  ⧼ ↑ k ⧽ x = var-fun (k + x)
+  ⧼ ↑ k ⧽ x = var→val (k + x)
   ⧼ y • σ ⧽ 0 = y
   ⧼ y • σ ⧽ (suc x) = ⧼ σ ⧽ x
 
