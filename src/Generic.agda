@@ -30,11 +30,10 @@ module GenericSub
   ⧼ y • σ ⧽ 0 = y
   ⧼ y • σ ⧽ (suc x) = ⧼ σ ⧽ x
 
-  private
-    drop : (k : ℕ) → Substitution V → Substitution V
-    drop k (↑ k') = ↑ (k + k')
-    drop zero (x • σ) = x • σ
-    drop (suc k) (x • σ) = drop k σ
+  drop : (k : ℕ) → Substitution V → Substitution V
+  drop k (↑ k') = ↑ (k + k')
+  drop zero (x • σ) = x • σ
+  drop (suc k) (x • σ) = drop k σ
 
   infixr 5 _⨟_
 
@@ -66,7 +65,7 @@ module Folder {V}{C}{Op}{sig} (F : Foldable V C Op sig) where
 
   open OpSig Op sig hiding (_⨟_)
   open Foldable F
-  open GenericSub Op sig V fold-free-var apply-subst
+  open GenericSub Op sig V fold-free-var apply-subst public
   open ArgResult V C
 
   fold : Substitution V → ABT → C
@@ -81,7 +80,119 @@ module Folder {V}{C}{Op}{sig} (F : Foldable V C Op sig) where
 
   fold-args σ nil = rnil
   fold-args σ (cons arg args) = rcons (fold-arg σ arg) (fold-args σ args)
+
+
+module SimAux {Op sig}{V₁ C₁ : Set} {V₂ C₂ : Set}
+  (_∼_ : V₁ → V₂ → Set)
+  (_≈_ : C₁ → C₂ → Set)
+  where
   
+  open import Syntax
+  open OpSig Op sig hiding (_⨟_; drop)
+  
+  data _≊_ : Substitution V₁ → Substitution V₂ → Set where
+     r-up : ∀{k} → (↑ k) ≊ (↑ k)
+     r-cons : ∀{v₁ σ₁ v₂ σ₂}
+        → v₁ ∼ v₂
+        → σ₁ ≊ σ₂
+        → (v₁ • σ₁) ≊ (v₂ • σ₂)
+  
+  open ArgResult V₁ C₁ renaming (ArgRes to ArgRes₁; ArgsRes to ArgsRes₁; rnil to rnil₁; rcons to rcons₁) public
+  open ArgResult V₂ C₂ renaming (ArgRes to ArgRes₂; ArgsRes to ArgsRes₂; rnil to rnil₂; rcons to rcons₂) public
+  
+  ArgRes∼ : ∀ {b} → ArgRes₁ b → ArgRes₂ b → Set 
+  ArgRes∼ {zero} c₁ c₂ = c₁ ≈ c₂
+  ArgRes∼ {suc b} f₁ f₂ = ∀{v₁ v₂} → v₁ ∼ v₂ → ArgRes∼ (f₁ v₁) (f₂ v₂)
+  
+  data ArgsRes∼ : {bs : List ℕ} → ArgsRes₁ bs → ArgsRes₂ bs → Set where
+    rnil∼ : ArgsRes∼ rnil₁ rnil₂
+    rcons∼ : ∀{b bs}{r₁ rs₁}{r₂ rs₂}
+        → ArgRes∼ r₁ r₂
+        → ArgsRes∼ rs₁ rs₂
+        → ArgsRes∼ {b ∷ bs} (rcons₁ r₁ rs₁) (rcons₂ r₂ rs₂)
+
+record Related {Op sig}{V₁ C₁} {V₂ C₂}
+  (F₁ : Foldable V₁ C₁ Op sig)
+  (F₂ : Foldable V₂ C₂ Op sig)
+  : Set₁ where
+  field _∼_ : V₁ → V₂ → Set
+  field _≈_ : C₁ → C₂ → Set
+  open SimAux {Op}{sig} _∼_ _≈_
+  open Foldable F₁ renaming (fold-free-var to ffvar₁; ret to ret₁; apply-subst to app₁; fold-op to fop₁)
+  open Foldable F₂ renaming (fold-free-var to ffvar₂; ret to ret₂; apply-subst to app₂; fold-op to fop₂)
+  field ret≈ : ∀{v₁ v₂} → v₁ ∼ v₂ → ret₁ v₁ ≈ ret₂ v₂
+  field vars∼ : ∀{x} → ffvar₁ x ∼ ffvar₂ x
+  field op∼ : ∀{op : Op}{Rs₁ : ArgsRes₁ (sig op)}{Rs₂ : ArgsRes₂ (sig op)} → ArgsRes∼ Rs₁ Rs₂ → fop₁ op Rs₁ ≈ fop₂ op Rs₂
+  field apply∼ : ∀{v₁ v₂ τ₁ τ₂} → v₁ ∼ v₂ → τ₁ ≊ τ₂ → app₁ τ₁ v₁ ∼ app₂ τ₂ v₂
+
+module Simulator {Op sig}{V₁ C₁} {V₂ C₂}
+  (F₁ : Foldable V₁ C₁ Op sig)
+  (F₂ : Foldable V₂ C₂ Op sig)
+  (R : Related F₁ F₂)
+  where
+
+  module Folder₁ = Folder F₁
+  fold₁ = Folder₁.fold
+  _⨟₁_ = Folder₁._⨟_
+  drop₁ = Folder₁.drop
+  
+  module Folder₂ = Folder F₂
+  fold₂ = Folder₂.fold
+  _⨟₂_ = Folder₂._⨟_
+  drop₂ = Folder₂.drop
+
+  open Related R
+  open SimAux {Op}{sig} _∼_ _≈_
+
+  open import Syntax
+  open OpSig Op sig hiding (_⨟_; drop)
+
+  ≊-drop : ∀{σ₁}{σ₂}{k : ℕ}
+    → σ₁ ≊ σ₂
+    → drop₁ k σ₁ ≊ drop₂ k σ₂
+  ≊-drop {.(↑ _)} {.(↑ _)} {k} r-up = r-up
+  ≊-drop {.(_ • _)} {.(_ • _)} {zero} (r-cons v₁∼v₂ σ₁≊σ₂) = r-cons v₁∼v₂ σ₁≊σ₂
+  ≊-drop {.(_ • _)} {.(_ • _)} {suc k} (r-cons x σ₁≊σ₂) = ≊-drop σ₁≊σ₂
+
+  ≊-⨟ : ∀{σ₁}{τ₁}{σ₂}{τ₂}
+    → σ₁ ≊ σ₂
+    → τ₁ ≊ τ₂
+    → (σ₁ ⨟₁ τ₁) ≊ (σ₂ ⨟₂ τ₂)
+  ≊-⨟ (r-up{k = k}) τ₁≊τ₂ = ≊-drop τ₁≊τ₂
+  ≊-⨟ (r-cons v₁∼v₂ σ₁≊σ₂) τ₁≊τ₂ =
+      let IH = ≊-⨟ σ₁≊σ₂ τ₁≊τ₂ in
+      r-cons (apply∼ v₁∼v₂ τ₁≊τ₂) IH
+
+  sim : ∀{M}{σ₁ σ₂}
+     → σ₁ ≊ σ₂
+     → (fold₁ σ₁ M) ≈ (fold₂ σ₂ M)
+     
+  sim-arg : ∀{σ₁}{σ₂}{b}{arg : Arg b}
+     → σ₁ ≊ σ₂
+     → ArgRes∼ (Folder₁.fold-arg σ₁ arg) (Folder₂.fold-arg σ₂ arg)
+  sim-arg {σ₁} {σ₂} {zero} {ast M} σ₁≊σ₂ = sim {M} σ₁≊σ₂ 
+  sim-arg {σ₁} {σ₂} {suc b} {bind arg} σ₁≊σ₂ {v₁}{v₂} v₁∼v₂ =
+     sim-arg {v₁ • (σ₁ ⨟₁ ↑ 1)}{v₂ • (σ₂ ⨟₂ ↑ 1)}{b} {arg} (r-cons v₁∼v₂ (≊-⨟ σ₁≊σ₂ r-up))
+
+  sim-args : ∀{σ₁}{σ₂}{bs}{args : Args bs}
+     → σ₁ ≊ σ₂
+     → ArgsRes∼ (Folder₁.fold-args σ₁ args) (Folder₂.fold-args σ₂ args)
+  sim-args {σ₁} {σ₂} {[]} {nil} σ₁≊σ₂ = rnil∼
+  sim-args {σ₁} {σ₂} {b ∷ bs} {cons A As} σ₁≊σ₂ =
+    let sa = sim-arg {arg = A} σ₁≊σ₂ in
+    rcons∼ sa (sim-args {σ₁} {σ₂} {bs} {As} σ₁≊σ₂)
+
+  sim {` x} {↑ k} {.(↑ _)} r-up = ret≈ vars∼
+  sim {` zero} {v₁ • _} {v₂ • _} (r-cons v₁∼v₂ σ₁~σ₂) = ret≈ v₁∼v₂
+  sim {` suc x} {_ • σ₁} {_ • σ₂} (r-cons _ σ₁~σ₂) = sim {` x} {σ₁} {σ₂} σ₁~σ₂ 
+  sim {op ⦅ args ⦆}{σ₁}{σ₂} σ₁~σ₂ = op∼ (sim-args {args = args} σ₁~σ₂)
+
+{-------------------------
+
+ Examples
+
+ -------------------------}
+
 
 module Rename 
   (Op : Set)
