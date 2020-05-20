@@ -14,7 +14,7 @@ open import Syntax
 module Generic where
 
 
-module Sub 
+module GenericSub 
   (Op : Set)
   (sig : Op → List ℕ)
   (V : Set)
@@ -59,7 +59,7 @@ module FoldMonad (V : Set) (C : Set) (ret : V → C) where
     where
 
     open OpSig Op sig hiding (_⨟_)
-    open Sub Op sig V var-fun apply
+    open GenericSub Op sig V var-fun apply
 
     fold : Substitution V → ABT → C
     fold-arg : ∀{b} → Substitution V → Arg b → ArgRes b
@@ -84,21 +84,46 @@ module Rename
   module Ren = FoldMonad Var ABT (λ x → ` x)
   open Ren
 
-  ren : (o : Op) → Ren.ArgsRes (sig o) → ABT
-  ren o rs = o ⦅ r-args rs ⦆
-      where
-      r-arg : ∀{b} → ArgRes b → Arg b
-      r-arg {zero} argr = ast argr
-      r-arg {suc b} argr = bind (r-arg (argr 0))
+  r-arg : ∀{b} → ArgRes b → Arg b
+  r-arg {zero} argr = ast argr
+  r-arg {suc b} argr = bind (r-arg (argr 0))
+
+  r-args : ∀{bs} → Ren.ArgsRes bs → Args bs
+  r-args rnil = nil
+  r-args (rcons argr argsr) = cons (r-arg argr) (r-args argsr)
       
-      r-args : ∀{bs} → Ren.ArgsRes bs → Args bs
-      r-args rnil = nil
-      r-args (rcons argr argsr) = cons (r-arg argr) (r-args argsr)
+  r-op : (o : Op) → Ren.ArgsRes (sig o) → ABT
+  r-op o rs = o ⦅ r-args rs ⦆
   
-  module RenFold = Ren.Fold Op sig (λ x → x) ren (λ ρ x → ⦉ ρ ⦊ x)
+  module RenFold = Ren.Fold Op sig (λ x → x) r-op (λ ρ x → ⦉ ρ ⦊ x)
 
   rename : Rename → ABT → ABT
   rename = RenFold.fold
+
+module Subst
+  (Op : Set)
+  (sig : Op → List ℕ)
+  where
+
+  open OpSig Op sig
+  module Sub = FoldMonad ABT ABT (λ M → M)
+  open Sub
+
+  s-arg : ∀{b} → ArgRes b → Arg b
+  s-arg {zero} argr = ast argr
+  s-arg {suc b} argr = bind (s-arg (argr (` 0)))
+
+  s-args : ∀{bs} → Sub.ArgsRes bs → Args bs
+  s-args rnil = nil
+  s-args (rcons argr argsr) = cons (s-arg argr) (s-args argsr)
+      
+  s-op : (o : Op) → Sub.ArgsRes (sig o) → ABT
+  s-op o rs = o ⦅ s-args rs ⦆
+  
+  module SubFold = Sub.Fold Op sig (λ x → ` x) s-op (λ σ x → ⟪ σ ⟫ x)
+
+  subst : Subst → ABT → ABT
+  subst = SubFold.fold
 
 module LambdaExample where
 
@@ -117,8 +142,6 @@ module LambdaExample where
   infixl 7  _·_
   pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
   
-  open Rename Op sig
-
   M₀ : ABT
   M₀ = (` 0) · (` 1)
 
@@ -126,6 +149,7 @@ module LambdaExample where
   M₁ = ƛ (` 0) · (` 1)
 
   open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
+  open Rename Op sig
 
   _ : rename (↑ 1) M₀ ≡ (` 1) · (` 2)
   _ = refl
@@ -133,3 +157,8 @@ module LambdaExample where
   _ : rename (↑ 1) M₁ ≡ ƛ (` 0) · (` 2)
   _ = refl
 
+
+  open Subst Op sig
+
+  _ : subst (` 2 • id) M₀ ≡ (` 2) · (` 0)
+  _ = refl
