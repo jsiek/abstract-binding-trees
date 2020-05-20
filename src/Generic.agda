@@ -7,12 +7,11 @@
 -}
 
 open import Data.List using (List; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
 
 open import Syntax
 
 module Generic where
-
 
 module GenericSub 
   (Op : Set)
@@ -161,4 +160,43 @@ module LambdaExample where
   open Subst Op sig
 
   _ : subst (` 2 • id) M₀ ≡ (` 2) · (` 0)
+  _ = refl
+
+module ArithExample where
+
+  data Op : Set where
+    op-num : ℕ → Op
+    op-mult : Op
+    op-let : Op
+
+  sig : Op → List ℕ
+  sig (op-num n) = []
+  sig op-mult = 0 ∷ 0 ∷ []
+  sig op-let = 0 ∷ 1 ∷ []
+
+  open OpSig Op sig hiding (rename)
+
+  pattern $ n  = op-num n ⦅ nil ⦆
+
+  infixl 7  _×_
+  pattern _×_ L M = op-mult ⦅ cons (ast L) (cons (ast M) nil) ⦆
+
+  pattern bind_｛_｝ L M = op-let ⦅ cons (ast L) (cons (bind (ast M)) nil) ⦆
+
+  module Arith = FoldMonad ℕ ℕ (λ n → n)
+  open Arith
+  
+  eval-op : (o : Op) → Arith.ArgsRes (sig o) → ℕ
+  eval-op (op-num n) res = n
+  eval-op op-mult (rcons x (rcons y rnil)) = x * y
+  eval-op op-let (rcons x (rcons f rnil)) = f x
+
+  module ArithFold = Arith.Fold Op sig (λ x → 0) eval-op (λ σ n → n)
+
+  eval : ABT → ℕ
+  eval = ArithFold.fold id
+
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
+
+  _ : eval (bind $ 21 ｛ $ 2 × ` 0 ｝) ≡ 42
   _ = refl
