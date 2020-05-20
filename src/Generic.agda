@@ -42,7 +42,8 @@ module GenericSub
   ↑ k ⨟ σ = drop k σ
   (v • σ₁) ⨟ σ₂ = (apply σ₂ v) • (σ₁ ⨟ σ₂)
 
-module FoldMonad (V : Set) (C : Set) (ret : V → C) where
+
+module ArgResult (V : Set) (C : Set) where
 
   ArgRes : ℕ → Set
   ArgRes 0 = C
@@ -52,30 +53,35 @@ module FoldMonad (V : Set) (C : Set) (ret : V → C) where
     rnil : ArgsRes []
     rcons : ∀{b bs} → ArgRes b → ArgsRes bs → ArgsRes (b ∷ bs)
 
-  module Fold
-    (Op : Set)
-    (sig : Op → List ℕ)
-    (var-fun : Var → V)
-    (op-fun : (o : Op) → ArgsRes (sig o) → C)
-    (apply : Substitution V → V → V)
-    where
 
-    open OpSig Op sig hiding (_⨟_)
-    open GenericSub Op sig V var-fun apply
+record Foldable (V : Set) (C : Set) (Op : Set) (sig : Op → List ℕ) : Set where
+  open ArgResult V C
+  field ret : V → C
+  field fold-free-var : Var → V
+  field fold-op : (o : Op) → ArgsRes (sig o) → C
+  field apply-subst : Substitution V → V → V
 
-    fold : Substitution V → ABT → C
-    fold-arg : ∀{b} → Substitution V → Arg b → ArgRes b
-    fold-args : ∀{bs} → Substitution V → Args bs → ArgsRes bs
 
-    fold σ (` x) = ret (⧼ σ ⧽ x)
-    fold σ (o ⦅ args ⦆) = op-fun o (fold-args σ args)
+module Folder {V}{C}{Op}{sig} (F : Foldable V C Op sig) where
 
-    fold-arg σ (ast M) = fold σ M
-    fold-arg σ (bind M) = λ v → fold-arg (v • (σ ⨟ ↑ 1)) M
+  open OpSig Op sig hiding (_⨟_)
+  open Foldable F
+  open GenericSub Op sig V fold-free-var apply-subst
+  open ArgResult V C
 
-    fold-args σ nil = rnil
-    fold-args σ (cons arg args) = rcons (fold-arg σ arg) (fold-args σ args)
+  fold : Substitution V → ABT → C
+  fold-arg : ∀{b} → Substitution V → Arg b → ArgRes b
+  fold-args : ∀{bs} → Substitution V → Args bs → ArgsRes bs
 
+  fold σ (` x) = ret (⧼ σ ⧽ x)
+  fold σ (o ⦅ args ⦆) = fold-op o (fold-args σ args)
+
+  fold-arg σ (ast M) = fold σ M
+  fold-arg σ (bind M) = λ v → fold-arg (v • (σ ⨟ ↑ 1)) M
+
+  fold-args σ nil = rnil
+  fold-args σ (cons arg args) = rcons (fold-arg σ arg) (fold-args σ args)
+  
 
 module Rename 
   (Op : Set)
@@ -83,21 +89,26 @@ module Rename
   where
 
   open OpSig Op sig hiding (rename)
-  module Ren = FoldMonad Var ABT (λ x → ` x)
-  open Ren
+  open ArgResult Var ABT
 
   r-arg : ∀{b} → ArgRes b → Arg b
   r-arg {zero} argr = ast argr
   r-arg {suc b} argr = bind (r-arg (argr 0))
 
-  r-args : ∀{bs} → Ren.ArgsRes bs → Args bs
+  r-args : ∀{bs} → ArgsRes bs → Args bs
   r-args rnil = nil
   r-args (rcons argr argsr) = cons (r-arg argr) (r-args argsr)
       
-  r-op : (o : Op) → Ren.ArgsRes (sig o) → ABT
+  r-op : (o : Op) → ArgsRes (sig o) → ABT
   r-op o rs = o ⦅ r-args rs ⦆
   
-  module RenFold = Ren.Fold Op sig (λ x → x) r-op (λ ρ x → ⦉ ρ ⦊ x)
+  R : Foldable Var ABT Op sig
+  R = record { ret = λ x → ` x ;
+               fold-free-var = λ x → x ;
+               fold-op = r-op ;
+               apply-subst = ⦉_⦊ }
+
+  module RenFold = Folder R
 
   rename : Rename → ABT → ABT
   rename = RenFold.fold
@@ -108,21 +119,26 @@ module Subst
   where
 
   open OpSig Op sig
-  module Sub = FoldMonad ABT ABT (λ M → M)
-  open Sub
-
-  s-arg : ∀{b} → ArgRes b → Arg b
-  s-arg {zero} argr = ast argr
-  s-arg {suc b} argr = bind (s-arg (argr (` 0)))
-
-  s-args : ∀{bs} → Sub.ArgsRes bs → Args bs
-  s-args rnil = nil
-  s-args (rcons argr argsr) = cons (s-arg argr) (s-args argsr)
-      
-  s-op : (o : Op) → Sub.ArgsRes (sig o) → ABT
-  s-op o rs = o ⦅ s-args rs ⦆
+  open ArgResult ABT ABT
   
-  module SubFold = Sub.Fold Op sig (λ x → ` x) s-op (λ σ x → ⟪ σ ⟫ x)
+  s-arg : ∀{b} → ArgRes b → Arg b
+  s-arg {zero} M = ast M
+  s-arg {suc b} f = bind (s-arg (f (` 0)))
+
+  s-args : ∀{bs} → ArgsRes bs → Args bs
+  s-args rnil = nil
+  s-args (rcons R Rs) = cons (s-arg R) (s-args Rs)
+      
+  s-op : (o : Op) → ArgsRes (sig o) → ABT
+  s-op o Rs = o ⦅ s-args Rs ⦆
+
+  S : Foldable ABT ABT Op sig
+  S = record { ret = λ M → M ;
+               fold-free-var = λ x → ` x ;
+               fold-op = s-op ;
+               apply-subst = ⟪_⟫ }
+
+  module SubFold = Folder S
 
   subst : Subst → ABT → ABT
   subst = SubFold.fold
@@ -198,9 +214,7 @@ module ArithExample where
   pattern bind_｛_｝ L M = op-let ⦅ cons (ast L) (cons (bind (ast M)) nil) ⦆
 
   open import Data.Maybe using (Maybe; nothing; just)
-
-  module Arith = FoldMonad (Maybe ℕ) (Maybe ℕ) (λ n → n)
-  open Arith
+  open ArgResult (Maybe ℕ) (Maybe ℕ)
 
   _>>=_ : Maybe ℕ → (ℕ → Maybe ℕ) → Maybe ℕ
   x >>= f
@@ -208,12 +222,18 @@ module ArithExample where
   ... | nothing = nothing
   ... | just n = f n
 
-  eval-op : (o : Op) → Arith.ArgsRes (sig o) → Maybe ℕ
+  eval-op : (o : Op) → ArgsRes (sig o) → Maybe ℕ
   eval-op (op-num n) res = just n
   eval-op op-mult (rcons x (rcons y rnil)) = do n ← x; m ← y; just (n * m)
   eval-op op-let (rcons x (rcons f rnil)) = do n ← x; f (just n)
 
-  module ArithFold = Arith.Fold Op sig (λ x → nothing) eval-op (λ σ n → n)
+  E : Foldable (Maybe ℕ) (Maybe ℕ) Op sig
+  E = record { ret = λ x → x ;
+               fold-free-var = λ x → nothing ;
+               fold-op = eval-op ;
+               apply-subst = λ σ x → x }
+
+  module ArithFold = Folder E
 
   eval : ABT → Maybe ℕ
   eval = ArithFold.fold id
