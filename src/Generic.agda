@@ -140,7 +140,8 @@ module LambdaExample where
 
   open OpSig Op sig hiding (rename)
 
-  pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
+  infix 6 ƛ_
+  pattern ƛ_ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
 
   infixl 7  _·_
   pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
@@ -149,7 +150,7 @@ module LambdaExample where
   M₀ = (` 0) · (` 1)
 
   M₁ : ABT
-  M₁ = ƛ ((` 0) · (` 1))
+  M₁ = ƛ (` 0) · (` 1)
 
   open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
   open Rename Op sig
@@ -157,7 +158,7 @@ module LambdaExample where
   _ : rename (↑ 1) M₀ ≡ (` 1) · (` 2)
   _ = refl
 
-  _ : rename (↑ 1) M₁ ≡ ƛ ((` 0) · (` 2))
+  _ : rename (↑ 1) M₁ ≡ ƛ (` 0) · (` 2)
   _ = refl
 
   open Subst Op sig
@@ -168,10 +169,10 @@ module LambdaExample where
   _ : subst σ₀ M₀ ≡ (` 3) · (` 0)
   _ = refl
 
-  _ : subst σ₀ M₁ ≡ ƛ ((` 0) · (` 4))
+  _ : subst σ₀ M₁ ≡ ƛ (` 0) · (` 4)
   _ = refl
 
-  _ : ⟪ σ₀ ⟫ M₁ ≡ ƛ ((` 0) · (` 4))
+  _ : ⟪ σ₀ ⟫ M₁ ≡ ƛ (` 0) · (` 4)
   _ rewrite exts-cons-shift σ₀ = refl
 
 
