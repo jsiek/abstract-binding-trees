@@ -17,6 +17,12 @@ open import Syntax
 
 module Generic where
 
+{------------------------------------------
+
+   Generic fold over abstract binding trees
+
+ -------------------------------------------}
+ 
 record EnvSig (E : Set) (V : Set) : Set where
   field lookup : E → Var → V
   field extend : E → V → E
@@ -59,13 +65,20 @@ module Folder {V}{C}{Op}{sig}{Env} (F : Foldable V C Op sig Env) where
   fold-args σ (cons arg args) = rcons (fold-arg σ arg) (fold-args σ args)
 
 
+{---------------------------------------
+
+   Simulation between two folds
+
+   σ₁ ≊ σ₂ → (fold₁ σ₁ M) ≈ (fold₂ σ₂ M)
+
+ ---------------------------------------}
+
 module SimAux {Op sig}{V₁ C₁ : Set} {V₂ C₂ : Set}
-  (_∼_ : V₁ → V₂ → Set)
-  (_≈_ : C₁ → C₂ → Set)
+  (_∼_ : V₁ → V₂ → Set) (_≈_ : C₁ → C₂ → Set)
   where
   
   open import Syntax
-  open OpSig Op sig hiding (_⨟_; drop)
+  open OpSig Op sig using ()
   
   open ArgResult V₁ C₁ renaming (ArgRes to ArgRes₁; ArgsRes to ArgsRes₁; rnil to rnil₁; rcons to rcons₁) public
   open ArgResult V₂ C₂ renaming (ArgRes to ArgRes₂; ArgsRes to ArgsRes₂; rnil to rnil₂; rcons to rcons₂) public
@@ -98,12 +111,11 @@ record Related {Op sig}{V₁ C₁ Env₁} {V₂ C₂ Env₂}
   field env∼ : RelatedEnv _∼_ (Foldable.env F₁) (Foldable.env F₂)
   open RelatedEnv env∼ public
   open SimAux {Op}{sig} _∼_ _≈_
-  open Foldable F₁ renaming (fold-free-var to ffvar₁; ret to ret₁; {- apply-subst to app₁; -} fold-op to fop₁)
-  open Foldable F₂ renaming (fold-free-var to ffvar₂; ret to ret₂; {- apply-subst to app₂; -} fold-op to fop₂)
+  open Foldable F₁ renaming (fold-free-var to ffvar₁; ret to ret₁; fold-op to fop₁)
+  open Foldable F₂ renaming (fold-free-var to ffvar₂; ret to ret₂; fold-op to fop₂)
   field ret≈ : ∀{v₁ v₂} → v₁ ∼ v₂ → ret₁ v₁ ≈ ret₂ v₂
   field vars∼ : ∀{x} → ffvar₁ x ∼ ffvar₂ x
   field op∼ : ∀{op : Op}{Rs₁ : ArgsRes₁ (sig op)}{Rs₂ : ArgsRes₂ (sig op)} → ArgsRes∼ Rs₁ Rs₂ → fop₁ op Rs₁ ≈ fop₂ op Rs₂
-
 
 module Simulator {Op sig}{V₁ C₁ Env₁} {V₂ C₂ Env₂}
   (F₁ : Foldable V₁ C₁ Op sig Env₁)
@@ -141,216 +153,196 @@ module Simulator {Op sig}{V₁ C₁ Env₁} {V₂ C₂ Env₂}
     let sa = sim-arg {arg = A} σ₁≊σ₂ in
     rcons∼ sa (sim-args {σ₁} {σ₂} {bs} {As} σ₁≊σ₂)
 
+
+{---------------------------
+
+ Preservation of a predicate
+
+ 𝒫 M → 𝒮 σ → 𝒞 (fold σ M)
+
+ ---------------------------}
+
+module Preservation {Op sig}{V C Env}
+  (F : Foldable V C Op sig Env)
+  (𝒫 : OpSig.ABT Op sig → Set)
+  (𝒮 : Env → Set)
+  (𝒱 : V → Set)
+  (𝒞 : C → Set)
+  (ret-pres : ∀{v} → 𝒱 v → 𝒞 (Foldable.ret F v))
+  (lookup-pres : ∀{σ}{x} → 𝒮 σ → 𝒱 (EnvSig.lookup (Foldable.env F) σ x))
+  where
+  open Folder F
+  open OpSig Op sig
+
+  open ArgResult V C
+  
+  ArgResP : ∀ {b} → ArgRes b → Set 
+  ArgResP {zero} c = 𝒞 c
+  ArgResP {suc b} f = ∀{v} → 𝒱 v → ArgResP (f v)
+  
+  data ArgsResP : {bs : List ℕ} → ArgsRes bs → Set where
+    rnilp : ArgsResP rnil
+    rconsp : ∀{b bs}{r rs}
+        → ArgResP r
+        → ArgsResP rs
+        → ArgsResP {b ∷ bs} (rcons r rs)
+
+  preserve : ∀{M}{σ} → 𝒫 M → 𝒮 σ → 𝒞 (fold σ M)
+  preserve {` x} {σ} PM Qσ = ret-pres (lookup-pres Qσ)
+  preserve {op ⦅ args ⦆} {σ} PM Qσ = {!!}
+  
+
 {-------------------------
 
- Examples
+ Example: Arithmetic Evaluation
 
  -------------------------}
 
-module GenericSub 
-  (V : Set)
-  (var→val : Var → V)
-  (apply : Substitution V → V → V)
-  where
+module FunEnv (V : Set) where
+
+  extend : (Var → V) → V → (Var → V)
+  extend ρ v zero = v
+  extend ρ v (suc x) = ρ x
+
+  fun-is-env : EnvSig (Var → V) V
+  fun-is-env = record { lookup = λ ρ x → ρ x ; extend = extend }
+
+module ArithExample where
+
+  data Op : Set where
+    op-num : ℕ → Op
+    op-mult : Op
+    op-let : Op
+
+  sig : Op → List ℕ
+  sig (op-num n) = []
+  sig op-mult = 0 ∷ 0 ∷ []
+  sig op-let = 0 ∷ 1 ∷ []
+
+  open OpSig Op sig
+  pattern $ n  = op-num n ⦅ nil ⦆
+  infixl 7  _×_
+  pattern _×_ L M = op-mult ⦅ cons (ast L) (cons (ast M) nil) ⦆
+  pattern bind_｛_｝ L M = op-let ⦅ cons (ast L) (cons (bind (ast M)) nil) ⦆
+
+  open import Data.Maybe using (Maybe; nothing; just)
+  open ArgResult (Maybe ℕ) (Maybe ℕ)
+
+  _>>=_ : Maybe ℕ → (ℕ → Maybe ℕ) → Maybe ℕ
+  x >>= f
+      with x
+  ... | nothing = nothing
+  ... | just n = f n
+
+  eval-op : (o : Op) → ArgsRes (sig o) → Maybe ℕ
+  eval-op (op-num n) res = just n
+  eval-op op-mult (rcons x (rcons y rnil)) = do n ← x; m ← y; just (n * m)
+  eval-op op-let (rcons x (rcons f rnil)) = do n ← x; f (just n)
+
+  open FunEnv (Maybe ℕ)
+  
+  E : Foldable (Maybe ℕ) (Maybe ℕ) Op sig (Var → (Maybe ℕ))
+  E = record { ret = λ x → x ; fold-free-var = λ x → nothing ;
+               fold-op = eval-op ; env = fun-is-env }
+
+  module ArithFold = Folder E
+
+  eval : ABT → Maybe ℕ
+  eval = ArithFold.fold (λ x → nothing)
+
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
+
+  _ : eval ($ 2 × $ 21) ≡ just 42
+  _ = refl
+  
+  _ : eval (` 0) ≡ nothing
+  _ = refl
+  
+  _ : eval (bind $ 21 ｛ $ 2 × ` 0 ｝) ≡ just 42
+  _ = refl
+
+  _ : eval (bind ` 0 ｛ $ 2 × $ 21 ｝) ≡ nothing
+  _ = refl
+
+
+{--------------------------------------------
+
+ Example: Renaming, Substitution, and a Lemma
+
+ --------------------------------------------}
+
+module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
 
   ⧼_⧽ : Substitution V → Var → V
   ⧼ ↑ k ⧽ x = var→val (k + x)
   ⧼ y • σ ⧽ 0 = y
   ⧼ y • σ ⧽ (suc x) = ⧼ σ ⧽ x
 
-  drop : (k : ℕ) → Substitution V → Substitution V
-  drop k (↑ k') = ↑ (k + k')
-  drop zero (x • σ) = x • σ
-  drop (suc k) (x • σ) = drop k σ
+  inc : Substitution V → Substitution V
+  inc (↑ k) = ↑ (suc k)
+  inc (v • ρ) = shift v • inc ρ
 
-  infixr 5 _⨟_
+  extend : Substitution V → V → Substitution V
+  extend σ v = v • inc σ
 
-  _⨟_ : Substitution V → Substitution V → Substitution V
-  ↑ k ⨟ σ = drop k σ
-  (v • σ₁) ⨟ σ₂ = (apply σ₂ v) • (σ₁ ⨟ σ₂)
+  sub-is-env : EnvSig (Substitution V) V
+  sub-is-env = record { lookup = ⧼_⧽ ; extend = extend }
 
-  SubEnv : EnvSig (Substitution V) V
-  SubEnv = record { lookup = ⧼_⧽ ; extend = λ σ v → v • (σ ⨟ ↑ 1) }
-
-
-module Rename 
-  (Op : Set)
-  (sig : Op → List ℕ)
-  where
+module Rename (Op : Set) (sig : Op → List ℕ) where
 
   open OpSig Op sig hiding (rename)
   open ArgResult Var ABT
 
-  r-arg : ∀{b} → ArgRes b → Arg b
-  r-arg {zero} argr = ast argr
-  r-arg {suc b} argr = bind (r-arg (argr 0))
-
-  r-args : ∀{bs} → ArgsRes bs → Args bs
-  r-args rnil = nil
-  r-args (rcons argr argsr) = cons (r-arg argr) (r-args argsr)
-      
   r-op : (o : Op) → ArgsRes (sig o) → ABT
+  r-arg : ∀{b} → ArgRes b → Arg b
+  r-args : ∀{bs} → ArgsRes bs → Args bs
   r-op o rs = o ⦅ r-args rs ⦆
+  r-arg {zero} M = ast M
+  r-arg {suc b} f = bind (r-arg (f 0))
+  r-args rnil = nil
+  r-args (rcons r rs) = cons (r-arg r) (r-args rs)
 
-  open GenericSub Var (λ x → x) ⦉_⦊
+  open GenericSub Var (λ x → x) suc
 
   R : Foldable Var ABT Op sig (Substitution Var)
   R = record { ret = λ x → ` x ; fold-free-var = λ x → x ; 
-               fold-op = r-op ; env = SubEnv }
+               fold-op = r-op ; env = sub-is-env }
 
   module RenFold = Folder R
 
   rename : Rename → ABT → ABT
   rename = RenFold.fold
 
-module Subst
-  (Op : Set)
-  (sig : Op → List ℕ)
-  where
+module Subst (Op : Set) (sig : Op → List ℕ) where
 
-  open OpSig Op sig
+  open OpSig Op sig hiding (rename; shift)
   open ArgResult ABT ABT
   
+  s-op : (o : Op) → ArgsRes (sig o) → ABT
   s-arg : ∀{b} → ArgRes b → Arg b
+  s-args : ∀{bs} → ArgsRes bs → Args bs
+  s-op o Rs = o ⦅ s-args Rs ⦆
   s-arg {zero} M = ast M
   s-arg {suc b} f = bind (s-arg (f (` 0)))
-
-  s-args : ∀{bs} → ArgsRes bs → Args bs
   s-args rnil = nil
-  s-args (rcons R Rs) = cons (s-arg R) (s-args Rs)
-      
-  s-op : (o : Op) → ArgsRes (sig o) → ABT
-  s-op o Rs = o ⦅ s-args Rs ⦆
+  s-args (rcons r rs) = cons (s-arg r) (s-args rs)
 
-  open GenericSub ABT (λ x → ` x) ⟪_⟫
+  open Rename Op sig using (rename)
+
+  shift : ABT → ABT
+  shift M = rename (↑ 1) M
+
+  open GenericSub ABT (λ x → ` x) shift
 
   S : Foldable ABT ABT Op sig (Substitution ABT)
   S = record { ret = λ M → M ; fold-free-var = λ x → ` x ;
-               fold-op = s-op ; env = SubEnv }
-
+               fold-op = s-op ; env = sub-is-env }
   module SubFold = Folder S
 
   subst : Subst → ABT → ABT
   subst = SubFold.fold
 
-module RelSubst (V₁ V₂ : Set) (_∼_ : V₁ → V₂ → Set) where
-  data _≊_ : Substitution V₁ → Substitution V₂ → Set where
-     r-up : ∀{k} → (↑ k) ≊ (↑ k)
-     r-cons : ∀{v₁ σ₁ v₂ σ₂}
-        → v₁ ∼ v₂  →   σ₁ ≊ σ₂
-        → (v₁ • σ₁) ≊ (v₂ • σ₂)
-
-module RelateSubst (V₁ V₂ : Set)
-  (_∼_ : V₁ → V₂ → Set)
-  (var→val₁ : Var → V₁)
-  (apply₁ : Substitution V₁ → V₁ → V₁)
-  (var→val₂ : Var → V₂)
-  (apply₂ : Substitution V₂ → V₂ → V₂)
-  (var→val∼ : ∀{x} → var→val₁ x ∼ var→val₂ x)
-  (apply∼ : ∀ {v₁ v₂ τ₁ τ₂} → v₁ ∼ v₂ → RelSubst._≊_ V₁ V₂ _∼_ τ₁ τ₂ → apply₁ τ₁ v₁ ∼ apply₂ τ₂ v₂)
-  where
-
-  open GenericSub V₁ var→val₁ apply₁ renaming (⧼_⧽ to ⧼_⧽₁; SubEnv to SubEnv₁; drop to drop₁; _⨟_ to _⨟₁_)
-  open GenericSub V₂ var→val₂ apply₂ renaming (⧼_⧽ to ⧼_⧽₂; SubEnv to SubEnv₂; drop to drop₂; _⨟_ to _⨟₂_)
-  open RelSubst V₁ V₂ _∼_
-
-  lookup∼ : {σ₁ : Substitution V₁} {σ₂ : Substitution V₂} →
-      σ₁ ≊ σ₂ → {x : ℕ} → ⧼ σ₁ ⧽₁ x ∼ ⧼ σ₂ ⧽₂ x
-  lookup∼ (r-up{k}) {x} = var→val∼
-  lookup∼ (r-cons v₁∼v₂ σ₁≊σ₂) {zero} = v₁∼v₂
-  lookup∼ (r-cons v₁∼v₂ σ₁≊σ₂) {suc x} = lookup∼ σ₁≊σ₂
-
-  ≊-drop : ∀{σ₁}{σ₂}{k : ℕ}
-    → σ₁ ≊ σ₂
-    → drop₁ k σ₁ ≊ drop₂ k σ₂
-  ≊-drop {.(↑ _)} {.(↑ _)} {k} r-up = r-up
-  ≊-drop {.(_ • _)} {.(_ • _)} {zero} (r-cons v₁∼v₂ σ₁≊σ₂) = r-cons v₁∼v₂ σ₁≊σ₂
-  ≊-drop {.(_ • _)} {.(_ • _)} {suc k} (r-cons x σ₁≊σ₂) = ≊-drop σ₁≊σ₂
-  
-  ≊-⨟ : ∀{σ₁}{τ₁}{σ₂}{τ₂}
-    → σ₁ ≊ σ₂  →  τ₁ ≊ τ₂
-    → (σ₁ ⨟₁ τ₁) ≊ (σ₂ ⨟₂ τ₂)
-  ≊-⨟ (r-up{k = k}) τ₁≊τ₂ = ≊-drop τ₁≊τ₂
-  ≊-⨟ (r-cons v₁∼v₂ σ₁≊σ₂) τ₁≊τ₂ =
-      let IH = ≊-⨟ σ₁≊σ₂ τ₁≊τ₂ in
-      r-cons (apply∼ v₁∼v₂ τ₁≊τ₂) IH
-
-  RelSub : RelatedEnv _∼_ SubEnv₁ SubEnv₂
-  RelSub = record { _≊_ = _≊_ ;
-                    lookup∼ = lookup∼ ;
-                    extend≊ = λ v₁∼v₂ σ₁≊σ₂ → r-cons v₁∼v₂ (≊-⨟ σ₁≊σ₂ r-up) }
-
-module RenSub
-  (Op : Set)
-  (sig : Op → List ℕ)
-  where
-
-  open Rename Op sig
-  open Subst Op sig
-  
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂)
-  open import Data.Product using (_×_; Σ; Σ-syntax; ∃; ∃-syntax; proj₁; proj₂)
-    renaming (_,_ to ⟨_,_⟩)
-  open import Syntax
-  open OpSig Op sig using (ABT; `_; _⦅_⦆; cons; bind; rename→subst; ⟪_⟫)
-
-  _∼_ : Var → ABT → Set
-  _∼_ = λ x M → ` x ≡ M
-
-  _≈_ : ABT → ABT → Set
-  _≈_ = _≡_
-
-  open RelSubst Var ABT _∼_
-  
-  apply₁ = ⦉_⦊
-  apply₂ = ⟪_⟫
-
-  {- This is a lot like lookup∼. -Jeremy -}
-  apply∼ : ∀ {v₁ v₂ τ₁ τ₂} → v₁ ∼ v₂ → τ₁ ≊ τ₂ → apply₁ τ₁ v₁ ∼ apply₂ τ₂ v₂
-  apply∼ refl r-up = refl
-  apply∼ {zero} {.(` 0)} refl (RelSubst.r-cons x τ₁≊τ₂) = x
-  apply∼ {suc v₁} {.(` suc v₁)} refl (RelSubst.r-cons x τ₁≊τ₂) = apply∼ refl τ₁≊τ₂
-
-  open RelateSubst Var ABT _∼_ (λ x → x) ⦉_⦊ (λ x → ` x) ⟪_⟫ (λ {x} → refl) apply∼
-
-  open SimAux {Op}{sig}{Var}{ABT}{ABT}{ABT} _∼_ _≈_
-
-  open Foldable R renaming (fold-free-var to ffvar₁; ret to ret₁; fold-op to fop₁)
-  open Foldable S renaming (fold-free-var to ffvar₂; ret to ret₂; fold-op to fop₂)
-
-  rs-op∼ : ∀{op : Op}{Rs₁ : ArgsRes₁ (sig op)}{Rs₂ : ArgsRes₂ (sig op)}
-         → ArgsRes∼ Rs₁ Rs₂
-         → fop₁ op Rs₁ ≈ fop₂ op Rs₂
-  rs-op∼ {op}{Rs₁}{Rs₂} rs∼ = G
-    where
-    I : ∀{b}{R₁ : ArgRes₁ b}{R₂ : ArgRes₂ b} → ArgRes∼ R₁ R₂ → r-arg R₁ ≡ s-arg R₂
-    I {zero} {R₁} {.R₁} refl = refl
-    I {suc b} {R₁} {R₂} r~ = cong bind (I (r~ refl))
-    
-    H : ∀{bs}{Rs₁ : ArgsRes₁ bs}{Rs₂ : ArgsRes₂ bs} → ArgsRes∼ Rs₁ Rs₂ → r-args Rs₁ ≡ s-args Rs₂
-    H {[]} {rnil₁} {rnil₂} rnil∼ = refl
-    H {b ∷ bs} {rcons₁ r₁ Rs₁} {rcons₂ r₂ Rs₂} (rcons∼ r∼ rs∼) = cong₂ cons (I r∼) (H rs∼)
-
-    G : op ⦅ r-args Rs₁ ⦆ ≡ op ⦅ s-args Rs₂ ⦆
-    G = cong (_⦅_⦆ op) (H rs∼)
-
-  RenSubRel : Related R S
-  RenSubRel = record { _∼_ = _∼_ ; _≈_ = _≈_ ; env∼ = RelSub ; ret≈ = λ {v₁} {v₂} z → z ;
-                       vars∼ = λ {x} → refl ; op∼ = rs-op∼ }
-
-  module Sim = Simulator R S RenSubRel
-
-  rensub-sim : ∀{σ₁}{σ₂} (M : ABT) → σ₁ ≊ σ₂ → rename σ₁ M ≡ subst σ₂ M
-  rensub-sim M = Sim.sim {M = M}
-
-  rename→subst-≊ : ∀{ρ} → ρ ≊ rename→subst ρ
-  rename→subst-≊ {↑ k} = r-up
-  rename→subst-≊ {x • ρ} = r-cons refl rename→subst-≊
-
-  rensub : ∀ ρ M → rename ρ M ≡ subst (rename→subst ρ) M
-  rensub ρ M = rensub-sim M rename→subst-≊
-
-module LambdaExample where
+module TestRenameSubstOnLambda where
 
   data Op : Set where
     op-lam : Op
@@ -398,67 +390,96 @@ module LambdaExample where
   _ rewrite exts-cons-shift σ₀ = refl
 
 
-module ArithExample where
+module RelSubst (V₁ V₂ : Set) (_∼_ : V₁ → V₂ → Set) where
+  data _≊_ : Substitution V₁ → Substitution V₂ → Set where
+     r-up : ∀{k} → (↑ k) ≊ (↑ k)
+     r-cons : ∀{v₁ σ₁ v₂ σ₂}
+        → v₁ ∼ v₂  →   σ₁ ≊ σ₂
+        → (v₁ • σ₁) ≊ (v₂ • σ₂)
 
-  data Op : Set where
-    op-num : ℕ → Op
-    op-mult : Op
-    op-let : Op
+module RelateSubst (V₁ V₂ : Set)
+  (_∼_ : V₁ → V₂ → Set)
+  (var→val₁ : Var → V₁)
+  (shift₁ : V₁ → V₁)
+  (var→val₂ : Var → V₂)
+  (shift₂ : V₂ → V₂)
+  (var→val∼ : ∀{x} → var→val₁ x ∼ var→val₂ x)
+  (shift∼ : ∀ {v₁ v₂} → v₁ ∼ v₂ → shift₁ v₁ ∼ shift₂ v₂)
+  where
 
-  sig : Op → List ℕ
-  sig (op-num n) = []
-  sig op-mult = 0 ∷ 0 ∷ []
-  sig op-let = 0 ∷ 1 ∷ []
+  open GenericSub V₁ var→val₁ shift₁
+     renaming (⧼_⧽ to ⧼_⧽₁; sub-is-env to sub-is-env₁; inc to inc₁)
+  open GenericSub V₂ var→val₂ shift₂
+     renaming (⧼_⧽ to ⧼_⧽₂; sub-is-env to sub-is-env₂; inc to inc₂)
+  open RelSubst V₁ V₂ _∼_
 
-  open OpSig Op sig hiding (rename)
+  lookup∼ : {σ₁ : Substitution V₁} {σ₂ : Substitution V₂} →
+      σ₁ ≊ σ₂ → {x : ℕ} → ⧼ σ₁ ⧽₁ x ∼ ⧼ σ₂ ⧽₂ x
+  lookup∼ (r-up{k}) {x} = var→val∼
+  lookup∼ (r-cons v₁∼v₂ σ₁≊σ₂) {zero} = v₁∼v₂
+  lookup∼ (r-cons v₁∼v₂ σ₁≊σ₂) {suc x} = lookup∼ σ₁≊σ₂
 
-  pattern $ n  = op-num n ⦅ nil ⦆
+  ≊-inc : ∀{σ₁}{σ₂}
+    → σ₁ ≊ σ₂
+    → (inc₁ σ₁) ≊ (inc₂ σ₂)
+  ≊-inc {.(↑ _)} {.(↑ _)} r-up = r-up
+  ≊-inc {.(_ • _)} {.(_ • _)} (r-cons v₁∼v₂ σ₁≊σ₂) = r-cons (shift∼ v₁∼v₂) (≊-inc σ₁≊σ₂)
 
-  infixl 7  _×_
-  pattern _×_ L M = op-mult ⦅ cons (ast L) (cons (ast M) nil) ⦆
+  RelSub : RelatedEnv _∼_ sub-is-env₁ sub-is-env₂
+  RelSub = record { _≊_ = _≊_ ; lookup∼ = lookup∼ ;
+                    extend≊ = λ v₁∼v₂ σ₁≊σ₂ → r-cons v₁∼v₂ (≊-inc σ₁≊σ₂) }
 
-  pattern bind_｛_｝ L M = op-let ⦅ cons (ast L) (cons (bind (ast M)) nil) ⦆
+module RenSub (Op : Set) (sig : Op → List ℕ) where
 
-  open import Data.Maybe using (Maybe; nothing; just)
-  open ArgResult (Maybe ℕ) (Maybe ℕ)
-
-  _>>=_ : Maybe ℕ → (ℕ → Maybe ℕ) → Maybe ℕ
-  x >>= f
-      with x
-  ... | nothing = nothing
-  ... | just n = f n
-
-  eval-op : (o : Op) → ArgsRes (sig o) → Maybe ℕ
-  eval-op (op-num n) res = just n
-  eval-op op-mult (rcons x (rcons y rnil)) = do n ← x; m ← y; just (n * m)
-  eval-op op-let (rcons x (rcons f rnil)) = do n ← x; f (just n)
-
-  V : Set
-  V = Maybe ℕ
-
-  open GenericSub V (λ x → nothing) (λ σ x → x)
-
-  E : Foldable (Maybe ℕ) (Maybe ℕ) Op sig (Substitution (Maybe ℕ))
-  E = record { ret = λ x → x ;
-               fold-free-var = λ x → nothing ;
-               fold-op = eval-op ;
-               env = SubEnv  {- apply-subst = λ σ x → x -} }
-
-  module ArithFold = Folder E
-
-  eval : ABT → Maybe ℕ
-  eval = ArithFold.fold id
-
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
-
-  _ : eval ($ 2 × $ 21) ≡ just 42
-  _ = refl
+  open Rename Op sig
+  open Subst Op sig
   
-  _ : eval (` 0) ≡ nothing
-  _ = refl
-  
-  _ : eval (bind $ 21 ｛ $ 2 × ` 0 ｝) ≡ just 42
-  _ = refl
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂)
+  open import Data.Product using (_×_; Σ; Σ-syntax; ∃; ∃-syntax; proj₁; proj₂)
+    renaming (_,_ to ⟨_,_⟩)
+  open import Syntax
+  open OpSig Op sig using (ABT; `_; _⦅_⦆; cons; bind; rename→subst; ⟪_⟫)
 
-  _ : eval (bind ` 0 ｛ $ 2 × $ 21 ｝) ≡ nothing
-  _ = refl
+  _∼_ = λ x M → ` x ≡ M
+  _≈_ = _≡_
+
+  open RelSubst Var ABT _∼_
+  open RelateSubst Var ABT _∼_ (λ x → x) suc (λ x → ` x) shift
+          (λ {x} → refl) (λ { refl → refl })
+  open SimAux {Op}{sig}{Var}{ABT}{ABT}{ABT} _∼_ _≈_
+  open Foldable R renaming (fold-op to fop₁)
+  open Foldable S renaming (fold-op to fop₂)
+
+  rs-op∼ : ∀{op : Op}{Rs₁ : ArgsRes₁ (sig op)}{Rs₂ : ArgsRes₂ (sig op)}
+         → ArgsRes∼ Rs₁ Rs₂
+         → fop₁ op Rs₁ ≈ fop₂ op Rs₂
+  rs-op∼ {op}{Rs₁}{Rs₂} rs∼ = G
+    where
+    I : ∀{b}{R₁ : ArgRes₁ b}{R₂ : ArgRes₂ b} → ArgRes∼ R₁ R₂ → r-arg R₁ ≡ s-arg R₂
+    I {zero} {R₁} {.R₁} refl = refl
+    I {suc b} {R₁} {R₂} r~ = cong bind (I (r~ refl))
+    
+    H : ∀{bs}{Rs₁ : ArgsRes₁ bs}{Rs₂ : ArgsRes₂ bs} → ArgsRes∼ Rs₁ Rs₂ → r-args Rs₁ ≡ s-args Rs₂
+    H {[]} {rnil₁} {rnil₂} rnil∼ = refl
+    H {b ∷ bs} {rcons₁ r₁ Rs₁} {rcons₂ r₂ Rs₂} (rcons∼ r∼ rs∼) = cong₂ cons (I r∼) (H rs∼)
+
+    G : op ⦅ r-args Rs₁ ⦆ ≡ op ⦅ s-args Rs₂ ⦆
+    G = cong (_⦅_⦆ op) (H rs∼)
+
+  RenSubRel : Related R S
+  RenSubRel = record { _∼_ = _∼_ ; _≈_ = _≈_ ; env∼ = RelSub ; ret≈ = λ {v₁} {v₂} z → z ;
+                       vars∼ = λ {x} → refl ; op∼ = rs-op∼ }
+
+  module Sim = Simulator R S RenSubRel
+
+  rensub-sim : ∀{σ₁}{σ₂} (M : ABT) → σ₁ ≊ σ₂ → rename σ₁ M ≡ subst σ₂ M
+  rensub-sim M = Sim.sim {M = M}
+
+  rename→subst-≊ : ∀{ρ} → ρ ≊ rename→subst ρ
+  rename→subst-≊ {↑ k} = r-up
+  rename→subst-≊ {x • ρ} = r-cons refl rename→subst-≊
+
+  rensub : ∀ ρ M → rename ρ M ≡ subst (rename→subst ρ) M
+  rensub ρ M = rensub-sim M rename→subst-≊
+
+
