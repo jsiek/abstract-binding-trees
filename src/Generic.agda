@@ -58,7 +58,7 @@ record Foldable (V : Set) (C : Set) (Op : Set) (sig : Op → List ℕ) : Set whe
   field ret : V → C
   field fold-free-var : Var → V
   field fold-op : (o : Op) → ArgsRes (sig o) → C
-  field apply-subst : Substitution V → V → V
+  field apply-subst : Substitution V → V → V       {- I hope to replace this. -Jeremy -}
 
 
 module Folder {V}{C}{Op}{sig} (F : Foldable V C Op sig) where
@@ -285,6 +285,11 @@ module RenSub
     G : op ⦅ r-args Rs₁ ⦆ ≡ op ⦅ s-args Rs₂ ⦆
     G = cong (_⦅_⦆ op) (H rs∼)
 
+  rs-apply∼ : ∀{v₁ v₂ τ₁ τ₂} → v₁ ∼ v₂ → τ₁ ≊ τ₂ → app₁ τ₁ v₁ ∼ app₂ τ₂ v₂
+  rs-apply∼ {x} {.(` x)} {.(↑ _)} refl r-up = refl
+  rs-apply∼ {zero} {.(` 0)} {.(_ • _)} refl (SimAux.r-cons refl τ₁≊τ₂) = refl
+  rs-apply∼ {suc x} {.(` suc x)} {.(_ • _)} refl (SimAux.r-cons x₁ τ₁≊τ₂) = rs-apply∼ refl τ₁≊τ₂
+
   RenSubRel : Related R S
   RenSubRel = record
               { _∼_ = _∼_ ;
@@ -292,7 +297,7 @@ module RenSub
                 ret≈ = λ {v₁} {v₂} z → z ;
                 vars∼ = λ {x} → refl ;
                 op∼ = rs-op∼ ;
-                apply∼ = {!!} }
+                apply∼ = rs-apply∼ }
 
   module Sim = Simulator R S RenSubRel
 
