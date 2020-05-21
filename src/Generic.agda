@@ -131,15 +131,10 @@ module Simulator {Op sig}{V₁ C₁} {V₂ C₂}
   (R : Related F₁ F₂)
   where
 
-  module Folder₁ = Folder F₁
-  fold₁ = Folder₁.fold
-  _⨟₁_ = Folder₁._⨟_
-  drop₁ = Folder₁.drop
-  
-  module Folder₂ = Folder F₂
-  fold₂ = Folder₂.fold
-  _⨟₂_ = Folder₂._⨟_
-  drop₂ = Folder₂.drop
+  open Folder F₁
+     renaming (fold to fold₁; _⨟_ to _⨟₁_; drop to drop₁; fold-arg to fold-arg₁; fold-args to fold-args₁)
+  open Folder F₂
+     renaming (fold to fold₂; _⨟_ to _⨟₂_; drop to drop₂; fold-arg to fold-arg₂; fold-args to fold-args₂)
 
   open Related R
   open SimAux {Op}{sig} _∼_ _≈_
@@ -155,8 +150,7 @@ module Simulator {Op sig}{V₁ C₁} {V₂ C₂}
   ≊-drop {.(_ • _)} {.(_ • _)} {suc k} (r-cons x σ₁≊σ₂) = ≊-drop σ₁≊σ₂
 
   ≊-⨟ : ∀{σ₁}{τ₁}{σ₂}{τ₂}
-    → σ₁ ≊ σ₂
-    → τ₁ ≊ τ₂
+    → σ₁ ≊ σ₂  →  τ₁ ≊ τ₂
     → (σ₁ ⨟₁ τ₁) ≊ (σ₂ ⨟₂ τ₂)
   ≊-⨟ (r-up{k = k}) τ₁≊τ₂ = ≊-drop τ₁≊τ₂
   ≊-⨟ (r-cons v₁∼v₂ σ₁≊σ₂) τ₁≊τ₂ =
@@ -166,26 +160,23 @@ module Simulator {Op sig}{V₁ C₁} {V₂ C₂}
   sim : ∀{M}{σ₁ σ₂}
      → σ₁ ≊ σ₂
      → (fold₁ σ₁ M) ≈ (fold₂ σ₂ M)
-     
   sim-arg : ∀{σ₁}{σ₂}{b}{arg : Arg b}
      → σ₁ ≊ σ₂
-     → ArgRes∼ (Folder₁.fold-arg σ₁ arg) (Folder₂.fold-arg σ₂ arg)
-  sim-arg {σ₁} {σ₂} {zero} {ast M} σ₁≊σ₂ = sim {M} σ₁≊σ₂ 
-  sim-arg {σ₁} {σ₂} {suc b} {bind arg} σ₁≊σ₂ {v₁}{v₂} v₁∼v₂ =
-     sim-arg {v₁ • (σ₁ ⨟₁ ↑ 1)}{v₂ • (σ₂ ⨟₂ ↑ 1)}{b} {arg} (r-cons v₁∼v₂ (≊-⨟ σ₁≊σ₂ r-up))
-
+     → ArgRes∼ (fold-arg₁ σ₁ arg) (fold-arg₂ σ₂ arg)
   sim-args : ∀{σ₁}{σ₂}{bs}{args : Args bs}
      → σ₁ ≊ σ₂
-     → ArgsRes∼ (Folder₁.fold-args σ₁ args) (Folder₂.fold-args σ₂ args)
-  sim-args {σ₁} {σ₂} {[]} {nil} σ₁≊σ₂ = rnil∼
-  sim-args {σ₁} {σ₂} {b ∷ bs} {cons A As} σ₁≊σ₂ =
-    let sa = sim-arg {arg = A} σ₁≊σ₂ in
-    rcons∼ sa (sim-args {σ₁} {σ₂} {bs} {As} σ₁≊σ₂)
-
+     → ArgsRes∼ (fold-args₁ σ₁ args) (fold-args₂ σ₂ args)
   sim {` x} {↑ k} {.(↑ _)} r-up = ret≈ vars∼
   sim {` zero} {v₁ • _} {v₂ • _} (r-cons v₁∼v₂ σ₁~σ₂) = ret≈ v₁∼v₂
   sim {` suc x} {_ • σ₁} {_ • σ₂} (r-cons _ σ₁~σ₂) = sim {` x} {σ₁} {σ₂} σ₁~σ₂ 
   sim {op ⦅ args ⦆}{σ₁}{σ₂} σ₁~σ₂ = op∼ (sim-args {args = args} σ₁~σ₂)
+  sim-arg {σ₁} {σ₂} {zero} {ast M} σ₁≊σ₂ = sim {M} σ₁≊σ₂ 
+  sim-arg {σ₁} {σ₂} {suc b} {bind arg} σ₁≊σ₂ {v₁}{v₂} v₁∼v₂ =
+     sim-arg {v₁ • (σ₁ ⨟₁ ↑ 1)}{v₂ • (σ₂ ⨟₂ ↑ 1)}{b} {arg} (r-cons v₁∼v₂ (≊-⨟ σ₁≊σ₂ r-up))
+  sim-args {σ₁} {σ₂} {[]} {nil} σ₁≊σ₂ = rnil∼
+  sim-args {σ₁} {σ₂} {b ∷ bs} {cons A As} σ₁≊σ₂ =
+    let sa = sim-arg {arg = A} σ₁≊σ₂ in
+    rcons∼ sa (sim-args {σ₁} {σ₂} {bs} {As} σ₁≊σ₂)
 
 {-------------------------
 
@@ -253,6 +244,67 @@ module Subst
 
   subst : Subst → ABT → ABT
   subst = SubFold.fold
+
+module RenSub
+  (Op : Set)
+  (sig : Op → List ℕ)
+  where
+
+  open Rename Op sig
+  open Subst Op sig
+  
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂)
+  open import Data.Product using (_×_; Σ; Σ-syntax; ∃; ∃-syntax; proj₁; proj₂)
+    renaming (_,_ to ⟨_,_⟩)
+  open import Syntax
+  open OpSig Op sig using (ABT; `_; _⦅_⦆; cons; bind; rename→subst)
+  open SimAux {Op}{sig}{Var}{ABT}{ABT}{ABT} (λ x M → ` x ≡ M) _≡_
+
+  open Foldable R renaming (fold-free-var to ffvar₁; ret to ret₁; apply-subst to app₁; fold-op to fop₁)
+  open Foldable S renaming (fold-free-var to ffvar₂; ret to ret₂; apply-subst to app₂; fold-op to fop₂)
+
+  _∼_ : Var → ABT → Set
+  _∼_ = λ x M → ` x ≡ M
+
+  _≈_ : ABT → ABT → Set
+  _≈_ = _≡_
+
+  rs-op∼ : ∀{op : Op}{Rs₁ : ArgsRes₁ (sig op)}{Rs₂ : ArgsRes₂ (sig op)}
+         → ArgsRes∼ Rs₁ Rs₂
+         → fop₁ op Rs₁ ≈ fop₂ op Rs₂
+  rs-op∼ {op}{Rs₁}{Rs₂} rs∼ = G
+    where
+    I : ∀{b}{R₁ : ArgRes₁ b}{R₂ : ArgRes₂ b} → ArgRes∼ R₁ R₂ → r-arg R₁ ≡ s-arg R₂
+    I {zero} {R₁} {.R₁} refl = refl
+    I {suc b} {R₁} {R₂} r~ = cong bind (I (r~ refl))
+    
+    H : ∀{bs}{Rs₁ : ArgsRes₁ bs}{Rs₂ : ArgsRes₂ bs} → ArgsRes∼ Rs₁ Rs₂ → r-args Rs₁ ≡ s-args Rs₂
+    H {[]} {rnil₁} {rnil₂} rnil∼ = refl
+    H {b ∷ bs} {rcons₁ r₁ Rs₁} {rcons₂ r₂ Rs₂} (rcons∼ r∼ rs∼) = cong₂ cons (I r∼) (H rs∼)
+
+    G : op ⦅ r-args Rs₁ ⦆ ≡ op ⦅ s-args Rs₂ ⦆
+    G = cong (_⦅_⦆ op) (H rs∼)
+
+  RenSubRel : Related R S
+  RenSubRel = record
+              { _∼_ = _∼_ ;
+                _≈_ = _≈_ ;
+                ret≈ = λ {v₁} {v₂} z → z ;
+                vars∼ = λ {x} → refl ;
+                op∼ = rs-op∼ ;
+                apply∼ = {!!} }
+
+  module Sim = Simulator R S RenSubRel
+
+  rensub-sim : ∀{σ₁}{σ₂} (M : ABT) → σ₁ ≊ σ₂ → rename σ₁ M ≡ subst σ₂ M
+  rensub-sim M = Sim.sim {M = M}
+
+  rename→subst-≊ : ∀{ρ} → ρ ≊ rename→subst ρ
+  rename→subst-≊ {↑ k} = r-up
+  rename→subst-≊ {x • ρ} = r-cons refl rename→subst-≊
+  
+  rensub : ∀ ρ M → rename ρ M ≡ subst (rename→subst ρ) M
+  rensub ρ M = rensub-sim M rename→subst-≊
 
 
 module LambdaExample where
