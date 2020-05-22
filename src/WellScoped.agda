@@ -49,12 +49,18 @@ module WellScoped (Op : Set) (sig : Op → List ℕ) where
   x<Γ→Γ∋x {zero} {B ∷ Γ}{A} x<Γ = refl
   x<Γ→Γ∋x {suc x} {B ∷ Γ} (s≤s x<Γ) = x<Γ→Γ∋x {x} {Γ} x<Γ
 
+  {- move to GenericSub? will require non-trivial changes -}
+  inc-suc : ∀ ρ x → ⧼ inc ρ ⧽ x ≡ suc (⧼ ρ ⧽ x)
+  inc-suc (↑ k) x = refl
+  inc-suc (x₁ • ρ) zero = refl
+  inc-suc (x₁ • ρ) (suc x) = inc-suc ρ x
+  
   WS-extend : ∀{v : Var} {σ : Substitution Var} {Γ Δ : List ⊤} {A : ⊤}
       → v < length Δ →
       (WSRename (length Γ) σ (length Δ)) →
       (WSRename (length (A ∷ Γ)) (extend σ v) (length (A ∷ Δ)))
   WS-extend v<Δ σΓΔ {zero} (s≤s x<Γ) = ≤-step v<Δ
-  WS-extend v<Δ σΓΔ {suc x} (s≤s x<Γ) = s≤s {!!}
+  WS-extend {v}{σ} v<Δ σΓΔ {suc x} (s≤s x<Γ) rewrite inc-suc σ x = s≤s (σΓΔ x<Γ)
 
   WSPres : Preservable ⊤ R
   WSPres = record
@@ -67,10 +73,14 @@ module WellScoped (Op : Set) (sig : Op → List ℕ) where
              ; ret-pres = λ {v} {Γ} {A} → WS-var v
              ; var-pres = λ {x} {Γ} Γ∋x → Γ∋x→x<Γ {x}{Γ} Γ∋x
              ; op-pres = {!!}
-             ; var-inv = λ { {Γ}{x}{A} (WS-var x x<Γ) → x<Γ→Γ∋x x<Γ }
+             ; var-inv = λ { {Γ}{x}{A} (WS-var x x<Γ) → x<Γ→Γ∋x {x}{Γ} x<Γ }
              ; op-inv = {!!}
              }
 
+  open Preservation R WSPres
+
   WS-rename : ∀ {Γ Δ ρ M} → WSRename Γ ρ Δ → WS Γ M → WS Δ (rename ρ M)
-  WS-rename = {!!}
+  WS-rename {Γ} =
+    let p = preserve in
+    {!!}
 
