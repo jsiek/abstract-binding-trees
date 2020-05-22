@@ -11,7 +11,12 @@ open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
 
 open import Data.List using (List; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
+open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Unit using (tt)
+open import Data.Empty using (⊥)
+open import Data.Product
+  using (_×_; proj₁; proj₂; ∃; ∃-syntax)
+  renaming (_,_ to ⟨_,_⟩)
 
 open import Syntax
 
@@ -37,7 +42,7 @@ module ArgResult (V : Set) (C : Set) where
     rnil : ArgsRes []
     rcons : ∀{b bs} → ArgRes b → ArgsRes bs → ArgsRes (b ∷ bs)
 
-record Foldable (V : Set) (C : Set) (Op : Set) (sig : Op → List ℕ) (Env : Set) : Set where
+record Foldable V C (Op : Set) (sig : Op → List ℕ) Env : Set where
   open ArgResult V C
   field env : EnvSig Env V
   open EnvSig env public
@@ -73,15 +78,15 @@ module Folder {V}{C}{Op}{sig}{Env} (F : Foldable V C Op sig Env) where
 
  ---------------------------------------}
 
-module SimAux {Op sig}{V₁ C₁ : Set} {V₂ C₂ : Set}
-  (_∼_ : V₁ → V₂ → Set) (_≈_ : C₁ → C₂ → Set)
-  where
+module SimArgResult {Op : Set}{sig : Op → List ℕ}{V₁ C₁ : Set} {V₂ C₂ : Set}
+  (_∼_ : V₁ → V₂ → Set) (_≈_ : C₁ → C₂ → Set) where
   
   open import Syntax
-  open OpSig Op sig using ()
   
-  open ArgResult V₁ C₁ renaming (ArgRes to ArgRes₁; ArgsRes to ArgsRes₁; rnil to rnil₁; rcons to rcons₁) public
-  open ArgResult V₂ C₂ renaming (ArgRes to ArgRes₂; ArgsRes to ArgsRes₂; rnil to rnil₂; rcons to rcons₂) public
+  open ArgResult V₁ C₁ renaming (ArgRes to ArgRes₁; ArgsRes to ArgsRes₁;
+      rnil to rnil₁; rcons to rcons₁) public
+  open ArgResult V₂ C₂ renaming (ArgRes to ArgRes₂; ArgsRes to ArgsRes₂;
+      rnil to rnil₂; rcons to rcons₂) public
   
   ArgRes∼ : ∀ {b} → ArgRes₁ b → ArgRes₂ b → Set 
   ArgRes∼ {zero} c₁ c₂ = c₁ ≈ c₂
@@ -98,9 +103,11 @@ record RelatedEnv {V₁ Env₁}{V₂ Env₂}
   (_∼_ : V₁ → V₂ → Set)
   (E₁ : EnvSig Env₁ V₁) (E₂ : EnvSig Env₂ V₂)
   : Set₁ where
+  open EnvSig E₁ renaming (lookup to lookup₁; extend to ext₁)
+  open EnvSig E₂ renaming (lookup to lookup₂; extend to ext₂)
   field _≊_ : Env₁ → Env₂ → Set
-  field lookup∼ : ∀ {σ₁ σ₂} → σ₁ ≊ σ₂ → ∀{x} → EnvSig.lookup E₁ σ₁ x ∼ EnvSig.lookup E₂ σ₂ x
-  field extend≊ : ∀ {v₁ v₂ σ₁ σ₂} → v₁ ∼ v₂ → σ₁ ≊ σ₂ → EnvSig.extend E₁ σ₁ v₁ ≊ EnvSig.extend E₂ σ₂ v₂
+  field lookup∼ : ∀ {σ₁ σ₂} → σ₁ ≊ σ₂ → ∀{x} → lookup₁ σ₁ x ∼ lookup₂ σ₂ x
+  field extend≊ : ∀ {v₁ v₂ σ₁ σ₂} → v₁ ∼ v₂ → σ₁ ≊ σ₂ → ext₁ σ₁ v₁ ≊ ext₂ σ₂ v₂
   
 record Related {Op sig}{V₁ C₁ Env₁} {V₂ C₂ Env₂}
   (F₁ : Foldable V₁ C₁ Op sig Env₁)
@@ -110,12 +117,14 @@ record Related {Op sig}{V₁ C₁ Env₁} {V₂ C₂ Env₂}
   field _≈_ : C₁ → C₂ → Set
   field env∼ : RelatedEnv _∼_ (Foldable.env F₁) (Foldable.env F₂)
   open RelatedEnv env∼ public
-  open SimAux {Op}{sig} _∼_ _≈_
-  open Foldable F₁ renaming (fold-free-var to ffvar₁; ret to ret₁; fold-op to fop₁)
-  open Foldable F₂ renaming (fold-free-var to ffvar₂; ret to ret₂; fold-op to fop₂)
+  open SimArgResult {Op}{sig} _∼_ _≈_
+  open Foldable F₁
+      renaming (fold-free-var to ffvar₁; ret to ret₁; fold-op to fop₁)
+  open Foldable F₂
+      renaming (fold-free-var to ffvar₂; ret to ret₂; fold-op to fop₂)
   field ret≈ : ∀{v₁ v₂} → v₁ ∼ v₂ → ret₁ v₁ ≈ ret₂ v₂
   field vars∼ : ∀{x} → ffvar₁ x ∼ ffvar₂ x
-  field op∼ : ∀{op : Op}{Rs₁ : ArgsRes₁ (sig op)}{Rs₂ : ArgsRes₂ (sig op)} → ArgsRes∼ Rs₁ Rs₂ → fop₁ op Rs₁ ≈ fop₂ op Rs₂
+  field op∼ : ∀{op}{Rs₁}{Rs₂} → ArgsRes∼ Rs₁ Rs₂ → fop₁ op Rs₁ ≈ fop₂ op Rs₂
 
 module Simulator {Op sig}{V₁ C₁ Env₁} {V₂ C₂ Env₂}
   (F₁ : Foldable V₁ C₁ Op sig Env₁)
@@ -129,7 +138,7 @@ module Simulator {Op sig}{V₁ C₁ Env₁} {V₂ C₂ Env₂}
      renaming (fold to fold₂; fold-arg to fold-arg₂; fold-args to fold-args₂)
 
   open Related R
-  open SimAux {Op}{sig} _∼_ _≈_
+  open SimArgResult {Op}{sig} _∼_ _≈_
 
   open import Syntax
   open OpSig Op sig hiding (_⨟_; drop)
@@ -158,45 +167,108 @@ module Simulator {Op sig}{V₁ C₁ Env₁} {V₂ C₂ Env₂}
 
  Preservation of a predicate
 
- 𝒫 M → 𝒮 σ → 𝒞 (fold σ M)
+      A : I
+      Γ : List I
+
+      Γ ⊢ M ⦂ A 
+    → σ ⦂ Γ ⇒ Δ 
+    → Δ ⊢ (fold σ M) ⦂ A
 
  ---------------------------}
 
-module Preservation {Op sig}{V C Env}
-  (F : Foldable V C Op sig Env)
-  (𝒫 : OpSig.ABT Op sig → Set)
-  (𝒮 : Env → Set)
-  (𝒱 : V → Set)
-  (𝒞 : C → Set)
-  (ret-pres : ∀{v} → 𝒱 v → 𝒞 (Foldable.ret F v))
-  (lookup-pres : ∀{σ}{x} → 𝒮 σ → 𝒱 (EnvSig.lookup (Foldable.env F) σ x))
-  where
-  open Folder F
+_∋_⦂_ : ∀{I : Set} → List I → Var → I → Set
+_∋_⦂_ {I} [] x A = ⊥
+_∋_⦂_ {I} (B ∷ Γ) zero A = A ≡ B
+_∋_⦂_ {I} (B ∷ Γ) (suc x) A = Γ ∋ x ⦂ A
+
+module PresArgResult (Op : Set) (sig : Op → List ℕ) {V C : Set}{I : Set}
+  (_⊢_⦂_ : List I → OpSig.ABT Op sig → I → Set)
+  (_⊢v_⦂_ : List I → V → I → Set)
+  (_⊢c_⦂_ : List I → C → I → Set) where
+  
+  open import Syntax
   open OpSig Op sig
+
+  _∣_⊢a_⦂_ : (b : ℕ) → List I → Arg b → I → Set
+  0 ∣ Γ ⊢a ast M ⦂ A = Γ ⊢ M ⦂ A
+  (suc b) ∣ Γ ⊢a bind arg ⦂ A = ∀{v Δ} → Δ ⊢v v ⦂ A → b ∣ (A ∷ Γ) ⊢a arg ⦂ A
+
+  data _∣_⊢as_⦂_ : (bs : List ℕ) → List I → Args bs → List I → Set where
+    nilp : ∀{Γ} → [] ∣ Γ ⊢as nil ⦂ []
+    consp : ∀{b bs}{arg args}{Γ}{A}{As}
+       → b ∣ Γ ⊢a arg ⦂ A
+       → bs ∣ Γ ⊢as args ⦂ As
+       → (b ∷ bs ) ∣ Γ ⊢as (cons arg args) ⦂ (A ∷ As)
 
   open ArgResult V C
   
-  ArgResP : ∀ {b} → ArgRes b → Set 
-  ArgResP {zero} c = 𝒞 c
-  ArgResP {suc b} f = ∀{v} → 𝒱 v → ArgResP (f v)
+  _∣_⊢r_⦂_ : (b : ℕ) → List I → ArgRes b → I → Set
+  0 ∣ Γ ⊢r c ⦂ A = Γ ⊢c c ⦂ A
+  (suc b) ∣ Γ ⊢r f ⦂ A = ∀{v} → Γ ⊢v v ⦂ A → b ∣ (A ∷ Γ) ⊢r (f v) ⦂ A
   
-  data ArgsResP : {bs : List ℕ} → ArgsRes bs → Set where
-    rnilp : ArgsResP rnil
-    rconsp : ∀{b bs}{r rs}
-        → ArgResP r
-        → ArgsResP rs
-        → ArgsResP {b ∷ bs} (rcons r rs)
+  data _∣_⊢_⦂_ : (bs : List ℕ) → List I → ArgsRes bs → List I → Set where
+    rnilp : ∀{Γ} → [] ∣ Γ ⊢ rnil ⦂ []
+    rconsp : ∀{b bs}{r rs}{Γ}{A}{As}
+        → b ∣ Γ ⊢r r ⦂ A
+        → bs ∣ Γ ⊢ rs ⦂ As
+        → (b ∷ bs) ∣ Γ ⊢ rcons r rs ⦂ (A ∷ As)
 
-  preserve : ∀{M}{σ} → 𝒫 M → 𝒮 σ → 𝒞 (fold σ M)
-  preserve {` x} {σ} PM Qσ = ret-pres (lookup-pres Qσ)
-  preserve {op ⦅ args ⦆} {σ} PM Qσ = {!!}
-  
 
-{-------------------------
+record Preservable {Op}{sig}{V C Env} (I : Set) (F : Foldable V C Op sig Env) : Set₁ where
+  field _⊢_⦂_ : List I → OpSig.ABT Op sig → I → Set
+  field _⦂_⇒_ : Env → List I → List I → Set
+  field _⊢v_⦂_ : List I → V → I → Set
+  field _⊢c_⦂_ : List I → C → I → Set
+  open PresArgResult Op sig _⊢_⦂_ _⊢v_⦂_ _⊢c_⦂_
+  open Foldable F
+  open ArgResult V C
+  open OpSig Op sig using (`_; _⦅_⦆)
+  field lookup-pres : ∀{σ}{Γ Δ}{x}{A} → σ ⦂ Γ ⇒ Δ → Γ ∋ x ⦂ A → Δ ⊢v (EnvSig.lookup env σ x) ⦂ A
+  field extend-pres : ∀ {v}{σ}{Γ Δ A} → Δ ⊢v v ⦂ A → σ ⦂ Γ ⇒ Δ → (EnvSig.extend env σ v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+  field ret-pres : ∀{v}{Γ}{A} → Γ ⊢v v ⦂ A → Γ ⊢c (ret v) ⦂ A
+  field var-pres : ∀{x}{Γ}{A} → Γ ∋ x ⦂ A → Γ ⊢v fold-free-var x ⦂ A
+  field op-pres : ∀ {op}{Rs}{Γ}{A}{As} → sig op ∣ Γ ⊢ Rs ⦂ As → Γ ⊢c (fold-op op Rs) ⦂ A
+  field var-inv : ∀{Γ x A} → Γ ⊢ ` x ⦂ A → Γ ∋ x ⦂ A
+  field op-inv : ∀{Γ op args A} → Γ ⊢ op ⦅ args ⦆ ⦂ A → ∃[ As ] (sig op ∣ Γ ⊢as args ⦂ As)
 
- Example: Arithmetic Evaluation
 
- -------------------------}
+module Preservation {Op sig}{V C Env}{I}
+  (F : Foldable V C Op sig Env)
+  (P : Preservable I F)
+  where
+  open Folder F using (fold; fold-arg; fold-args)
+  open Foldable F using (env; fold-op)
+  open Preservable P
+
+  open PresArgResult Op sig _⊢_⦂_ _⊢v_⦂_ _⊢c_⦂_
+  open OpSig Op sig
+
+  preserve : ∀{M}{σ}{Γ Δ}{A}
+     → Γ ⊢ M ⦂ A
+     → σ ⦂ Γ ⇒ Δ
+     → Δ ⊢c fold σ M ⦂ A
+  pres-arg : ∀{b}{Γ Δ}{arg : Arg b}{A}{σ}
+     → b ∣ Γ ⊢a arg ⦂ A
+     → σ ⦂ Γ ⇒ Δ
+     → b ∣ Δ ⊢r fold-arg σ arg ⦂ A
+  pres-args : ∀{bs}{Γ Δ}{args : Args bs}{As}{σ}
+     → bs ∣ Γ ⊢as args ⦂ As
+     → σ ⦂ Γ ⇒ Δ
+     → bs ∣ Δ ⊢ fold-args σ args ⦂ As
+  preserve {` x} {σ} {Γ} {Δ} {A} ⊢M σΓΔ = ret-pres (lookup-pres σΓΔ (var-inv ⊢M))
+  preserve {op ⦅ args ⦆} {σ} {Γ} {Δ} {A} ⊢M σΓΔ
+      with op-inv ⊢M
+  ... | ⟨ As , ⊢args ⟩ = op-pres (pres-args ⊢args σΓΔ)
+  pres-arg {zero} {Γ} {Δ} {ast M} {A} {σ} ⊢arg σΓΔ = preserve ⊢arg σΓΔ
+  pres-arg {suc b} {Γ} {Δ} {bind arg} {A} {σ} ⊢arg σΓΔ {v} ⊢v⦂A =
+      pres-arg {b} {arg = arg} (⊢arg {v} ⊢v⦂A) (extend-pres ⊢v⦂A σΓΔ)
+  pres-args {[]} {Γ} {Δ} {nil} {[]} ⊢args σΓΔ = rnilp
+  pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷ As} (consp ⊢arg ⊢args) σΓΔ =
+      rconsp (pres-arg {b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
+
+{---------------------------------------
+ Function representation of environments
+ ---------------------------------------}
 
 module FunEnv (V : Set) where
 
@@ -206,64 +278,6 @@ module FunEnv (V : Set) where
 
   fun-is-env : EnvSig (Var → V) V
   fun-is-env = record { lookup = λ ρ x → ρ x ; extend = extend }
-
-module ArithExample where
-
-  data Op : Set where
-    op-num : ℕ → Op
-    op-mult : Op
-    op-let : Op
-
-  sig : Op → List ℕ
-  sig (op-num n) = []
-  sig op-mult = 0 ∷ 0 ∷ []
-  sig op-let = 0 ∷ 1 ∷ []
-
-  open OpSig Op sig
-  pattern $ n  = op-num n ⦅ nil ⦆
-  infixl 7  _×_
-  pattern _×_ L M = op-mult ⦅ cons (ast L) (cons (ast M) nil) ⦆
-  pattern bind_｛_｝ L M = op-let ⦅ cons (ast L) (cons (bind (ast M)) nil) ⦆
-
-  open import Data.Maybe using (Maybe; nothing; just)
-  open ArgResult (Maybe ℕ) (Maybe ℕ)
-
-  _>>=_ : Maybe ℕ → (ℕ → Maybe ℕ) → Maybe ℕ
-  x >>= f
-      with x
-  ... | nothing = nothing
-  ... | just n = f n
-
-  eval-op : (o : Op) → ArgsRes (sig o) → Maybe ℕ
-  eval-op (op-num n) res = just n
-  eval-op op-mult (rcons x (rcons y rnil)) = do n ← x; m ← y; just (n * m)
-  eval-op op-let (rcons x (rcons f rnil)) = do n ← x; f (just n)
-
-  open FunEnv (Maybe ℕ)
-  
-  E : Foldable (Maybe ℕ) (Maybe ℕ) Op sig (Var → (Maybe ℕ))
-  E = record { ret = λ x → x ; fold-free-var = λ x → nothing ;
-               fold-op = eval-op ; env = fun-is-env }
-
-  module ArithFold = Folder E
-
-  eval : ABT → Maybe ℕ
-  eval = ArithFold.fold (λ x → nothing)
-
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
-
-  _ : eval ($ 2 × $ 21) ≡ just 42
-  _ = refl
-  
-  _ : eval (` 0) ≡ nothing
-  _ = refl
-  
-  _ : eval (bind $ 21 ｛ $ 2 × ` 0 ｝) ≡ just 42
-  _ = refl
-
-  _ : eval (bind ` 0 ｛ $ 2 × $ 21 ｝) ≡ nothing
-  _ = refl
-
 
 {--------------------------------------------
 
@@ -446,7 +460,7 @@ module RenSub (Op : Set) (sig : Op → List ℕ) where
   open RelSubst Var ABT _∼_
   open RelateSubst Var ABT _∼_ (λ x → x) suc (λ x → ` x) shift
           (λ {x} → refl) (λ { refl → refl })
-  open SimAux {Op}{sig}{Var}{ABT}{ABT}{ABT} _∼_ _≈_
+  open SimArgResult {Op}{sig}{Var}{ABT}{ABT}{ABT} _∼_ _≈_
   open Foldable R renaming (fold-op to fop₁)
   open Foldable S renaming (fold-op to fop₂)
 
