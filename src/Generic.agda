@@ -191,7 +191,10 @@ module PresArgResult (Op : Set) (sig : Op → List ℕ) {V C : Set}{I : Set}
 
   _∣_⊢a_⦂_ : (b : ℕ) → List I → Arg b → I → Set
   0 ∣ Γ ⊢a ast M ⦂ A = Γ ⊢ M ⦂ A
-  (suc b) ∣ Γ ⊢a bind arg ⦂ A = ∀{v Δ} → Δ ⊢v v ⦂ A → b ∣ (A ∷ Γ) ⊢a arg ⦂ A
+  (suc b) ∣ [] ⊢a bind arg ⦂ A = ⊥
+  (suc b) ∣ (B ∷ Γ) ⊢a bind arg ⦂ A =
+     ∀{v Δ} → Δ ⊢v v ⦂ B
+            → b ∣ Γ ⊢a arg ⦂ A
 
   data _∣_⊢as_⦂_ : (bs : List ℕ) → List I → Args bs → List I → Set where
     nilp : ∀{Γ} → [] ∣ Γ ⊢as nil ⦂ []
@@ -204,7 +207,10 @@ module PresArgResult (Op : Set) (sig : Op → List ℕ) {V C : Set}{I : Set}
   
   _∣_⊢r_⦂_ : (b : ℕ) → List I → ArgRes b → I → Set
   0 ∣ Γ ⊢r c ⦂ A = Γ ⊢c c ⦂ A
-  (suc b) ∣ Γ ⊢r f ⦂ A = ∀{v} → Γ ⊢v v ⦂ A → b ∣ (A ∷ Γ) ⊢r (f v) ⦂ A
+  (suc b) ∣ [] ⊢r f ⦂ A = ⊥
+  (suc b) ∣ (B ∷ Γ) ⊢r f ⦂ A =
+     ∀{v} → Γ ⊢v v ⦂ B
+          → b ∣ Γ ⊢r (f v) ⦂ A
   
   data _∣_⊢_⦂_ : (bs : List ℕ) → List I → ArgsRes bs → List I → Set where
     rnilp : ∀{Γ} → [] ∣ Γ ⊢ rnil ⦂ []
@@ -240,7 +246,7 @@ module Preservation {Op sig}{V C Env}{I}
   open Foldable F using (env; fold-op)
   open Preservable P
 
-  open PresArgResult Op sig _⊢_⦂_ _⊢v_⦂_ _⊢c_⦂_
+  open PresArgResult Op sig _⊢_⦂_ _⊢v_⦂_ _⊢c_⦂_ public
   open OpSig Op sig
 
   preserve : ∀{M}{σ}{Γ Δ}{A}
@@ -260,8 +266,10 @@ module Preservation {Op sig}{V C Env}{I}
       with op-inv ⊢M
   ... | ⟨ As , ⊢args ⟩ = op-pres (pres-args ⊢args σΓΔ)
   pres-arg {zero} {Γ} {Δ} {ast M} {A} {σ} ⊢arg σΓΔ = preserve ⊢arg σΓΔ
-  pres-arg {suc b} {Γ} {Δ} {bind arg} {A} {σ} ⊢arg σΓΔ {v} ⊢v⦂A =
+  pres-arg {suc b} {B ∷ Γ} {Δ} {OpSig.bind arg} {A} {σ} ⊢arg σΓΔ = {!!}
+{-
       pres-arg {b} {arg = arg} (⊢arg {v} ⊢v⦂A) (extend-pres ⊢v⦂A σΓΔ)
+-}
   pres-args {[]} {Γ} {Δ} {nil} {[]} ⊢args σΓΔ = rnilp
   pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷ As} (consp ⊢arg ⊢args) σΓΔ =
       rconsp (pres-arg {b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
