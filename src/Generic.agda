@@ -189,35 +189,40 @@ module PresArgResult (Op : Set) (sig : Op → List ℕ) {V C : Set}{I : Set}
   open import Syntax
   open OpSig Op sig
 
-  _∣_⊢a_⦂_ : (b : ℕ) → List I → Arg b → I → Set
-  0 ∣ Γ ⊢a ast M ⦂ A = Γ ⊢ M ⦂ A
-  (suc b) ∣ [] ⊢a bind arg ⦂ A = ⊥
-  (suc b) ∣ (B ∷ Γ) ⊢a bind arg ⦂ A =
-     ∀{v Δ} → Δ ⊢v v ⦂ B
-            → b ∣ Γ ⊢a arg ⦂ A
+  data _∣_⊢a_⦂_ : (b : ℕ) → List I → Arg b → I → Set where
+    ast-a : ∀{Γ}{M}{A}
+       → Γ ⊢ M ⦂ A
+       → 0 ∣ Γ ⊢a ast M ⦂ A
+       
+    bind-a : ∀{b}{B Γ arg A}
+       → b ∣ (B ∷ Γ) ⊢a arg ⦂ A
+       → (suc b) ∣ Γ ⊢a bind arg ⦂ A
 
   data _∣_⊢as_⦂_ : (bs : List ℕ) → List I → Args bs → List I → Set where
-    nilp : ∀{Γ} → [] ∣ Γ ⊢as nil ⦂ []
-    consp : ∀{b bs}{arg args}{Γ}{A}{As}
+    nil-a : ∀{Γ} → [] ∣ Γ ⊢as nil ⦂ []
+    
+    cons-a : ∀{b bs}{arg args}{Γ}{A}{As}
        → b ∣ Γ ⊢a arg ⦂ A
        → bs ∣ Γ ⊢as args ⦂ As
-       → (b ∷ bs ) ∣ Γ ⊢as (cons arg args) ⦂ (A ∷ As)
+       → (b ∷ bs) ∣ Γ ⊢as (cons arg args) ⦂ (A ∷ As)
 
   open ArgResult V C
   
-  _∣_⊢r_⦂_ : (b : ℕ) → List I → ArgRes b → I → Set
-  0 ∣ Γ ⊢r c ⦂ A = Γ ⊢c c ⦂ A
-  (suc b) ∣ [] ⊢r f ⦂ A = ⊥
-  (suc b) ∣ (B ∷ Γ) ⊢r f ⦂ A =
-     ∀{v} → Γ ⊢v v ⦂ B
-          → b ∣ Γ ⊢r (f v) ⦂ A
+  data _∣_⊢r_⦂_ : (b : ℕ) → List I → ArgRes b → I → Set where
+    ast-r : ∀{Δ}{c}{A}
+       → Δ ⊢c c ⦂ A
+       → 0 ∣ Δ ⊢r c ⦂ A
+       
+    bind-r : ∀{b}{A B Δ}{f}
+          → (∀ {v} → (B ∷ Δ) ⊢v v ⦂ B → b ∣ (B ∷ Δ) ⊢r (f v) ⦂ A)
+          → (suc b) ∣ Δ ⊢r f ⦂ A
   
-  data _∣_⊢_⦂_ : (bs : List ℕ) → List I → ArgsRes bs → List I → Set where
-    rnilp : ∀{Γ} → [] ∣ Γ ⊢ rnil ⦂ []
-    rconsp : ∀{b bs}{r rs}{Γ}{A}{As}
-        → b ∣ Γ ⊢r r ⦂ A
-        → bs ∣ Γ ⊢ rs ⦂ As
-        → (b ∷ bs) ∣ Γ ⊢ rcons r rs ⦂ (A ∷ As)
+  data _∣_⊢rs_⦂_ : (bs : List ℕ) → List I → ArgsRes bs → List I → Set where
+    nil-r : ∀{Δ} → [] ∣ Δ ⊢rs rnil ⦂ []
+    cons-r : ∀{b bs}{r rs}{Δ}{A}{As}
+        → b ∣ Δ ⊢r r ⦂ A
+        → bs ∣ Δ ⊢rs rs ⦂ As
+        → (b ∷ bs) ∣ Δ ⊢rs rcons r rs ⦂ (A ∷ As)
 
 
 record Preservable {Op}{sig}{V C Env} (I : Set) (F : Foldable V C Op sig Env) : Set₁ where
@@ -230,10 +235,10 @@ record Preservable {Op}{sig}{V C Env} (I : Set) (F : Foldable V C Op sig Env) : 
   open ArgResult V C
   open OpSig Op sig using (`_; _⦅_⦆)
   field lookup-pres : ∀{σ}{Γ Δ}{x}{A} → σ ⦂ Γ ⇒ Δ → Γ ∋ x ⦂ A → Δ ⊢v (EnvSig.lookup env σ x) ⦂ A
-  field extend-pres : ∀ {v}{σ}{Γ Δ A} → Δ ⊢v v ⦂ A → σ ⦂ Γ ⇒ Δ → (EnvSig.extend env σ v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
-  field ret-pres : ∀{v}{Γ}{A} → Γ ⊢v v ⦂ A → Γ ⊢c (ret v) ⦂ A
-  field var-pres : ∀{x}{Γ}{A} → Γ ∋ x ⦂ A → Γ ⊢v fold-free-var x ⦂ A
-  field op-pres : ∀ {op}{Rs}{Γ}{A}{As} → sig op ∣ Γ ⊢ Rs ⦂ As → Γ ⊢c (fold-op op Rs) ⦂ A
+  field extend-pres : ∀ {v}{σ}{Γ Δ A} → (A ∷ Δ) ⊢v v ⦂ A → σ ⦂ Γ ⇒ Δ → (EnvSig.extend env σ v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+  field ret-pres : ∀{v}{Δ}{A} → Δ ⊢v v ⦂ A → Δ ⊢c (ret v) ⦂ A
+  field var-pres : ∀{x}{Δ}{A} → Δ ∋ x ⦂ A → Δ ⊢v fold-free-var x ⦂ A
+  field op-pres : ∀ {op}{Rs}{Δ}{A}{As} → sig op ∣ Δ ⊢rs Rs ⦂ As → Δ ⊢c (fold-op op Rs) ⦂ A
   field var-inv : ∀{Γ x A} → Γ ⊢ ` x ⦂ A → Γ ∋ x ⦂ A
   field op-inv : ∀{Γ op args A} → Γ ⊢ op ⦅ args ⦆ ⦂ A → ∃[ As ] (sig op ∣ Γ ⊢as args ⦂ As)
 
@@ -260,19 +265,22 @@ module Preservation {Op sig}{V C Env}{I}
   pres-args : ∀{bs}{Γ Δ}{args : Args bs}{As}{σ}
      → bs ∣ Γ ⊢as args ⦂ As
      → σ ⦂ Γ ⇒ Δ
-     → bs ∣ Δ ⊢ fold-args σ args ⦂ As
+     → bs ∣ Δ ⊢rs fold-args σ args ⦂ As
   preserve {` x} {σ} {Γ} {Δ} {A} ⊢M σΓΔ = ret-pres (lookup-pres σΓΔ (var-inv ⊢M))
   preserve {op ⦅ args ⦆} {σ} {Γ} {Δ} {A} ⊢M σΓΔ
       with op-inv ⊢M
   ... | ⟨ As , ⊢args ⟩ = op-pres (pres-args ⊢args σΓΔ)
-  pres-arg {zero} {Γ} {Δ} {ast M} {A} {σ} ⊢arg σΓΔ = preserve ⊢arg σΓΔ
-  pres-arg {suc b} {B ∷ Γ} {Δ} {OpSig.bind arg} {A} {σ} ⊢arg σΓΔ = {!!}
-{-
-      pres-arg {b} {arg = arg} (⊢arg {v} ⊢v⦂A) (extend-pres ⊢v⦂A σΓΔ)
--}
-  pres-args {[]} {Γ} {Δ} {nil} {[]} ⊢args σΓΔ = rnilp
-  pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷ As} (consp ⊢arg ⊢args) σΓΔ =
-      rconsp (pres-arg {b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
+  pres-arg {zero} {Γ} {Δ} {ast M} {A} {σ} (PresArgResult.ast-a ⊢M) σΓΔ = ast-r (preserve ⊢M σΓΔ)
+  pres-arg {suc b} {Γ} {Δ} {bind arg} {A} {σ} (PresArgResult.bind-a {b}{B} ⊢arg) σΓΔ =
+      bind-r G
+      where
+      G : ∀ {v}
+         → (B ∷ Δ) ⊢v v ⦂ B
+         → b ∣ B ∷ Δ ⊢r fold-arg σ (bind arg) v ⦂ A
+      G {v} ⊢v⦂B = pres-arg {b} {arg = arg} ⊢arg (extend-pres ⊢v⦂B σΓΔ)
+  pres-args {[]} {Γ} {Δ} {nil} {[]} ⊢args σΓΔ = nil-r
+  pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷ As} (cons-a ⊢arg ⊢args) σΓΔ =
+      cons-r (pres-arg {b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
 
 {---------------------------------------
  Function representation of environments

@@ -10,6 +10,9 @@ open import Data.Nat.Properties using (≤-step)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong)
+open import Data.Product
+  using (_×_; proj₁; proj₂; ∃; ∃-syntax)
+  renaming (_,_ to ⟨_,_⟩)
 
 module WellScoped (Op : Set) (sig : Op → List ℕ) where
 
@@ -60,10 +63,10 @@ module WellScoped (Op : Set) (sig : Op → List ℕ) where
   inc-suc (x₁ • ρ) (suc x) = inc-suc ρ x
   
   WS-extend : ∀{v : Var} {σ : Substitution Var} {Γ Δ : List ⊤} {A : ⊤}
-      → v < length Δ →
+      → v < length (A ∷ Δ) →
       (WSRename (length Γ) σ (length Δ)) →
       (WSRename (length (A ∷ Γ)) (extend σ v) (length (A ∷ Δ)))
-  WS-extend v<Δ σΓΔ {zero} (s≤s x<Γ) = ≤-step v<Δ
+  WS-extend v<Δ σΓΔ {zero} (s≤s x<Γ) = v<Δ
   WS-extend {v}{σ} v<Δ σΓΔ {suc x} (s≤s x<Γ) rewrite inc-suc σ x = s≤s (σΓΔ x<Γ)
 
   _⊢_⦂_ : List ⊤ → ABT → ⊤ → Set
@@ -77,37 +80,19 @@ module WellScoped (Op : Set) (sig : Op → List ℕ) where
   open PresArgResult Op sig _⊢_⦂_ _⊢v_⦂_ _⊢c_⦂_
   open Foldable R
 
-  op-pres : ∀ {op : Op} {Rs : ArgsRes (sig op)} {Γ : List ⊤} {A : ⊤} {As : List ⊤}
-     → sig op ∣ Γ ⊢ Rs ⦂ As
-     → WS (length Γ) (fold-op op Rs)
-  op-pres {op}{Rs}{Γ}{A}{As} ⊢Rs = WS-op (G ⊢Rs)
+  op-pres : ∀ {op : Op} {Rs : ArgsRes (sig op)} {Δ : List ⊤} {A : ⊤} {As : List ⊤}
+     → sig op ∣ Δ ⊢rs Rs ⦂ As
+     → WS (length Δ) (fold-op op Rs)
+  op-pres {op}{Rs}{Δ}{A}{As} ⊢Rs = WS-op (G ⊢Rs)
       where
-      H : ∀{b}{R : ArgRes b}{A}{Γ} → b ∣ Γ ⊢r R ⦂ A → WS-arg (b + length Γ) (r-arg R)
-      H {zero} {R} {A}{Γ} ⊢R = WS-ast ⊢R
-      H {suc b} {R} {A}{Γ} ⊢R =
-         let r0 = R 0 in
-         let rr = ⊢R {!!} in
-         let IH = H {b}{Γ = A ∷ Γ} rr in
-         WS-bind {!!}
-      G : ∀{bs}{Rs : ArgsRes bs}{As} → bs ∣ Γ ⊢ Rs ⦂ As → WS-args (length Γ) (r-args Rs)
-      G {[]} {ArgResult.rnil} PresArgResult.rnilp = WS-nil
-      G {b ∷ bs} {ArgResult.rcons R Rs} (PresArgResult.rconsp ⊢R ⊢Rs) = WS-cons {!!} (G {bs} {Rs} ⊢Rs)
-
-  WSPres : Preservable ⊤ R
-  WSPres = record
-             { _⊢_⦂_ = _⊢_⦂_
-             ; _⦂_⇒_ = λ σ Γ Δ → WSRename (length Γ) σ (length Δ)
-             ; _⊢v_⦂_ = _⊢v_⦂_
-             ; _⊢c_⦂_ = _⊢c_⦂_
-             ; lookup-pres = λ {σ}{Γ}{Δ}{x} σΓΔ Γ∋x → σΓΔ (Γ∋x→x<Γ {Γ = Γ} Γ∋x)
-             ; extend-pres = λ {v}{σ}{Γ}{Δ}{A} → WS-extend {Γ = Γ}{Δ}
-             ; ret-pres = λ {v} {Γ} {A} → WS-var v
-             ; var-pres = λ {x} {Γ} Γ∋x → Γ∋x→x<Γ {x}{Γ} Γ∋x
-             ; op-pres = op-pres
-             ; var-inv = λ { {Γ}{x}{A} (WS-var x x<Γ) → x<Γ→Γ∋x {x}{Γ} x<Γ }
-             ; op-inv = {!!}
-             }
-  open Preservation R WSPres
+      H : ∀{b}{R : ArgRes b}{A}{Δ} → b ∣ Δ ⊢r R ⦂ A → WS-arg (length Δ) (r-arg R)
+      H {.0} {M} {A} {Δ} (ast-r WSM) = WS-ast WSM
+      H {.(suc _)} {R} {A} {Δ} (bind-r f) =
+          let ⊢R = f {0} (s≤s z≤n) in
+          WS-bind (H ⊢R)
+      G : ∀{bs}{Rs : ArgsRes bs}{As} → bs ∣ Δ ⊢rs Rs ⦂ As → WS-args (length Δ) (r-args Rs)
+      G {.[]} {.rnil} {.[]} nil-r = WS-nil
+      G {.(_ ∷ _)} {.(rcons _ _)} {.(_ ∷ _)} (cons-r ⊢R ⊢Rs) = WS-cons (H ⊢R) (G ⊢Rs)
 
   mkenv : ℕ → List ⊤
   mkenv 0 = []
@@ -118,6 +103,40 @@ module WellScoped (Op : Set) (sig : Op → List ℕ) where
   len-mkenv (suc n) = cong suc (len-mkenv n)
 
   {-# REWRITE len-mkenv #-}
+
+  op-inv : ∀ {Γ : List ⊤} {op : Op} {args : Args (sig op)} {A : ⊤}
+     → WS (length Γ) (op ⦅ args ⦆)
+     → ∃[ As ] ((sig op) ∣ Γ ⊢as args ⦂ As)
+  op-inv {Γ} {op} {As} {A} (WS-op WS-As) = ⟨ mkenv (length (sig op)) , G WS-As ⟩
+      where
+      H : ∀{b}{Γ}{A : Arg b}
+         → WS-arg (length Γ) A
+         → b ∣ Γ ⊢a A ⦂ tt
+      H {.0} {Γ} {ast M} (WS-ast WSM) = ast-a WSM
+      H {.(suc _)} {Γ} {.(bind _)} (WS-bind WS-A) = bind-a (H WS-A)
+      
+      G : ∀{bs}{Γ}{As : Args bs}
+         → WS-args (length Γ) As
+         → bs ∣ Γ ⊢as As ⦂ mkenv (length bs)
+      G {.[]} {Γ} {.nil} WS-nil = nil-a
+      G {.(_ ∷ _)} {Γ} {.(cons _ _)} (WS-cons WS-A WS-As) = cons-a (H WS-A) (G WS-As)
+
+
+  WSPres : Preservable ⊤ R
+  WSPres = record
+             { _⊢_⦂_ = _⊢_⦂_
+             ; _⦂_⇒_ = λ σ Γ Δ → WSRename (length Γ) σ (length Δ)
+             ; _⊢v_⦂_ = _⊢v_⦂_
+             ; _⊢c_⦂_ = _⊢c_⦂_
+             ; lookup-pres = λ {σ}{Γ}{Δ}{x} σΓΔ Γ∋x → σΓΔ (Γ∋x→x<Γ {Γ = Γ} Γ∋x)
+             ; extend-pres = λ {v}{σ}{Γ}{Δ}{A} → WS-extend {Γ = Γ}{Δ} 
+             ; ret-pres = λ {v} {Γ} {A} → WS-var v
+             ; var-pres = λ {x} {Γ} Γ∋x → Γ∋x→x<Γ {x}{Γ} Γ∋x
+             ; op-pres = op-pres
+             ; var-inv = λ { {Γ}{x}{A} (WS-var x x<Γ) → x<Γ→Γ∋x {x}{Γ} x<Γ }
+             ; op-inv = op-inv
+             }
+  open Preservation R WSPres
 
   WS-rename : ∀ {Γ Δ ρ M} → WSRename Γ ρ Δ → WS Γ M → WS Δ (rename ρ M)
   WS-rename {Γ}{Δ}{ρ}{M} ΓρΔ WSM = preserve {M}{ρ}{mkenv Γ}{mkenv Δ} WSM ΓρΔ
