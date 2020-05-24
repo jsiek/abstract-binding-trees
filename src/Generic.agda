@@ -181,10 +181,8 @@ _∋_⦂_ {I} [] x A = ⊥
 _∋_⦂_ {I} (B ∷ Γ) zero A = A ≡ B
 _∋_⦂_ {I} (B ∷ Γ) (suc x) A = Γ ∋ x ⦂ A
 
-module PresArgResult (Op : Set) (sig : Op → List ℕ) {V C : Set}{I : Set}
+module ABTPred (Op : Set) (sig : Op → List ℕ) {I : Set}
   (𝒫 : Op → List I → I → Set)
-  (_⊢v_⦂_ : List I → V → I → Set)
-  (_⊢c_⦂_ : List I → C → I → Set)
   where
   
   open import Syntax
@@ -220,6 +218,15 @@ module PresArgResult (Op : Set) (sig : Op → List ℕ) {V C : Set}{I : Set}
        → bs ∣ Γ ⊢as args ⦂ As
        → (b ∷ bs) ∣ Γ ⊢as (cons arg args) ⦂ (A ∷ As)
 
+
+
+module PresArgResult (Op : Set) (sig : Op → List ℕ) {V C : Set}{I : Set}
+  (𝒫 : Op → List I → I → Set)
+  (_⊢v_⦂_ : List I → V → I → Set)
+  (_⊢c_⦂_ : List I → C → I → Set)
+  where
+
+  open ABTPred Op sig 𝒫
   open ArgResult V C
   
   data _∣_⊢r_⦂_ : (b : ℕ) → List I → ArgRes b → I → Set where
@@ -263,6 +270,7 @@ module Preservation {Op sig}{V C Env}{I}
   open Foldable F using (env; fold-op)
   open Preservable P
 
+  open ABTPred Op sig 𝒫
   open PresArgResult Op sig 𝒫 _⊢v_⦂_ _⊢c_⦂_ public
   open OpSig Op sig
 
@@ -282,8 +290,8 @@ module Preservation {Op sig}{V C Env}{I}
       ret-pres (lookup-pres σΓΔ ∋x)
   preserve {op OpSig.⦅ args ⦆} {σ} {Γ} {Δ} {A} (op-op ⊢args 𝒫op) σΓΔ =
       op-pres (pres-args ⊢args σΓΔ) 𝒫op
-  pres-arg {zero} {Γ} {Δ} {ast M} {A} {σ} (PresArgResult.ast-a ⊢M) σΓΔ = ast-r (preserve ⊢M σΓΔ)
-  pres-arg {suc b} {Γ} {Δ} {bind arg} {A} {σ} (PresArgResult.bind-a {b}{B} ⊢arg) σΓΔ =
+  pres-arg {zero} {Γ} {Δ} {ast M} {A} {σ} (ast-a ⊢M) σΓΔ = ast-r (preserve ⊢M σΓΔ)
+  pres-arg {suc b} {Γ} {Δ} {bind arg} {A} {σ} (bind-a {b}{B} ⊢arg) σΓΔ =
       bind-r G
       where
       G : ∀ {v}
@@ -354,6 +362,29 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
 
   rename : Rename → ABT → ABT
   rename = RenFold.fold
+
+module RenamePres (Op : Set) (sig : Op → List ℕ) {I : Set}
+  (𝒫 : Op → List I → I → Set)
+  where
+  open OpSig Op sig
+  open Rename Op sig
+  open ArgResult Var ABT
+  open ABTPred Op sig 𝒫
+  open PresArgResult Op sig {Var}{ABT} 𝒫 _∋_⦂_ _⊢_⦂_
+
+  res→arg : ∀{Δ}{b}{R : ArgRes b}{A : I}
+     → b ∣ Δ ⊢r R ⦂ A
+     → b ∣ Δ ⊢a r-arg R ⦂ A
+  res→arg {Δ} {zero} {R} {A} (PresArgResult.ast-r ⊢R) = ast-a ⊢R
+  res→arg {Δ} {suc b} {R} {A} (PresArgResult.bind-r f) = bind-a (res→arg (f refl))
+  
+  res→args : ∀{Δ}{bs}{Rs : ArgsRes bs}{As : List I}
+     → bs ∣ Δ ⊢rs Rs ⦂ As
+     → bs ∣ Δ ⊢as r-args Rs ⦂ As
+  res→args {Δ} {[]} {.rnil} {.[]} PresArgResult.nil-r = nil-a
+  res→args {Δ} {b ∷ bs} {.(rcons _ _)} {.(_ ∷ _)} (PresArgResult.cons-r ⊢R ⊢Rs) =
+      cons-a (res→arg ⊢R) (res→args ⊢Rs)
+
 
 module Subst (Op : Set) (sig : Op → List ℕ) where
 
