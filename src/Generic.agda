@@ -182,14 +182,28 @@ _∋_⦂_ {I} (B ∷ Γ) zero A = A ≡ B
 _∋_⦂_ {I} (B ∷ Γ) (suc x) A = Γ ∋ x ⦂ A
 
 module PresArgResult (Op : Set) (sig : Op → List ℕ) {V C : Set}{I : Set}
-  (_⊢_⦂_ : List I → OpSig.ABT Op sig → I → Set)
+  (𝒫 : Op → List I → I → Set)
   (_⊢v_⦂_ : List I → V → I → Set)
-  (_⊢c_⦂_ : List I → C → I → Set) where
+  (_⊢c_⦂_ : List I → C → I → Set)
+  where
   
   open import Syntax
   open OpSig Op sig
 
-  data _∣_⊢a_⦂_ : (b : ℕ) → List I → Arg b → I → Set where
+  data _⊢_⦂_ : List I → OpSig.ABT Op sig → I → Set
+  data _∣_⊢a_⦂_ : (b : ℕ) → List I → Arg b → I → Set 
+  data _∣_⊢as_⦂_ : (bs : List ℕ) → List I → Args bs → List I → Set   
+  
+  data _⊢_⦂_ where
+    var-p : ∀{Γ x A}
+       → Γ ∋ x ⦂ A
+       → Γ ⊢ ` x ⦂ A
+    op-op : ∀{Γ op args}{B As}
+       → (sig op) ∣ Γ ⊢as args ⦂ As
+       → 𝒫 op As B
+       → Γ ⊢ op ⦅ args ⦆ ⦂ B
+
+  data _∣_⊢a_⦂_ where
     ast-a : ∀{Γ}{M}{A}
        → Γ ⊢ M ⦂ A
        → 0 ∣ Γ ⊢a ast M ⦂ A
@@ -198,7 +212,7 @@ module PresArgResult (Op : Set) (sig : Op → List ℕ) {V C : Set}{I : Set}
        → b ∣ (B ∷ Γ) ⊢a arg ⦂ A
        → (suc b) ∣ Γ ⊢a bind arg ⦂ A
 
-  data _∣_⊢as_⦂_ : (bs : List ℕ) → List I → Args bs → List I → Set where
+  data _∣_⊢as_⦂_ where
     nil-a : ∀{Γ} → [] ∣ Γ ⊢as nil ⦂ []
     
     cons-a : ∀{b bs}{arg args}{Γ}{A}{As}
@@ -226,21 +240,19 @@ module PresArgResult (Op : Set) (sig : Op → List ℕ) {V C : Set}{I : Set}
 
 
 record Preservable {Op}{sig}{V C Env} (I : Set) (F : Foldable V C Op sig Env) : Set₁ where
-  field _⊢_⦂_ : List I → OpSig.ABT Op sig → I → Set
+  open OpSig Op sig using (ABT; `_; _⦅_⦆)
+  field 𝒫 : Op → List I → I → Set
   field _⦂_⇒_ : Env → List I → List I → Set
   field _⊢v_⦂_ : List I → V → I → Set
   field _⊢c_⦂_ : List I → C → I → Set
-  open PresArgResult Op sig _⊢_⦂_ _⊢v_⦂_ _⊢c_⦂_
+  open PresArgResult Op sig 𝒫 _⊢v_⦂_ _⊢c_⦂_
   open Foldable F
   open ArgResult V C
-  open OpSig Op sig using (`_; _⦅_⦆)
   field lookup-pres : ∀{σ}{Γ Δ}{x}{A} → σ ⦂ Γ ⇒ Δ → Γ ∋ x ⦂ A → Δ ⊢v (EnvSig.lookup env σ x) ⦂ A
   field extend-pres : ∀ {v}{σ}{Γ Δ A} → (A ∷ Δ) ⊢v v ⦂ A → σ ⦂ Γ ⇒ Δ → (EnvSig.extend env σ v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
   field ret-pres : ∀{v}{Δ}{A} → Δ ⊢v v ⦂ A → Δ ⊢c (ret v) ⦂ A
   field var-pres : ∀{x}{Δ}{A} → Δ ∋ x ⦂ A → Δ ⊢v fold-free-var x ⦂ A
-  field op-pres : ∀ {op}{Rs}{Δ}{A}{As} → sig op ∣ Δ ⊢rs Rs ⦂ As → Δ ⊢c (fold-op op Rs) ⦂ A
-  field var-inv : ∀{Γ x A} → Γ ⊢ ` x ⦂ A → Γ ∋ x ⦂ A
-  field op-inv : ∀{Γ op args A} → Γ ⊢ op ⦅ args ⦆ ⦂ A → ∃[ As ] (sig op ∣ Γ ⊢as args ⦂ As)
+  field op-pres : ∀ {op}{Rs}{Δ}{A}{As} → sig op ∣ Δ ⊢rs Rs ⦂ As → 𝒫 op As A → Δ ⊢c (fold-op op Rs) ⦂ A
 
 
 module Preservation {Op sig}{V C Env}{I}
@@ -251,7 +263,7 @@ module Preservation {Op sig}{V C Env}{I}
   open Foldable F using (env; fold-op)
   open Preservable P
 
-  open PresArgResult Op sig _⊢_⦂_ _⊢v_⦂_ _⊢c_⦂_ public
+  open PresArgResult Op sig 𝒫 _⊢v_⦂_ _⊢c_⦂_ public
   open OpSig Op sig
 
   preserve : ∀{M}{σ}{Γ Δ}{A}
@@ -266,10 +278,10 @@ module Preservation {Op sig}{V C Env}{I}
      → bs ∣ Γ ⊢as args ⦂ As
      → σ ⦂ Γ ⇒ Δ
      → bs ∣ Δ ⊢rs fold-args σ args ⦂ As
-  preserve {` x} {σ} {Γ} {Δ} {A} ⊢M σΓΔ = ret-pres (lookup-pres σΓΔ (var-inv ⊢M))
-  preserve {op ⦅ args ⦆} {σ} {Γ} {Δ} {A} ⊢M σΓΔ
-      with op-inv ⊢M
-  ... | ⟨ As , ⊢args ⟩ = op-pres (pres-args ⊢args σΓΔ)
+  preserve {OpSig.` x} {σ} {Γ} {Δ} {A} (var-p ∋x) σΓΔ =
+      ret-pres (lookup-pres σΓΔ ∋x)
+  preserve {op OpSig.⦅ args ⦆} {σ} {Γ} {Δ} {A} (op-op ⊢args 𝒫op) σΓΔ =
+      op-pres (pres-args ⊢args σΓΔ) 𝒫op
   pres-arg {zero} {Γ} {Δ} {ast M} {A} {σ} (PresArgResult.ast-a ⊢M) σΓΔ = ast-r (preserve ⊢M σΓΔ)
   pres-arg {suc b} {Γ} {Δ} {bind arg} {A} {σ} (PresArgResult.bind-a {b}{B} ⊢arg) σΓΔ =
       bind-r G
