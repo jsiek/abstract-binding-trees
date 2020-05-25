@@ -219,7 +219,6 @@ module ABTPred (Op : Set) (sig : Op → List ℕ) {I : Set}
        → (b ∷ bs) ∣ Γ ⊢as (cons arg args) ⦂ (A ∷ As)
 
 
-
 module PresArgResult (Op : Set) (sig : Op → List ℕ) {V C : Set}{I : Set}
   (𝒫 : Op → List I → I → Set)
   (_⊢v_⦂_ : List I → V → I → Set)
@@ -337,6 +336,73 @@ module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
 
   sub-is-env : EnvSig (Substitution V) V
   sub-is-env = record { lookup = ⧼_⧽ ; extend = extend }
+
+module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
+  (Op : Set) (sig : Op → List ℕ) {I : Set}
+  (𝒫 : Op → List I → I → Set)
+  (_⊢v_⦂_ : List I → V → I → Set)
+  (⊢var→val : ∀{Δ}{x}{A} → Δ ∋ x ⦂ A → Δ ⊢v var→val x ⦂ A)
+  where
+
+  open OpSig Op sig hiding (shift)
+  open GenericSub V var→val shift
+  open ArgResult V ABT
+  
+  s-op : (o : Op) → ArgsRes (sig o) → ABT
+  s-arg : ∀{b} → ArgRes b → Arg b
+  s-args : ∀{bs} → ArgsRes bs → Args bs
+  s-op o Rs = o ⦅ s-args Rs ⦆
+  s-arg {zero} M = ast M
+  s-arg {suc b} f = bind (s-arg (f (var→val 0)))
+  s-args rnil = nil
+  s-args (rcons r rs) = cons (s-arg r) (s-args rs)
+
+  gen-subst-is-foldable : Foldable V ABT Op sig (Substitution V)
+  gen-subst-is-foldable = record { ret = {!!} ; fold-free-var = {!!} ; 
+               fold-op = s-op ; env = {!!} }
+
+  module SubstFold = Folder gen-subst-is-foldable
+
+  gen-subst : Substitution V → ABT → ABT
+  gen-subst = SubstFold.fold
+
+
+module SubstPres (V : Set) (var→val : Var → V) (shift : V → V)
+  (Op : Set) (sig : Op → List ℕ) {I : Set}
+  (𝒫 : Op → List I → I → Set)
+  (_⊢v_⦂_ : List I → V → I → Set)
+  (⊢var→val : ∀{Δ}{x}{A} → Δ ∋ x ⦂ A → Δ ⊢v var→val x ⦂ A)
+  where
+
+  open OpSig Op sig hiding (shift)
+  open GenericSub V var→val shift
+  open ArgResult V ABT
+  open ABTPred Op sig 𝒫
+  open PresArgResult Op sig {V}{ABT} 𝒫 _⊢v_⦂_ _⊢_⦂_
+
+  s-op : (o : Op) → ArgsRes (sig o) → ABT
+  s-arg : ∀{b} → ArgRes b → Arg b
+  s-args : ∀{bs} → ArgsRes bs → Args bs
+  s-op o Rs = o ⦅ s-args Rs ⦆
+  s-arg {zero} M = ast M
+  s-arg {suc b} f = bind (s-arg (f (var→val 0)))
+  s-args rnil = nil
+  s-args (rcons r rs) = cons (s-arg r) (s-args rs)
+
+  res→arg : ∀{Δ : List I}{b}{R : ArgRes b}{A : I}
+     → b ∣ Δ ⊢r R ⦂ A
+     → b ∣ Δ ⊢a s-arg R ⦂ A
+  res→arg {Δ} {zero} {R} {A} (PresArgResult.ast-r ⊢R) = ast-a ⊢R
+  res→arg {Δ} {suc b} {R} {A} (PresArgResult.bind-r f) =
+      bind-a (res→arg (f (⊢var→val refl)))
+  
+  res→args : ∀{Δ}{bs}{Rs : ArgsRes bs}{As : List I}
+     → bs ∣ Δ ⊢rs Rs ⦂ As
+     → bs ∣ Δ ⊢as s-args Rs ⦂ As
+  res→args {Δ} {[]} {.rnil} {.[]} PresArgResult.nil-r = nil-a
+  res→args {Δ} {b ∷ bs} {.(rcons _ _)} {.(_ ∷ _)} (PresArgResult.cons-r ⊢R ⊢Rs) =
+      cons-a (res→arg ⊢R) (res→args ⊢Rs)
+  
 
 module Rename (Op : Set) (sig : Op → List ℕ) where
 
