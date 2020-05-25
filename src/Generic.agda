@@ -338,10 +338,8 @@ module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
   sub-is-env = record { lookup = ⧼_⧽ ; extend = extend }
 
 module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
-  (Op : Set) (sig : Op → List ℕ) {I : Set}
-  (𝒫 : Op → List I → I → Set)
-  (_⊢v_⦂_ : List I → V → I → Set)
-  (⊢var→val : ∀{Δ}{x}{A} → Δ ∋ x ⦂ A → Δ ⊢v var→val x ⦂ A)
+  (Op : Set) (sig : Op → List ℕ) 
+  (val→abt : V → OpSig.ABT Op sig)
   where
 
   open OpSig Op sig hiding (shift)
@@ -358,8 +356,8 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   s-args (rcons r rs) = cons (s-arg r) (s-args rs)
 
   gen-subst-is-foldable : Foldable V ABT Op sig (Substitution V)
-  gen-subst-is-foldable = record { ret = {!!} ; fold-free-var = {!!} ; 
-               fold-op = s-op ; env = {!!} }
+  gen-subst-is-foldable = record { ret = val→abt ; fold-free-var = var→val ; 
+               fold-op = s-op ; env = sub-is-env }
 
   module SubstFold = Folder gen-subst-is-foldable
 
@@ -372,22 +370,18 @@ module SubstPres (V : Set) (var→val : Var → V) (shift : V → V)
   (𝒫 : Op → List I → I → Set)
   (_⊢v_⦂_ : List I → V → I → Set)
   (⊢var→val : ∀{Δ}{x}{A} → Δ ∋ x ⦂ A → Δ ⊢v var→val x ⦂ A)
+  (val→abt : V → OpSig.ABT Op sig)
+  (⊢val→abt : ∀{Δ v A} → Δ ⊢v v ⦂ A → ABTPred._⊢_⦂_ Op sig 𝒫 Δ (Foldable.ret (GenericSubst.gen-subst-is-foldable V var→val shift Op sig val→abt) v) A)
+  (⊢shift : ∀{Δ A B σ x} → Δ ⊢v GenericSub.⧼_⧽ V var→val shift σ x ⦂ B → (A ∷ Δ) ⊢v shift (GenericSub.⧼_⧽ V var→val shift σ x) ⦂ B)
+  (var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x))
   where
 
   open OpSig Op sig hiding (shift)
-  open GenericSub V var→val shift
+  open GenericSub V var→val shift hiding (extend)
+  open GenericSubst V var→val shift Op sig val→abt
   open ArgResult V ABT
   open ABTPred Op sig 𝒫
   open PresArgResult Op sig {V}{ABT} 𝒫 _⊢v_⦂_ _⊢_⦂_
-
-  s-op : (o : Op) → ArgsRes (sig o) → ABT
-  s-arg : ∀{b} → ArgRes b → Arg b
-  s-args : ∀{bs} → ArgsRes bs → Args bs
-  s-op o Rs = o ⦅ s-args Rs ⦆
-  s-arg {zero} M = ast M
-  s-arg {suc b} f = bind (s-arg (f (var→val 0)))
-  s-args rnil = nil
-  s-args (rcons r rs) = cons (s-arg r) (s-args rs)
 
   res→arg : ∀{Δ : List I}{b}{R : ArgRes b}{A : I}
      → b ∣ Δ ⊢r R ⦂ A
@@ -402,91 +396,61 @@ module SubstPres (V : Set) (var→val : Var → V) (shift : V → V)
   res→args {Δ} {[]} {.rnil} {.[]} PresArgResult.nil-r = nil-a
   res→args {Δ} {b ∷ bs} {.(rcons _ _)} {.(_ ∷ _)} (PresArgResult.cons-r ⊢R ⊢Rs) =
       cons-a (res→arg ⊢R) (res→args ⊢Rs)
-  
 
-module Rename (Op : Set) (sig : Op → List ℕ) where
-
-  open OpSig Op sig hiding (rename)
-  open ArgResult Var ABT
-
-  r-op : (o : Op) → ArgsRes (sig o) → ABT
-  r-arg : ∀{b} → ArgRes b → Arg b
-  r-args : ∀{bs} → ArgsRes bs → Args bs
-  r-op o rs = o ⦅ r-args rs ⦆
-  r-arg {zero} M = ast M
-  r-arg {suc b} f = bind (r-arg (f 0))
-  r-args rnil = nil
-  r-args (rcons r rs) = cons (r-arg r) (r-args rs)
-
-  open GenericSub Var (λ x → x) suc
-
-  R : Foldable Var ABT Op sig (Substitution Var)
-  R = record { ret = λ x → ` x ; fold-free-var = λ x → x ; 
-               fold-op = r-op ; env = sub-is-env }
-
-  module RenFold = Folder R
-
-  rename : Rename → ABT → ABT
-  rename = RenFold.fold
-
-module RenamePres (Op : Set) (sig : Op → List ℕ) {I : Set}
-  (𝒫 : Op → List I → I → Set)
-  where
-  open OpSig Op sig
-  open Rename Op sig
-  open ArgResult Var ABT
-  open ABTPred Op sig 𝒫
-  open PresArgResult Op sig {Var}{ABT} 𝒫 _∋_⦂_ _⊢_⦂_
-
-  res→arg : ∀{Δ}{b}{R : ArgRes b}{A : I}
-     → b ∣ Δ ⊢r R ⦂ A
-     → b ∣ Δ ⊢a r-arg R ⦂ A
-  res→arg {Δ} {zero} {R} {A} (PresArgResult.ast-r ⊢R) = ast-a ⊢R
-  res→arg {Δ} {suc b} {R} {A} (PresArgResult.bind-r f) = bind-a (res→arg (f refl))
-  
-  res→args : ∀{Δ}{bs}{Rs : ArgsRes bs}{As : List I}
-     → bs ∣ Δ ⊢rs Rs ⦂ As
-     → bs ∣ Δ ⊢as r-args Rs ⦂ As
-  res→args {Δ} {[]} {.rnil} {.[]} PresArgResult.nil-r = nil-a
-  res→args {Δ} {b ∷ bs} {.(rcons _ _)} {.(_ ∷ _)} (PresArgResult.cons-r ⊢R ⊢Rs) =
-      cons-a (res→arg ⊢R) (res→args ⊢Rs)
-
-  open Foldable R
-
+  open Foldable gen-subst-is-foldable
   open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
-
+  
   op-pres : ∀ {op : Op}{Rs : ArgsRes (sig op)}{Δ : List I}{A : I}{As : List I}
      → sig op ∣ Δ ⊢rs Rs ⦂ As
      → 𝒫 op As A
      → Δ ⊢ (fold-op op Rs) ⦂ A
   op-pres {op}{Rs}{Δ}{A}{As} ⊢Rs 𝒫op =
-      op-op (subst (λ □ → sig op ∣ □ ⊢as r-args Rs ⦂ As) refl (res→args ⊢Rs)) 𝒫op
+      let ⊢sargs = (subst (λ □ → sig op ∣ □ ⊢as s-args Rs ⦂ As) refl (res→args ⊢Rs)) in
+      op-op ⊢sargs 𝒫op
 
-  open GenericSub Var (λ x → x) suc using (⧼_⧽; inc)
-
-  inc-suc : ∀ ρ x → ⧼ inc ρ ⧽ x ≡ suc (⧼ ρ ⧽ x)
-  inc-suc (↑ k) x = refl
+  inc-suc : ∀ ρ x → ⧼ inc ρ ⧽ x ≡ shift (⧼ ρ ⧽ x)
+  inc-suc (↑ k) x = var→val-suc-shift
   inc-suc (x₁ • ρ) zero = refl
   inc-suc (x₁ • ρ) (suc x) = inc-suc ρ x
   
-  _⦂_⇒_ : Rename → List I → List I → Set
-  _⦂_⇒_ ρ Γ Δ = ∀ {x}{A} → Γ ∋ x ⦂ A → Δ ∋ ⧼ ρ ⧽ x ⦂ A
+  _⦂_⇒_ : Substitution V → List I → List I → Set
+  _⦂_⇒_ ρ Γ Δ = ∀ {x}{A} → Γ ∋ x ⦂ A → Δ ⊢v ⧼ ρ ⧽ x ⦂ A
   
-  extend-pres : ∀ {v}{σ}{Γ}{Δ}{A}
-     → (A ∷ Δ) ∋ v ⦂ A
+  extend-pres : ∀ {v : V}{σ}{Γ}{Δ}{A}
+     → (A ∷ Δ) ⊢v v ⦂ A
      → σ ⦂ Γ ⇒ Δ
      → (extend σ v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
   extend-pres {v} {σ} {Γ} {Δ} {A} ∋v σΓΔ {zero} {B} refl = ∋v
   extend-pres {v} {σ} {Γ} {Δ} {A} ∋v σΓΔ {suc x} {B} ∋x
-      rewrite inc-suc σ x = σΓΔ ∋x
-  
-  rename-is-preservable : Preservable I R
-  rename-is-preservable = record { 𝒫 = 𝒫 ; _⦂_⇒_ = _⦂_⇒_ ; _⊢v_⦂_ = _∋_⦂_ ; _⊢c_⦂_ = _⊢_⦂_
-             ; lookup-pres = λ σΓΔ Γ∋x → σΓΔ Γ∋x
-             ; extend-pres = extend-pres
-             ; ret-pres = var-p ; var-pres = λ Γ∋x → Γ∋x ; op-pres = op-pres }
-  open Preservation R rename-is-preservable public
+      rewrite inc-suc σ x =
+      ⊢shift {σ = σ} (σΓΔ ∋x)
 
+  gen-subst-is-preservable : Preservable I gen-subst-is-foldable
+  gen-subst-is-preservable = record { 𝒫 = 𝒫 ; _⦂_⇒_ = _⦂_⇒_ ; _⊢v_⦂_ = _⊢v_⦂_
+   ; _⊢c_⦂_ = _⊢_⦂_
+   ; lookup-pres = λ σΓΔ Γ∋x → σΓΔ Γ∋x ; extend-pres = extend-pres
+   ; ret-pres = ⊢val→abt ; var-pres = λ Γ∋x → ⊢var→val Γ∋x ; op-pres = op-pres }
+  open Preservation gen-subst-is-foldable gen-subst-is-preservable public
+
+
+module Rename (Op : Set) (sig : Op → List ℕ) where
+
+  open OpSig Op sig hiding (rename)
+  open GenericSubst Var (λ x → x) (λ x → x) Op sig (λ x → ` x)
+      renaming (gen-subst to rename) public
+
+
+module RenamePres (Op : Set) (sig : Op → List ℕ) {I : Set}
+  (𝒫 : Op → List I → I → Set)
+  where
+  open OpSig Op sig using (`_)
+
+  open SubstPres Var (λ x → x) suc Op sig 𝒫 _∋_⦂_ (λ {Δ} {x} {A} z → z)
+       `_ ABTPred.var-p (λ {Δ} {A} {B} {σ} {x} z → z) (λ {x} → refl) public
+
+
+
+{-
 
 module Subst (Op : Set) (sig : Op → List ℕ) where
 
@@ -658,3 +622,4 @@ module RenSub (Op : Set) (sig : Op → List ℕ) where
   rensub ρ M = rensub-sim M rename→subst-≊
 
 
+-}
