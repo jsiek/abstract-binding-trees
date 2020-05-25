@@ -1,18 +1,9 @@
-{-# OPTIONS --rewriting #-}
-open import Agda.Builtin.Equality
-open import Agda.Builtin.Equality.Rewrite
-
 open import Syntax
 open import Generic
 
-open import Data.Nat using (ℕ; zero; suc; _+_; pred; _≤_; _<_; _≟_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-step; suc-injective)
-open import Data.List using (List; []; _∷_; length)
+open import Data.Nat using (ℕ; zero; suc)
+open import Data.List using (List; []; _∷_)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂; subst)
-open import Data.Product
-  using (_×_; proj₁; proj₂; ∃; ∃-syntax)
-  renaming (_,_ to ⟨_,_⟩)
 
 module WellScoped (Op : Set) (sig : Op → List ℕ) where
 
