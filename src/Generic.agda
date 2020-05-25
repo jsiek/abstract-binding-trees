@@ -385,6 +385,42 @@ module RenamePres (Op : Set) (sig : Op → List ℕ) {I : Set}
   res→args {Δ} {b ∷ bs} {.(rcons _ _)} {.(_ ∷ _)} (PresArgResult.cons-r ⊢R ⊢Rs) =
       cons-a (res→arg ⊢R) (res→args ⊢Rs)
 
+  open Foldable R
+
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+
+  op-pres : ∀ {op : Op}{Rs : ArgsRes (sig op)}{Δ : List I}{A : I}{As : List I}
+     → sig op ∣ Δ ⊢rs Rs ⦂ As
+     → 𝒫 op As A
+     → Δ ⊢ (fold-op op Rs) ⦂ A
+  op-pres {op}{Rs}{Δ}{A}{As} ⊢Rs 𝒫op =
+      op-op (subst (λ □ → sig op ∣ □ ⊢as r-args Rs ⦂ As) refl (res→args ⊢Rs)) 𝒫op
+
+  open GenericSub Var (λ x → x) suc using (⧼_⧽; inc)
+
+  inc-suc : ∀ ρ x → ⧼ inc ρ ⧽ x ≡ suc (⧼ ρ ⧽ x)
+  inc-suc (↑ k) x = refl
+  inc-suc (x₁ • ρ) zero = refl
+  inc-suc (x₁ • ρ) (suc x) = inc-suc ρ x
+  
+  _⦂_⇒_ : Rename → List I → List I → Set
+  _⦂_⇒_ ρ Γ Δ = ∀ {x}{A} → Γ ∋ x ⦂ A → Δ ∋ ⧼ ρ ⧽ x ⦂ A
+  
+  extend-pres : ∀ {v}{σ}{Γ}{Δ}{A}
+     → (A ∷ Δ) ∋ v ⦂ A
+     → σ ⦂ Γ ⇒ Δ
+     → (extend σ v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+  extend-pres {v} {σ} {Γ} {Δ} {A} ∋v σΓΔ {zero} {B} refl = ∋v
+  extend-pres {v} {σ} {Γ} {Δ} {A} ∋v σΓΔ {suc x} {B} ∋x
+      rewrite inc-suc σ x = σΓΔ ∋x
+  
+  rename-is-preservable : Preservable I R
+  rename-is-preservable = record { 𝒫 = 𝒫 ; _⦂_⇒_ = _⦂_⇒_ ; _⊢v_⦂_ = _∋_⦂_ ; _⊢c_⦂_ = _⊢_⦂_
+             ; lookup-pres = λ σΓΔ Γ∋x → σΓΔ Γ∋x
+             ; extend-pres = extend-pres
+             ; ret-pres = var-p ; var-pres = λ Γ∋x → Γ∋x ; op-pres = op-pres }
+  open Preservation R rename-is-preservable public
+
 
 module Subst (Op : Set) (sig : Op → List ℕ) where
 
