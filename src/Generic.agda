@@ -365,7 +365,7 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   gen-subst = SubstFold.fold
 
 
-module SubstPres (V : Set) (var→val : Var → V) (shift : V → V)
+module GenericSubstPres (V : Set) (var→val : Var → V) (shift : V → V)
   (Op : Set) (sig : Op → List ℕ) {I : Set}
   (𝒫 : Op → List I → I → Set)
   (_⊢v_⦂_ : List I → V → I → Set)
@@ -434,52 +434,32 @@ module SubstPres (V : Set) (var→val : Var → V) (shift : V → V)
 
 
 module Rename (Op : Set) (sig : Op → List ℕ) where
-
-  open OpSig Op sig hiding (rename)
-  open GenericSubst Var (λ x → x) (λ x → x) Op sig (λ x → ` x)
+  open OpSig Op sig using (`_)
+  open GenericSubst Var (λ x → x) suc Op sig `_
       renaming (gen-subst to rename) public
 
 
 module RenamePres (Op : Set) (sig : Op → List ℕ) {I : Set}
-  (𝒫 : Op → List I → I → Set)
-  where
+  (𝒫 : Op → List I → I → Set) where
   open OpSig Op sig using (`_)
-
-  open SubstPres Var (λ x → x) suc Op sig 𝒫 _∋_⦂_ (λ {Δ} {x} {A} z → z)
+  open GenericSubstPres Var (λ x → x) suc Op sig 𝒫 _∋_⦂_ (λ {Δ} {x} {A} z → z)
        `_ ABTPred.var-p (λ {Δ} {A} {B} {σ} {x} z → z) (λ {x} → refl) public
 
 
-
-{-
-
 module Subst (Op : Set) (sig : Op → List ℕ) where
-
-  open OpSig Op sig hiding (rename; shift)
-  open ArgResult ABT ABT
-  
-  s-op : (o : Op) → ArgsRes (sig o) → ABT
-  s-arg : ∀{b} → ArgRes b → Arg b
-  s-args : ∀{bs} → ArgsRes bs → Args bs
-  s-op o Rs = o ⦅ s-args Rs ⦆
-  s-arg {zero} M = ast M
-  s-arg {suc b} f = bind (s-arg (f (` 0)))
-  s-args rnil = nil
-  s-args (rcons r rs) = cons (s-arg r) (s-args rs)
-
+  open Syntax using (↑)
+  open OpSig Op sig using (ABT; `_)
   open Rename Op sig using (rename)
+  open GenericSubst ABT `_ (rename (↑ 1)) Op sig (λ M → M)
+    renaming (gen-subst to subst) public 
 
-  shift : ABT → ABT
-  shift M = rename (↑ 1) M
-
-  open GenericSub ABT (λ x → ` x) shift
-
-  S : Foldable ABT ABT Op sig (Substitution ABT)
-  S = record { ret = λ M → M ; fold-free-var = λ x → ` x ;
-               fold-op = s-op ; env = sub-is-env }
-  module SubFold = Folder S
-
-  subst : Subst → ABT → ABT
-  subst = SubFold.fold
+module SubstPres (Op : Set) (sig : Op → List ℕ) {I : Set}
+  (𝒫 : Op → List I → I → Set) where
+  open OpSig Op sig using (ABT; `_)
+  open Rename Op sig using (rename)
+  open ABTPred Op sig 𝒫
+  
+  open GenericSubstPres ABT `_ (rename (↑ 1)) Op sig 𝒫 _⊢_⦂_ var-p (λ M → M) (λ {Δ} {v} {A} z → z) {!!} (λ {x} → refl)
 
 module TestRenameSubstOnLambda where
 
@@ -535,6 +515,8 @@ module RelSubst (V₁ V₂ : Set) (_∼_ : V₁ → V₂ → Set) where
      r-cons : ∀{v₁ σ₁ v₂ σ₂}
         → v₁ ∼ v₂  →   σ₁ ≊ σ₂
         → (v₁ • σ₁) ≊ (v₂ • σ₂)
+
+{-
 
 module RelateSubst (V₁ V₂ : Set)
   (_∼_ : V₁ → V₂ → Set)
