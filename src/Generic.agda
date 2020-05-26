@@ -386,26 +386,27 @@ module GenericSubstPres (V : Set) (var→val : Var → V) (shift : V → V)
   res→arg : ∀{Δ : List I}{b}{R : ArgRes b}{A : I}
      → b ∣ Δ ⊢r R ⦂ A
      → b ∣ Δ ⊢a s-arg R ⦂ A
-  res→arg {Δ} {zero} {R} {A} (PresArgResult.ast-r ⊢R) = ast-a ⊢R
-  res→arg {Δ} {suc b} {R} {A} (PresArgResult.bind-r f) =
+  res→arg {Δ} {zero} {R} {A} (ast-r ⊢R) = ast-a ⊢R
+  res→arg {Δ} {suc b} {R} {A} (bind-r f) =
       bind-a (res→arg (f (⊢var→val refl)))
   
   res→args : ∀{Δ}{bs}{Rs : ArgsRes bs}{As : List I}
      → bs ∣ Δ ⊢rs Rs ⦂ As
      → bs ∣ Δ ⊢as s-args Rs ⦂ As
-  res→args {Δ} {[]} {.rnil} {.[]} PresArgResult.nil-r = nil-a
-  res→args {Δ} {b ∷ bs} {.(rcons _ _)} {.(_ ∷ _)} (PresArgResult.cons-r ⊢R ⊢Rs) =
+  res→args {Δ} {[]} {.rnil} {.[]} nil-r = nil-a
+  res→args {Δ} {b ∷ bs} {.(rcons _ _)} {.(_ ∷ _)} (cons-r ⊢R ⊢Rs) =
       cons-a (res→arg ⊢R) (res→args ⊢Rs)
 
   open Foldable gen-subst-is-foldable
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
   
   op-pres : ∀ {op : Op}{Rs : ArgsRes (sig op)}{Δ : List I}{A : I}{As : List I}
      → sig op ∣ Δ ⊢rs Rs ⦂ As
      → 𝒫 op As A
      → Δ ⊢ (fold-op op Rs) ⦂ A
   op-pres {op}{Rs}{Δ}{A}{As} ⊢Rs 𝒫op =
-      let ⊢sargs = (subst (λ □ → sig op ∣ □ ⊢as s-args Rs ⦂ As) refl (res→args ⊢Rs)) in
+      let ⊢sargs = (subst (λ □ → sig op ∣ □ ⊢as s-args Rs ⦂ As) refl
+                          (res→args ⊢Rs)) in
       op-op ⊢sargs 𝒫op
 
   inc-suc : ∀ ρ x → ⧼ inc ρ ⧽ x ≡ shift (⧼ ρ ⧽ x)
@@ -458,8 +459,11 @@ module SubstPres (Op : Set) (sig : Op → List ℕ) {I : Set}
   open OpSig Op sig using (ABT; `_)
   open Rename Op sig using (rename)
   open ABTPred Op sig 𝒫
-  
-  open GenericSubstPres ABT `_ (rename (↑ 1)) Op sig 𝒫 _⊢_⦂_ var-p (λ M → M) (λ {Δ} {v} {A} z → z) {!!} (λ {x} → refl)
+  open RenamePres Op sig 𝒫 renaming (preserve to rename-preserve)
+  open GenericSubstPres ABT `_ (rename (↑ 1)) Op sig 𝒫 _⊢_⦂_ var-p (λ M → M)
+          (λ {Δ} {v} {A} z → z)
+          (λ ⊢M → (rename-preserve {σ = ↑ 1} ⊢M λ {x} {A} z → z))
+          (λ {x} → refl) public
 
 module TestRenameSubstOnLambda where
 
@@ -516,7 +520,6 @@ module RelSubst (V₁ V₂ : Set) (_∼_ : V₁ → V₂ → Set) where
         → v₁ ∼ v₂  →   σ₁ ≊ σ₂
         → (v₁ • σ₁) ≊ (v₂ • σ₂)
 
-{-
 
 module RelateSubst (V₁ V₂ : Set)
   (_∼_ : V₁ → V₂ → Set)
@@ -549,6 +552,8 @@ module RelateSubst (V₁ V₂ : Set)
   RelSub : RelatedEnv _∼_ sub-is-env₁ sub-is-env₂
   RelSub = record { _≊_ = _≊_ ; lookup∼ = lookup∼ ;
                     extend≊ = λ v₁∼v₂ σ₁≊σ₂ → r-cons v₁∼v₂ (≊-inc σ₁≊σ₂) }
+
+{-
 
 module RenSub (Op : Set) (sig : Op → List ℕ) where
 
