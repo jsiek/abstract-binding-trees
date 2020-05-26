@@ -17,6 +17,9 @@ open import Data.Empty using (⊥)
 open import Data.Product
   using (_×_; proj₁; proj₂; ∃; ∃-syntax)
   renaming (_,_ to ⟨_,_⟩)
+open import Relation.Binary.PropositionalEquality
+  using (_≡_; refl; sym; cong; cong₂)
+  renaming (subst to eq-subst)
 
 open import Syntax
 
@@ -81,8 +84,6 @@ module Folder {V}{C}{Op}{sig}{Env} (F : Foldable V C Op sig Env) where
 module SimArgResult {Op : Set}{sig : Op → List ℕ}{V₁ C₁ : Set} {V₂ C₂ : Set}
   (_∼_ : V₁ → V₂ → Set) (_≈_ : C₁ → C₂ → Set) where
   
-  open import Syntax
-  
   open ArgResult V₁ C₁ renaming (ArgRes to ArgRes₁; ArgsRes to ArgsRes₁;
       rnil to rnil₁; rcons to rcons₁) public
   open ArgResult V₂ C₂ renaming (ArgRes to ArgRes₂; ArgsRes to ArgsRes₂;
@@ -140,8 +141,7 @@ module Simulator {Op sig}{V₁ C₁ Env₁} {V₂ C₂ Env₂}
   open Related R
   open SimArgResult {Op}{sig} _∼_ _≈_
 
-  open import Syntax
-  open OpSig Op sig hiding (_⨟_; drop)
+  open OpSig Op sig
 
   sim : ∀{M}{σ₁ σ₂}
      → σ₁ ≊ σ₂
@@ -185,7 +185,6 @@ module ABTPred (Op : Set) (sig : Op → List ℕ) {I : Set}
   (𝒫 : Op → List I → I → Set)
   where
   
-  open import Syntax
   open OpSig Op sig
 
   data _⊢_⦂_ : List I → OpSig.ABT Op sig → I → Set
@@ -331,11 +330,99 @@ module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
   inc (↑ k) = ↑ (suc k)
   inc (v • ρ) = shift v • inc ρ
 
+  {- generalization of ext and exts. -}
   extend : Substitution V → V → Substitution V
   extend σ v = v • inc σ
 
   sub-is-env : EnvSig (Substitution V) V
   sub-is-env = record { lookup = ⧼_⧽ ; extend = extend }
+
+  drop : (k : ℕ) → Substitution V → Substitution V
+  drop k (↑ k') = ↑ (k + k')
+  drop zero (v • σ) = v • σ
+  drop (suc k) (v • σ) = drop k σ
+  
+  sub-head : (v : V) (σ : Substitution V)
+     → ⧼ v • σ ⧽ 0 ≡ v
+  sub-head v σ = refl
+  
+  sub-suc-var : (v : V) (σ : Substitution V) (x : Var)
+     → ⧼ v • σ ⧽ (suc x) ≡ ⧼ σ ⧽ x
+  sub-suc-var M σ x = refl
+
+module GenericSub2 (V : Set)
+  (var→val : Var → V)
+  (⟪_⟫ : Substitution V → V → V)
+  (var→val-suc-shift : ∀{x} → var→val (suc x) ≡ ⟪ ↑ 1 ⟫ (var→val x))
+  (sub-var→val : ∀ σ x → ⟪ σ ⟫ (var→val x) ≡ GenericSub.⧼_⧽ V var→val ⟪ ↑ 1 ⟫  σ x)
+  where
+
+  shift = ⟪ ↑ 1 ⟫
+  open GenericSub V var→val shift
+  open import Data.Nat.Properties using (+-comm; +-assoc)
+
+  infixr 5 _⨟_
+
+  _⨟_ : Substitution V → Substitution V → Substitution V
+  ↑ k ⨟ σ = drop k σ
+  (v • σ₁) ⨟ σ₂ = ⟪ σ₂ ⟫ v • (σ₁ ⨟ σ₂)
+
+  sub-tail : (v : V) (σ : Substitution V)
+     → (↑ 1 ⨟ v • σ) ≡ σ
+  sub-tail v (↑ k) = refl
+  sub-tail v (w • σ) = refl
+
+  inc-suc : ∀ ρ x → ⧼ inc ρ ⧽ x ≡ shift (⧼ ρ ⧽ x)
+  inc-suc (↑ k) x = var→val-suc-shift
+  inc-suc (x₁ • ρ) zero = refl
+  inc-suc (x₁ • ρ) (suc x) = inc-suc ρ x
+
+  inc=⨟↑ : ∀ σ → inc σ ≡ σ ⨟ ↑ 1
+  inc=⨟↑ (↑ k) rewrite +-comm k 1 = refl
+  inc=⨟↑ (M • σ) = cong₂ _•_ refl (inc=⨟↑ σ)
+
+  exts-cons-shift : ∀ σ v → extend σ v ≡ (v • (σ ⨟ ↑ 1))
+  exts-cons-shift (↑ k) v rewrite +-comm k 1 = refl
+  exts-cons-shift (w • σ) v rewrite inc=⨟↑ σ = refl
+
+  drop-add : ∀{x : Var} (k : ℕ) (σ : Substitution V)
+           → ⧼ drop k σ ⧽ x ≡ ⧼ σ ⧽ (k + x)
+  drop-add {x} k (↑ k') rewrite +-comm k k' | +-assoc k' k x = refl
+  drop-add {x} zero (v • σ) = refl
+  drop-add {x} (suc k) (v • σ) = drop-add k σ
+
+  sub-η : ∀ (σ : Substitution V) (x : Var)
+        → ⧼ (⟪ σ ⟫ (var→val 0) • (↑ 1 ⨟ σ)) ⧽ x ≡ ⧼ σ ⧽ x
+  sub-η σ 0 rewrite sub-var→val σ 0 = refl
+  sub-η σ (suc x) = drop-add 1 σ
+
+  Z-shift : ∀ x → ⧼ var→val 0 • ↑ 1 ⧽ x ≡ var→val x
+  Z-shift 0 = refl
+  Z-shift (suc x) = refl
+
+  sub-idL : (σ : Substitution V)
+         → id ⨟ σ ≡ σ
+  sub-idL (↑ k) = refl
+  sub-idL (M • σ) = refl
+
+  sub-dist :  ∀ {σ : Substitution V} {τ : Substitution V} {M : V}
+           → ((M • σ) ⨟ τ) ≡ ((⟪ τ ⟫ M) • (σ ⨟ τ))
+  sub-dist = refl
+
+  seq-subst : ∀ σ τ x → ⧼ σ ⨟ τ ⧽ x ≡ ⟪ τ ⟫ (⧼ σ ⧽ x)
+  seq-subst (↑ k) τ x rewrite drop-add {x} k τ | sub-var→val τ (k + x) = refl
+  seq-subst (M • σ) τ zero = refl
+  seq-subst (M • σ) τ (suc x) = seq-subst σ τ x
+
+{-
+  exts-ids : ∀{σ : Substitution V}
+     → (∀ x → ⧼ σ ⧽ x ≡ var→val x)
+     → (∀ x v → ⧼ extend σ v ⧽ x ≡ var→val x)
+  exts-ids {σ} is-id zero v
+      rewrite exts-cons-shift σ = refl
+  exts-ids {σ} is-id (suc x) v
+      rewrite exts-cons-shift σ | seq-subst σ (↑ 1) x | is-id x = refl
+-}
 
 module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   (Op : Set) (sig : Op → List ℕ) 
@@ -398,15 +485,14 @@ module GenericSubstPres (V : Set) (var→val : Var → V) (shift : V → V)
       cons-a (res→arg ⊢R) (res→args ⊢Rs)
 
   open Foldable gen-subst-is-foldable
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
   
   op-pres : ∀ {op : Op}{Rs : ArgsRes (sig op)}{Δ : List I}{A : I}{As : List I}
      → sig op ∣ Δ ⊢rs Rs ⦂ As
      → 𝒫 op As A
      → Δ ⊢ (fold-op op Rs) ⦂ A
   op-pres {op}{Rs}{Δ}{A}{As} ⊢Rs 𝒫op =
-      let ⊢sargs = (subst (λ □ → sig op ∣ □ ⊢as s-args Rs ⦂ As) refl
-                          (res→args ⊢Rs)) in
+      let ⊢sargs = (eq-subst (λ □ → sig op ∣ □ ⊢as s-args Rs ⦂ As) refl
+                            (res→args ⊢Rs)) in
       op-op ⊢sargs 𝒫op
 
   inc-suc : ∀ ρ x → ⧼ inc ρ ⧽ x ≡ shift (⧼ ρ ⧽ x)
@@ -449,7 +535,6 @@ module RenamePres (Op : Set) (sig : Op → List ℕ) {I : Set}
 
 
 module Subst (Op : Set) (sig : Op → List ℕ) where
-  open Syntax using (↑)
   open OpSig Op sig using (ABT; `_)
   open Rename Op sig using (rename)
   open GenericSubst ABT `_ (rename (↑ 1)) Op sig (λ M → M)
@@ -491,7 +576,6 @@ module TestRenameSubstOnLambda where
   M₁ : ABT
   M₁ = ƛ (` 0) · (` 1)
 
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
   open Rename Op sig
 
   _ : rename (↑ 1) M₀ ≡ (` 1) · (` 2)
@@ -586,8 +670,6 @@ module SubstSubst
           s-arg to s-arg₂; s-args to s-args₂)
   open Foldable gsubst-foldable₁ renaming (fold-op to fop₁)
   open Foldable gsubst-foldable₂ renaming (fold-op to fop₂)
-  open import Relation.Binary.PropositionalEquality
-      using (_≡_; refl; sym; cong; cong₂)
 
   op∼ : ∀{op : Op}{Rs₁ : ArgsRes₁ (sig op)}{Rs₂ : ArgsRes₂ (sig op)}
          → ArgsRes∼ Rs₁ Rs₂
