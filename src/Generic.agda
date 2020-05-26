@@ -437,7 +437,8 @@ module GenericSubstPres (V : Set) (var→val : Var → V) (shift : V → V)
 module Rename (Op : Set) (sig : Op → List ℕ) where
   open OpSig Op sig using (`_)
   open GenericSubst Var (λ x → x) suc Op sig `_
-      renaming (gen-subst to rename) public
+      renaming (gen-subst to rename;
+                gen-subst-is-foldable to rename-is-foldable) public
 
 
 module RenamePres (Op : Set) (sig : Op → List ℕ) {I : Set}
@@ -452,7 +453,8 @@ module Subst (Op : Set) (sig : Op → List ℕ) where
   open OpSig Op sig using (ABT; `_)
   open Rename Op sig using (rename)
   open GenericSubst ABT `_ (rename (↑ 1)) Op sig (λ M → M)
-    renaming (gen-subst to subst) public 
+    renaming (gen-subst to subst;
+              gen-subst-is-foldable to subst-is-foldable) public 
 
 module SubstPres (Op : Set) (sig : Op → List ℕ) {I : Set}
   (𝒫 : Op → List I → I → Set) where
@@ -513,7 +515,7 @@ module TestRenameSubstOnLambda where
   _ rewrite exts-cons-shift σ₀ = refl
 
 
-module RelSubst (V₁ V₂ : Set) (_∼_ : V₁ → V₂ → Set) where
+module RelGenericSubst (V₁ V₂ : Set) (_∼_ : V₁ → V₂ → Set) where
   data _≊_ : Substitution V₁ → Substitution V₂ → Set where
      r-up : ∀{k} → (↑ k) ≊ (↑ k)
      r-cons : ∀{v₁ σ₁ v₂ σ₂}
@@ -521,7 +523,7 @@ module RelSubst (V₁ V₂ : Set) (_∼_ : V₁ → V₂ → Set) where
         → (v₁ • σ₁) ≊ (v₂ • σ₂)
 
 
-module RelateSubst (V₁ V₂ : Set)
+module RelateSub (V₁ V₂ : Set)
   (_∼_ : V₁ → V₂ → Set)
   (var→val₁ : Var → V₁)
   (shift₁ : V₁ → V₁)
@@ -535,7 +537,7 @@ module RelateSubst (V₁ V₂ : Set)
      renaming (⧼_⧽ to ⧼_⧽₁; sub-is-env to sub-is-env₁; inc to inc₁)
   open GenericSub V₂ var→val₂ shift₂
      renaming (⧼_⧽ to ⧼_⧽₂; sub-is-env to sub-is-env₂; inc to inc₂)
-  open RelSubst V₁ V₂ _∼_
+  open RelGenericSubst V₁ V₂ _∼_
 
   lookup∼ : {σ₁ : Substitution V₁} {σ₂ : Substitution V₂} →
       σ₁ ≊ σ₂ → {x : ℕ} → ⧼ σ₁ ⧽₁ x ∼ ⧼ σ₂ ⧽₂ x
@@ -549,64 +551,87 @@ module RelateSubst (V₁ V₂ : Set)
   ≊-inc {.(↑ _)} {.(↑ _)} r-up = r-up
   ≊-inc {.(_ • _)} {.(_ • _)} (r-cons v₁∼v₂ σ₁≊σ₂) = r-cons (shift∼ v₁∼v₂) (≊-inc σ₁≊σ₂)
 
-  RelSub : RelatedEnv _∼_ sub-is-env₁ sub-is-env₂
-  RelSub = record { _≊_ = _≊_ ; lookup∼ = lookup∼ ;
+  sub-is-rel-env : RelatedEnv _∼_ sub-is-env₁ sub-is-env₂
+  sub-is-rel-env = record { _≊_ = _≊_ ; lookup∼ = lookup∼ ;
                     extend≊ = λ v₁∼v₂ σ₁≊σ₂ → r-cons v₁∼v₂ (≊-inc σ₁≊σ₂) }
 
-{-
+module SubstSubst
+  (Op : Set) (sig : Op → List ℕ) 
+  (V₁ V₂ : Set)
+  (_∼_ : V₁ → V₂ → Set)
+  (var→val₁ : Var → V₁)
+  (shift₁ : V₁ → V₁)
+  (val→abt₁ : V₁ → OpSig.ABT Op sig)
+  (var→val₂ : Var → V₂)
+  (shift₂ : V₂ → V₂)
+  (val→abt₂ : V₂ → OpSig.ABT Op sig)
+  (var→val∼ : ∀{x} → var→val₁ x ∼ var→val₂ x)
+  (shift∼ : ∀ {v₁ v₂} → v₁ ∼ v₂ → shift₁ v₁ ∼ shift₂ v₂)
+  (val→abt∼ : ∀{v₁ v₂} → v₁ ∼ v₂ → val→abt₁ v₁ ≡ val→abt₂ v₂)
+  where
+
+  _≈_ = _≡_
+
+  open OpSig Op sig
+  open RelGenericSubst V₁ V₂ _∼_
+  open RelateSub V₁ V₂ _∼_ var→val₁ shift₁ var→val₂ shift₂ var→val∼ shift∼
+  open SimArgResult {Op}{sig}{V₁}{ABT}{V₂}{ABT} _∼_ _≈_
+  open GenericSubst V₁ var→val₁ shift₁ Op sig val→abt₁
+      renaming (gen-subst to gen-subst₁;
+          gen-subst-is-foldable to gsubst-foldable₁;
+          s-arg to s-arg₁; s-args to s-args₁)
+  open GenericSubst V₂ var→val₂ shift₂ Op sig val→abt₂
+      renaming (gen-subst to gen-subst₂;
+          gen-subst-is-foldable to gsubst-foldable₂;
+          s-arg to s-arg₂; s-args to s-args₂)
+  open Foldable gsubst-foldable₁ renaming (fold-op to fop₁)
+  open Foldable gsubst-foldable₂ renaming (fold-op to fop₂)
+  open import Relation.Binary.PropositionalEquality
+      using (_≡_; refl; sym; cong; cong₂)
+
+  op∼ : ∀{op : Op}{Rs₁ : ArgsRes₁ (sig op)}{Rs₂ : ArgsRes₂ (sig op)}
+         → ArgsRes∼ Rs₁ Rs₂
+         → fop₁ op Rs₁ ≈ fop₂ op Rs₂
+  op∼ {op}{Rs₁}{Rs₂} rs∼ = G
+    where
+    I : ∀{b}{R₁ : ArgRes₁ b}{R₂ : ArgRes₂ b} → ArgRes∼ R₁ R₂
+       → s-arg₁ R₁ ≡ s-arg₂ R₂
+    I {zero} {R₁} {.R₁} refl = refl
+    I {suc b} {R₁} {R₂} r~ = cong bind (I (r~ var→val∼))
+    
+    H : ∀{bs}{Rs₁ : ArgsRes₁ bs}{Rs₂ : ArgsRes₂ bs} → ArgsRes∼ Rs₁ Rs₂
+       → s-args₁ Rs₁ ≡ s-args₂ Rs₂
+    H {[]} {rnil₁} {rnil₂} rnil∼ = refl
+    H {b ∷ bs} {rcons₁ r₁ Rs₁} {rcons₂ r₂ Rs₂} (rcons∼ r∼ rs∼) =
+        cong₂ cons (I r∼) (H rs∼)
+
+    G : op ⦅ s-args₁ Rs₁ ⦆ ≡ op ⦅ s-args₂ Rs₂ ⦆
+    G = cong (_⦅_⦆ op) (H rs∼)
+
+  SubSubRel : Related gsubst-foldable₁ gsubst-foldable₂
+  SubSubRel = record { _∼_ = _∼_ ; _≈_ = _≈_ ; env∼ = sub-is-rel-env ;
+         ret≈ = λ {v₁} {v₂} v₁∼v₂ → val→abt∼ v₁∼v₂ ; vars∼ = λ {x} → var→val∼ ;
+         op∼ = op∼ }
+
+  module Sim = Simulator gsubst-foldable₁ gsubst-foldable₂ SubSubRel
+
+  subsub-sim : ∀{σ₁}{σ₂} (M : ABT) → σ₁ ≊ σ₂ → gen-subst₁ σ₁ M ≡ gen-subst₂ σ₂ M
+  subsub-sim M = Sim.sim {M = M}
+
 
 module RenSub (Op : Set) (sig : Op → List ℕ) where
 
+  open OpSig Op sig using (ABT; `_; _⦅_⦆; cons; bind; rename→subst; ⟪_⟫)
   open Rename Op sig
   open Subst Op sig
-  
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂)
-  open import Data.Product using (_×_; Σ; Σ-syntax; ∃; ∃-syntax; proj₁; proj₂)
-    renaming (_,_ to ⟨_,_⟩)
-  open import Syntax
-  open OpSig Op sig using (ABT; `_; _⦅_⦆; cons; bind; rename→subst; ⟪_⟫)
-
   _∼_ = λ x M → ` x ≡ M
-  _≈_ = _≡_
-
-  open RelSubst Var ABT _∼_
-  open RelateSubst Var ABT _∼_ (λ x → x) suc (λ x → ` x) shift
-          (λ {x} → refl) (λ { refl → refl })
-  open SimArgResult {Op}{sig}{Var}{ABT}{ABT}{ABT} _∼_ _≈_
-  open Foldable R renaming (fold-op to fop₁)
-  open Foldable S renaming (fold-op to fop₂)
-
-  rs-op∼ : ∀{op : Op}{Rs₁ : ArgsRes₁ (sig op)}{Rs₂ : ArgsRes₂ (sig op)}
-         → ArgsRes∼ Rs₁ Rs₂
-         → fop₁ op Rs₁ ≈ fop₂ op Rs₂
-  rs-op∼ {op}{Rs₁}{Rs₂} rs∼ = G
-    where
-    I : ∀{b}{R₁ : ArgRes₁ b}{R₂ : ArgRes₂ b} → ArgRes∼ R₁ R₂ → r-arg R₁ ≡ s-arg R₂
-    I {zero} {R₁} {.R₁} refl = refl
-    I {suc b} {R₁} {R₂} r~ = cong bind (I (r~ refl))
-    
-    H : ∀{bs}{Rs₁ : ArgsRes₁ bs}{Rs₂ : ArgsRes₂ bs} → ArgsRes∼ Rs₁ Rs₂ → r-args Rs₁ ≡ s-args Rs₂
-    H {[]} {rnil₁} {rnil₂} rnil∼ = refl
-    H {b ∷ bs} {rcons₁ r₁ Rs₁} {rcons₂ r₂ Rs₂} (rcons∼ r∼ rs∼) = cong₂ cons (I r∼) (H rs∼)
-
-    G : op ⦅ r-args Rs₁ ⦆ ≡ op ⦅ s-args Rs₂ ⦆
-    G = cong (_⦅_⦆ op) (H rs∼)
-
-  RenSubRel : Related R S
-  RenSubRel = record { _∼_ = _∼_ ; _≈_ = _≈_ ; env∼ = RelSub ; ret≈ = λ {v₁} {v₂} z → z ;
-                       vars∼ = λ {x} → refl ; op∼ = rs-op∼ }
-
-  module Sim = Simulator R S RenSubRel
-
-  rensub-sim : ∀{σ₁}{σ₂} (M : ABT) → σ₁ ≊ σ₂ → rename σ₁ M ≡ subst σ₂ M
-  rensub-sim M = Sim.sim {M = M}
-
+  open SubstSubst Op sig Var ABT _∼_ (λ x → x) suc `_ `_ (rename (↑ 1))
+        (λ M → M) (λ {x} → refl) (λ { refl → refl } ) (λ { refl → refl })
+  open RelGenericSubst Var ABT _∼_
+  
   rename→subst-≊ : ∀{ρ} → ρ ≊ rename→subst ρ
   rename→subst-≊ {↑ k} = r-up
   rename→subst-≊ {x • ρ} = r-cons refl rename→subst-≊
 
   rensub : ∀ ρ M → rename ρ M ≡ subst (rename→subst ρ) M
-  rensub ρ M = rensub-sim M rename→subst-≊
-
-
--}
+  rensub ρ M = subsub-sim M rename→subst-≊
