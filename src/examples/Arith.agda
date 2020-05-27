@@ -2,9 +2,26 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
 
 open import Syntax
+open import Fold
+{-
 open import Generic
+-}
+
+{---------------------------------------
+ Function representation of environments
+ ---------------------------------------}
 
 module examples.Arith where
+
+  module FunEnv (V : Set) where
+
+    extend : (Var → V) → V → (Var → V)
+    extend ρ v zero = v
+    extend ρ v (suc x) = ρ x {- assumes values aren't affected by substitution! -}
+
+    fun-is-env : EnvSig (Var → V) V
+    fun-is-env = record { lookup = λ ρ x → ρ x ; extend = extend }
+
 
   data Op : Set where
     op-num : ℕ → Op
@@ -42,10 +59,10 @@ module examples.Arith where
   E = record { ret = λ x → x ; fold-free-var = λ x → nothing ;
                fold-op = eval-op ; env = fun-is-env }
 
-  module ArithFold = Folder E
+  open Folder E
 
   eval : ABT → Maybe ℕ
-  eval = ArithFold.fold (λ x → nothing)
+  eval = fold (λ x → nothing)
 
   open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 

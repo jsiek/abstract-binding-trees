@@ -30,19 +30,6 @@ open import Simulate
 open import Substitution
 open import Var
 
-{---------------------------------------
- Function representation of environments
- ---------------------------------------}
-
-module FunEnv (V : Set) where
-
-  extend : (Var → V) → V → (Var → V)
-  extend ρ v zero = v
-  extend ρ v (suc x) = ρ x {- assumes values aren't affected by substitution! -}
-
-  fun-is-env : EnvSig (Var → V) V
-  fun-is-env = record { lookup = λ ρ x → ρ x ; extend = extend }
-
 {--------------------------------------------
 
  Example: Renaming, Substitution, and a Lemma
