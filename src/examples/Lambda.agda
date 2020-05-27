@@ -180,9 +180,9 @@ rename-pres : ∀ {Γ Δ ρ M A}
   → Γ ⊢ M ⦂ A
     ------------------
   → Δ ⊢ rename ρ M ⦂ A
-rename-pres ⊢ρ (⊢` ∋w)           =  ⊢` (⊢ρ ∋w)
-rename-pres {ρ = ρ} ⊢ρ (⊢ƛ ⊢N)   =  ⊢ƛ (rename-pres (ext-pres {ρ = ρ} ⊢ρ) ⊢N)
-rename-pres ⊢ρ (⊢· ⊢L ⊢M)        =  ⊢· (rename-pres ⊢ρ ⊢L) (rename-pres ⊢ρ ⊢M)
+rename-pres ⊢ρ (⊢` ∋w)            =  ⊢` (⊢ρ ∋w)
+rename-pres {ρ = ρ} ⊢ρ (⊢ƛ ⊢N)    =  ⊢ƛ (rename-pres {ρ = ext ρ} (ext-pres {ρ = ρ} ⊢ρ) ⊢N)
+rename-pres {ρ = ρ} ⊢ρ (⊢· ⊢L ⊢M) =  ⊢· (rename-pres {ρ = ρ} ⊢ρ ⊢L) (rename-pres {ρ = ρ} ⊢ρ ⊢M)
 
 WTSubst : Context → Subst → Context → Set
 WTSubst Γ σ Δ = ∀ {A x} → Γ ∋ x ⦂ A → Δ ⊢ ⟦ σ ⟧ x ⦂ A
@@ -192,7 +192,7 @@ exts-pres : ∀ {Γ Δ σ B}
     --------------------------------
   → WTSubst (Γ , B) (exts σ) (Δ , B)
 exts-pres {σ = σ} Γ⊢σ Z = ⊢` Z
-exts-pres {σ = σ} Γ⊢σ (S {x = x} ∋x) = rename-pres S (Γ⊢σ ∋x)
+exts-pres {σ = σ} Γ⊢σ (S {x = x} ∋x) = rename-pres {ρ = ↑ 1} S (Γ⊢σ ∋x)
 
 subst : ∀ {Γ Δ σ N A}
   → WTSubst Γ σ Δ
