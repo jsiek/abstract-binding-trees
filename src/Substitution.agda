@@ -16,6 +16,8 @@ data Substitution : (V : Set) → Set where
 id : ∀ {V} → Substitution V
 id = ↑ 0
 
+Rename : Set
+Rename = Substitution Var
 
 module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
 
@@ -52,13 +54,18 @@ module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
   gen-sub-suc-var M σ x = refl
 
 
+open GenericSub Var (λ x → x) suc
+    using ()
+    renaming (⧼_⧽ to ⦉_⦊; extend to ext; drop to dropr; gen-inc to inc;
+              gen-subst-is-env to rename-is-env) public
+
 module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   (Op : Set) (sig : Op → List ℕ) 
   (val→abt : V → AbstractBindingTree.ABT Op sig)
   where
 
   open AbstractBindingTree Op sig
-  open GenericSub V var→val shift public
+  open GenericSub V var→val shift
   open ArgResult V ABT
   
   s-op : (o : Op) → ArgsRes (sig o) → ABT
@@ -74,35 +81,24 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   gen-subst-is-foldable = record { ret = val→abt ; fold-free-var = var→val ; 
                fold-op = s-op ; env = gen-subst-is-env }
 
-  module SubstFold = Folder gen-subst-is-foldable
+  open Folder gen-subst-is-foldable
+      using ()
+      renaming (fold to gen-subst) public
 
-  gen-subst : Substitution V → ABT → ABT
-  gen-subst = SubstFold.fold
-
-
-open GenericSub Var (λ x → x) suc
-    using ()
-    renaming (⧼_⧽ to ⦉_⦊; drop to dropr; gen-inc to inc) public
-
-Rename : Set
-Rename = Substitution Var
-
-
-module Rename (Op : Set) (sig : Op → List ℕ) where
-  open AbstractBindingTree Op sig using (`_)
-  open GenericSubst Var (λ x → x) suc Op sig `_
-      renaming (gen-subst to rename;
-                gen-subst-is-foldable to rename-is-foldable;
-                gen-subst-is-env to rename-is-env;
-                ⧼_⧽ to ⦉_⦊; drop to dropr) public
-
+record Substable (V : Set) : Set where
+  field var→val : Var → V
+  field shift : V → V
+  field ⟪_⟫ : Substitution V → V → V
+  open GenericSub V var→val shift
+  field var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x)
+  field sub-var→val : ∀ σ x → ⟪ σ ⟫ (var→val x) ≡ ⧼ σ ⧽  x
+  field shift-⟪↑1⟫ : ∀ v → shift v ≡ ⟪ ↑ 1 ⟫ v
 
 module GenericSubProperties
-  (V : Set)
-  (var→val : Var → V)
-  (shift : V → V)
-  (var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x))
+  {V : Set}
+  (S : Substable V)
   where
+  open Substable S
   open GenericSub V var→val shift
 
   inc-suc : ∀ ρ x → ⧼ gen-inc ρ ⧽ x ≡ shift (⧼ ρ ⧽ x)
@@ -112,15 +108,5 @@ module GenericSubProperties
 
   extend-suc : ∀ σ v x → ⧼ extend σ v ⧽ (suc x) ≡ shift (⧼ σ ⧽ x)
   extend-suc σ v x = inc-suc σ x
-
-module Subst (Op : Set) (sig : Op → List ℕ) where
-  open AbstractBindingTree Op sig using (ABT; `_)
-  open Rename Op sig using (rename)
-  open GenericSubst ABT `_ (rename (↑ 1)) Op sig (λ M → M)
-    renaming (⧼_⧽ to ⟦_⟧; gen-subst to ⟪_⟫;
-              extend to exts;
-              gen-subst-is-env to subst-is-env;
-              gen-subst-is-foldable to subst-is-foldable) public
-  open GenericSubProperties ABT `_ (rename (↑ 1)) (λ {x} → refl) public
 
 

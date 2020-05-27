@@ -60,7 +60,7 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
       → exts σ M′ ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
   extend-pres {.(` 0)} {σ} {M = .(` 0)} M↝M′ ⟨ refl , refl ⟩ σ⦂ zero ∋x = refl
   extend-pres {.(` 0)} {σ} {M = .(` 0)} M↝M′ ⟨ refl , refl ⟩ σ⦂ (suc x) ∋x
-      rewrite extend-suc σ (` 0) x | σ⦂ x ∋x = refl
+      rewrite exts-suc-rename σ (` 0) x | σ⦂ x ∋x = refl
 
   op-pres : {op : Op} {Rs : ArgsRes (sig op)} {Δ : List ⊤} {A : ⊤}
             {As : List ⊤} {args : Args (sig op)}
