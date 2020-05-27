@@ -415,17 +415,17 @@ module GenericSub2 (V : Set)
   sub-tail v (w • σ) = refl
 
   inc-suc : ∀ ρ x → ⧼ inc ρ ⧽ x ≡ shift (⧼ ρ ⧽ x)
-  inc-suc (↑ k) x = ? {- var→val-suc-shift -}
+  inc-suc (↑ k) x = {!!} {- var→val-suc-shift -}
   inc-suc (x₁ • ρ) zero = refl
   inc-suc (x₁ • ρ) (suc x) = inc-suc ρ x
 
   inc=⨟↑ : ∀ σ → inc σ ≡ σ ⨟ ↑ 1
   inc=⨟↑ (↑ k) rewrite +-comm k 1 = refl
-  inc=⨟↑ (M • σ) = cong₂ _•_ ? (inc=⨟↑ σ)
+  inc=⨟↑ (M • σ) = cong₂ _•_ {!!} (inc=⨟↑ σ)
 
   exts-cons-shift : ∀ σ v → extend σ v ≡ (v • (σ ⨟ ↑ 1))
   exts-cons-shift (↑ k) v rewrite +-comm k 1 = refl
-  exts-cons-shift (w • σ) v rewrite inc=⨟↑ σ = ?
+  exts-cons-shift (w • σ) v rewrite inc=⨟↑ σ = {!!}
 
   drop-add : ∀{x : Var} (k : ℕ) (σ : Substitution V)
            → ⧼ drop k σ ⧽ x ≡ ⧼ σ ⧽ (k + x)
@@ -463,7 +463,7 @@ module GenericSub2 (V : Set)
       rewrite exts-cons-shift σ (var→val 0) = refl
   exts-ids {σ} is-id (suc x)
       rewrite exts-cons-shift σ (var→val 0) | seq-subst σ (↑ 1) x | inc-suc σ x
-      | is-id x | var→val-suc-shift {x} = ?
+      | is-id x | var→val-suc-shift {x} = {!!}
 
 module IdFold
   (Op : Set) (sig : Op → List ℕ)
