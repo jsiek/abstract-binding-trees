@@ -1,4 +1,3 @@
-
 {-# OPTIONS --rewriting #-}
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
@@ -14,6 +13,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; cong; cong₂)
   renaming (subst to eq-subst)
 
+
 module SubstPreserve (Op : Set) (sig : Op → List ℕ) where
 
 open import AbstractBindingTree Op sig
@@ -22,9 +22,11 @@ open import Preserve Op sig
 open import Substitution
 open import Var
 
+
 record SubstPreservable {V}{I} (S : Substable V)
-  (𝒫 : Op → List I → I → Set)
-  (𝒜 : List I → ABT → V → I → Set) : Set₁ where
+  (𝒫 : Op → List I → I → Set) : Set₁ where
+  𝒜 : List I → ABT → V → I → Set
+  𝒜 _ M _ _ = (M ≡ ` 0)
   open Substable S
   open GenericSub V var→val shift using (⧼_⧽)
   open ABTPred 𝒫
@@ -36,15 +38,12 @@ record SubstPreservable {V}{I} (S : Substable V)
   field 𝒜-var→val : ∀{B Δ} → 𝒜 (B ∷ Δ) (` 0) (var→val 0) B
   field ⊢shift : ∀{Δ A B}{σ}{x} → Δ ⊢v ` x ↝ ⧼ σ ⧽ x ⦂ B → (A ∷ Δ) ⊢v ` suc x ↝ shift (⧼ σ ⧽ x) ⦂ B
   field ⊢val→abt : ∀ {v : V} {Δ : List I} {A : I} {M : ABT} → Δ ⊢v M ↝ v ⦂ A → Δ ⊢ ret v ⦂ A
-{-
-  (⊢val→abt : ∀{Δ v A}{M} → Δ ⊢v M ↝ v ⦂ A → _⊢_⦂_ (Foldable.ret (GenericSubst.gen-subst-is-foldable V (Substable.var→val S) (Substable.shift S)) v) A)
--}
+
 
 module GenericSubstPres (V : Set){I : Set}
   (𝒫 : Op → List I → I → Set)
-  (𝒜 : List I → ABT → V → I → Set)
   (S : Substable V)
-  (PS : SubstPreservable {V}{I} S 𝒫 𝒜)
+  (PS : SubstPreservable {V}{I} S 𝒫)
   where
   open Substable S
   open SubstPreservable PS
@@ -63,8 +62,8 @@ module GenericSubstPres (V : Set){I : Set}
      → b ∣ Δ ⊢r arg ↝ R ⦂ A
      → b ∣ Δ ⊢a s-arg R ⦂ A
   res→arg {Δ} {zero} {R} {A} (ast-r ⊢R) = ast-a ⊢R
-  res→arg {Δ} {suc b} {R} {A} (bind-r f) =
-      bind-a (res→arg (f (⊢var→val refl) 𝒜-var→val))
+  res→arg {Δ} {suc b} {R} {A} (bind-r {B = B} f) =
+      bind-a (res→arg (f (⊢var→val refl) (𝒜-var→val{B}{Δ})))
   
   res→args : ∀{Δ}{bs}{Rs : ArgsRes bs}{As : List I}{args : Args bs}
      → bs ∣ Δ ⊢rs args ↝ Rs ⦂ As
@@ -88,19 +87,20 @@ module GenericSubstPres (V : Set){I : Set}
   _⦂_⇒_ : Substitution V → List I → List I → Set
   _⦂_⇒_ ρ Γ Δ = ∀ {x}{A} → Γ ∋ x ⦂ A → Δ ⊢v ` x ↝ ⧼ ρ ⧽ x ⦂ A
   
-  extend-pres : ∀ {v : V}{σ}{Γ}{Δ}{A}
-     → (A ∷ Δ) ⊢v (` 0) ↝ v ⦂ A
+  extend-pres : ∀ {v : V}{σ}{Γ}{Δ}{A}{M}
+     → (A ∷ Δ) ⊢v M ↝ v ⦂ A
+     → M ≡ (` 0)
      → σ ⦂ Γ ⇒ Δ
      → (extend σ v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
-  extend-pres {v} {σ} {Γ} {Δ} {A} ∋v σΓΔ {zero} {B} refl = ∋v
-  extend-pres {v} {σ} {Γ} {Δ} {A} ∋v σΓΔ {suc x} {B} ∋x
+  extend-pres {v} {σ} {Γ} {Δ} {A} ∋v refl σΓΔ {zero} {B} refl = ∋v
+  extend-pres {v} {σ} {Γ} {Δ} {A} ∋v refl σΓΔ {suc x} {B} ∋x
       rewrite inc-suc σ x =
       ⊢shift {σ = σ} (σΓΔ ∋x)
 
   gen-subst-is-preservable : Preservable I gen-subst-is-foldable
   gen-subst-is-preservable = record { 𝒫 = 𝒫 ; _⦂_⇒_ = _⦂_⇒_ ; _⊢v_↝_⦂_ = _⊢v_↝_⦂_
    ; _⊢c_↝_⦂_ = _⊢c_↝_⦂_
-   ; lookup-pres = λ σΓΔ Γ∋x → σΓΔ Γ∋x ; extend-pres = {!!} {- extend-pres -}
+   ; lookup-pres = λ σΓΔ Γ∋x → σΓΔ Γ∋x ; extend-pres = extend-pres
    ; ret-pres = ⊢val→abt ; var-pres = λ Γ∋x → ⊢var→val Γ∋x ; op-pres = op-pres }
   open Preservation gen-subst-is-foldable gen-subst-is-preservable public
 
