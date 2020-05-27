@@ -12,9 +12,9 @@ open import Relation.Binary.PropositionalEquality
 module IdentityFold (Op : Set) (sig : Op → List ℕ) where
 
   open import AbstractBindingTree Op sig
-  open import Substitution
-  open Rename Op sig
-  open Subst Op sig
+  open import GenericSubstitution
+  open import Rename Op sig
+  open import Subst Op sig
   open import Fold
   open ArgResult ABT ABT
   open import Preserve Op sig

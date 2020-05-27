@@ -19,7 +19,7 @@ module SubstPreserve (Op : Set) (sig : Op → List ℕ) where
 open import AbstractBindingTree Op sig
 open import Fold
 open import Preserve Op sig
-open import Substitution
+open import GenericSubstitution
 open import Var
 
 

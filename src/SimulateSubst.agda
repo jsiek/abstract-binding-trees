@@ -7,7 +7,7 @@ open import Fold
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 import Rename
 open import Simulate
-open import Substitution
+open import GenericSubstitution
 open SNF
 open import Var
 

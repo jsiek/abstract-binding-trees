@@ -2,7 +2,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import SimulateSubst
-open import Substitution
+open import GenericSubstitution
 
 module SubstProperties (Op : Set) (sig : Op → List ℕ) where
 

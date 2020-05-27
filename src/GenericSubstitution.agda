@@ -1,4 +1,4 @@
-module Substitution where
+module GenericSubstitution where
 
 import AbstractBindingTree
 open import Data.List using (List; []; _∷_)

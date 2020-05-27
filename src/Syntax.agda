@@ -1,3 +1,7 @@
+{-
+  NEEDS UPDATING -Jeremy
+-}
+
 {-# OPTIONS --rewriting #-}
 
 open import Data.Bool using (Bool; true; false; _∨_)
@@ -17,7 +21,11 @@ open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
 open import Var
 
-open import Substitution
+import GenericSubstitution
+open GenericSubstitution.SNF using (Substitution; ↑; _•_)
+
+Rename : Set
+Rename = Substitution Var
 
 abstract
   ext : Rename → Rename

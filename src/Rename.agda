@@ -2,7 +2,7 @@ import AbstractBindingTree
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Substitution
+open import GenericSubstitution
 open import Var
 
 module Rename (Op : Set) (sig : Op → List ℕ) where
