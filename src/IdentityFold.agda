@@ -18,10 +18,6 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
   open ArgResult ABT ABT
   open import Preserve Op sig
 
-{-
-  open GenericSub2 ABT `_ shift subst (λ {x} → refl) (λ σ x → refl)
--}
-  
   res→arg : ∀{b} → ArgRes b → Arg b
   res→arg {zero} M = ast M
   res→arg {suc b} r = bind (res→arg (r (` 0)))
@@ -33,12 +29,17 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
   id-is-foldable : Foldable ABT ABT Op sig (Substitution ABT)
   id-is-foldable = record { env = subst-is-env ; ret = λ M → M ;
             fold-free-var = `_ ; fold-op = λ o rs → o ⦅ res→args rs ⦆ }
-{-
-  open Foldable id-is-foldable renaming (extend to extend-env)
--}
+
+  open Foldable id-is-foldable using (fold-op)
 
   open Folder id-is-foldable
       renaming (fold to id-fold; fold-arg to id-arg; fold-args to id-args)
+
+  𝒫 : Op → List ⊤ → ⊤ → Set
+  𝒫 _ _ _ = ⊤
+  
+  𝒜 : List ⊤ → ABT → ABT → ⊤ → Set
+  𝒜 _ M M′ _ = (M ≡ ` 0) × (M′ ≡ ` 0)
 
   _⊢v_↝_⦂_ : List ⊤ → ABT → ABT → ⊤ → Set
   Δ ⊢v M ↝ M′ ⦂ tt = M ≡ M′
@@ -49,6 +50,8 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
   _⦂_⇒_ : Substitution ABT → List ⊤ → List ⊤ → Set
   σ ⦂ Γ ⇒ Δ = ∀ x → Γ ∋ x ⦂ tt → ⟦ σ ⟧ x ≡ ` x
 
+  open PresArgResult 𝒫 𝒜 _⊢v_↝_⦂_ _⊢c_↝_⦂_ 
+
   extend-pres : ∀ {M′ : ABT}{σ : Substitution ABT}{Γ Δ : List ⊤}{A : ⊤}{M : ABT}
       → (A ∷ Δ) ⊢v M ↝ M′ ⦂ A
       → M ≡ (` 0) × M′ ≡ (` 0)
@@ -58,10 +61,17 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
   extend-pres {.(` 0)} {σ} {M = .(` 0)} M↝M′ ⟨ refl , refl ⟩ σ⦂ (suc x) ∋x
       rewrite extend-suc σ (` 0) x | σ⦂ x ∋x = refl
 
+  op-pres : {op : Op} {Rs : ArgsRes (sig op)} {Δ : List ⊤} {A : ⊤}
+            {As : List ⊤} {args : Args (sig op)}
+     → (sig op) ∣ Δ ⊢rs args ↝ Rs ⦂ As
+     → 𝒫 op As A
+     → Δ ⊢c op ⦅ args ⦆ ↝ fold-op op Rs ⦂ A
+  op-pres {op} ⊢Rs tt = cong (_⦅_⦆ op) {!!}
+
   id-is-preservable : Preservable ⊤ id-is-foldable
   id-is-preservable = record
-                     { 𝒫 = λ x x₁ x₂ → ⊤
-                     ; 𝒜 = λ _ M M′ _ → (M ≡ ` 0) × (M′ ≡ ` 0)
+                     { 𝒫 = 𝒫 
+                     ; 𝒜 = 𝒜
                      ; _⦂_⇒_ = _⦂_⇒_
                      ; _⊢v_↝_⦂_ = _⊢v_↝_⦂_
                      ; _⊢c_↝_⦂_ = _⊢c_↝_⦂_
@@ -69,5 +79,5 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
                      ; extend-pres = λ {M′}{σ}{Γ}{Δ} → extend-pres {M′}{σ}{Γ}{Δ}
                      ; ret-pres = λ {v} {Δ} {A} {M} z → z
                      ; var-pres = λ {x} {Δ} {A} _ → refl
-                     ; op-pres = {!!}
+                     ; op-pres = op-pres
                      }

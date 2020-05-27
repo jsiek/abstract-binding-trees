@@ -75,23 +75,23 @@ module PresArgResult {V C : Set}{I : Set}
   open ABTPred 𝒫
   open ArgResult V C
   
-  data _∣_⊢r_⦂_ : (b : ℕ) → List I → ArgRes b → I → Set where
+  data _∣_⊢r_↝_⦂_ : (b : ℕ) → List I → Arg b → ArgRes b → I → Set where
     ast-r : ∀{Δ}{M}{c}{A}
        → Δ ⊢c M ↝ c ⦂ A
-       → 0 ∣ Δ ⊢r c ⦂ A
+       → 0 ∣ Δ ⊢r ast M ↝ c ⦂ A
        
-    bind-r : ∀{b}{A B Δ}{f}
+    bind-r : ∀{b}{A B Δ}{f}{arg}
           → (∀ {v}{M} → (B ∷ Δ) ⊢v M ↝ v ⦂ B
                       → 𝒜 (B ∷ Δ) M v B
-                      → b ∣ (B ∷ Δ) ⊢r (f v) ⦂ A)
-          → (suc b) ∣ Δ ⊢r f ⦂ A
+                      → b ∣ (B ∷ Δ) ⊢r arg ↝ (f v) ⦂ A)
+          → (suc b) ∣ Δ ⊢r bind arg ↝ f ⦂ A
   
-  data _∣_⊢rs_⦂_ : (bs : List ℕ) → List I → ArgsRes bs → List I → Set where
-    nil-r : ∀{Δ} → [] ∣ Δ ⊢rs rnil ⦂ []
-    cons-r : ∀{b bs}{r rs}{Δ}{A}{As}
-        → b ∣ Δ ⊢r r ⦂ A
-        → bs ∣ Δ ⊢rs rs ⦂ As
-        → (b ∷ bs) ∣ Δ ⊢rs rcons r rs ⦂ (A ∷ As)
+  data _∣_⊢rs_↝_⦂_ : (bs : List ℕ) → List I → Args bs → ArgsRes bs → List I → Set where
+    nil-r : ∀{Δ} → [] ∣ Δ ⊢rs nil ↝ rnil ⦂ []
+    cons-r : ∀{b bs}{r rs}{Δ}{A}{As}{arg}{args}
+        → b ∣ Δ ⊢r arg ↝ r ⦂ A
+        → bs ∣ Δ ⊢rs args ↝ rs ⦂ As
+        → (b ∷ bs) ∣ Δ ⊢rs cons arg args ↝ rcons r rs ⦂ (A ∷ As)
 
 
 record Preservable {V C Env}(I : Set) (F : Foldable V C Op sig Env) : Set₁ where
@@ -107,7 +107,7 @@ record Preservable {V C Env}(I : Set) (F : Foldable V C Op sig Env) : Set₁ whe
   field extend-pres : ∀ {v}{σ}{Γ Δ A}{M} → (A ∷ Δ) ⊢v M ↝ v ⦂ A → 𝒜 (A ∷ Δ) M v A → σ ⦂ Γ ⇒ Δ → (EnvSig.extend env σ v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
   field ret-pres : ∀{v}{Δ}{A}{M} → Δ ⊢v M ↝ v ⦂ A → Δ ⊢c M ↝ (ret v) ⦂ A
   field var-pres : ∀{x}{Δ}{A} → Δ ∋ x ⦂ A → Δ ⊢v ` x ↝ fold-free-var x ⦂ A
-  field op-pres : ∀ {op}{Rs}{Δ}{A}{As}{M} → sig op ∣ Δ ⊢rs Rs ⦂ As → 𝒫 op As A → Δ ⊢c M ↝ (fold-op op Rs) ⦂ A
+  field op-pres : ∀ {op}{Rs}{Δ}{A}{As}{args} → sig op ∣ Δ ⊢rs args ↝ Rs ⦂ As → 𝒫 op As A → Δ ⊢c op ⦅ args ⦆ ↝ (fold-op op Rs) ⦂ A
 
 
 module Preservation{V C Env}{I}
@@ -128,11 +128,11 @@ module Preservation{V C Env}{I}
   pres-arg : ∀{b}{Γ Δ}{arg : Arg b}{A}{σ}
      → b ∣ Γ ⊢a arg ⦂ A
      → σ ⦂ Γ ⇒ Δ
-     → b ∣ Δ ⊢r fold-arg σ arg ⦂ A
+     → b ∣ Δ ⊢r arg ↝ fold-arg σ arg ⦂ A
   pres-args : ∀{bs}{Γ Δ}{args : Args bs}{As}{σ}
      → bs ∣ Γ ⊢as args ⦂ As
      → σ ⦂ Γ ⇒ Δ
-     → bs ∣ Δ ⊢rs fold-args σ args ⦂ As
+     → bs ∣ Δ ⊢rs args ↝ fold-args σ args ⦂ As
   preserve {` x} {σ} {Γ} {Δ} {A} (var-p ∋x) σΓΔ =
       ret-pres (lookup-pres σΓΔ ∋x)
   preserve {op ⦅ args ⦆} {σ} {Γ} {Δ} {A} (op-op ⊢args 𝒫op) σΓΔ =
@@ -144,7 +144,7 @@ module Preservation{V C Env}{I}
       G : ∀ {v}{M}
          → (B ∷ Δ) ⊢v M ↝ v ⦂ B
          → 𝒜 (B ∷ Δ) M v B
-         → b ∣ B ∷ Δ ⊢r fold-arg σ (bind arg) v ⦂ A
+         → b ∣ B ∷ Δ ⊢r arg ↝ fold-arg σ (bind arg) v ⦂ A
       G {v} ⊢v⦂B 𝒜Mv = pres-arg {b} {arg = arg} ⊢arg (extend-pres ⊢v⦂B 𝒜Mv σΓΔ)
   pres-args {[]} {Γ} {Δ} {nil} {[]} ⊢args σΓΔ = nil-r
   pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷ As} (cons-a ⊢arg ⊢args) σΓΔ =
