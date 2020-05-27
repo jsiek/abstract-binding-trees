@@ -1,10 +1,3 @@
-{-
-
-  Experiments in generic functions and theorems over abstract binding trees.
-
-  Trying to draw inspiration from "A Type and Scope Safe Universe of Syntaxes with Biding", ICFP 2018.
-
--}
 
 {-# OPTIONS --rewriting #-}
 open import Agda.Builtin.Equality
@@ -35,81 +28,6 @@ open import Var
  Example: Renaming, Substitution, and a Lemma
 
  --------------------------------------------}
-
-module GenericSub2 (V : Set)
-  (var→val : Var → V)
-  (shift : V → V)
-  (⟪_⟫ : Substitution V → V → V)
-  (var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x))
-  (sub-var→val : ∀ σ x → ⟪ σ ⟫ (var→val x) ≡ GenericSub.⧼_⧽ V var→val shift  σ x)
-  (shift-⟪↑1⟫ : ∀ v → shift v ≡ ⟪ ↑ 1 ⟫ v)
-  where
-
-  open GenericSub V var→val shift
-  open import Data.Nat.Properties using (+-comm; +-assoc)
-
-  infixr 5 _⨟_
-
-  _⨟_ : Substitution V → Substitution V → Substitution V
-  ↑ k ⨟ σ = drop k σ
-  (v • σ₁) ⨟ σ₂ = ⟪ σ₂ ⟫ v • (σ₁ ⨟ σ₂)
-
-  sub-tail : (v : V) (σ : Substitution V)
-     → (↑ 1 ⨟ v • σ) ≡ σ
-  sub-tail v (↑ k) = refl
-  sub-tail v (w • σ) = refl
-
-  inc-suc : ∀ ρ x → ⧼ gen-inc ρ ⧽ x ≡ shift (⧼ ρ ⧽ x)
-  inc-suc (↑ k) x = var→val-suc-shift
-  inc-suc (x₁ • ρ) zero = refl
-  inc-suc (x₁ • ρ) (suc x) = inc-suc ρ x
-
-  inc=⨟↑ : ∀ σ → gen-inc σ ≡ σ ⨟ ↑ 1
-  inc=⨟↑ (↑ k) rewrite +-comm k 1 = refl
-  inc=⨟↑ (v • σ) = cong₂ _•_ (shift-⟪↑1⟫ v) (inc=⨟↑ σ)
-
-  exts-cons-shift : ∀ σ v → extend σ v ≡ (v • (σ ⨟ ↑ 1))
-  exts-cons-shift (↑ k) v rewrite +-comm k 1 = refl
-  exts-cons-shift (w • σ) v rewrite inc=⨟↑ σ | shift-⟪↑1⟫ w = refl
-
-  drop-add : ∀{x : Var} (k : ℕ) (σ : Substitution V)
-           → ⧼ drop k σ ⧽ x ≡ ⧼ σ ⧽ (k + x)
-  drop-add {x} k (↑ k') rewrite +-comm k k' | +-assoc k' k x = refl
-  drop-add {x} zero (v • σ) = refl
-  drop-add {x} (suc k) (v • σ) = drop-add k σ
-
-  sub-η : ∀ (σ : Substitution V) (x : Var)
-        → ⧼ (⟪ σ ⟫ (var→val 0) • (↑ 1 ⨟ σ)) ⧽ x ≡ ⧼ σ ⧽ x
-  sub-η σ 0 rewrite sub-var→val σ 0 = refl
-  sub-η σ (suc x) = drop-add 1 σ
-
-  Z-shift : ∀ x → ⧼ var→val 0 • ↑ 1 ⧽ x ≡ var→val x
-  Z-shift 0 = refl
-  Z-shift (suc x) = refl
-
-  sub-idL : (σ : Substitution V)
-         → id ⨟ σ ≡ σ
-  sub-idL (↑ k) = refl
-  sub-idL (M • σ) = refl
-
-  sub-dist :  ∀ {σ : Substitution V} {τ : Substitution V} {M : V}
-           → ((M • σ) ⨟ τ) ≡ ((⟪ τ ⟫ M) • (σ ⨟ τ))
-  sub-dist = refl
-
-  seq-subst : ∀ σ τ x → ⧼ σ ⨟ τ ⧽ x ≡ ⟪ τ ⟫ (⧼ σ ⧽ x)
-  seq-subst (↑ k) τ x rewrite drop-add {x} k τ | sub-var→val τ (k + x) = refl
-  seq-subst (M • σ) τ zero = refl
-  seq-subst (M • σ) τ (suc x) = seq-subst σ τ x
-
-  exts-ids : ∀{σ : Substitution V}
-     → (∀ x → ⧼ σ ⧽ x ≡ var→val x)
-     → (∀ x → ⧼ extend σ (var→val 0) ⧽ x ≡ var→val x)
-  exts-ids {σ} is-id zero
-      rewrite exts-cons-shift σ (var→val 0) = refl
-  exts-ids {σ} is-id (suc x)
-      rewrite exts-cons-shift σ (var→val 0) | seq-subst σ (↑ 1) x | inc-suc σ x
-      | is-id x | var→val-suc-shift {x} = refl
-
 
 module GenericSubstPres (V : Set) (var→val : Var → V) (shift : V → V)
   (Op : Set) (sig : Op → List ℕ) {I : Set}
@@ -154,11 +72,6 @@ module GenericSubstPres (V : Set) (var→val : Var → V) (shift : V → V)
                             (res→args ⊢Rs)) in
       op-op ⊢sargs 𝒫op
 
-  inc-suc : ∀ ρ x → ⧼ inc ρ ⧽ x ≡ shift (⧼ ρ ⧽ x)
-  inc-suc (↑ k) x = var→val-suc-shift
-  inc-suc (x₁ • ρ) zero = refl
-  inc-suc (x₁ • ρ) (suc x) = inc-suc ρ x
-  
   _⦂_⇒_ : Substitution V → List I → List I → Set
   _⦂_⇒_ ρ Γ Δ = ∀ {x}{A} → Γ ∋ x ⦂ A → Δ ⊢v ⧼ ρ ⧽ x ⦂ A
   

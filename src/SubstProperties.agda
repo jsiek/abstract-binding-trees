@@ -2,14 +2,14 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import SimulateSubst
+open import Substitution
 
 module SubstProperties (Op : Set) (sig : Op → List ℕ) where
 
   open import AbstractBindingTree Op sig
-  open import Rename Op sig
-  open import Substitution
+  open import Rename Op sig using (rename)
   open import Subst Op sig
-  open RenSub Op sig
+  open RenameSubst Op sig
               
   subst-is-substable : Substable ABT
   subst-is-substable = record

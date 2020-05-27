@@ -3,23 +3,24 @@ module Substitution where
 import AbstractBindingTree
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat.Properties using (+-comm; +-assoc)
 open import Fold
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
 open import Var
 
-infixr 6 _•_
+module SNF where
 
-data Substitution : (V : Set) → Set where
-  ↑ : (k : ℕ) → ∀{V} → Substitution V
-  _•_ : ∀{V} → V → Substitution V → Substitution V
+  infixr 6 _•_
 
-id : ∀ {V} → Substitution V
-id = ↑ 0
+  data Substitution : (V : Set) → Set where
+    ↑ : (k : ℕ) → ∀{V} → Substitution V
+    _•_ : ∀{V} → V → Substitution V → Substitution V
 
-Rename : Set
-Rename = Substitution Var
+  id : ∀ {V} → Substitution V
+  id = ↑ 0
 
 module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
+  open SNF
 
   ⧼_⧽ : Substitution V → Var → V
   ⧼ ↑ k ⧽ x = var→val (k + x)
@@ -45,6 +46,12 @@ module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
   drop zero (v • σ) = v • σ
   drop (suc k) (v • σ) = drop k σ
   
+  drop-add : ∀{x : Var} (k : ℕ) (σ : Substitution V)
+           → ⧼ drop k σ ⧽ x ≡ ⧼ σ ⧽ (k + x)
+  drop-add {x} k (↑ k') rewrite +-comm k k' | +-assoc k' k x = refl
+  drop-add {x} zero (v • σ) = refl
+  drop-add {x} (suc k) (v • σ) = drop-add k σ
+  
   gen-sub-head : (v : V) (σ : Substitution V)
      → ⧼ v • σ ⧽ 0 ≡ v
   gen-sub-head v σ = refl
@@ -52,6 +59,10 @@ module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
   gen-sub-suc-var : (v : V) (σ : Substitution V) (x : Var)
      → ⧼ v • σ ⧽ (suc x) ≡ ⧼ σ ⧽ x
   gen-sub-suc-var M σ x = refl
+
+  Z-shift : ∀ x → ⧼ var→val 0 • ↑ 1 ⧽ x ≡ var→val x
+  Z-shift 0 = refl
+  Z-shift (suc x) = refl
 
 
 open GenericSub Var (λ x → x) suc
@@ -67,6 +78,7 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   open AbstractBindingTree Op sig
   open GenericSub V var→val shift
   open ArgResult V ABT
+  open SNF
   
   s-op : (o : Op) → ArgsRes (sig o) → ABT
   s-arg : ∀{b} → ArgRes b → Arg b
@@ -86,6 +98,7 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
       renaming (fold to gen-subst) public
 
 record Substable (V : Set) : Set where
+  open SNF
   field var→val : Var → V
   field shift : V → V
   field ⟪_⟫ : Substitution V → V → V
@@ -98,6 +111,7 @@ module GenericSubProperties
   {V : Set}
   (S : Substable V)
   where
+  open SNF
   open Substable S
   open GenericSub V var→val shift
 
@@ -109,4 +123,50 @@ module GenericSubProperties
   extend-suc : ∀ σ v x → ⧼ extend σ v ⧽ (suc x) ≡ shift (⧼ σ ⧽ x)
   extend-suc σ v x = inc-suc σ x
 
+  infixr 5 _⨟_
 
+  _⨟_ : Substitution V → Substitution V → Substitution V
+  ↑ k ⨟ σ = drop k σ
+  (v • σ₁) ⨟ σ₂ = ⟪ σ₂ ⟫ v • (σ₁ ⨟ σ₂)
+
+  sub-tail : (v : V) (σ : Substitution V)
+     → (↑ 1 ⨟ v • σ) ≡ σ
+  sub-tail v (↑ k) = refl
+  sub-tail v (w • σ) = refl
+
+  inc=⨟↑ : ∀ σ → gen-inc σ ≡ σ ⨟ ↑ 1
+  inc=⨟↑ (↑ k) rewrite +-comm k 1 = refl
+  inc=⨟↑ (v • σ) = cong₂ _•_ (shift-⟪↑1⟫ v) (inc=⨟↑ σ)
+
+  extend-cons-shift : ∀ σ v → extend σ v ≡ (v • (σ ⨟ ↑ 1))
+  extend-cons-shift (↑ k) v rewrite +-comm k 1 = refl
+  extend-cons-shift (w • σ) v rewrite inc=⨟↑ σ | shift-⟪↑1⟫ w = refl
+
+  sub-η : ∀ (σ : Substitution V) (x : Var)
+        → ⧼ (⟪ σ ⟫ (var→val 0) • (↑ 1 ⨟ σ)) ⧽ x ≡ ⧼ σ ⧽ x
+  sub-η σ 0 rewrite sub-var→val σ 0 = refl
+  sub-η σ (suc x) = drop-add 1 σ
+
+  sub-idL : (σ : Substitution V)
+         → id ⨟ σ ≡ σ
+  sub-idL (↑ k) = refl
+  sub-idL (M • σ) = refl
+
+  sub-dist :  ∀ {σ : Substitution V} {τ : Substitution V} {M : V}
+           → ((M • σ) ⨟ τ) ≡ ((⟪ τ ⟫ M) • (σ ⨟ τ))
+  sub-dist = refl
+
+  seq-subst : ∀ σ τ x → ⧼ σ ⨟ τ ⧽ x ≡ ⟪ τ ⟫ (⧼ σ ⧽ x)
+  seq-subst (↑ k) τ x rewrite drop-add {x} k τ | sub-var→val τ (k + x) = refl
+  seq-subst (M • σ) τ zero = refl
+  seq-subst (M • σ) τ (suc x) = seq-subst σ τ x
+
+  extend-id : ∀{σ : Substitution V}
+     → (∀ x → ⧼ σ ⧽ x ≡ var→val x)
+     → (∀ x → ⧼ extend σ (var→val 0) ⧽ x ≡ var→val x)
+  extend-id {σ} is-id zero
+      rewrite extend-cons-shift σ (var→val 0) = refl
+  extend-id {σ} is-id (suc x)
+      rewrite extend-cons-shift σ (var→val 0) | seq-subst σ (↑ 1) x
+      | inc-suc σ x | is-id x | var→val-suc-shift {x} = refl
+  

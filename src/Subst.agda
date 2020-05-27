@@ -7,12 +7,14 @@ open import Var
 import Rename
 
 module Subst (Op : Set) (sig : Op → List ℕ) where
+
   open AbstractBindingTree Op sig using (ABT; `_)
+  open Rename Op sig using (rename)
+  open SNF public
   
   Subst : Set
   Subst = Substitution ABT
 
-  open Rename Op sig using (rename)
   open GenericSub ABT `_ (rename (↑ 1))
     renaming (⧼_⧽ to ⟦_⟧;
               extend to exts;

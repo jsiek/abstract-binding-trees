@@ -1,3 +1,12 @@
+{-
+
+  Experiments in generic functions and theorems over abstract binding trees.
+
+  Drawing inspiration from the paper "A Type and Scope Safe Universe of
+  Syntaxes with Binding", ICFP 2018.
+
+-}
+
 module Fold where
 
 open import Var

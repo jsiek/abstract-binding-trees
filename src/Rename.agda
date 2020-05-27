@@ -8,6 +8,11 @@ open import Var
 module Rename (Op : Set) (sig : Op → List ℕ) where
 
   open AbstractBindingTree Op sig using (`_)
+  open SNF public
+
+  Rename : Set
+  Rename = Substitution Var
+
   open GenericSubst Var (λ x → x) suc Op sig `_
       renaming (gen-subst to rename;
                 gen-subst-is-foldable to rename-is-foldable) public
@@ -23,4 +28,5 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
                           }
   open GenericSubProperties rename-is-substable
     renaming ( extend-suc to ext-suc) public
+
 

@@ -8,6 +8,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 import Rename
 open import Simulate
 open import Substitution
+open SNF
 open import Var
 
 module RelGenericSubst (V₁ V₂ : Set) (_∼_ : V₁ → V₂ → Set) where
@@ -112,11 +113,11 @@ module SubstSubst
   subsub-sim M = Sim.sim {M = M}
 
 
-module RenSub (Op : Set) (sig : Op → List ℕ) where
+module RenameSubst (Op : Set) (sig : Op → List ℕ) where
 
   open AbstractBindingTree Op sig using (ABT; `_; _⦅_⦆; cons; bind)
-  open Rename Op sig
-  open import Subst Op sig
+  open Rename Op sig hiding (↑; _•_)
+  open import Subst Op sig hiding (↑; _•_)
   _∼_ = λ x M → ` x ≡ M
   open SubstSubst Op sig Var ABT _∼_ (λ x → x) suc `_ `_ (rename (↑ 1))
         (λ M → M) (λ {x} → refl) (λ { refl → refl } ) (λ { refl → refl })
