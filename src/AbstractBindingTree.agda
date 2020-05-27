@@ -1,5 +1,5 @@
 open import Data.List using (List; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 
 module AbstractBindingTree (Op : Set) (sig : Op → List ℕ)  where
 
@@ -31,3 +31,15 @@ bind-ast n M
     with bind-arg n (ast M)
 ... | A rewrite +-identityʳ n = A
 
+max-var : ABT → ℕ
+max-var-arg : ∀{b} → Arg b → ℕ
+max-var-args : ∀{bs} → Args bs → ℕ
+
+max-var (` x) = x
+max-var (op ⦅ args ⦆) = max-var-args args
+
+max-var-arg (ast M) = max-var M
+max-var-arg (bind arg) = (max-var-arg arg) ∸ 1
+
+max-var-args nil = 0
+max-var-args (cons arg args) = (max-var-arg arg) ⊔ (max-var-args args)

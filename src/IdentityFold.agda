@@ -1,5 +1,6 @@
-open import Data.List using (List; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.List using (List; []; _∷_; length)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; z≤n; s≤s; _∸_)
+open import Data.Nat.Properties using (≤-reflexive; ≤-trans; m≤m⊔n; n≤m⊔n)
 open import Data.Product
   using (_×_; proj₁; proj₂; ∃; ∃-syntax)
   renaming (_,_ to ⟨_,_⟩)
@@ -68,7 +69,6 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
      → Δ ⊢c op ⦅ args ⦆ ↝ fold-op op Rs ⦂ A
   op-pres {op}{Rs}{Δ} ⊢Rs tt = cong (_⦅_⦆ op) (G ⊢Rs)
       where
-      {- Yuck! -Jeremy -}
       H : ∀{b}{arg : Arg b}{R : ArgRes b}{A : ⊤}{Δ}
          → b ∣ Δ ⊢r arg ↝ R ⦂ A
          → arg ≡ res→arg R
@@ -95,3 +95,53 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
                      ; var-pres = λ {x} {Δ} {A} _ → refl
                      ; op-pres = op-pres
                      }
+
+  open Preservation id-is-foldable id-is-preservable
+  open ABTPred 𝒫
+
+  mk-list : ℕ → List ⊤
+  mk-list 0 = []
+  mk-list (suc n) = tt ∷ mk-list n
+
+  len-mk-list : ∀ n → length (mk-list n) ≡ n
+  len-mk-list zero = refl
+  len-mk-list (suc n) = cong suc (len-mk-list n)
+
+  id-is-id : ∀ (M : ABT)
+     → id-fold id M ≡ M
+  id-is-id M =
+    let n = suc (max-var M) in
+    let p = preserve {M}{σ = ↑ 0}{mk-list n}{mk-list n} (G M (mk-list n)
+               (s≤s (≤-reflexive (sym (len-mk-list (max-var M))))))
+               (λ x _ → refl) in
+    sym p
+    where
+    G : ∀ M Γ → suc (max-var M) ≤ length Γ → Γ ⊢ M ⦂ tt
+    K : ∀ {b} {arg : Arg b} {Γ} → suc (max-var-arg arg) ≤ length Γ
+       → b ∣ Γ ⊢a arg ⦂ tt
+    J : ∀ {bs} {args : Args bs} {Γ} → suc (max-var-args args) ≤ length Γ
+       → bs ∣ Γ ⊢as args ⦂ mk-list (length bs)
+
+    suc∸1 : ∀ m x 
+       → suc (m ∸ 1) ≤ x
+       → m ≤ x
+    suc∸1 zero x lt = z≤n
+    suc∸1 (suc m) x lt = lt    
+
+    H : ∀ x Γ → suc (max-var (` x)) ≤ length Γ → Γ ∋ x ⦂ tt
+    H zero (tt ∷ Γ) lt = refl
+    H (suc x) (tt ∷ Γ) (s≤s lt) = H x Γ lt
+
+    K {zero} {ast M} {Γ} lt = ast-a (G M Γ lt)
+    K {suc b} {bind arg} {Γ} lt =
+        let s = suc∸1 (max-var-arg arg) (length Γ) lt in
+        bind-a (K {b} {arg}{tt ∷ Γ} (s≤s s))
+
+    J {[]} {nil} {Γ} lt = nil-a
+    J {b ∷ bs} {cons arg args} {Γ} lt =
+        let xx = s≤s (m≤m⊔n (max-var-arg arg) (max-var-args args)) in
+        let yy = s≤s (n≤m⊔n (max-var-arg arg) (max-var-args args)) in
+        cons-a (K (≤-trans xx lt)) (J (≤-trans yy lt))
+
+    G (` x) Γ lt = var-p (H x Γ lt)
+    G (op ⦅ args ⦆) Γ lt = op-op (J lt) tt
