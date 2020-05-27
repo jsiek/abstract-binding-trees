@@ -15,42 +15,14 @@ module Syntax where
 
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
+open import Var
 
-Var : Set
-Var = ℕ
-
-infixr 6 _•_
-
-data Substitution : (A : Set) → Set where
-  ↑ : (k : ℕ) → ∀{A} → Substitution A
-  _•_ : ∀{A} → A → Substitution A → Substitution A
-
-id : ∀ {A} → Substitution A
-id = ↑ 0
-
-Rename : Set
-Rename = Substitution Var
-
-⦉_⦊ :  Rename → Var → Var
-⦉ ↑ k ⦊ x = k + x
-⦉ y • ρ ⦊ 0 = y
-⦉ y • ρ ⦊ (suc x) = ⦉ ρ ⦊ x
-
-private
-  inc : Rename → Rename
-  inc (↑ k) = ↑ (suc k)
-  inc (x • ρ) = suc x • inc ρ
+open import Substitution
 
 abstract
   ext : Rename → Rename
   ext (↑ k) = 0 • ↑ (suc k)
   ext (x • ρ) = 0 • inc (x • ρ)
-
-private
-  dropr : (k : ℕ) → Rename → Rename
-  dropr k (↑ k') = ↑ (k + k')
-  dropr zero (x • ρ) = x • ρ
-  dropr (suc k) (x • ρ) = dropr k ρ
 
 abstract
   infixr 5 _⨟ᵣ_
@@ -80,31 +52,7 @@ abstract
 
 module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
-  data Args : List ℕ → Set
-
-  data ABT : Set where
-    `_ : Var → ABT
-    _⦅_⦆ : (op : Op) → Args (sig op) → ABT
-
-  data Arg : ℕ → Set where
-    ast : ABT → Arg 0
-    bind : ∀{n} → Arg n → Arg (suc n)
-
-  data Args where
-    nil : Args []
-    cons : ∀{n bs} → Arg n → Args bs → Args (n ∷ bs)
-
-  bind-arg : ∀{m} → (n : ℕ) → Arg m → Arg (n + m)
-  bind-arg  zero A = A
-  bind-arg {m} (suc n) A
-      with bind-arg {suc m} n (bind A)
-  ... | ih rewrite +-suc n m = ih
-
-  bind-ast : ∀(n : ℕ) → ABT → Arg n
-  bind-ast n M
-      with bind-arg n (ast M)
-  ... | A rewrite +-identityʳ n = A
-
+  open import AbstractBindingTree Op sig public
 
   {----------------------------------------------------------------------------
     Renaming
