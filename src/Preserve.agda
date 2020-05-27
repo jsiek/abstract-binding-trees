@@ -137,7 +137,8 @@ module Preservation{V C Env}{I}
       ret-pres (lookup-pres σΓΔ ∋x)
   preserve {op ⦅ args ⦆} {σ} {Γ} {Δ} {A} (op-op ⊢args 𝒫op) σΓΔ =
       op-pres (pres-args ⊢args σΓΔ) 𝒫op
-  pres-arg {zero} {Γ} {Δ} {ast M} {A} {σ} (ast-a ⊢M) σΓΔ = ast-r (preserve ⊢M σΓΔ)
+  pres-arg {zero} {Γ} {Δ} {ast M} {A} {σ} (ast-a ⊢M) σΓΔ =
+      ast-r (preserve ⊢M σΓΔ)
   pres-arg {suc b} {Γ} {Δ} {bind arg} {A} {σ} (bind-a {b}{B} ⊢arg) σΓΔ =
       bind-r G
       where

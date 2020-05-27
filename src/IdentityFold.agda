@@ -66,7 +66,21 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
      → (sig op) ∣ Δ ⊢rs args ↝ Rs ⦂ As
      → 𝒫 op As A
      → Δ ⊢c op ⦅ args ⦆ ↝ fold-op op Rs ⦂ A
-  op-pres {op} ⊢Rs tt = cong (_⦅_⦆ op) {!!}
+  op-pres {op}{Rs}{Δ} ⊢Rs tt = cong (_⦅_⦆ op) (G ⊢Rs)
+      where
+      {- Yuck! -Jeremy -}
+      H : ∀{b}{arg : Arg b}{R : ArgRes b}{A : ⊤}{Δ}
+         → b ∣ Δ ⊢r arg ↝ R ⦂ A
+         → arg ≡ res→arg R
+      H {zero} (ast-r refl) = refl
+      H {suc b}{A = tt}{Δ = Δ} (bind-r {B = B} f) =
+          cong bind (H {Δ = B ∷ Δ} (f refl ⟨ refl , refl ⟩))
+      G : ∀{bs}{args : Args bs}{Rs : ArgsRes bs}{As : List ⊤}
+         → bs ∣ Δ ⊢rs args ↝ Rs ⦂ As
+         → args ≡ res→args Rs
+      G nil-r = refl
+      G (cons-r ⊢arg ⊢args) = cong₂ cons (H ⊢arg) (G ⊢args)
+
 
   id-is-preservable : Preservable ⊤ id-is-foldable
   id-is-preservable = record
