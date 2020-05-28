@@ -115,7 +115,7 @@ module RenamePres {I : Set}
                            ; ⊢var→val = λ {Δ} {x} {A} ∋x → ⟨ refl , ∋x ⟩
                            ; val→abt = `_
                            ; 𝒜-var→val = λ {B} {Δ} → refl
-                           ; ⊢shift = {!!}
+                           ; ⊢shift = λ { ⟨ eq , ∋x ⟩ → ⟨ {!!} , {!!} ⟩ }
                            ; ⊢val→abt = λ { ⟨ refl , ∋x ⟩ → var-p ∋x }
                            }
   open GenericSubstPres Var 𝒫 rename-is-substable rename-is-subst-pres public
