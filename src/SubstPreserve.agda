@@ -111,18 +111,14 @@ module RenamePres {I : Set}
   open import Rename Op sig using (rename-is-substable)
   rename-is-subst-pres : SubstPreservable rename-is-substable 𝒫
   rename-is-subst-pres = record
-                           { _⊢v_↝_⦂_ = λ Γ M x A → M ≡ ` x × Γ ∋ x ⦂ A
-                           ; ⊢var→val = λ {Δ} {x} {A} ∋x → ⟨ refl , ∋x ⟩
+                           { _⊢v_↝_⦂_ = λ Γ M x A → Γ ∋ x ⦂ A
+                           ; ⊢var→val = λ {Δ} {x} {A} ∋x → ∋x
                            ; val→abt = `_
                            ; 𝒜-var→val = λ {B} {Δ} → refl
-                           ; ⊢shift = λ { ⟨ eq , ∋x ⟩ → ⟨ {!!} , {!!} ⟩ }
-                           ; ⊢val→abt = λ { ⟨ refl , ∋x ⟩ → var-p ∋x }
+                           ; ⊢shift = λ { ∋x → ∋x }
+                           ; ⊢val→abt = λ { ∋x → var-p ∋x }
                            }
   open GenericSubstPres Var 𝒫 rename-is-substable rename-is-subst-pres public
-{-
-(λ x → x) suc Op sig 𝒫 _∋_⦂_ (λ {Δ} {x} {A} z → z)
-       `_ ABTPred.var-p (λ {Δ} {A} {B} {σ} {x} z → z) (λ {x} → refl) public
--}
 
 module SubstPres {I : Set}
   (𝒫 : Op → List I → I → Set) where
@@ -134,16 +130,19 @@ module SubstPres {I : Set}
   open import Subst Op sig using (↑)
   open import SubstProperties Op sig using (subst-is-substable)
   subst-is-subst-pres : SubstPreservable subst-is-substable 𝒫
-  subst-is-subst-pres = {!!}
+  subst-is-subst-pres = record
+                { _⊢v_↝_⦂_ = λ Γ M M′ A → Γ ⊢ M′ ⦂ A
+                ; ⊢var→val = λ ∋x → var-p ∋x
+                ; val→abt = λ M → M
+                ; 𝒜-var→val = λ {B} {Δ} → refl
+                ; ⊢shift = λ ⊢M → rename-preserve {σ = ↑ 1} ⊢M (λ {x} {A} z → z)
+                ; ⊢val→abt = λ ⊢M → ⊢M
+                }
   open GenericSubstPres ABT 𝒫 subst-is-substable subst-is-subst-pres public
-{-
-  `_ (rename (↑ 1)) Op sig 𝒫 _⊢_⦂_ var-p (λ M → M)
-          (λ {Δ} {v} {A} z → z)
-          (λ ⊢M → (rename-preserve {σ = ↑ 1} ⊢M λ {x} {A} z → z))
-          (λ {x} → refl) public
--}
 
 {-
+where to put the following?
+
 module TestRenameSubstOnLambda where
 
   data Op : Set where
