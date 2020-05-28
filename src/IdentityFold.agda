@@ -1,3 +1,11 @@
+{-
+
+  The definitions and proof in this file are too complicated.
+  The simpler approach is to use the identity renaming with a direct
+  proof, as found in IdentityRename module A.
+
+-}
+
 open import Data.List using (List; []; _∷_; length)
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; z≤n; s≤s; _∸_)
 open import Data.Nat.Properties using (≤-reflexive; ≤-trans; m≤m⊔n; n≤m⊔n)
