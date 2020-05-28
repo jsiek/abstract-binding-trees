@@ -20,7 +20,5 @@ module SubstProperties (Op : Set) (sig : Op → List ℕ) where
                           ; sub-var→val = λ σ x → refl
                           ; shift-⟪↑1⟫ = λ M → rename-subst (↑ 1) M
                           }
-  open GenericSubProperties subst-is-substable
+  open import GenericSubProperties subst-is-substable
     renaming (inc-suc to incs-suc; extend-suc to exts-suc-rename) public
-
-

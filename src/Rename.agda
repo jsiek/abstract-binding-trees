@@ -26,7 +26,7 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
                           ; sub-var→val = λ σ x → refl
                           ; shift-⟪↑1⟫ = λ v → refl
                           }
-  open GenericSubProperties rename-is-substable
+  open import GenericSubProperties rename-is-substable
     renaming ( extend-suc to ext-suc) public
 
 
