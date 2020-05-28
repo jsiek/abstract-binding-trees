@@ -102,9 +102,10 @@ record Preservable {V C Env}(I : Set) (F : Foldable V C Op sig Env) : Set₁ whe
   field _⊢c_↝_⦂_ : List I → ABT → C → I → Set
   open PresArgResult 𝒫 𝒜 _⊢v_↝_⦂_ _⊢c_↝_⦂_
   open Foldable F
+  open EnvSig 
   open ArgResult V C
-  field lookup-pres : ∀{σ}{Γ Δ}{x}{A} → σ ⦂ Γ ⇒ Δ → Γ ∋ x ⦂ A → Δ ⊢v ` x ↝ (EnvSig.lookup env σ x) ⦂ A
-  field extend-pres : ∀ {v}{σ}{Γ Δ A}{M} → (A ∷ Δ) ⊢v M ↝ v ⦂ A → 𝒜 (A ∷ Δ) M v A → σ ⦂ Γ ⇒ Δ → (EnvSig.extend env σ v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+  field lookup-pres : ∀{σ}{Γ Δ}{x}{A} → σ ⦂ Γ ⇒ Δ → Γ ∋ x ⦂ A → Δ ⊢v ` x ↝ (lookup env σ x) ⦂ A
+  field extend-pres : ∀ {v}{σ}{Γ Δ A}{M} → (A ∷ Δ) ⊢v M ↝ v ⦂ A → 𝒜 (A ∷ Δ) M v A → σ ⦂ Γ ⇒ Δ → (extend env σ v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
   field ret-pres : ∀{v}{Δ}{A}{M} → Δ ⊢v M ↝ v ⦂ A → Δ ⊢c M ↝ (ret v) ⦂ A
   field var-pres : ∀{x}{Δ}{A} → Δ ∋ x ⦂ A → Δ ⊢v ` x ↝ fold-free-var x ⦂ A
   field op-pres : ∀ {op}{Rs}{Δ}{A}{As}{args} → sig op ∣ Δ ⊢rs args ↝ Rs ⦂ As → 𝒫 op As A → Δ ⊢c op ⦅ args ⦆ ↝ (fold-op op Rs) ⦂ A

@@ -14,7 +14,6 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
   open import AbstractBindingTree Op sig
   open import GenericSubstitution
   open SNF using (Substitution; id; ↑; _•_)
-  open import Rename Op sig using ()
   open import Subst Op sig using (⟦_⟧; exts; subst-is-env)
   open import SubstProperties Op sig using (exts-suc-rename)
   open import Fold
@@ -38,7 +37,7 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
   open Foldable id-is-foldable using (fold-op)
 
   open Folder id-is-foldable
-      renaming (fold to id-fold; fold-arg to id-arg; fold-args to id-args)
+    renaming (fold to id-fold; fold-arg to id-arg; fold-args to id-args) public
 
   𝒫 : Op → List ⊤ → ⊤ → Set
   𝒫 _ _ _ = ⊤
@@ -111,41 +110,47 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
   len-mk-list zero = refl
   len-mk-list (suc n) = cong suc (len-mk-list n)
 
+  ∃Γ⊢M⦂tt : ∀(M : ABT) → ∃[ Γ ] (Γ ⊢ M ⦂ tt)
+  ∃Γ⊢M⦂tt M = let n = (suc (max-var M)) in
+      ⟨ mk-list n , (G M (mk-list n) LT) ⟩
+      where
+      LT : suc (max-var M) ≤ length (tt ∷ mk-list (max-var M))
+      LT = s≤s (≤-reflexive (sym (len-mk-list (max-var M))))
+      G : ∀ M Γ → suc (max-var M) ≤ length Γ → Γ ⊢ M ⦂ tt
+      K : ∀ {b} {arg : Arg b} {Γ} → suc (max-var-arg arg) ≤ length Γ
+         → b ∣ Γ ⊢a arg ⦂ tt
+      J : ∀ {bs} {args : Args bs} {Γ} → suc (max-var-args args) ≤ length Γ
+         → bs ∣ Γ ⊢as args ⦂ mk-list (length bs)
+
+      suc∸1 : ∀ m x 
+         → suc (m ∸ 1) ≤ x
+         → m ≤ x
+      suc∸1 zero x lt = z≤n
+      suc∸1 (suc m) x lt = lt    
+
+      H : ∀ x Γ → suc (max-var (` x)) ≤ length Γ → Γ ∋ x ⦂ tt
+      H zero (tt ∷ Γ) lt = refl
+      H (suc x) (tt ∷ Γ) (s≤s lt) = H x Γ lt
+
+      K {zero} {ast M} {Γ} lt = ast-a (G M Γ lt)
+      K {suc b} {bind arg} {Γ} lt =
+          let s = suc∸1 (max-var-arg arg) (length Γ) lt in
+          bind-a (K {b} {arg}{tt ∷ Γ} (s≤s s))
+
+      J {[]} {nil} {Γ} lt = nil-a
+      J {b ∷ bs} {cons arg args} {Γ} lt =
+          let xx = s≤s (m≤m⊔n (max-var-arg arg) (max-var-args args)) in
+          let yy = s≤s (n≤m⊔n (max-var-arg arg) (max-var-args args)) in
+          cons-a (K (≤-trans xx lt)) (J (≤-trans yy lt))
+
+      G (` x) Γ lt = var-p (H x Γ lt)
+      G (op ⦅ args ⦆) Γ lt = op-op (J lt) tt
+
+
   id-is-id : ∀ (M : ABT)
      → id-fold id M ≡ M
-  id-is-id M =
-    let n = suc (max-var M) in
-    let p = preserve {M}{σ = ↑ 0}{mk-list n}{mk-list n} (G M (mk-list n)
-               (s≤s (≤-reflexive (sym (len-mk-list (max-var M))))))
-               (λ x _ → refl) in
-    sym p
-    where
-    G : ∀ M Γ → suc (max-var M) ≤ length Γ → Γ ⊢ M ⦂ tt
-    K : ∀ {b} {arg : Arg b} {Γ} → suc (max-var-arg arg) ≤ length Γ
-       → b ∣ Γ ⊢a arg ⦂ tt
-    J : ∀ {bs} {args : Args bs} {Γ} → suc (max-var-args args) ≤ length Γ
-       → bs ∣ Γ ⊢as args ⦂ mk-list (length bs)
-
-    suc∸1 : ∀ m x 
-       → suc (m ∸ 1) ≤ x
-       → m ≤ x
-    suc∸1 zero x lt = z≤n
-    suc∸1 (suc m) x lt = lt    
-
-    H : ∀ x Γ → suc (max-var (` x)) ≤ length Γ → Γ ∋ x ⦂ tt
-    H zero (tt ∷ Γ) lt = refl
-    H (suc x) (tt ∷ Γ) (s≤s lt) = H x Γ lt
-
-    K {zero} {ast M} {Γ} lt = ast-a (G M Γ lt)
-    K {suc b} {bind arg} {Γ} lt =
-        let s = suc∸1 (max-var-arg arg) (length Γ) lt in
-        bind-a (K {b} {arg}{tt ∷ Γ} (s≤s s))
-
-    J {[]} {nil} {Γ} lt = nil-a
-    J {b ∷ bs} {cons arg args} {Γ} lt =
-        let xx = s≤s (m≤m⊔n (max-var-arg arg) (max-var-args args)) in
-        let yy = s≤s (n≤m⊔n (max-var-arg arg) (max-var-args args)) in
-        cons-a (K (≤-trans xx lt)) (J (≤-trans yy lt))
-
-    G (` x) Γ lt = var-p (H x Γ lt)
-    G (op ⦅ args ⦆) Γ lt = op-op (J lt) tt
+  id-is-id M
+      with ∃Γ⊢M⦂tt M
+  ... | ⟨ Γ , ⊢M ⟩ =
+      let p = preserve {M}{σ = ↑ 0}{Γ}{Γ} ⊢M (λ x _ → refl) in
+      sym p
