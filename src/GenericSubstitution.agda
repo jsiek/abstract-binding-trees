@@ -1,6 +1,10 @@
+{-# OPTIONS --rewriting #-}
+
 module GenericSubstitution where
 
 import AbstractBindingTree
+open import Agda.Builtin.Equality
+open import Agda.Builtin.Equality.Rewrite
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (+-comm; +-assoc)
@@ -38,6 +42,8 @@ module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
   extend-0 : ∀ σ v → ⧼ extend σ v ⧽ 0 ≡ v
   extend-0 σ v = refl
 
+  {- extend-suc is in GenericSubProperties.agda -}
+
   gen-subst-is-env : EnvSig (Substitution V) V
   gen-subst-is-env = record { lookup = ⧼_⧽ ; extend = extend }
 
@@ -46,19 +52,43 @@ module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
   drop zero (v • σ) = v • σ
   drop (suc k) (v • σ) = drop k σ
   
+  drop-0 : ∀ σ → drop 0 σ ≡ σ
+  drop-0 (↑ k) = refl
+  drop-0 (v • σ) = refl
+    
+  {-# REWRITE drop-0 #-}
+  
   drop-add : ∀{x : Var} (k : ℕ) (σ : Substitution V)
            → ⧼ drop k σ ⧽ x ≡ ⧼ σ ⧽ (k + x)
   drop-add {x} k (↑ k') rewrite +-comm k k' | +-assoc k' k x = refl
   drop-add {x} zero (v • σ) = refl
   drop-add {x} (suc k) (v • σ) = drop-add k σ
-  
+
+  drop-drop : ∀ k k' σ → drop (k + k') σ ≡ drop k (drop k' σ)
+  drop-drop k k' (↑ k₁) rewrite +-assoc k k' k₁ = refl
+  drop-drop zero k' (v • σ) = refl
+  drop-drop (suc k) zero (v • σ) rewrite +-comm k 0 = refl
+  drop-drop (suc k) (suc k') (v • σ)
+      with drop-drop (suc k) k' σ
+  ... | IH rewrite +-comm k (suc k') | +-comm k k' = IH
+
+  drop-inc : ∀ k σ → drop k (gen-inc σ) ≡ gen-inc (drop k σ)
+  drop-inc k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
+  drop-inc zero (v • σ) = refl
+  drop-inc (suc k) (v • σ) = drop-inc k σ
+
+  drop-extend : ∀ k σ v → drop (suc k) (extend σ v) ≡ gen-inc (drop k σ)
+  drop-extend k (↑ k₁) v rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
+  drop-extend zero (x • σ) v = refl
+  drop-extend (suc k) (x • σ) v = drop-inc k σ
+
   gen-sub-head : (v : V) (σ : Substitution V)
      → ⧼ v • σ ⧽ 0 ≡ v
   gen-sub-head v σ = refl
   
   gen-sub-suc-var : (v : V) (σ : Substitution V) (x : Var)
      → ⧼ v • σ ⧽ (suc x) ≡ ⧼ σ ⧽ x
-  gen-sub-suc-var M σ x = refl
+  gen-sub-suc-var v σ x = refl
 
   Z-shift : ∀ x → ⧼ var→val 0 • ↑ 1 ⧽ x ≡ var→val x
   Z-shift 0 = refl
@@ -90,8 +120,8 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
                fold-op = s-op ; env = gen-subst-is-env }
 
   open Folder gen-subst-is-foldable
-      using (fold-arg; fold-args)
-      renaming (fold to gen-subst) public
+      using ()
+      renaming (fold to gen-subst; fold-arg to ⟪_⟫ₐ; fold-args to ⟪_⟫₊) public
 
   ⟪_⟫ : Substitution V → ABT → ABT
   ⟪ σ ⟫ = gen-subst σ

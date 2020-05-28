@@ -1,4 +1,8 @@
+{-# OPTIONS --rewriting #-}
+
 import AbstractBindingTree
+open import Agda.Builtin.Equality
+open import Agda.Builtin.Equality.Rewrite
 open import GenericSubstitution
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
@@ -20,21 +24,25 @@ open GenericSubst V var→val shift Op sig val→abt val→abt∘var→val
 
 ⟪id⟫ : ∀ σ M  →  (∀ x → ⧼ σ ⧽ x ≡ var→val x) →  ⟪ σ ⟫ M ≡ M
 ⟪id⟫ₐ : ∀ σ b (arg : Arg b) →  (∀ x → ⧼ σ ⧽ x ≡ var→val x)
-   → s-arg (fold-arg σ arg) ≡ arg
-⟪id⟫ₐ₊ : ∀ σ bs (args : Args bs) →  (∀ x → ⧼ σ ⧽ x ≡ var→val x)
-   → s-args (fold-args σ args) ≡ args
+   → s-arg (⟪ σ ⟫ₐ arg) ≡ arg
+⟪id⟫₊ : ∀ σ bs (args : Args bs) →  (∀ x → ⧼ σ ⧽ x ≡ var→val x)
+   → s-args (⟪ σ ⟫₊ args) ≡ args
 
 ⟪id⟫ σ (` x) σ-id
     rewrite σ-id x = val→abt∘var→val x
-⟪id⟫ σ (op ⦅ args ⦆) σ-id = cong (_⦅_⦆ op) (⟪id⟫ₐ₊ σ (sig op) args σ-id)
+⟪id⟫ σ (op ⦅ args ⦆) σ-id = cong (_⦅_⦆ op) (⟪id⟫₊ σ (sig op) args σ-id)
 
 ⟪id⟫ₐ σ zero (ast M) σ-id = cong ast (⟪id⟫ σ M σ-id)
 ⟪id⟫ₐ σ (suc b) (bind arg) σ-id =
     cong bind (⟪id⟫ₐ (extend σ (var→val 0)) b arg (extend-id {σ} σ-id))
-⟪id⟫ₐ₊ σ [] nil σ-id = refl
-⟪id⟫ₐ₊ σ (b ∷ bs) (cons arg args) σ-id =
-    cong₂ cons (⟪id⟫ₐ σ b arg σ-id) (⟪id⟫ₐ₊ σ bs args σ-id)
+⟪id⟫₊ σ [] nil σ-id = refl
+⟪id⟫₊ σ (b ∷ bs) (cons arg args) σ-id =
+    cong₂ cons (⟪id⟫ₐ σ b arg σ-id) (⟪id⟫₊ σ bs args σ-id)
 
+sub-sub : ∀{M σ₁ σ₂}
+  → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
+sub-sub {` x} {σ₁} {σ₂} rewrite seq-subst σ₁ σ₂ x = {!!}
+sub-sub {op ⦅ args ⦆} {σ₁} {σ₂} = {!!}
 
 
 

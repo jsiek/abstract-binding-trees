@@ -17,6 +17,7 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
   open GenericSub Var (λ x → x) suc
     using ()
     renaming (⧼_⧽ to ⦉_⦊; extend to ext; drop to dropr; gen-inc to inc;
+              drop-0 to dropr-0; drop-add to dropr-add;
               gen-subst-is-env to rename-is-env) public
 
   open GenericSubst Var (λ x → x) suc Op sig `_ (λ x → refl)
@@ -37,7 +38,10 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
                           ; shift-⦑↑1⦒ = λ v → refl
                           }
   open import GenericSubProperties rename-is-substable
-    renaming (extend-suc to ext-suc;
+    renaming (extend-suc to ext-suc; _⨟_ to _⨟ᵣ_; sub-tail to ren-tail;
+              inc=⨟↑ to inc=⨟ᵣ↑; extend-cons-shift to ext-cons-shift;
+              sub-η to ren-η; sub-idL to ren-idL; sub-dist to ren-dist;
+              seq-subst to seq-rename; 
               extend-id to ext-id) public
 
   open import MoreGenSubProperties Op sig rename-is-substable `_ (λ x → refl)
