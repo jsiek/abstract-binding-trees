@@ -65,11 +65,6 @@ module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
   Z-shift (suc x) = refl
 
 
-open GenericSub Var (λ x → x) suc
-    using ()
-    renaming (⧼_⧽ to ⦉_⦊; extend to ext; drop to dropr; gen-inc to inc;
-              gen-subst-is-env to rename-is-env) public
-
 module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   (Op : Set) (sig : Op → List ℕ) 
   (val→abt : V → AbstractBindingTree.ABT Op sig)
