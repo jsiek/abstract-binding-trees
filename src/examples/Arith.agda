@@ -1,27 +1,23 @@
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
-
 open import Syntax
 open import Fold
-{-
-open import Generic
--}
-
-{---------------------------------------
- Function representation of environments
- ---------------------------------------}
+open import Var
 
 module examples.Arith where
 
+  {---------------------------------------
+   Function representation of environments
+   ---------------------------------------}
+ 
   module FunEnv (V : Set) where
 
     extend : (Var → V) → V → (Var → V)
     extend ρ v zero = v
-    extend ρ v (suc x) = ρ x {- assumes values aren't affected by substitution! -}
+    extend ρ v (suc x) = ρ x
 
     fun-is-env : EnvSig (Var → V) V
     fun-is-env = record { lookup = λ ρ x → ρ x ; extend = extend }
-
 
   data Op : Set where
     op-num : ℕ → Op
