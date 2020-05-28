@@ -12,38 +12,31 @@ module A where
    -}
   open import AbstractBindingTree Op sig
   open import Rename Op sig
-  open import Fold
-  open Folder rename-is-foldable
+      using (⦉_⦊; rename; rename-is-foldable; ren-arg; ren-args; ext; ext-id)
+  import Fold
+  open Fold.Folder rename-is-foldable
   
-  ren-id : ∀ ρ M
-     → (∀ x → ⦉ ρ ⦊ x ≡ x)
-     → rename ρ M ≡ M
-  ren-id-arg : ∀ b ρ (arg : Arg b)
-     → (∀ x → ⦉ ρ ⦊ x ≡ x)
+  ren-id : ∀ ρ M  →  (∀ x → ⦉ ρ ⦊ x ≡ x) →  rename ρ M ≡ M
+  ren-id-arg : ∀ b ρ (arg : Arg b)  →  (∀ x → ⦉ ρ ⦊ x ≡ x)
      → ren-arg (fold-arg ρ arg) ≡ arg
-  ren-id-args : ∀ bs ρ (args : Args bs)
-     → (∀ x → ⦉ ρ ⦊ x ≡ x)
+  ren-id-args : ∀ bs ρ (args : Args bs)  →  (∀ x → ⦉ ρ ⦊ x ≡ x)
      → ren-args (fold-args ρ args) ≡ args
      
+  ren-id ρ (` x) ρ-id = cong `_ (ρ-id x)
+  ren-id ρ (op ⦅ args ⦆) ρ-id = cong (_⦅_⦆ op) (ren-id-args (sig op) ρ args ρ-id)
   ren-id-arg zero ρ (ast M) ρ-id = cong ast (ren-id ρ M ρ-id)
   ren-id-arg (suc b) ρ (bind arg) ρ-id =
-      cong bind (ren-id-arg b (ext ρ 0) arg G)
-      where
-      G : (x : ℕ) → ⦉ ext ρ 0 ⦊ x ≡ x
-      G zero = refl
-      G (suc x) rewrite ext-suc ρ 0 x = cong suc (ρ-id x)
+      cong bind (ren-id-arg b (ext ρ 0) arg (ext-id ρ-id))
   ren-id-args [] ρ nil ρ-id = refl
   ren-id-args (b ∷ bs) ρ (cons arg args) ρ-id =
       cong₂ cons (ren-id-arg b ρ arg ρ-id) (ren-id-args bs ρ args ρ-id)
-  ren-id ρ (` x) ρ-id = cong `_ (ρ-id x)
-  ren-id ρ (op ⦅ args ⦆) ρ-id = cong (_⦅_⦆ op) (ren-id-args (sig op) ρ args ρ-id)
 
 open A public
 
 module B where
   {- 
       Proof of rename-id using simulation with identity fold.
-      It's too long :(
+      This proof is too long. Not worth it! :(
    -}
   open import Simulate
   open import SimulateSubst
