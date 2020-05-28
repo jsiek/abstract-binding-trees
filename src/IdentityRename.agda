@@ -1,7 +1,7 @@
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; sym; cong; cong₂)
+  using (_≡_; refl; sym; trans; cong; cong₂)
   renaming (subst to eq-subst)
 
 module IdentityRename (Op : Set) (sig : Op → List ℕ) where
@@ -24,11 +24,27 @@ module IdentityRename (Op : Set) (sig : Op → List ℕ) where
     (λ { refl → refl })
     using (sub-is-rel-env)
 
-  open Foldable rename-is-foldable
-  
+  open Foldable rename-is-foldable renaming (fold-op to ren-op)
+  open Foldable id-is-foldable renaming (fold-op to id-op)
+  open SimArgResult {Op}{sig}{Var}{ABT}{ABT}{ABT} _∼_ _≡_
 
-  op∼ : ∀{op}{Rs₁}{Rs₂} → ArgsRes∼ Rs₁ Rs₂ → fop₁ op Rs₁ ≈ fop₂ op Rs₂
-  op∼ {op}{Rs₁}{Rs₂} Rs∼ = ?
+  arg∼ : ∀{b}{R₁ : ArgRes₁ b}{R₂ : ArgRes₂ b}
+     → ArgRes∼ R₁ R₂
+     → ren-arg R₁ ≡ res→arg R₂
+  arg∼ {zero} {R₁} {.R₁} refl = refl
+  arg∼ {suc b} {R₁} {R₂} r∼ = cong bind (arg∼ (r∼ refl))
+
+  args∼ : ∀{bs}{Rs₁ : ArgsRes₁ bs}{Rs₂ : ArgsRes₂ bs}
+     → ArgsRes∼ Rs₁ Rs₂
+     → ren-args Rs₁ ≡ res→args Rs₂
+  args∼ {[]} {ArgResult.rnil} {ArgResult.rnil} rnil∼ = refl
+  args∼ {b ∷ bs} {ArgResult.rcons r1 Rs₁} {ArgResult.rcons r2 Rs₂}
+      (rcons∼ r∼ rs∼) = cong₂ cons (arg∼ r∼) (args∼ rs∼)
+  
+  op∼ : ∀{op}{Rs₁ : ArgsRes₁ (sig op)}{Rs₂ : ArgsRes₂ (sig op)}
+      → ArgsRes∼ Rs₁ Rs₂
+      → ren-op op Rs₁ ≡ id-op op Rs₂
+  op∼ {op}{Rs₁}{Rs₂} Rs∼ = cong (_⦅_⦆ op) (args∼ Rs∼)
   
   rel-rename-id : Related rename-is-foldable id-is-foldable
   rel-rename-id = record
@@ -37,6 +53,14 @@ module IdentityRename (Op : Set) (sig : Op → List ℕ) where
                      env∼ = sub-is-rel-env ;
                      ret≈ = λ {v₁} {v₂} z → z ;
                      vars∼ = λ {x} → refl ;
-                     op∼ = {!!} }
+                     op∼ = op∼ }
   
-  
+  open Simulator rename-is-foldable id-is-foldable rel-rename-id
+
+  rename-id-fold : ∀ M
+     → rename id M ≡ id-fold id M
+  rename-id-fold M = sim {M = M} r-up
+
+  rename-id : ∀ M
+     → rename id M ≡ M
+  rename-id M = trans (rename-id-fold M) (id-is-id M)

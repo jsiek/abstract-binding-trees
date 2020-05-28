@@ -21,7 +21,8 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
   open GenericSubst Var (λ x → x) suc Op sig `_
       using ()
       renaming (gen-subst to rename;
-                gen-subst-is-foldable to rename-is-foldable) public
+                gen-subst-is-foldable to rename-is-foldable;
+                s-arg to ren-arg; s-args to ren-args) public
                 
   rename-is-substable : Substable Var
   rename-is-substable = record
