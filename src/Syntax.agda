@@ -1,7 +1,3 @@
-{-
-  NEEDS UPDATING -Jeremy
--}
-
 {-# OPTIONS --rewriting #-}
 
 open import Data.Bool using (Bool; true; false; _∨_)
@@ -19,10 +15,13 @@ module Syntax where
 
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
+import GenericSubstitution
 open import Var
 
-import GenericSubstitution
-open GenericSubstitution.SNF using (Substitution; ↑; _•_)
+open GenericSubstitution.SNF using (Substitution; ↑; _•_; id)
+open GenericSubstitution.GenericSub Var (λ x → x) suc
+    using ()
+    renaming (⧼_⧽ to ⦉_⦊; gen-inc to inc; drop to dropr)  
 
 Rename : Set
 Rename = Substitution Var
