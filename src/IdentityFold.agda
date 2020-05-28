@@ -15,12 +15,13 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
   open import GenericSubstitution
   open SNF using (Substitution; id; ↑; _•_)
   open import Rename Op sig using ()
-  open import Subst Op sig using (⟦_⟧; exts; subst-is-env)
+  open import Subst Op sig using (⟦_⟧; exts; subst-is-env; subst-is-foldable)
   open import SubstProperties Op sig using (exts-suc-rename)
   open import Fold
   open ArgResult ABT ABT
   open import Preserve Op sig
 
+{-
   res→arg : ∀{b} → ArgRes b → Arg b
   res→arg {zero} M = ast M
   res→arg {suc b} r = bind (res→arg (r (` 0)))
@@ -28,7 +29,7 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
   res→args : ∀{bs} → ArgsRes bs → Args bs
   res→args {[]} rnil = nil
   res→args {b ∷ bs} (rcons r rs) = cons (res→arg r) (res→args rs)
-      
+
   id-is-foldable : Foldable ABT ABT Op sig (Substitution ABT)
   id-is-foldable = record { env = subst-is-env ; ret = λ M → M ;
             fold-free-var = `_ ; fold-op = λ o rs → o ⦅ res→args rs ⦆ }
@@ -37,6 +38,9 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
 
   open Folder id-is-foldable
       renaming (fold to id-fold; fold-arg to id-arg; fold-args to id-args)
+-}
+
+  open Foldable subst-is-foldable using (fold-op)
 
   𝒫 : Op → List ⊤ → ⊤ → Set
   𝒫 _ _ _ = ⊤
@@ -64,6 +68,7 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
   extend-pres {.(` 0)} {σ} {M = .(` 0)} M↝M′ ⟨ refl , refl ⟩ σ⦂ (suc x) ∋x
       rewrite exts-suc-rename σ (` 0) x | σ⦂ x ∋x = refl
 
+{-
   op-pres : {op : Op} {Rs : ArgsRes (sig op)} {Δ : List ⊤} {A : ⊤}
             {As : List ⊤} {args : Args (sig op)}
      → (sig op) ∣ Δ ⊢rs args ↝ Rs ⦂ As
@@ -82,7 +87,7 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
          → args ≡ res→args Rs
       G nil-r = refl
       G (cons-r ⊢arg ⊢args) = cong₂ cons (H ⊢arg) (G ⊢args)
-
+-}
 
   id-is-preservable : Preservable ⊤ id-is-foldable
   id-is-preservable = record

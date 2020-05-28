@@ -22,7 +22,6 @@ open import Preserve Op sig
 open import GenericSubstitution
 open import Var
 
-
 record SubstPreservable {V}{I} (S : Substable V)
   (𝒫 : Op → List I → I → Set) : Set₁ where
   𝒜 : List I → ABT → V → I → Set
@@ -56,7 +55,7 @@ module GenericSubstPres (V : Set){I : Set}
   Γ ⊢c M ↝ M′ ⦂ A = Γ ⊢ M′ ⦂ A
   open PresArgResult {V}{ABT}{I} 𝒫 𝒜 _⊢v_↝_⦂_ _⊢c_↝_⦂_
   open SNF
-  open GenericSubProperties S
+  open import GenericSubProperties S
 
   res→arg : ∀{Δ : List I}{b}{R : ArgRes b}{A : I}{arg : Arg b}
      → b ∣ Δ ⊢r arg ↝ R ⦂ A
@@ -104,28 +103,47 @@ module GenericSubstPres (V : Set){I : Set}
    ; ret-pres = ⊢val→abt ; var-pres = λ Γ∋x → ⊢var→val Γ∋x ; op-pres = op-pres }
   open Preservation gen-subst-is-foldable gen-subst-is-preservable public
 
-{-
 module RenamePres {I : Set}
   (𝒫 : Op → List I → I → Set) where
-  open AbstractBindingTree Op sig using (`_)
-  open Preserve Op sig
-  open GenericSubstPres Var (λ x → x) suc Op sig 𝒫 _∋_⦂_ (λ {Δ} {x} {A} z → z)
+  open import AbstractBindingTree Op sig using ()
+  open import Preserve Op sig using ()
+  open ABTPred using (var-p)
+  open import Rename Op sig using (rename-is-substable)
+  rename-is-subst-pres : SubstPreservable rename-is-substable 𝒫
+  rename-is-subst-pres = record
+                           { _⊢v_↝_⦂_ = λ Γ M x A → M ≡ ` x × Γ ∋ x ⦂ A
+                           ; ⊢var→val = λ {Δ} {x} {A} ∋x → ⟨ refl , ∋x ⟩
+                           ; val→abt = `_
+                           ; 𝒜-var→val = λ {B} {Δ} → refl
+                           ; ⊢shift = {!!}
+                           ; ⊢val→abt = λ { ⟨ refl , ∋x ⟩ → var-p ∋x }
+                           }
+  open GenericSubstPres Var 𝒫 rename-is-substable rename-is-subst-pres public
+{-
+(λ x → x) suc Op sig 𝒫 _∋_⦂_ (λ {Δ} {x} {A} z → z)
        `_ ABTPred.var-p (λ {Δ} {A} {B} {σ} {x} z → z) (λ {x} → refl) public
-
+-}
 
 module SubstPres {I : Set}
   (𝒫 : Op → List I → I → Set) where
-  open AbstractBindingTree Op sig using (ABT; `_)
+  open import AbstractBindingTree Op sig using (`_)
   open import Rename Op sig using (rename)
-  open Preserve Op sig
-  open ABTPred Op sig 𝒫
-  open RenamePres Op sig 𝒫 renaming (preserve to rename-preserve)
-  open import Subst Op sig
-  open GenericSubstPres ABT `_ (rename (↑ 1)) Op sig 𝒫 _⊢_⦂_ var-p (λ M → M)
+  open import Preserve Op sig using ()
+  open ABTPred 𝒫 using (_⊢_⦂_; var-p)
+  open RenamePres 𝒫 using () renaming (preserve to rename-preserve)
+  open import Subst Op sig using (↑)
+  open import SubstProperties Op sig using (subst-is-substable)
+  subst-is-subst-pres : SubstPreservable subst-is-substable 𝒫
+  subst-is-subst-pres = {!!}
+  open GenericSubstPres ABT 𝒫 subst-is-substable subst-is-subst-pres public
+{-
+  `_ (rename (↑ 1)) Op sig 𝒫 _⊢_⦂_ var-p (λ M → M)
           (λ {Δ} {v} {A} z → z)
           (λ ⊢M → (rename-preserve {σ = ↑ 1} ⊢M λ {x} {A} z → z))
           (λ {x} → refl) public
+-}
 
+{-
 module TestRenameSubstOnLambda where
 
   data Op : Set where
