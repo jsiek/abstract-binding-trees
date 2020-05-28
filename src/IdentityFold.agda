@@ -13,8 +13,10 @@ module IdentityFold (Op : Set) (sig : Op → List ℕ) where
 
   open import AbstractBindingTree Op sig
   open import GenericSubstitution
-  open import Rename Op sig
-  open import Subst Op sig
+  open SNF using (Substitution; id; ↑; _•_)
+  open import Rename Op sig using ()
+  open import Subst Op sig using (⟦_⟧; exts; subst-is-env)
+  open import SubstProperties Op sig using (exts-suc-rename)
   open import Fold
   open ArgResult ABT ABT
   open import Preserve Op sig
