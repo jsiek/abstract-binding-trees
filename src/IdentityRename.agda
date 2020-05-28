@@ -6,6 +6,12 @@ open import Relation.Binary.PropositionalEquality
 
 module IdentityRename (Op : Set) (sig : Op → List ℕ) where
 
+{-
+ TODO: 
+ * compare to a direct proof
+ * find a way to automate the arg/args stuff
+ -}
+
 open import Simulate
 open import SimulateSubst
 open import IdentityFold Op sig
