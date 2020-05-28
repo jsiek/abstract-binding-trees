@@ -18,10 +18,10 @@ open import Agda.Builtin.Equality.Rewrite
 import GenericSubstitution
 open import Var
 
-open GenericSubstitution.SNF using (Substitution; ↑; _•_; id)
+open GenericSubstitution.SNF using (Substitution; ↑; _•_; id) public
 open GenericSubstitution.GenericSub Var (λ x → x) suc
     using ()
-    renaming (⧼_⧽ to ⦉_⦊; gen-inc to inc; drop to dropr)  
+    renaming (⧼_⧽ to ⦉_⦊; gen-inc to inc; drop to dropr) public
 
 Rename : Set
 Rename = Substitution Var
