@@ -5,7 +5,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (+-comm; +-assoc)
 open import Fold
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Var
 
 module SNF where
@@ -68,6 +68,7 @@ module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
 module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   (Op : Set) (sig : Op → List ℕ) 
   (val→abt : V → AbstractBindingTree.ABT Op sig)
+  (val→abt∘var→val : ∀ x → val→abt (var→val x) ≡ AbstractBindingTree.`_ x)
   where
 
   open AbstractBindingTree Op sig
@@ -89,15 +90,18 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
                fold-op = s-op ; env = gen-subst-is-env }
 
   open Folder gen-subst-is-foldable
-      using ()
+      using (fold-arg; fold-args)
       renaming (fold to gen-subst) public
+
+  ⟪_⟫ : Substitution V → ABT → ABT
+  ⟪ σ ⟫ = gen-subst σ
 
 record Substable (V : Set) : Set where
   open SNF
   field var→val : Var → V
   field shift : V → V
-  field ⟪_⟫ : Substitution V → V → V
+  field ⦑_⦒ : Substitution V → V → V
   open GenericSub V var→val shift
   field var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x)
-  field sub-var→val : ∀ σ x → ⟪ σ ⟫ (var→val x) ≡ ⧼ σ ⧽  x
-  field shift-⟪↑1⟫ : ∀ v → shift v ≡ ⟪ ↑ 1 ⟫ v
+  field sub-var→val : ∀ σ x → ⦑ σ ⦒ (var→val x) ≡ ⧼ σ ⧽  x
+  field shift-⦑↑1⦒ : ∀ v → shift v ≡ ⦑ ↑ 1 ⦒ v

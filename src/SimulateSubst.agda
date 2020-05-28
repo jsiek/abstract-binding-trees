@@ -64,6 +64,8 @@ module SubstSubst
   (var→val∼ : ∀{x} → var→val₁ x ∼ var→val₂ x)
   (shift∼ : ∀ {v₁ v₂} → v₁ ∼ v₂ → shift₁ v₁ ∼ shift₂ v₂)
   (val→abt∼ : ∀{v₁ v₂} → v₁ ∼ v₂ → val→abt₁ v₁ ≡ val→abt₂ v₂)
+  (val→abt∘var→val₁ : ∀ x → val→abt₁ (var→val₁ x) ≡ AbstractBindingTree.`_ x)
+  (val→abt∘var→val₂ : ∀ x → val→abt₂ (var→val₂ x) ≡ AbstractBindingTree.`_ x)
   where
 
   _≈_ = _≡_
@@ -72,11 +74,11 @@ module SubstSubst
   open RelGenericSubst V₁ V₂ _∼_
   open RelateSub V₁ V₂ _∼_ var→val₁ shift₁ var→val₂ shift₂ var→val∼ shift∼
   open SimArgResult {Op}{sig}{V₁}{ABT}{V₂}{ABT} _∼_ _≈_
-  open GenericSubst V₁ var→val₁ shift₁ Op sig val→abt₁
+  open GenericSubst V₁ var→val₁ shift₁ Op sig val→abt₁ val→abt∘var→val₁
       renaming (gen-subst to gen-subst₁;
           gen-subst-is-foldable to gsubst-foldable₁;
           s-arg to s-arg₁; s-args to s-args₁)
-  open GenericSubst V₂ var→val₂ shift₂ Op sig val→abt₂
+  open GenericSubst V₂ var→val₂ shift₂ Op sig val→abt₂ val→abt∘var→val₂
       renaming (gen-subst to gen-subst₂;
           gen-subst-is-foldable to gsubst-foldable₂;
           s-arg to s-arg₂; s-args to s-args₂)
@@ -119,8 +121,9 @@ module RenameSubst (Op : Set) (sig : Op → List ℕ) where
   open Rename Op sig
   open import Subst Op sig hiding (↑; _•_)
   _∼_ = λ x M → ` x ≡ M
-  open SubstSubst Op sig Var ABT _∼_ (λ x → x) suc `_ `_ (rename (↑ 1))
+  open SubstSubst Op sig Var ABT _∼_ (λ x → x) suc `_ `_ (rename (↑ 1)) 
         (λ M → M) (λ {x} → refl) (λ { refl → refl } ) (λ { refl → refl })
+        (λ x → refl) (λ x → refl)
   open RelGenericSubst Var ABT _∼_
   
   rename→subst : Rename → Subst
@@ -132,5 +135,5 @@ module RenameSubst (Op : Set) (sig : Op → List ℕ) where
   rename→subst-≊ {x • ρ} = r-cons refl rename→subst-≊
 
   rename-subst : ∀ ρ M → rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
-  rename-subst ρ M = subsub-sim M rename→subst-≊
+  rename-subst ρ M = subsub-sim M (rename→subst-≊ {ρ})
 

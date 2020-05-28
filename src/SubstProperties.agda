@@ -15,10 +15,14 @@ module SubstProperties (Op : Set) (sig : Op → List ℕ) where
   subst-is-substable = record
                           { var→val = `_
                           ; shift = rename (↑ 1)
-                          ; ⟪_⟫ = ⟪_⟫
+                          ; ⦑_⦒ = ⟪_⟫
                           ; var→val-suc-shift = λ {x} → refl
                           ; sub-var→val = λ σ x → refl
-                          ; shift-⟪↑1⟫ = λ M → rename-subst (↑ 1) M
+                          ; shift-⦑↑1⦒ = λ M → rename-subst (↑ 1) M
                           }
   open import GenericSubProperties subst-is-substable
     renaming (inc-suc to incs-suc; extend-suc to exts-suc-rename) public
+    
+  open import MoreGenSubProperties Op sig subst-is-substable (λ M → M)
+      (λ x → refl)
+      using (⟪id⟫) public
