@@ -47,4 +47,7 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
   open import MoreGenSubProperties Op sig rename-is-substable `_ (λ x → refl)
       renaming (⟪id⟫ to rename-id) public
 
-  open Params (λ σ v → refl) (λ σ v w → refl) (λ σ v → refl) inc-suc public
+  open Params (λ σ v → refl) (λ σ v w → refl) (λ σ v → refl) inc-suc
+      renaming (extend-seq to compose-ext;
+                sub-sub to compose-rename)
+      public
