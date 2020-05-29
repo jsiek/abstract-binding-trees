@@ -23,6 +23,7 @@ module SNF where
   id : ∀ {V} → Substitution V
   id = ↑ 0
 
+
 module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
   open SNF
 
@@ -95,10 +96,30 @@ module GenericSub (V : Set) (var→val : Var → V) (shift : V → V) where
   Z-shift (suc x) = refl
 
 
+module ComposeGenSubst
+  (V : Set) (var→val : Var → V) (shift : V → V)
+  (⦑_⦒ : SNF.Substitution V → V → V)
+  where
+  open SNF
+  open GenericSub V var→val shift
+  
+  infixr 5 _⨟_
+  _⨟_ : Substitution V → Substitution V → Substitution V
+  ↑ k ⨟ σ = drop k σ
+  (v • σ₁) ⨟ σ₂ = ⦑ σ₂ ⦒ v • (σ₁ ⨟ σ₂)
+
+{-
+
+ Substitution is a fold that produces an AST.
+
+ -}
+
 module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   (Op : Set) (sig : Op → List ℕ) 
   (val→abt : V → AbstractBindingTree.ABT Op sig)
+{-
   (val→abt∘var→val : ∀ x → val→abt (var→val x) ≡ AbstractBindingTree.`_ x)
+-}
   where
 
   open AbstractBindingTree Op sig

@@ -74,11 +74,11 @@ module SubstSubst
   open RelGenericSubst V₁ V₂ _∼_
   open RelateSub V₁ V₂ _∼_ var→val₁ shift₁ var→val₂ shift₂ var→val∼ shift∼
   open SimArgResult {Op}{sig}{V₁}{ABT}{V₂}{ABT} _∼_ _≈_
-  open GenericSubst V₁ var→val₁ shift₁ Op sig val→abt₁ val→abt∘var→val₁
+  open GenericSubst V₁ var→val₁ shift₁ Op sig val→abt₁ 
       renaming (gen-subst to gen-subst₁;
           gen-subst-is-foldable to gsubst-foldable₁;
           s-arg to s-arg₁; s-args to s-args₁)
-  open GenericSubst V₂ var→val₂ shift₂ Op sig val→abt₂ val→abt∘var→val₂
+  open GenericSubst V₂ var→val₂ shift₂ Op sig val→abt₂ 
       renaming (gen-subst to gen-subst₂;
           gen-subst-is-foldable to gsubst-foldable₂;
           s-arg to s-arg₂; s-args to s-args₂)
