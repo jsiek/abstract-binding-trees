@@ -109,14 +109,36 @@ module SubstProperties (Op : Set) (sig : Op → List ℕ) where
       cong₂ cons (commute-subst-arg{b}{arg} r)
                  (commute-subst-renames {bs}{args} r)
 
-{-
-  {- need commute-subst-rename? -}
+  exts-suc' : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟦ σ ⟧ x)
+  exts-suc' σ x =
+      begin
+          ⟦ exts σ ⟧ (suc x)
+      ≡⟨⟩
+          ⟦ incs σ ⟧ x
+      ≡⟨ cong (λ □ → ⟦ □ ⟧ x) (incs=⨟↑ σ) ⟩
+        ⟦ σ ⨟ ↑ 1 ⟧ x
+      ≡⟨ seq-subst σ (↑ 1) x ⟩
+        ⟪ ↑ 1 ⟫ (⟦ σ ⟧ x)
+      ≡⟨ sym (rename-subst (↑ 1) (⟦ σ ⟧ x)) ⟩
+        rename (↑ 1) (⟦ σ ⟧ x)
+      ∎
 
   inc-shift : ∀ σ M → ⟪ incs σ ⟫ M ≡ rename (↑ 1) (⟪ σ ⟫ M)
-  inc-shift σ M = {!!}
+  inc-shift σ M =
+      begin
+          ⟪ incs σ ⟫ M
+      ≡⟨ cong (λ □ → ⟪ □ ⟫ M) (incs=⨟↑ σ) ⟩
+          ⟪ σ ⨟ ↑ 1 ⟫ M
+      ≡⟨ {!!} ⟩
+          ⟪ ` 0 • incs σ ⟫ (rename (↑ 1) M)
+      ≡⟨⟩
+          ⟪ exts σ ⟫ (rename (↑ 1) M)
+      ≡⟨ commute-subst-rename {M}{σ}{↑ 1} (λ {x} → exts-suc' σ x) ⟩
+          rename (↑ 1) (⟪ σ ⟫ M)
+      ∎
 
   open Params (λ σ v → refl) {!!} (λ σ v → refl) inc-shift public
--}
+
 
 {-
   open Substable subst-is-substable
