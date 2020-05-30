@@ -17,12 +17,15 @@ module Subst (Op : Set) (sig : Op → List ℕ) where
 
   open GenericSub ABT `_ (rename (↑ 1))
     renaming (⧼_⧽ to ⟦_⟧;
-              extend to exts;
               gen-inc to incs;
               gen-subst-is-env to subst-is-env)
     public
+
+  exts : Subst → Subst
+  exts σ = extend σ (` 0)
+
   open GenericSubst ABT `_ (rename (↑ 1)) Op sig (λ M → M)
-    using (⟪_⟫)
+    using (⟪_⟫; ⟪_⟫ₐ; ⟪_⟫₊)
     renaming (gen-subst-is-foldable to subst-is-foldable)
     public
 
