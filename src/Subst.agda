@@ -26,6 +26,7 @@ module Subst (Op : Set) (sig : Op → List ℕ) where
 
   open GenericSubst ABT `_ (rename (↑ 1)) Op sig (λ M → M)
     using (⟪_⟫; ⟪_⟫ₐ; ⟪_⟫₊)
-    renaming (gen-subst-is-foldable to subst-is-foldable)
+    renaming (gen-subst-is-foldable to subst-is-foldable;
+              s-arg to sub-res→arg; s-args to sub-res→args)
     public
 

@@ -15,16 +15,25 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
   Rename = Substitution Var
 
   open GenericSub Var (λ x → x) suc
-    using ()
-    renaming (⧼_⧽ to ⦉_⦊; extend to ext; drop to dropr; gen-inc to inc;
+    using (extend; drop-extend)
+    renaming (⧼_⧽ to ⦉_⦊; drop to dropr; gen-inc to inc;
               drop-0 to dropr-0; drop-add to dropr-add;
+              drop-inc to dropr-inc; drop-drop to dropr-dropr;
               gen-subst-is-env to rename-is-env) public
+
+  ext : Rename → Rename
+  ext ρ = extend ρ 0
+
+  dropr-ext : ∀ k ρ → dropr (suc k) (ext ρ) ≡ inc (dropr k ρ)
+  dropr-ext k ρ = drop-extend k ρ 0
 
   open GenericSubst Var (λ x → x) suc Op sig `_ 
       using ()
       renaming (gen-subst to rename;
                 gen-subst-is-foldable to rename-is-foldable;
-                s-arg to ren-arg; s-args to ren-args) public
+                s-arg to ren-res→arg; s-args to ren-res→args;
+                ⟪_⟫ₐ to ren-arg; ⟪_⟫₊ to ren-args
+                ) public
   import Fold
   open Fold.Folder rename-is-foldable
                 
@@ -38,11 +47,14 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
                           ; shift-⦑↑1⦒ = λ v → refl
                           }
   open import GenericSubProperties rename-is-substable
-    renaming (extend-suc to ext-suc; _⨟_ to _⨟ᵣ_; sub-tail to ren-tail;
+    renaming (_⨟_ to _⨟ᵣ_; sub-tail to ren-tail;
               inc=⨟↑ to inc=⨟ᵣ↑; extend-cons-shift to ext-cons-shift;
               sub-η to ren-η; sub-idL to ren-idL; sub-dist to ren-dist;
               seq-subst to seq-rename;
               extend-id to ext-id) public
+
+  ext-suc : ∀ ρ x → ⦉ ext ρ ⦊ (suc x) ≡ suc (⦉ ρ ⦊ x)
+  ext-suc ρ x = extend-suc ρ 0 x
 
   open import MoreGenSubProperties Op sig rename-is-substable `_ (λ x → refl)
       renaming (⟪id⟫ to rename-id) public
