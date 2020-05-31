@@ -16,7 +16,8 @@ module SubstProperties (Op : Set) (sig : Op → List ℕ) where
 
   open import AbstractBindingTree Op sig
   open import Rename Op sig
-     using (Rename; rename; ⦉_⦊; ren-arg; ren-args; ext; inc; compose-rename;
+     using (Rename; rename; ⦉_⦊; ren-arg; ren-args; ext; inc;
+            {- compose-rename; -}
             dropr-ext; dropr-inc; dropr-0; inc=⨟ᵣ↑; _⨟ᵣ_; ext-suc;
             ren-res→arg; ren-res→args; ren-tail)
   open import Subst Op sig
@@ -42,6 +43,7 @@ module SubstProperties (Op : Set) (sig : Op → List ℕ) where
   open import MoreGenSubProperties Op sig subst-is-substable
       (λ M → M) (λ x → refl) public
 
+{-
   commute-subst-rename : ∀{M : ABT}{σ : Subst}
                           {ρ : Rename}
        → (∀{x : Var} → ⟦ exts σ ⟧ (⦉ ρ ⦊ x) ≡ rename ρ (⟦ σ ⟧ x))
@@ -54,7 +56,6 @@ module SubstProperties (Op : Set) (sig : Op → List ℕ) where
      → (∀{x : Var} → ⟦ exts σ ⟧ (⦉ ρ ⦊ x) ≡ rename ρ (⟦ σ ⟧ x))
      → sub-res→args (⟪ exts σ ⟫₊ (ren-res→args (ren-args ρ args)))
        ≡ ren-res→args (ren-args ρ (sub-res→args (⟪ σ ⟫₊ args)))
-
 
   commute-subst-rename {` x} r = r
   commute-subst-rename {op ⦅ args ⦆} r =
@@ -135,7 +136,7 @@ module SubstProperties (Op : Set) (sig : Op → List ℕ) where
   exts-seq {M • σ₁} {σ₂} rewrite exts-0 σ₂
       | commute-subst-rename {M}{σ₂}{↑ 1} (λ {x} → exts-suc' σ₂ x)
       | incs-seq σ₁ σ₂ = refl
-
+-}
 {-
   inc-shift : ∀ σ M → ⟪ incs σ ⟫ M ≡ rename (↑ 1) (⟪ σ ⟫ M)
   inc-shift σ M =
@@ -150,9 +151,9 @@ module SubstProperties (Op : Set) (sig : Op → List ℕ) where
       ≡⟨ commute-subst-rename {M}{σ}{↑ 1} (λ {x} → exts-suc' σ x) ⟩
           rename (↑ 1) (⟪ σ ⟫ M)
       ∎
--}
 
   open Params (λ σ v → refl) {!!} (λ σ v → refl) incs-seq public
+-}
 
 
 {-

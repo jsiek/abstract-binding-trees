@@ -118,7 +118,7 @@ module SubstSubst
 module RenameSubst (Op : Set) (sig : Op → List ℕ) where
 
   open AbstractBindingTree Op sig using (ABT; `_; _⦅_⦆; cons; bind)
-  open Rename Op sig
+  open Rename Op sig hiding (↑; _•_)
   open import Subst Op sig hiding (↑; _•_)
   _∼_ = λ x M → ` x ≡ M
   open SubstSubst Op sig Var ABT _∼_ (λ x → x) suc `_ `_ (rename (↑ 1)) 

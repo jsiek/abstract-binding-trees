@@ -68,6 +68,7 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
   open import MoreGenSubProperties Op sig rename-is-substable `_ (λ x → refl)
       renaming (⟪id⟫ to rename-id) public
 
+{-
   compose-ext : ∀{ρ₁ ρ₂ : Rename}
               → (ext ρ₁ ⨟ᵣ ext ρ₂) ≡ ext (ρ₁ ⨟ᵣ ρ₂)
   compose-ext {ρ₁}{ρ₂}
@@ -95,3 +96,4 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
       renaming (extend-seq to compose-ext;
                 sub-sub to compose-rename)
       public
+-}
