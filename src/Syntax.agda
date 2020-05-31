@@ -67,8 +67,12 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V) where
   g-drop-inc zero (v • σ) = refl
   g-drop-inc (suc k) (v • σ) = g-drop-inc k σ
 
+  g-Z-shift : ∀ x → ⧼ var→val 0 • ↑ 1 ⧽ x ≡ var→val x
+  g-Z-shift 0 = refl
+  g-Z-shift (suc x) = refl
+
 open GenericSubst Var (λ x → x) suc
-    using () renaming (⧼_⧽ to ⦉_⦊) public
+    using () renaming (⧼_⧽ to ⦉_⦊; g-Z-shift to Z-shiftr) public
 open GenericSubst Var (λ x → x) suc
     using ()
     renaming (g-inc to inc; g-drop to dropr; g-drop-0 to dropr-0;
@@ -160,11 +164,6 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     ren-η ρ 0 = refl
     ren-η ρ (suc x) = dropr-add 1 ρ
 
-    Z-shiftr : ∀{x : Var}
-            → ⦉ 0 • ↑ 1 ⦊ x ≡ ⦉ id ⦊ x
-    Z-shiftr {0} = refl
-    Z-shiftr {suc x} = refl
-
     ren-idL : (ρ : Rename)
            → id ⨟ᵣ ρ ≡ ρ
     ren-idL (↑ k) = refl
@@ -242,7 +241,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   Subst = Substitution ABT
 
   open GenericSubst ABT `_ (rename (↑ 1))
-      using () renaming (⧼_⧽ to ⟦_⟧) public
+      using () renaming (⧼_⧽ to ⟦_⟧; g-Z-shift to Z-shift) public
+  {-# REWRITE Z-shift #-}
   open GenericSubst ABT `_ (rename (↑ 1))
       using () renaming (g-inc to incs; g-drop to drop; g-drop-0 to drop-0;
                          g-drop-add to drop-add; g-drop-drop to drop-drop;
@@ -308,12 +308,6 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
     {-# REWRITE sub-η #-}
     
-    Z-shift : ∀ x → ⟦ ` 0 • ↑ 1 ⟧ x ≡ ` x
-    Z-shift 0 = refl
-    Z-shift (suc x) = refl
-
-    {-# REWRITE Z-shift #-}
-
   abstract
     shift : ∀ x k → ⟪ ↑ k ⟫ (` x) ≡ ` (k + x)
     shift x k = refl
