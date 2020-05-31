@@ -1,10 +1,10 @@
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
 open import Syntax
-open import Fold
+open import experimental.Fold
 open import Var
 
-module examples.Arith where
+module experimental.Arith where
 
   {---------------------------------------
    Function representation of environments

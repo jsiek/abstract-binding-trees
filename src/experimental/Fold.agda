@@ -7,7 +7,7 @@
 
 -}
 
-module Fold where
+module experimental.Fold where
 
 open import Var
 open import Data.Nat using (ℕ; zero; suc)
