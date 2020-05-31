@@ -95,7 +95,6 @@ abstract
   (x • ρ₁) ⨟ᵣ ρ₂ = ⦉ ρ₂ ⦊ x • (ρ₁ ⨟ᵣ ρ₂)
 
 private
-
   inc-suc : ∀ ρ x → ⦉ inc ρ ⦊ x ≡ suc (⦉ ρ ⦊ x)
   inc-suc (↑ k) x = refl
   inc-suc (x₁ • ρ) zero = refl
