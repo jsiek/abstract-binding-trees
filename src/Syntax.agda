@@ -352,7 +352,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   abstract
     exts-rename-ext : ∀ ρ → exts (rename→subst ρ) ≡ rename→subst (ext ρ)
     exts-rename-ext (↑ k) = refl
-    exts-rename-ext (x • ρ) = cong (λ □ → (` 0) • (` suc x) • □) (incs-rename-inc ρ)
+    exts-rename-ext (x • ρ) =
+        cong (λ □ → (` 0) • (` suc x) • □) (incs-rename-inc ρ)
 
   rename-subst-interp : ∀ ρ x → (` ⦉ ρ ⦊ x) ≡ ⟦ rename→subst ρ ⟧ x
   rename-subst-interp (↑ k) x = refl
@@ -372,10 +373,10 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   ren-arg-subst ρ (bind A) =
     let IH = ren-arg-subst (ext ρ) A in
     begin
-       bind (ren-arg (ext ρ) A)                  ≡⟨ cong bind IH ⟩
-       bind (⟪ rename→subst (ext ρ) ⟫ₐ A)        ≡⟨ cong (λ □ → bind (⟪ □ ⟫ₐ A))
-                                                      (sym (exts-rename-ext ρ)) ⟩
-       bind (⟪ exts (rename→subst ρ) ⟫ₐ A)       ∎
+      bind (ren-arg (ext ρ) A)                ≡⟨ cong bind IH ⟩
+      bind (⟪ rename→subst (ext ρ) ⟫ₐ A)      ≡⟨ cong (λ □ → bind (⟪ □ ⟫ₐ A))
+                                                    (sym (exts-rename-ext ρ)) ⟩
+      bind (⟪ exts (rename→subst ρ) ⟫ₐ A)     ∎
   ren-args-subst ρ nil = refl
   ren-args-subst ρ (cons A As) =
     cong₂ cons (ren-arg-subst ρ A) (ren-args-subst ρ As)
@@ -881,7 +882,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   FV-args? (cons A As) y = FV-arg? A y ∨ FV-args? As y
 
   {----------------------------------------------------------------------------
-   Convert Function to Renaming
+   Convert (Var → Var) Function to Renaming
   ----------------------------------------------------------------------------}
 
   private
