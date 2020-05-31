@@ -1,7 +1,9 @@
 import AbstractBindingTree
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; sym; trans; cong; cong₂)
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
 open import GenericSubstitution
 open import Var
 
@@ -9,7 +11,7 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
 
   open AbstractBindingTree Op sig
       using (`_; _⦅_⦆; Arg; Args; ast; bind; nil; cons)
-  open SNF using (Substitution) public
+  open SNF using (Substitution; ↑; _•_) public
 
   Rename : Set
   Rename = Substitution Var
@@ -48,18 +50,48 @@ module Rename (Op : Set) (sig : Op → List ℕ) where
                           }
   open import GenericSubProperties rename-is-substable
     renaming (_⨟_ to _⨟ᵣ_; sub-tail to ren-tail;
-              inc=⨟↑ to inc=⨟ᵣ↑; extend-cons-shift to ext-cons-shift;
+              inc=⨟↑ to inc=⨟ᵣ↑; 
               sub-η to ren-η; sub-idL to ren-idL; sub-dist to ren-dist;
               seq-subst to seq-rename;
               extend-id to ext-id) public
 
+  ext-cons-shift : ∀ ρ → ext ρ ≡ (0 • (ρ ⨟ᵣ ↑ 1))
+  ext-cons-shift ρ = extend-cons-shift ρ 0
+
   ext-suc : ∀ ρ x → ⦉ ext ρ ⦊ (suc x) ≡ suc (⦉ ρ ⦊ x)
   ext-suc ρ x = extend-suc ρ 0 x
+
+  inc-seq : ∀ ρ₁ ρ₂ → (inc ρ₁ ⨟ᵣ ext ρ₂) ≡ inc (ρ₁ ⨟ᵣ ρ₂)
+  inc-seq (↑ k) ρ₂ = dropr-ext k ρ₂
+  inc-seq (x • ρ₁) ρ₂ rewrite inc-seq ρ₁ ρ₂ | ext-suc ρ₂ x = refl
 
   open import MoreGenSubProperties Op sig rename-is-substable `_ (λ x → refl)
       renaming (⟪id⟫ to rename-id) public
 
-  open Params (λ σ v → refl) (λ σ v w → refl) (λ σ v → refl) inc-suc
+  compose-ext : ∀{ρ₁ ρ₂ : Rename}
+              → (ext ρ₁ ⨟ᵣ ext ρ₂) ≡ ext (ρ₁ ⨟ᵣ ρ₂)
+  compose-ext {ρ₁}{ρ₂}
+      =
+      begin
+          ext ρ₁ ⨟ᵣ ext ρ₂
+      ≡⟨ cong₂ (λ X Y → X ⨟ᵣ Y) (ext-cons-shift ρ₁) (ext-cons-shift ρ₂)  ⟩
+          (0 • (ρ₁ ⨟ᵣ ↑ 1)) ⨟ᵣ (0 • (ρ₂ ⨟ᵣ ↑ 1))
+      ≡⟨⟩
+          0 • ((ρ₁ ⨟ᵣ ↑ 1) ⨟ᵣ (0 • (ρ₂ ⨟ᵣ ↑ 1)))
+      ≡⟨ {!!} ⟩
+          0 • ((ρ₁ ⨟ᵣ ρ₂) ⨟ᵣ ↑ 1)
+      ≡⟨ sym (ext-cons-shift (ρ₁ ⨟ᵣ ρ₂))  ⟩
+          ext (ρ₁ ⨟ᵣ ρ₂)
+      ∎
+{-
+      rewrite ext-cons-shift ρ₁
+      | ext-cons-shift ρ₂
+      | ext-cons-shift (ρ₁ ⨟ᵣ ρ₂)
+      | dropr-0 (ρ₂ ⨟ᵣ ↑ 1)
+      = {!!}
+-}
+
+  open Params (λ σ v → refl) (λ σ v w → refl) (λ σ v → refl) inc-seq {- inc-suc -} {!!}
       renaming (extend-seq to compose-ext;
                 sub-sub to compose-rename)
       public

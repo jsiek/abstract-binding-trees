@@ -7,7 +7,7 @@ open import GenericSubstitution
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Relation.Binary.PropositionalEquality
-    using (_≡_; refl; cong; cong₂)
+    using (_≡_; refl; sym; cong; cong₂)
 open Relation.Binary.PropositionalEquality.≡-Reasoning
     using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
 
@@ -46,9 +46,16 @@ module Params
   (⦑σ⦒-head : ∀ σ v → ⦑ v • σ ⦒ (var→val 0) ≡ v)
   (⦑σ⦒-tail : ∀ σ v w → ⦑ w • σ ⦒ (shift v) ≡ ⦑ σ ⦒ v)
   (⟪σ⟫-⦑σ⦒ : ∀ σ v → ⟪ σ ⟫ (val→abt v) ≡ val→abt (⦑ σ ⦒ v))
+{-
   (inc-shift : ∀ σ v → ⦑ gen-inc σ ⦒ v ≡ shift (⦑ σ ⦒ v))
+-}
+  (inc-seq : ∀ σ₁ σ₂ → (gen-inc σ₁ ⨟ extend σ₂ (var→val 0)) ≡ gen-inc (σ₁ ⨟ σ₂))
+  (extend-seq : ∀ {σ₁} {σ₂}
+     → extend σ₁ (var→val 0) ⨟ extend σ₂ (var→val 0)
+       ≡ extend (σ₁ ⨟ σ₂) (var→val 0))
   where
 
+{-
   inc-seq : ∀ σ₁ σ₂ → (gen-inc σ₁ ⨟ extend σ₂ (var→val 0)) ≡ gen-inc (σ₁ ⨟ σ₂)
   inc-seq (↑ k) σ₂ =
     begin
@@ -75,7 +82,8 @@ module Params
     ≡⟨⟩
       gen-inc (v • σ₁ ⨟ σ₂)
     ∎
-  
+  -}
+  {-  
   extend-seq : ∀ {σ₁} {σ₂}
      → extend σ₁ (var→val 0) ⨟ extend σ₂ (var→val 0)
        ≡ extend (σ₁ ⨟ σ₂) (var→val 0)
@@ -87,8 +95,9 @@ module Params
       | ⦑σ⦒-head (gen-inc σ₂) (var→val 0)
       | ⦑σ⦒-tail (gen-inc σ₂) v (var→val 0)
       | inc-seq σ₁ σ₂
-      | inc-shift σ₂ v = refl
-
+      {- | inc-shift σ₂ v -} = {!!}
+  -}
+  
   sub-sub : ∀{M σ₁ σ₂}  →  ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
   sub-sub-arg : ∀{b}{arg : Arg b}{σ₁ σ₂}
      → s-arg (⟪ σ₂ ⟫ₐ (s-arg (⟪ σ₁ ⟫ₐ arg))) ≡ s-arg (⟪ σ₁ ⨟ σ₂ ⟫ₐ arg)
@@ -119,4 +128,23 @@ module Params
       cong₂ cons (sub-sub-arg {b}{arg}{σ₁}{σ₂})
                  (sub-sub-args {bs} {args} {σ₁} {σ₂})
 
+{-
+  Need:
+  Goal: ⦑ θ ⦒ (⦑ τ ⦒ v) ≡ ⦑ τ ⨟ θ ⦒ v
 
+  sub-assoc : ∀ {σ τ θ : Substitution V}
+            → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
+  sub-assoc {↑ k} {τ} {θ} = sym (drop-seq k τ θ)
+  sub-assoc {v • σ} {τ} {θ} =
+      begin
+          ((v • σ) ⨟ τ) ⨟ θ
+      ≡⟨⟩
+          ⦑ θ ⦒ (⦑ τ ⦒ v) • ((σ ⨟ τ) ⨟ θ)
+      ≡⟨ cong (λ □ → ⦑ θ ⦒ (⦑ τ ⦒ v) • □) (sub-assoc {σ}{τ}{θ}) ⟩
+          ⦑ θ ⦒ (⦑ τ ⦒ v) • (σ ⨟ (τ ⨟ θ))
+      ≡⟨ cong (λ □ → □ • (σ ⨟ (τ ⨟ θ))) {!!} ⟩
+          ⦑ τ ⨟ θ ⦒ v • (σ ⨟ (τ ⨟ θ))
+      ≡⟨⟩
+          (v • σ) ⨟ (τ ⨟ θ)
+      ∎
+-}

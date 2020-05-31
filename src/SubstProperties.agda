@@ -123,6 +123,20 @@ module SubstProperties (Op : Set) (sig : Op → List ℕ) where
         rename (↑ 1) (⟦ σ ⟧ x)
       ∎
 
+  incs-seq : ∀ ρ₁ ρ₂ → (incs ρ₁ ⨟ exts ρ₂) ≡ incs (ρ₁ ⨟ ρ₂)
+  incs-seq (↑ k) ρ₂ = drop-exts k ρ₂
+  incs-seq (M • ρ₁) ρ₂ rewrite incs-seq ρ₁ ρ₂
+      | commute-subst-rename {M}{ρ₂}{↑ 1} (λ {x} → exts-suc' ρ₂ x) = refl
+
+  exts-seq : ∀ {σ₁ : Subst} {σ₂ : Subst}
+           → exts σ₁ ⨟ exts σ₂ ≡ exts (σ₁ ⨟ σ₂)
+  exts-seq {↑ k} {σ₂} rewrite exts-cons-shift σ₂ | exts-cons-shift (drop k σ₂)
+      | drop-seq k σ₂ (↑ 1) = refl
+  exts-seq {M • σ₁} {σ₂} rewrite exts-0 σ₂
+      | commute-subst-rename {M}{σ₂}{↑ 1} (λ {x} → exts-suc' σ₂ x)
+      | incs-seq σ₁ σ₂ = refl
+
+{-
   inc-shift : ∀ σ M → ⟪ incs σ ⟫ M ≡ rename (↑ 1) (⟪ σ ⟫ M)
   inc-shift σ M =
       begin
@@ -136,8 +150,9 @@ module SubstProperties (Op : Set) (sig : Op → List ℕ) where
       ≡⟨ commute-subst-rename {M}{σ}{↑ 1} (λ {x} → exts-suc' σ x) ⟩
           rename (↑ 1) (⟪ σ ⟫ M)
       ∎
+-}
 
-  open Params (λ σ v → refl) {!!} (λ σ v → refl) inc-shift public
+  open Params (λ σ v → refl) {!!} (λ σ v → refl) incs-seq public
 
 
 {-

@@ -24,6 +24,9 @@ module Subst (Op : Set) (sig : Op → List ℕ) where
   exts : Subst → Subst
   exts σ = extend σ (` 0)
 
+  drop-exts : ∀ k σ → drop (suc k) (exts σ) ≡ incs (drop k σ)
+  drop-exts k σ = drop-extend k σ (` 0)
+
   open GenericSubst ABT `_ (rename (↑ 1)) Op sig (λ M → M)
     using (⟪_⟫; ⟪_⟫ₐ; ⟪_⟫₊)
     renaming (gen-subst-is-foldable to subst-is-foldable;
