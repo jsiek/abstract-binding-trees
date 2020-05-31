@@ -15,13 +15,42 @@ module Syntax where
 
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
-import GenericSubstitution
 open import Var
 
-open GenericSubstitution.SNF using (Substitution; ↑; _•_; id) public
-open GenericSubstitution.GenericSub Var (λ x → x) suc
+infixr 6 _•_
+
+data Substitution : (V : Set) → Set where
+  ↑ : (k : ℕ) → ∀{V} → Substitution V
+  _•_ : ∀{V} → V → Substitution V → Substitution V
+
+id : ∀ {V} → Substitution V
+id = ↑ 0
+
+module GenericSubst
+  (V : Set) (var→val : Var → V) (shift : V → V) where
+
+  ⧼_⧽ : Substitution V → Var → V
+  ⧼ ↑ k ⧽ x = var→val (k + x)
+  ⧼ y • σ ⧽ 0 = y
+  ⧼ y • σ ⧽ (suc x) = ⧼ σ ⧽ x
+
+  g-inc : Substitution V → Substitution V
+  g-inc (↑ k) = ↑ (suc k)
+  g-inc (v • ρ) = shift v • g-inc ρ
+
+  g-drop : (k : ℕ) → Substitution V → Substitution V
+  g-drop k (↑ k') = ↑ (k + k')
+  g-drop zero (v • σ) = v • σ
+  g-drop (suc k) (v • σ) = g-drop k σ
+
+  g-drop-0 : ∀ σ → g-drop 0 σ ≡ σ
+  g-drop-0 (↑ k) = refl
+  g-drop-0 (v • σ) = refl
+
+open GenericSubst Var (λ x → x) suc
     using ()
-    renaming (⧼_⧽ to ⦉_⦊; gen-inc to inc; drop to dropr) public
+    renaming (⧼_⧽ to ⦉_⦊; g-inc to inc; g-drop to dropr; g-drop-0 to dropr-0)
+    public
 
 Rename : Set
 Rename = Substitution Var
@@ -140,10 +169,6 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     seq-rename (x₁ • ρ₁) ρ₂ (suc x) = seq-rename ρ₁ ρ₂ x
 
   private
-
-    dropr-0 : ∀ ρ → dropr 0 ρ ≡ ρ
-    dropr-0 (↑ k) = refl
-    dropr-0 (x • ρ) = refl
 
     dropr-dropr : ∀ k k' ρ → dropr (k + k') ρ ≡ dropr k (dropr k' ρ)
     dropr-dropr k k' (↑ k₁) rewrite +-assoc k k' k₁ = refl
