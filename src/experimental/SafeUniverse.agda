@@ -4,30 +4,40 @@ open import Data.Product using (_×_)
 module experimental.SafeUniverse where
 
 {-
-  Things that have type I in environment List I.
+  Things that have property I in context List I, like variables.
 -}
 _-Scoped : Set → Set₁
 I -Scoped = I → List I → Set
 
+{-
+ Combinators for threading a context
+ through some logical formulas.
+ -}
+
 private
   variable
-    P Q : Set
+    E E′ : Set
 
+  {- Implication -}
   infixr 3 _→̇_
-  _→̇_ : (S T : P → Set) → (P → Set)
-  (S →̇ T) a = S a → T a
+  _→̇_ : (P Q : E → Set) → (E → Set)
+  (P →̇ Q) Γ = P Γ → Q Γ
 
-  _×̇_ : (S T : P → Set) → (P → Set)
-  (S ×̇ T) a = S a × T a
+  {- Conjunction -}
+  _×̇_ : (P Q : E → Set) → (E → Set)
+  (P ×̇ Q) Γ = P Γ × Q Γ
 
-  _⊢_ : (P → Q) → (Q → Set) → (P → Set)
-  (f ⊢ T) a = T (f a)
+  {- The function δ changes the context -}
+  _⊢_ : (E → E′) → (E′ → Set) → (E → Set)
+  (δ ⊢ Q) Γ = Q (δ Γ)
 
-  κ : Set → (P → Set)
-  κ S a = S
+  {- Ignore the context -}
+  κ : Set → (E → Set)
+  κ P Γ = P
 
-  [_] : (P → Set) → Set
-  [ T ] = ∀{a} → T a
+  {- Quantify over all contexts -}
+  [_] : (E → Set) → Set
+  [ Q ] = ∀{Γ} → Q Γ
 
 private
   variable
@@ -39,18 +49,58 @@ data Var : I -Scoped where
   z : [ (i ∷_) ⊢ Var i ]
   s : [ Var i →̇ (j ∷_) ⊢ Var i ]
 
-infixr 3 _⇒_
 
-data Type : Set where
-  α     : Type
-  _⇒_  : Type → Type → Type
+module Lambda where
+
+  infixr 3 _⇒_
+
+  data Type : Set where
+    α     : Type
+    _⇒_  : Type → Type → Type
+
+  private
+    variable
+      σ τ : Type
+      Γ Δ : List Type
+
+  data Lam : Type -Scoped where
+    V  : [ Var σ →̇ Lam σ ]
+    A  : [ Lam (σ ⇒ τ) →̇ Lam σ →̇ Lam τ ]
+    L  : [ (σ ∷_) ⊢ Lam τ →̇ Lam (σ ⇒ τ) ]
+
+{-
+
+ Environments are functions from variables to values,
+ represented as functions.
+
+ They are wrapped in a record just to help Agda inference.
+
+-}
+
+record _-Env (Γ : List I) (𝒱 : I -Scoped) (Δ : List I) : Set where
+  constructor pack
+  field lookup : ∀{i} → Var i Γ → 𝒱 i Δ
+
+{- Rename variables from context Γ to Δ -}
+Thinning : List I → List I → Set
+Thinning Γ Δ = (Γ -Env) Var Δ
+
+{- P is true after any renaming from Γ -}
+□ : (List I → Set) → (List I → Set)
+(□ P) Γ = [ Thinning Γ →̇ P ]          {- ∀{Δ} → Thinning Γ Δ → P Δ -}
+
+{- A property P is Thinabble if it is preserved under renamings. -}
+Thinnable : (List I → Set) → Set
+Thinnable P = [ P →̇ □ P ]
 
 private
   variable
-    σ τ : Type
-    Γ Δ : List Type
+    P Q : List I → Set
+  variable
+    Γ Δ : List I
+    
+id : Thinning Γ Γ
+id = pack (λ x → x)
 
-data Lam : Type -Scoped where
-  V  : [ Var σ →̇ Lam σ ]
-  A  : [ Lam (σ ⇒ τ) →̇ Lam σ →̇ Lam τ ]
-  L  : [ (σ ∷_) ⊢ Lam τ →̇ Lam (σ ⇒ τ) ]
+extract : [ □ P →̇ P ]
+extract = λ □PΓ → □PΓ id
