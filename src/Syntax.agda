@@ -26,8 +26,7 @@ data Substitution : (V : Set) → Set where
 id : ∀ {V} → Substitution V
 id = ↑ 0
 
-module GenericSubst
-  (V : Set) (var→val : Var → V) (shift : V → V) where
+module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V) where
 
   ⧼_⧽ : Substitution V → Var → V
   ⧼ ↑ k ⧽ x = var→val (k + x)
@@ -47,10 +46,34 @@ module GenericSubst
   g-drop-0 (↑ k) = refl
   g-drop-0 (v • σ) = refl
 
+  {-# REWRITE g-drop-0 #-}
+
+  g-drop-add : ∀{x : Var} (k : ℕ) (σ : Substitution V)
+           → ⧼ g-drop k σ ⧽ x ≡ ⧼ σ ⧽ (k + x)
+  g-drop-add {x} k (↑ k') rewrite +-comm k k' | +-assoc k' k x = refl
+  g-drop-add {x} zero (v • σ) = refl
+  g-drop-add {x} (suc k) (v • σ) = g-drop-add k σ
+
+  g-drop-drop : ∀ k k' σ → g-drop (k + k') σ ≡ g-drop k (g-drop k' σ)
+  g-drop-drop k k' (↑ k₁) rewrite +-assoc k k' k₁ = refl
+  g-drop-drop zero k' (v • σ) = refl
+  g-drop-drop (suc k) zero (v • σ) rewrite +-comm k 0 = refl
+  g-drop-drop (suc k) (suc k') (v • σ)
+      with g-drop-drop (suc k) k' σ
+  ... | IH rewrite +-comm k (suc k') | +-comm k k' = IH
+
+  g-drop-inc : ∀ k σ → g-drop k (g-inc σ) ≡ g-inc (g-drop k σ)
+  g-drop-inc k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
+  g-drop-inc zero (v • σ) = refl
+  g-drop-inc (suc k) (v • σ) = g-drop-inc k σ
+
+open GenericSubst Var (λ x → x) suc
+    using () renaming (⧼_⧽ to ⦉_⦊) public
 open GenericSubst Var (λ x → x) suc
     using ()
-    renaming (⧼_⧽ to ⦉_⦊; g-inc to inc; g-drop to dropr; g-drop-0 to dropr-0)
-    public
+    renaming (g-inc to inc; g-drop to dropr; g-drop-0 to dropr-0;
+              g-drop-add to dropr-add; g-drop-drop to dropr-dropr;
+              g-drop-inc to dropr-inc)
 
 Rename : Set
 Rename = Substitution Var
@@ -130,14 +153,6 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
     {- REWRITE ext-cons-shift -}
     
-  private
-
-    dropr-add : ∀{x : Var} (k : ℕ) (σ : Rename)
-             → ⦉ dropr k σ ⦊ x ≡ ⦉ σ ⦊ (k + x)
-    dropr-add {x} k (↑ k') rewrite +-comm k k' | +-assoc k' k x = refl
-    dropr-add {x} zero (y • σ) = refl
-    dropr-add {x} (suc k) (y • σ) = dropr-add k σ
-
   abstract
 
     ren-η : ∀ (ρ : Rename) (x : Var)
@@ -170,24 +185,11 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
   private
 
-    dropr-dropr : ∀ k k' ρ → dropr (k + k') ρ ≡ dropr k (dropr k' ρ)
-    dropr-dropr k k' (↑ k₁) rewrite +-assoc k k' k₁ = refl
-    dropr-dropr zero k' (x • ρ) rewrite dropr-0 (dropr k' (x • ρ)) = refl
-    dropr-dropr (suc k) zero (x • ρ) rewrite +-comm k 0 = refl
-    dropr-dropr (suc k) (suc k') (x • ρ)
-        with dropr-dropr (suc k) k' ρ
-    ... | IH rewrite +-comm k (suc k') | +-comm k k' = IH
-
     abstract 
       dropr-seq : ∀ k ρ ρ' → dropr k (ρ ⨟ᵣ ρ') ≡ (dropr k ρ ⨟ᵣ ρ')
       dropr-seq k (↑ k₁) ρ' = sym (dropr-dropr k k₁ ρ')
       dropr-seq zero (x • ρ) ρ' = refl
       dropr-seq (suc k) (x • ρ) ρ' = dropr-seq k ρ ρ'
-
-    dropr-inc : ∀ k ρ → dropr k (inc ρ) ≡ inc (dropr k ρ)
-    dropr-inc k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
-    dropr-inc zero (x • ρ) = refl
-    dropr-inc (suc k) (x • ρ) = dropr-inc k ρ
 
     abstract
       dropr-ext : ∀ k ρ → dropr (suc k) (ext ρ) ≡ inc (dropr k ρ)
@@ -239,15 +241,12 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   Subst : Set
   Subst = Substitution ABT
 
-  ⟦_⟧ : Subst → Var → ABT
-  ⟦ ↑ k ⟧ x = ` (k + x)
-  ⟦ M • σ ⟧ 0 = M
-  ⟦ M • σ ⟧ (suc x) = ⟦ σ ⟧ x
-
-  private
-    incs : Subst → Subst
-    incs (↑ k) = ↑ (suc k)
-    incs (M • σ) =  rename (↑ 1) M • incs σ
+  open GenericSubst ABT `_ (rename (↑ 1))
+      using () renaming (⧼_⧽ to ⟦_⟧) public
+  open GenericSubst ABT `_ (rename (↑ 1))
+      using () renaming (g-inc to incs; g-drop to drop; g-drop-0 to drop-0;
+                         g-drop-add to drop-add; g-drop-drop to drop-drop;
+                         g-drop-inc to drop-incs) 
 
   abstract
     exts : Subst → Subst
@@ -279,11 +278,6 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   _[_] : ABT → ABT → ABT
   _[_] N M =  ⟪ subst-zero M ⟫ N
 
-  drop : (k : ℕ) → Subst → Subst
-  drop k (↑ k') = ↑ (k + k')
-  drop zero (M • σ) = M • σ
-  drop (suc k) (M • σ) = drop k σ
-
   abstract
     infixr 5 _⨟_
 
@@ -305,13 +299,6 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     sub-suc : (M : ABT) (σ : Subst) (x : Var)
              → ⟪ M • σ ⟫ (` suc x) ≡ ⟪ σ ⟫ (` x)
     sub-suc M σ x = refl
-
-  private
-    drop-add : ∀{x : Var} (k : ℕ) (σ : Subst)
-             → ⟦ drop k σ ⟧ x ≡ ⟦ σ ⟧ (k + x)
-    drop-add {x} k (↑ k') rewrite +-comm k k' | +-assoc k' k x = refl
-    drop-add {x} zero (M • σ) = refl
-    drop-add {x} (suc k) (M • σ) = drop-add k σ
 
   abstract
     sub-η : ∀ (σ : Subst) (x : Var)
@@ -517,30 +504,11 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
   private
 
-    drop-0 : ∀ ρ → drop 0 ρ ≡ ρ
-    drop-0 (↑ k) = refl
-    drop-0 (M • ρ) = refl
-
-    {-# REWRITE drop-0 #-}
-
-    drop-drop : ∀ k k' ρ → drop (k + k') ρ ≡ drop k (drop k' ρ)
-    drop-drop k k' (↑ k₁) rewrite +-assoc k k' k₁ = refl
-    drop-drop zero k' (M • ρ) = refl
-    drop-drop (suc k) zero (M • ρ) rewrite +-comm k 0 = refl
-    drop-drop (suc k) (suc k') (M • ρ)
-        with drop-drop (suc k) k' ρ
-    ... | IH rewrite +-comm k (suc k') | +-comm k k' = IH
-
     abstract
       drop-seq : ∀ k ρ ρ' → drop k (ρ ⨟ ρ') ≡ (drop k ρ ⨟ ρ')
       drop-seq k (↑ k₁) ρ' = sym (drop-drop k k₁ ρ')
       drop-seq zero (x • ρ) ρ' = refl
       drop-seq (suc k) (x • ρ) ρ' = drop-seq k ρ ρ'
-
-    drop-incs : ∀ k ρ → drop k (incs ρ) ≡ incs (drop k ρ)
-    drop-incs k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
-    drop-incs zero (M • ρ) = refl
-    drop-incs (suc k) (M • ρ) = drop-incs k ρ
 
     abstract
       drop-exts : ∀ k ρ → drop (suc k) (exts ρ) ≡ incs (drop k ρ)
