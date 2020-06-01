@@ -9,7 +9,9 @@ by Allais, Atken, Chapman, McBride, and McKinna.
 
 -}
 
-open import Data.List using (List; []; _∷_; map)
+open import Data.Bool using (Bool; true; false)
+open import Data.List using (List; []; _∷_; map; _++_; foldr)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product
   using (_×_; proj₁; proj₂; ∃; ∃-syntax; Σ; Σ-syntax)
@@ -136,10 +138,9 @@ duplicate = λ □PΓ ρ₁ ρ₂ → □PΓ (ρ₁ ⨾ ρ₂)
 th□ : ∀{I : Set}{P : List I → Set} → Thinnable (□ P)
 th□ = duplicate
 
-module Lambda where
+module STLC where
 
   infixr 3 _⇒_
-
   data Type : Set where
     α     : Type
     _⇒_  : Type → Type → Type
@@ -151,9 +152,9 @@ module Lambda where
 
   record Sem (𝒱 𝒞 : Type -Scoped) : Set where
     field th𝒱 : ∀{τ} → Thinnable (𝒱 τ)
-          return : ∀{τ : Type} → [ 𝒱 τ →̇ 𝒞 τ ]
-          _•_ : ∀{σ τ : Type} → [ 𝒞 (σ ⇒ τ) →̇ 𝒞 σ →̇ 𝒞 τ ]
-          Λ : ∀{τ : Type} → (σ : Type) → [ □ (𝒱 σ →̇ 𝒞 τ) →̇ 𝒞 (σ ⇒ τ) ]
+          return : ∀{τ : Type} → [ 𝒱 τ  →̇  𝒞 τ ]
+          _•_ : ∀{σ τ : Type} → [ 𝒞 (σ ⇒ τ)  →̇  𝒞 σ →̇ 𝒞 τ ]
+          Λ : ∀{τ : Type} → (σ : Type) → [ □ (𝒱 σ →̇ 𝒞 τ)  →̇  𝒞 (σ ⇒ τ) ]
     
     extend : ∀{Γ Δ Θ : List Type}{σ : Type}
        → Thinning Δ Θ
@@ -183,59 +184,146 @@ module Lambda where
 
   
 {-
-   Universe of Data Types
+   Universe of Data Types a la Chapman, Dagand, McBride, and Morris.
 -}
 
-data Desc (I J : Set) : Set₁ where
-  tag : (A : Set) → (A → Desc I J) → Desc I J
-  child : J → Desc I J → Desc I J
-  leaf : I → Desc I J
+module CDMM where
 
-⟦_⟧ : ∀{I J : Set } → Desc I J → (J → Set) → (I → Set)
-⟦ tag A d ⟧ X i = Σ[ a ∈ A ] (⟦ d a ⟧ X i)
-⟦ child j d ⟧ X i = X j × ⟦ d ⟧ X i
-⟦ leaf i' ⟧ X i = i ≡ i'
+  data Desc (I J : Set) : Set₁ where
+    tag/st : (A : Set) → (A → Desc I J) → Desc I J
+    child : J → Desc I J → Desc I J
+    done : I → Desc I J
 
-data ListTags : Set where
-  t-nil t-cons : ListTags
+  ⟦_⟧ : ∀{I J : Set } → Desc I J → (J → Set) → (I → Set)
+  ⟦ tag/st A d ⟧ X i = Σ[ a ∈ A ] (⟦ d a ⟧ X i)
+  ⟦ child j d ⟧ X i = X j × ⟦ d ⟧ X i
+  ⟦ done i' ⟧ X i = i ≡ i'
 
-listD : Set → Desc ⊤ ⊤ 
-listD A = tag ListTags G
-  where
-  G : ListTags → Desc ⊤ ⊤
-  G t-nil = leaf tt
-  G t-cons = tag A λ _ → child tt (leaf tt)
+  data ListTags : Set where
+    t-nil t-cons : ListTags
 
-fmap : ∀{I J : Set}{X Y : J → Set}
-   → (d : Desc I J)
-   → [ X →̇ Y ]
-   → [ (⟦ d ⟧ X) →̇ (⟦ d ⟧ Y) ]
-fmap (tag A d) f ⟨ a , v ⟩ = ⟨ a , fmap (d a) f v ⟩
-fmap (child x d) f ⟨ r , v ⟩ = ⟨ (f r) , (fmap d f v) ⟩
-fmap (leaf x) f refl = refl
+  listD : Set → Desc ⊤ ⊤ 
+  listD A = tag/st ListTags G
+    where
+    G : ListTags → Desc ⊤ ⊤
+    G t-nil = done tt
+    G t-cons = tag/st A λ _ → child tt (done tt)
 
-data μ {I : Set} (d : Desc I I) : Size → I → Set where
-  rec : ∀{i : I}{s'} → ⟦ d ⟧ (μ d s') i → μ d (↑ s') i
+  fmap : ∀{I J : Set}{X Y : J → Set}
+     → (d : Desc I J)
+     → [ X →̇ Y ]
+     → [ (⟦ d ⟧ X) →̇ (⟦ d ⟧ Y) ]
+  fmap (tag/st A d) f ⟨ a , rst ⟩ = ⟨ a , fmap (d a) f rst ⟩
+  fmap (child j d) f ⟨ ch , rst ⟩ = ⟨ (f ch) , (fmap d f rst) ⟩
+  fmap (done i) f refl = refl
 
-fold : ∀{I : Set}{X}{s'}
-   → (d : Desc I I)
-   → [ ⟦ d ⟧ X →̇ X ]
-   → [ μ d s' →̇ X ]
-fold d algebra (rec t) = algebra (fmap d (fold d algebra) t)
+  data μ {I : Set} (d : Desc I I) : Size → I → Set where
+    rec : ∀{i : I}{s'} → ⟦ d ⟧ (μ d s') i → μ d (↑ s') i
 
-Listℕ : Set
-Listℕ = μ (listD ℕ) ∞ tt
+  fold : ∀{I : Set}{X}{s'}
+     → (d : Desc I I)
+     → [ ⟦ d ⟧ X →̇ X ]
+     → [ μ d s' →̇ X ]
+  fold d algebra (rec t) = algebra (fmap d (fold d algebra) t)
 
-Nat : ⊤ → Set
-Nat tt = ℕ
+  Listℕ : Set
+  Listℕ = μ (listD ℕ) ∞ tt
 
-length : (xs : Listℕ) → ℕ
-length (rec ⟨ t-nil , refl ⟩) = 0
-length (rec ⟨ t-cons , ⟨ x , ⟨ xs , refl ⟩ ⟩ ⟩) = suc (length xs)
+  Nat : ⊤ → Set
+  Nat tt = ℕ
 
-len-algebra : [ ⟦ listD ℕ ⟧ Nat →̇ Nat ]
-len-algebra ⟨ t-nil , refl ⟩ = 0
-len-algebra ⟨ t-cons , ⟨ x , ⟨ len-xs , refl ⟩ ⟩ ⟩ = suc len-xs
+  length : (xs : Listℕ) → ℕ
+  length (rec ⟨ t-nil , refl ⟩) = 0
+  length (rec ⟨ t-cons , ⟨ x , ⟨ xs , refl ⟩ ⟩ ⟩) = suc (length xs)
 
-len : (xs : Listℕ) → ℕ
-len xs = fold (listD ℕ) len-algebra xs
+  len-algebra : [ ⟦ listD ℕ ⟧ Nat →̇ Nat ]
+  len-algebra ⟨ t-nil , refl ⟩ = 0
+  len-algebra ⟨ t-cons , ⟨ x , ⟨ len-xs , refl ⟩ ⟩ ⟩ = suc len-xs
+
+  len : (xs : Listℕ) → ℕ
+  len xs = fold (listD ℕ) len-algebra xs
+
+data Desc (I : Set) : Set₁ where
+  tag/st : (A : Set) → (A → Desc I) → Desc I
+  child : List I → I → Desc I       → Desc I
+  ⦂_ : I                          → Desc I
+
+⟦_⟧ : ∀{I : Set} → Desc I → (List I → I -Scoped) → (I -Scoped)
+⟦ tag/st A d ⟧ X i Γ = Σ[ a ∈ A ] (⟦ d a ⟧ X i Γ)
+⟦ child Δ j d ⟧ X i Γ = X Δ j Γ × ⟦ d ⟧ X i Γ
+⟦ ⦂ i' ⟧ X i Γ = i ≡ i'
+
+Scope : ∀{I : Set} → I -Scoped → List I → I -Scoped
+Scope P Δ i = (Δ ++_) ⊢ P i
+
+{- Tm -}
+data TermTree {I : Set} (d : Desc I) : Size → I -Scoped where
+  var : ∀{i : I}{s} → [ Var i →̇ TermTree d (↑ s) i ]
+  con : ∀{i : I}{s} → [ ⟦ d ⟧ (Scope (TermTree d s)) i →̇ TermTree d (↑ s) i ]
+
+module STLC2 where
+
+  open STLC using (Type; α; _⇒_)
+    
+  data Tag : Set where
+    t-app t-lam : Type → Type → Tag
+
+  STLC-D : Desc Type
+  STLC-D = tag/st Tag G
+    where G : Tag → Desc Type
+          G (t-app σ τ) = child [] (σ ⇒ τ) (child [] σ (⦂ τ))
+          G (t-lam σ τ) = child (σ ∷ []) τ (⦂ (σ ⇒ τ))
+
+  pattern `_ x = var x
+  pattern _·_ L M = con ⟨ t-app _ _ , ⟨ L , ⟨ M , refl ⟩ ⟩ ⟩
+  pattern ƛ_ N = con ⟨ t-lam _ _ , ⟨ N , refl ⟩ ⟩ 
+
+{-
+   The sum of two descriptions is a description.
+-}
+
+_`+_ : ∀{I} → Desc I → Desc I → Desc I
+_`+_ {I} d e = tag/st Bool G
+  where G : Bool → Desc I
+        G false = d
+        G true = e
+
+case : ∀{I}{d e : Desc I}{A : Set}{X}{i : I}{Γ}
+   → (⟦ d ⟧ X i Γ → A)
+   → (⟦ e ⟧ X i Γ → A)
+   → (⟦ d `+ e ⟧ X i Γ → A)
+case thn els ⟨ false , v ⟩ = thn v
+case thn els ⟨ true , v ⟩ = els v 
+
+{-
+   Finite product of descriptions
+-}
+
+Xs : ∀{I} → List I → Desc I → Desc I
+Xs js d = foldr (child []) d js
+
+unXs : ∀{I : Set}{d}{X}{i : I}{Γ}
+   → (Δ : List I)
+   → ⟦ Xs Δ d ⟧ X i Γ
+   → All (λ i → X [] i Γ) Δ × ⟦ d ⟧ X i Γ
+unXs {I} {d} {X} {i} {Γ} [] v = ⟨ [] , v ⟩
+unXs {I} {d} {X} {i} {Γ} (τ ∷ Δ) ⟨ x , rst ⟩ =
+    ⟨ x ∷ proj₁ (unXs Δ rst) , (proj₂ (unXs Δ rst)) ⟩
+
+Kripke : ∀{I : Set} (𝒱 𝒞 : I -Scoped) → List I → I -Scoped
+Kripke 𝒱 𝒞 [] i = 𝒞 i
+Kripke 𝒱 𝒞 Γ i = □ ((Γ -Env) 𝒱 →̇ 𝒞 i)
+
+{-
+  A batch of values coming into scope are represented by an
+  environment, i.e., (Γ -Env) 𝒱.
+-}
+
+record Sem {I : Set} (d : Desc I) (𝒱 𝒞 : I -Scoped) : Set where
+  field th𝒱 :     ∀{i} → Thinnable (𝒱 i)
+        return :  ∀{i} → [ 𝒱 i  →̇  𝒞 i ]
+        algebra : ∀{i} → [ ⟦ d ⟧ (Kripke 𝒱 𝒞) i  →̇  𝒞 i ] 
+
+_-Comp : ∀{I : Set} → List I → I -Scoped → List I → Set₁
+(_-Comp) {I} Γ 𝒞 Δ = ∀ {d : Desc I}{s : Size}{i : I} → TermTree d s i Γ → 𝒞 i Δ 
+
