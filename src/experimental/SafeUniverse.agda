@@ -223,9 +223,15 @@ fold : ∀{I : Set}{X}{s'}
    → [ fix d s' →̇ X ]
 fold d algebra (con t) = algebra (fmap d (fold d algebra) t)
 
+Listℕ : Set
+Listℕ = fix (listD ℕ) ∞ tt
 
+length : (xs : Listℕ) → ℕ
+length (con ⟨ t-nil , refl ⟩) = 0
+length (con ⟨ t-cons , ⟨ x , ⟨ xs , refl ⟩ ⟩ ⟩) = suc (length xs)
 
-{-
-length : (ls : ⟦ listD ⟧) → ℕ
-length ls = ?
--}
+len : (xs : Listℕ) → ℕ
+len xs = fold (listD ℕ)
+              (λ { ⟨ t-nil , refl ⟩ → 0
+                 ; ⟨ t-cons , ⟨ x , ⟨ len-xs , refl ⟩ ⟩ ⟩ → suc len-xs })
+              xs
