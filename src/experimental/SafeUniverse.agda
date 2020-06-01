@@ -214,24 +214,28 @@ fmap (tag A d) f ⟨ a , v ⟩ = ⟨ a , fmap (d a) f v ⟩
 fmap (child x d) f ⟨ r , v ⟩ = ⟨ (f r) , (fmap d f v) ⟩
 fmap (leaf x) f refl = refl
 
-data fix {I : Set} (d : Desc I I) : Size → I → Set where
-  con : ∀{i : I}{s'} → ⟦ d ⟧ (fix d s') i → fix d (↑ s') i
+data μ {I : Set} (d : Desc I I) : Size → I → Set where
+  rec : ∀{i : I}{s'} → ⟦ d ⟧ (μ d s') i → μ d (↑ s') i
 
 fold : ∀{I : Set}{X}{s'}
    → (d : Desc I I)
    → [ ⟦ d ⟧ X →̇ X ]
-   → [ fix d s' →̇ X ]
-fold d algebra (con t) = algebra (fmap d (fold d algebra) t)
+   → [ μ d s' →̇ X ]
+fold d algebra (rec t) = algebra (fmap d (fold d algebra) t)
 
 Listℕ : Set
-Listℕ = fix (listD ℕ) ∞ tt
+Listℕ = μ (listD ℕ) ∞ tt
+
+Nat : ⊤ → Set
+Nat tt = ℕ
 
 length : (xs : Listℕ) → ℕ
-length (con ⟨ t-nil , refl ⟩) = 0
-length (con ⟨ t-cons , ⟨ x , ⟨ xs , refl ⟩ ⟩ ⟩) = suc (length xs)
+length (rec ⟨ t-nil , refl ⟩) = 0
+length (rec ⟨ t-cons , ⟨ x , ⟨ xs , refl ⟩ ⟩ ⟩) = suc (length xs)
+
+len-algebra : [ ⟦ listD ℕ ⟧ Nat →̇ Nat ]
+len-algebra ⟨ t-nil , refl ⟩ = 0
+len-algebra ⟨ t-cons , ⟨ x , ⟨ len-xs , refl ⟩ ⟩ ⟩ = suc len-xs
 
 len : (xs : Listℕ) → ℕ
-len xs = fold (listD ℕ)
-              (λ { ⟨ t-nil , refl ⟩ → 0
-                 ; ⟨ t-cons , ⟨ x , ⟨ len-xs , refl ⟩ ⟩ ⟩ → suc len-xs })
-              xs
+len xs = fold (listD ℕ) len-algebra xs
