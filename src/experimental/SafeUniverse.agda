@@ -9,20 +9,28 @@ by Allais, Atken, Chapman, McBride, and McKinna.
 
 -}
 
-open import Data.List using (List; _∷_; map)
-open import Data.Product using (_×_)
+open import Data.List using (List; []; _∷_; map)
+open import Data.Nat using (ℕ; zero; suc)
+open import Data.Product
+  using (_×_; proj₁; proj₂; ∃; ∃-syntax; Σ; Σ-syntax)
+  renaming (_,_ to ⟨_,_⟩)
+open import Data.Unit using (⊤; tt)  
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
+open import Size
 
 module experimental.SafeUniverse where
 
 {-
-  Things that have property I in context List I, like variables.
+  Things that have property I in context List I.
+  For example, variables and terms are Type -Scoped.
 -}
 _-Scoped : Set → Set₁
 I -Scoped = I → List I → Set
 
 {-
- Combinators for threading a context
- through some logical formulas.
+  Combinators for threading a context through some logical formulas.
  -}
 
 private
@@ -82,11 +90,11 @@ _∙_ {I}{Γ}{Δ}{𝒱}{σ} ρ v = mkren G
    Map a function f over all the values in an environment.
 -}
 
-_<$>_ : ∀{I : Set}{𝒱 𝒲 : I -Scoped}{Γ Δ Θ : List I}
+map-env : ∀{I : Set}{𝒱 𝒲 : I -Scoped}{Γ Δ Θ : List I}
   → (∀ {i : I} → 𝒱 i Δ → 𝒲 i Θ)
   → (Γ -Env) 𝒱 Δ
   → (Γ -Env) 𝒲 Θ
-f <$> mkren lookup = mkren (λ {i} x → f (lookup x))
+map-env f (mkren lookup) = mkren (λ {i} x → f (lookup x))
 
 {- A thinning rename variables from context Γ to Δ. -}
 
@@ -111,11 +119,6 @@ Thinnable P = [ P →̇ □ P ]
 
 id : ∀{I : Set}{Γ : List I} → Thinning Γ Γ
 id = mkren (λ x → x)
-
-{-
-extend : ∀{σ : I} → Thinning Γ (σ ∷ Γ)
-extend = mkren (λ x → s x)
--}
 
 {- □ P is true now because it's true after the identity renaming. -}
 
@@ -157,7 +160,7 @@ module Lambda where
        → (Γ -Env) 𝒱 Δ
        → 𝒱 σ Θ
        → ((σ ∷ Γ) -Env) 𝒱 Θ
-    extend {Γ}{Δ}{Θ}{σ} r ρ v = ((λ w → th𝒱 w r) <$> ρ) ∙ v
+    extend {Γ}{Δ}{Θ}{σ} r ρ v = (map-env (λ w → th𝒱 w r) ρ) ∙ v
     
     sem : ∀{Γ Δ : List Type}{τ : Type}
         → (Γ -Env) 𝒱 Δ
@@ -179,3 +182,50 @@ module Lambda where
                    Λ = λ σ b → ƛ (b (mkren s) (` z)) }
 
   
+{-
+   Universe of Data Types
+-}
+
+data Desc (I J : Set) : Set₁ where
+  tag : (A : Set) → (A → Desc I J) → Desc I J
+  child : J → Desc I J → Desc I J
+  leaf : I → Desc I J
+
+⟦_⟧ : ∀{I J : Set } → Desc I J → (J → Set) → (I → Set)
+⟦ tag A d ⟧ X i = Σ[ a ∈ A ] (⟦ d a ⟧ X i)
+⟦ child j d ⟧ X i = X j × ⟦ d ⟧ X i
+⟦ leaf i' ⟧ X i = i ≡ i'
+
+data ListTags : Set where
+  t-nil t-cons : ListTags
+
+listD : Set → Desc ⊤ ⊤ 
+listD A = tag ListTags G
+  where
+  G : ListTags → Desc ⊤ ⊤
+  G t-nil = leaf tt
+  G t-cons = tag A λ _ → child tt (leaf tt)
+
+fmap : ∀{I J : Set}{X Y : J → Set}
+   → (d : Desc I J)
+   → [ X →̇ Y ]
+   → [ (⟦ d ⟧ X) →̇ (⟦ d ⟧ Y) ]
+fmap (tag A d) f ⟨ a , v ⟩ = ⟨ a , fmap (d a) f v ⟩
+fmap (child x d) f ⟨ r , v ⟩ = ⟨ (f r) , (fmap d f v) ⟩
+fmap (leaf x) f refl = refl
+
+data fix {I : Set} (d : Desc I I) : Size → I → Set where
+  con : ∀{i : I}{s'} → ⟦ d ⟧ (fix d s') i → fix d (↑ s') i
+
+fold : ∀{I : Set}{X}{s'}
+   → (d : Desc I I)
+   → [ ⟦ d ⟧ X →̇ X ]
+   → [ fix d s' →̇ X ]
+fold d algebra (con t) = algebra (fmap d (fold d algebra) t)
+
+
+
+{-
+length : (ls : ⟦ listD ⟧) → ℕ
+length ls = ?
+-}
