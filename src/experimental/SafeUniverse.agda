@@ -61,8 +61,8 @@ private
   [ Q ] = ∀{Γ} → Q Γ
 
 data Var : ∀{I : Set} → I -Scoped where
-  z : ∀{I : Set}{i : I} → [ (i ∷_) ⊢ Var i ]
-  s : ∀{I : Set}{i j : I} → [ Var i →̇ (j ∷_) ⊢ Var i ]
+  var-z : ∀{I : Set}{i : I} → [ (i ∷_) ⊢ Var i ]
+  var-s : ∀{I : Set}{i j : I} → [ Var i →̇ (j ∷_) ⊢ Var i ]
 
 {-
 
@@ -85,8 +85,8 @@ _∙_ : ∀{I Γ Δ 𝒱}{σ : I} → (Γ -Env) 𝒱 Δ → 𝒱 σ Δ → ((σ 
 _∙_ {I}{Γ}{Δ}{𝒱}{σ} ρ v = mkren G
     where
     G : {i : I} → Var i (σ ∷ Γ) → 𝒱 i Δ
-    G {i} z = v
-    G {i} (s x) = _-Env.lookup ρ x
+    G {i} var-z = v
+    G {i} (var-s x) = _-Env.lookup ρ x
 
 {-
    Map a function f over all the values in an environment.
@@ -175,12 +175,12 @@ module STLC where
 
   Renaming : Sem Var Term
   Renaming = record { th𝒱 = thVar ; return = `_ ; _•_ = _·_ ;
-                      Λ = λ σ b → ƛ (b (mkren s) z) }
+                      Λ = λ σ b → ƛ (b (mkren var-s) var-z) }
   ren = Sem.sem Renaming
 
   Subst : Sem Term Term
   Subst = record { th𝒱 = λ M r → ren r M ; return = λ M → M ; _•_ = _·_ ;
-                   Λ = λ σ b → ƛ (b (mkren s) (` z)) }
+                   Λ = λ σ b → ƛ (b (mkren var-s) (` var-z)) }
 
   
 {-
@@ -253,6 +253,16 @@ data Desc (I : Set) : Set₁ where
 ⟦ child Δ j d ⟧ X i Γ = X Δ j Γ × ⟦ d ⟧ X i Γ
 ⟦ ⦂ i' ⟧ X i Γ = i ≡ i'
 
+
+fmap : ∀{I : Set}{X Y}{Γ Δ : List I}{i : I}
+   → (d : Desc I)
+   → (∀ Θ i → X Θ i Γ → Y Θ i Δ)
+   → ⟦ d ⟧ X i Γ
+   → ⟦ d ⟧ Y i Δ
+fmap (tag/st A d) f ⟨ a , rst ⟩ = ⟨ a , fmap (d a) f rst ⟩
+fmap (child Δ j d) f ⟨ ch , rst ⟩ = ⟨ (f Δ j ch) , (fmap d f rst) ⟩
+fmap (⦂ i') f refl = refl
+
 Scope : ∀{I : Set} → I -Scoped → List I → I -Scoped
 Scope P Δ i = (Δ ++_) ⊢ P i
 
@@ -310,20 +320,36 @@ unXs {I} {d} {X} {i} {Γ} [] v = ⟨ [] , v ⟩
 unXs {I} {d} {X} {i} {Γ} (τ ∷ Δ) ⟨ x , rst ⟩ =
     ⟨ x ∷ proj₁ (unXs Δ rst) , (proj₂ (unXs Δ rst)) ⟩
 
-Kripke : ∀{I : Set} (𝒱 𝒞 : I -Scoped) → List I → I -Scoped
-Kripke 𝒱 𝒞 [] i = 𝒞 i
-Kripke 𝒱 𝒞 Γ i = □ ((Γ -Env) 𝒱 →̇ 𝒞 i)
-
 {-
   A batch of values coming into scope are represented by an
   environment, i.e., (Γ -Env) 𝒱.
 -}
 
+Kripke : ∀{I : Set} (𝒱 𝒞 : I -Scoped) → List I → I -Scoped
+Kripke 𝒱 𝒞 [] i = 𝒞 i
+Kripke 𝒱 𝒞 Γ i = □ ((Γ -Env) 𝒱 →̇ 𝒞 i)
+
 record Sem {I : Set} (d : Desc I) (𝒱 𝒞 : I -Scoped) : Set where
   field th𝒱 :     ∀{i} → Thinnable (𝒱 i)
         return :  ∀{i} → [ 𝒱 i  →̇  𝒞 i ]
-        algebra : ∀{i} → [ ⟦ d ⟧ (Kripke 𝒱 𝒞) i  →̇  𝒞 i ] 
+        algebra : ∀{i} → [ ⟦ d ⟧ (Kripke{I} 𝒱 𝒞) i  →̇  𝒞 i ] 
 
-_-Comp : ∀{I : Set} → List I → I -Scoped → List I → Set₁
-(_-Comp) {I} Γ 𝒞 Δ = ∀ {d : Desc I}{s : Size}{i : I} → TermTree d s i Γ → 𝒞 i Δ 
+  _-Comp : List I → I -Scoped → List I → Set
+  (_-Comp) Γ 𝒞 Δ = ∀{s : Size}{i : I} → TermTree d s i Γ → 𝒞 i Δ 
 
+  sem : ∀{Γ Δ}
+      → Sem d 𝒱 𝒞
+      → (Γ -Env) 𝒱 Δ
+      → (Γ -Comp) 𝒞 Δ
+  body : ∀{Γ Δ}{s : Size}
+      → Sem d 𝒱 𝒞
+      → (Γ -Env) 𝒱 Δ
+      → ∀ Θ i 
+      → Scope (TermTree d s) Θ i Γ
+      → Kripke 𝒱 𝒞 Θ i Δ
+
+  sem 𝒮 ρ (var x) = return (_-Env.lookup ρ x)
+  sem 𝒮 ρ (con {j}{s} t) =
+      algebra (fmap d (body {s = s} 𝒮 ρ) t)
+  body 𝒮 ρ [] i t = sem 𝒮 ρ t
+  body 𝒮 ρ (i' ∷ Θ) i t = λ r vs → sem 𝒮 {!!} t
