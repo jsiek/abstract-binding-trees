@@ -411,7 +411,9 @@ unXs {I} {d} {X} {i} {Γ} (τ ∷ Δ) ⟨ x , rst ⟩ =
 -}
 
 Kripke : ∀{I : Set} (𝒱 𝒞 : I -Scoped) → List I → I -Scoped
+{-
 Kripke 𝒱 𝒞 [] i = 𝒞 i
+-}
 Kripke 𝒱 𝒞 Γ i = □ ((Γ -Env) 𝒱 →̇ 𝒞 i)
 
 {- Fold over a term. -}
@@ -443,8 +445,10 @@ record Sem {I : Set} (d : Desc I) (𝒱 𝒞 : I -Scoped) : Set where
   sem ρ (var x) = return (_-Env.lookup ρ x)
   sem ρ (node {j}{s} t) = algebra (fmap d (body {s = s} ρ) t)
   
+{-
   body ρ [] i t = sem ρ t
-  body ρ (i' ∷ Θ) i t r vs = sem (vs >> (th^Env th^𝒱 ρ r)) t
+-}
+  body ρ Θ i t r vs = sem (vs >> (th^Env th^𝒱 ρ r)) t
 
 {- Helpers for folds that produce terms, such as substitution. -}
 
@@ -470,8 +474,11 @@ vl^Var {I} = record { th^𝒱 = th^Var ; new = var-z }
 reify : ∀{I : Set}{𝒱 𝒞 : I -Scoped}{Γ}
    → VarLike 𝒱
    → ∀ Δ i → Kripke 𝒱 𝒞 Δ i Γ → Scope 𝒞 Δ i Γ
+{-
 reify vl^𝒱 []         i b = b
 reify vl^𝒱 Δ@(_ ∷ _)  i b = b (freshʳ vl^Var Δ) (freshˡ vl^𝒱 _)
+-}
+reify vl^𝒱 Δ i b = b (freshʳ vl^Var Δ) (freshˡ vl^𝒱 _)
 
 module Rename {I : Set} (d : Desc I) where
 
