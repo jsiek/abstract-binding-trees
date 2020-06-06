@@ -153,9 +153,8 @@ RenSubRel = record
   open RelAux {C₁ = ABT} (λ x M → _≡_ (var x) M) _≡_
   open RelReify Var ABT 0 (var 0) (λ x M → _≡_ (var x) M) refl using (rel-arg)
 
-  map-reify : ∀{bs}{rs₁}{rs₂ : ⟦ bs ⟧ (Bind ABT ABT)}
-    → zip _⩳_ bs rs₁ rs₂
-    → map R1.reify bs rs₁ ≡ map R2.reify bs rs₂
+  map-reify : ∀{bs}{rs₁  : ⟦ bs ⟧ (Bind Var ABT)}{rs₂}
+    → zip _⩳_ bs rs₁ rs₂  →  map R1.reify bs rs₁ ≡ map R2.reify bs rs₂
   map-reify rs≅ =
       let mpz = map-pres-zip _⩳_ _≡_ R1.reify R2.reify rs≅ (λ{b} → rel-arg {b})
       in zip→rel _≡_ _≡_ Lift-Eq-Prod mpz 
