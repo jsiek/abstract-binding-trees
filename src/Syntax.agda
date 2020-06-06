@@ -86,6 +86,10 @@ abstract
   ext : Rename → Rename
   ext (↑ k) = 0 • ↑ (suc k)
   ext (x • ρ) = 0 • inc (x • ρ)
+{-
+  ext : Rename → Rename
+  ext ρ = 0 • inc ρ
+-}
 
 abstract
   infixr 5 _⨟ᵣ_
@@ -211,10 +215,16 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
     compose-ext : ∀{ρ₁ ρ₂ : Rename}
                 → (ext ρ₁ ⨟ᵣ ext ρ₂) ≡ ext (ρ₁ ⨟ᵣ ρ₂)
-    compose-ext {ρ₁}{ρ₂} rewrite ext-cons-shift ρ₁ | ext-cons-shift ρ₂
-        | ext-cons-shift (ρ₁ ⨟ᵣ ρ₂)
-        | dropr-0 (ρ₂ ⨟ᵣ ↑ 1)
-        = refl
+    compose-ext {ρ₁}{ρ₂} =
+      begin
+          ext ρ₁ ⨟ᵣ ext ρ₂
+      ≡⟨ cong₂ (λ X Y → X ⨟ᵣ Y) (ext-cons-shift ρ₁) (ext-cons-shift ρ₂)  ⟩
+          (0 • (ρ₁ ⨟ᵣ ↑ 1)) ⨟ᵣ (0 • (ρ₂ ⨟ᵣ ↑ 1))
+      ≡⟨⟩
+          0 • ((ρ₁ ⨟ᵣ ρ₂) ⨟ᵣ ↑ 1)
+      ≡⟨ sym (ext-cons-shift (ρ₁ ⨟ᵣ ρ₂))  ⟩
+          ext (ρ₁ ⨟ᵣ ρ₂)
+      ∎
 
     compose-rename : ∀{M : ABT}{ρ₁ ρ₂ : Rename}
       → rename ρ₂ (rename ρ₁ M) ≡ rename (ρ₁ ⨟ᵣ ρ₂) M

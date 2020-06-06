@@ -30,10 +30,9 @@ record Fold (V C : Set) : Set where
   fold σ (` x) = ret (⧼ σ ⧽ x)
   fold σ (op ⦅ args ⦆) = fold-op op (map (fold-arg σ) args)
   fold-arg σ {zero} M = fold σ M
-  fold-arg σ {suc b} M v = fold-arg (v • σ) {b} M
+  fold-arg σ {suc b} M v = fold-arg (v • σ) M
 
 module Reify (V : Set) (zero-val : V) where
-
   reify : {b : ℕ} → Bind V ABT b → ABT
   reify {zero} M = M
   reify {suc b} f = reify {b} (f zero-val)
@@ -48,6 +47,7 @@ Subst : Fold ABT ABT
 Subst = record { ret = λ x → x ; var→val = λ x → ` x ; shift = ren (↑ 1) 
                ; fold-op = λ op rs → op ⦅ map RT.reify rs ⦆ }
     where module RT = Reify ABT (` 0)
+open Fold Subst renaming (fold to sub)
 
 module RelAux {V₁ C₁}{V₂ C₂} (_∼_ : V₁ → V₂ → Set) (_≈_ : C₁ → C₂ → Set) where
   data _≊_ : Substitution V₁ → Substitution V₂ → Set where
