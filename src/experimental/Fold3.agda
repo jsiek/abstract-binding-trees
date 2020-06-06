@@ -2,6 +2,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit using (⊤; tt)
+open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Size using (Size)
 open import Var
@@ -11,6 +12,10 @@ open import Syntax
 module experimental.Fold3 (Op : Set) (sig : Op → List ℕ) where
 
 open import experimental.ABT Op sig
+
+{-------------------------------------------------------------------------------
+ Folding over an abstract binding tree
+ ------------------------------------------------------------------------------}
 
 Bind : Set → Set → ℕ → Set
 Bind V C zero = C
@@ -32,22 +37,9 @@ record Fold (V C : Set) : Set where
   fold-arg σ {zero} M = fold σ M
   fold-arg σ {suc b} M v = fold-arg (v • σ) M
 
-module Reify (V : Set) (zero-val : V) where
-  reify : {b : ℕ} → Bind V ABT b → ABT
-  reify {zero} M = M
-  reify {suc b} f = reify {b} (f zero-val)
-
-Renaming : Fold Var ABT
-Renaming = record { ret = `_ ; var→val = λ x → x ; shift = suc 
-                  ; fold-op = λ op rs → op ⦅ map RV.reify rs ⦆ }
-    where module RV = Reify Var 0
-open Fold Renaming renaming (fold to ren)
-
-Subst : Fold ABT ABT
-Subst = record { ret = λ x → x ; var→val = λ x → ` x ; shift = ren (↑ 1) 
-               ; fold-op = λ op rs → op ⦅ map RT.reify rs ⦆ }
-    where module RT = Reify ABT (` 0)
-open Fold Subst renaming (fold to sub)
+{-------------------------------------------------------------------------------
+ Simulation between two folds
+ ------------------------------------------------------------------------------}
 
 module RelAux {V₁ C₁}{V₂ C₂} (_∼_ : V₁ → V₂ → Set) (_≈_ : C₁ → C₂ → Set) where
   data _≊_ : Substitution V₁ → Substitution V₂ → Set where
@@ -74,7 +66,7 @@ record Related {V₁ C₁} {V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂
 module Simulate {V₁ C₁ V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C₂)
   (R : Related F₁ F₂) where
   module FF₁ = Fold F₁ ; module FF₂ = Fold F₂
-  open Related R ; open RelAux _∼_ _≈_
+  open Related R ; open RelAux _∼_ _≈_ using (_≊_; r-up; r-cons; _⩳_)
   module GS₁ = GenericSubst V₁ FF₁.var→val FF₁.shift
   module GS₂ = GenericSubst V₂ FF₂.var→val FF₂.shift
   
@@ -86,8 +78,8 @@ module Simulate {V₁ C₁ V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ 
 
   sim : ∀{s : Size}{M : Term s}{σ₁ σ₂}
      → σ₁ ≊ σ₂ → (FF₁.fold σ₁ M) ≈ (FF₂.fold σ₂ M)
-  sim-arg : ∀{s : Size}{σ₁}{σ₂}{b}{arg : Term s}
-     → σ₁ ≊ σ₂ → (FF₁.fold-arg σ₁ {b} arg) ⩳ (FF₂.fold-arg σ₂ {b} arg)
+  sim-arg : ∀{s : Size}{σ₁}{σ₂}{b}{M : Term s}
+     → σ₁ ≊ σ₂ → (FF₁.fold-arg σ₁ {b} M) ⩳ (FF₂.fold-arg σ₂ {b} M)
 
   sim {s}{` x} {σ₁} {σ₂} σ₁~σ₂ = ret≈ (lookup∼ σ₁~σ₂)
   sim {s}{op ⦅ args ⦆}{σ₁}{σ₂} σ₁~σ₂ =
@@ -97,10 +89,32 @@ module Simulate {V₁ C₁ V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ 
   sim-arg {s} {σ₁} {σ₂} {suc b} {arg} σ₁≊σ₂ v₁∼v₂ =
       sim-arg {b = b} (r-cons v₁∼v₂ σ₁≊σ₂)
 
-module RelReify (V₁ V₂ : Set) (zero-val₁ : V₁) (zero-val₂ : V₂)
-  (_∼_ : V₁ → V₂ → Set) (zero∼ : zero-val₁ ∼ zero-val₂) where
-  module R1 = Reify V₁ zero-val₁
-  module R2 = Reify V₂ zero-val₂
+{-------------------------------------------------------------------------------
+ Renaming and substitution
+ ------------------------------------------------------------------------------}
+
+module Reify (V : Set) (new : V) where
+  reify : {b : ℕ} → Bind V ABT b → ABT
+  reify {zero} M = M
+  reify {suc b} f = reify {b} (f new)
+
+Renaming : Fold Var ABT
+Renaming = record { ret = `_ ; var→val = λ x → x ; shift = suc 
+                  ; fold-op = λ op rs → op ⦅ map RV.reify rs ⦆ }
+    where module RV = Reify Var 0
+open Fold Renaming renaming (fold to ren)
+
+Subst : Fold ABT ABT
+Subst = record { ret = λ x → x ; var→val = λ x → ` x ; shift = ren (↑ 1) 
+               ; fold-op = λ op rs → op ⦅ map RT.reify rs ⦆ }
+    where module RT = Reify ABT (` 0)
+open Fold Subst renaming (fold to sub)
+
+
+module RelReify (V₁ V₂ : Set) (new₁ : V₁) (new₂ : V₂)
+  (_∼_ : V₁ → V₂ → Set) (zero∼ : new₁ ∼ new₂) where
+  module R1 = Reify V₁ new₁
+  module R2 = Reify V₂ new₂
   open RelAux {C₁ = ABT} _∼_ _≡_
 
   rel-arg : ∀{b}{r₁ : Bind V₁ ABT b}{r₂ : Bind V₂ ABT b}
@@ -128,3 +142,81 @@ RenSubRel = record
                               Lift-Eq-Tuple rs≅
 
 open Simulate Renaming Subst RenSubRel renaming (sim to rensub)
+
+{-------------------------------------------------------------------------------
+ Fusion of two folds
+ ------------------------------------------------------------------------------}
+
+record Fusable {V₁ C₁ V₂ C₂ V₃ C₃ : Set}
+  (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C₂) (F₃ : Fold V₃ C₃) : Set₁ where
+  module 𝐹₁ = Fold F₁ ; module 𝐹₂ = Fold F₂ ; module 𝐹₃ = Fold F₃
+  module 𝑆₁ = GenericSubst V₁ 𝐹₁.var→val 𝐹₁.shift
+  module 𝑆₂ = GenericSubst V₂ 𝐹₂.var→val 𝐹₂.shift {- needed? -}
+  module 𝑆₃ = GenericSubst V₃ 𝐹₃.var→val 𝐹₃.shift
+  field “_” : ∀{s : Size} → C₁ → Term s
+        _⨟_≈_ : Substitution V₁ → Substitution V₂ → Substitution V₃ → Set
+        _≃_ : V₂ → V₃ → Set
+        _⩯_ : C₂ → C₃ → Set
+        ret⩯ : ∀{x σ₁ σ₂ σ₃} → σ₁ ⨟ σ₂ ≈ σ₃
+             → 𝐹₂.fold σ₂ “ 𝐹₁.ret (𝑆₁.⧼ σ₁ ⧽ x) ” ⩯ 𝐹₃.ret (𝑆₃.⧼ σ₃ ⧽ x)
+        ext≈ : ∀{σ₁ σ₂ σ₃ v₂ v₃} → σ₁ ⨟ σ₂ ≈ σ₃ → v₂ ≃ v₃
+             → σ₁ ⨟ v₂ • σ₂ ≈ (v₃ • σ₃)
+
+module Fuse {V₁ C₁ V₂ C₂ V₃ C₃ : Set}
+  (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C₂) (F₃ : Fold V₃ C₃)
+  (Fus : Fusable F₁ F₂ F₃) where
+  open Fusable Fus
+
+  _≌_ : (Bind V₂ C₂) ✖ (Bind V₃ C₃)
+  _≌_ {zero} c₂ c₃ = c₂ ⩯ c₃
+  _≌_ {suc b} f₂ f₃ = ∀ v₂ v₃ → v₂ ≃ v₃ → f₂ v₂ ≌ f₃ v₃
+
+  fusion : ∀{s : Size}{M : Term s}{σ₁ σ₂ σ₃}
+     → σ₁ ⨟ σ₂ ≈ σ₃
+     → (𝐹₂.fold σ₂ “ 𝐹₁.fold σ₁ M ”) ⩯ (𝐹₃.fold σ₃ M)
+  fusion-arg : ∀{s : Size}{σ₁ σ₂ σ₃}
+     → σ₁ ⨟ σ₂ ≈ σ₃
+     → ∀ {b : ℕ} (M : Term s)
+     → _≌_ {b} (𝐹₂.fold-arg σ₂ “ 𝐹₁.fold-arg σ₁ M ”)  (𝐹₃.fold-arg σ₃ M)
+
+  fusion {_} {` x} {σ₁} {σ₂} {σ₃} σ≈ = ret⩯ σ≈
+  fusion {_} {op ⦅ args ⦆} {σ₁} {σ₂} {σ₃} σ≈ =
+    let mc = map-compose {g = λ{b}→ 𝐹₂.fold-arg σ₂ {b}}
+                         {f = λ M → “ 𝐹₁.fold-arg σ₁ M ”}
+                         {h = λ{b}→ 𝐹₃.fold-arg σ₃ {b}}
+                         {sig op}{_≌_}{args}
+               λ {b} M → fusion-arg σ≈ {b = b} M in
+    {!!}
+  {-
+   nts.
+   𝐹₂.fold σ₂ “ 𝐹₁.fold-op op (map (λ {b} → 𝐹₁.fold-arg σ₁) args) ”
+   ⩯
+   𝐹₃.fold-op op (map (λ {b} → 𝐹₃.fold-arg σ₃) args)
+
+   f₂ ∘ f₁ = f₃
+   map f₂ ∘ map f₁ = map f₃
+
+   -}
+  fusion-arg {s} {σ₁} {σ₂} {σ₃} σ≈ {zero} M = fusion {s}{M} σ≈
+  fusion-arg {s} {σ₁} {σ₂} {σ₃} σ≈ {suc b} M  v₂ v₃ v₂~v₃ =
+      fusion-arg (ext≈ σ≈ v₂~v₃) {b = b} M
+
+{-
+  ⌈_⌉ : Substitution V₂ → Substitution C₂
+  ⌈ ↑ k ⌉ = ↑ k
+  ⌈ v₂ • σ₂ ⌉ = 𝐹₂.ret v₂ • ⌈ σ₂ ⌉
+
+  _⨟_ : Substitution V₁ → Substitution V₂ → Substitution C₂
+  ↑ k ⨟ σ₂ = ⌈ 𝑆₂.g-drop k σ₂ ⌉
+  (v₁ • σ₁) ⨟ σ₂ = (𝐹₂.fold σ₂ “ 𝐹₁.ret v₁ ”) • (σ₁ ⨟ σ₂)
+
+  𝐹₃ : Fold C₂ C₂
+  𝐹₃ = record { ret = λ c → c ; var→val = 𝐹₂.ret ∘ 𝐹₂.var→val ; shift = shift₂
+              ; fold-op = fold-op₃ }
+       where
+       fold-op₃ : (op : Op) → Tuple (sig op) (Bind C₂ C₂) → C₂
+       fold-op₃ op xs =
+           let fop₁ = 𝐹₁.fold-op in
+           let fop₂ = 𝐹₂.fold-op in
+           {!!}
+   -}

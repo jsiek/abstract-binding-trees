@@ -2,6 +2,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit using (⊤; tt)
+open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Size
 
@@ -63,6 +64,9 @@ record Lift-Rel-Tuple {A B} (R : A ✖ B)
         step : (∀{b : ℕ}{bs : Sig}{x xs}{y ys}
                → R {b} x y  →  R× {bs} xs ys  →  R× ⟨ x , xs ⟩ ⟨ y , ys ⟩)
 
+Lift-Eq-Tuple : ∀{A : Set} → Lift-Rel-Tuple {λ _ → A}{λ _ → A} _≡_ _≡_
+Lift-Eq-Tuple = record { base = refl ; step = λ { refl refl → refl } }
+
 zip→rel : ∀{bs A B xs ys}
   → (R : A ✖ B)  →  (R× : ∀ {bs} → Tuple bs A → Tuple bs B → Set)
   → (L : Lift-Rel-Tuple R R×)
@@ -81,5 +85,12 @@ zip-map→rel  : ∀{bs A1 B1 A2 B2 xs ys}
   → zip P {bs} xs ys  →  R {bs} (map f xs) (map g ys)
 zip-map→rel P Q R f g P→Q L zs = zip→rel Q R L (map-pres-zip P Q f g zs P→Q)
 
-Lift-Eq-Tuple : ∀{A : Set} → Lift-Rel-Tuple {λ _ → A}{λ _ → A} _≡_ _≡_
-Lift-Eq-Tuple = record { base = refl ; step = λ { refl refl → refl } }
+map-compose : ∀{A B C C′}
+   {g : B ⇨ C} {f : A ⇨ B}{h : A ⇨ C′}
+   {bs : Sig}{R : C ✖ C′}
+   {xs : Tuple bs A}
+   → (∀ {b : ℕ} x → R {b} (g (f x)) (h x))
+   → zip R (map g (map f xs)) (map h xs)
+map-compose {A}{B}{C}{C′} {g} {f} {h} {[]} {R} {tt} gf=h = tt
+map-compose {A}{B}{C}{C′} {g} {f} {h} {b ∷ bs} {R} {⟨ x , xs ⟩} gf=h =
+    ⟨ (gf=h x) , (map-compose gf=h) ⟩
