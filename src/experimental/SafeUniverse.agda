@@ -442,13 +442,13 @@ record Sem {I : Set} (d : Desc I) (𝒱 𝒞 : I -Scoped) : Set where
       → Scope (Term d s) Θ i Γ
       → Kripke 𝒱 𝒞 Θ i Δ
 
-  sem ρ (var x) = return (_-Env.lookup ρ x)
-  sem ρ (node {j}{s} t) = algebra (fmap d (body {s = s} ρ) t)
+  sem ρ {s} (var x) = return (_-Env.lookup ρ x)
+  sem ρ {s} (node {j}{s'} t) = algebra (fmap d (body {s = s'} ρ) t)
   
 {-
   body ρ [] i t = sem ρ t
 -}
-  body ρ Θ i t r vs = sem (vs >> (th^Env th^𝒱 ρ r)) t
+  body {s = s} ρ Θ i t r vs = sem (vs >> (th^Env th^𝒱 ρ r)) {s = s} t
 
 {- Helpers for folds that produce terms, such as substitution. -}
 
@@ -473,7 +473,9 @@ vl^Var {I} = record { th^𝒱 = th^Var ; new = var-z }
 
 reify : ∀{I : Set}{𝒱 𝒞 : I -Scoped}{Γ}
    → VarLike 𝒱
-   → ∀ Δ i → Kripke 𝒱 𝒞 Δ i Γ → Scope 𝒞 Δ i Γ
+   → ∀ Δ i
+   → Kripke 𝒱 𝒞 Δ i Γ
+   → Scope 𝒞 Δ i Γ
 {-
 reify vl^𝒱 []         i b = b
 reify vl^𝒱 Δ@(_ ∷ _)  i b = b (freshʳ vl^Var Δ) (freshˡ vl^𝒱 _)
@@ -488,10 +490,7 @@ module Rename {I : Set} (d : Desc I) where
                     ; algebra = node ∘ fmap d (reify vl^Var) }
   open Sem Renaming renaming (sem to sem-ren)
 
-  ren : ∀{Γ Δ : List I}{i : I}
-     → (Γ -Env) Var Δ
-     → Term d ∞ i Γ
-     → Term d ∞ i Δ
+  ren : ∀{Γ Δ : List I}{i : I} → (Γ -Env) Var Δ → Term d ∞ i Γ → Term d ∞ i Δ
   ren ρ t = sem-ren ρ t
 
 module Subst {I : Set} (d : Desc I) where
@@ -509,9 +508,6 @@ module Subst {I : Set} (d : Desc I) where
                         ; algebra = node ∘ fmap d (reify vl^Term) }
   open Sem Substitution renaming (sem to sem-subst)
 
-  sub : ∀{Γ Δ : List I}{i : I}
-     → (Γ -Env) (Term d ∞) Δ
-     → Term d ∞ i Γ
-     → Term d ∞ i Δ
+  sub : ∀{Γ Δ : List I}{i : I} → (Γ -Env) (Term d ∞) Δ → Term d ∞ i Γ → Term d ∞ i Δ
   sub σ t = sem-subst σ t
 
