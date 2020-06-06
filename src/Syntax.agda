@@ -84,12 +84,7 @@ Rename = Substitution Var
 
 abstract
   ext : Rename → Rename
-  ext (↑ k) = 0 • ↑ (suc k)
-  ext (x • ρ) = 0 • inc (x • ρ)
-{-
-  ext : Rename → Rename
   ext ρ = 0 • inc ρ
--}
 
 abstract
   infixr 5 _⨟ᵣ_
@@ -103,6 +98,8 @@ private
   inc-suc (↑ k) x = refl
   inc-suc (x₁ • ρ) zero = refl
   inc-suc (x₁ • ρ) (suc x) = inc-suc ρ x
+
+{-# REWRITE inc-suc #-}
 
 abstract
   ext-0 : ∀ ρ → ⦉ ext ρ ⦊ 0 ≡ 0
@@ -259,8 +256,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
   abstract
     exts : Subst → Subst
-    exts (↑ k) = ` 0 • ↑ (suc k)
-    exts (M • σ) = ` 0 • incs (M • σ)
+    exts σ = ` 0 • incs σ
 
   ⟪_⟫ : Subst → ABT → ABT
   ⟪_⟫ₐ : ∀{n} → Subst → Arg n → Arg n
@@ -468,7 +464,12 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
       | seq-subst σ (↑ 1) x = refl
 
   {-# REWRITE exts-suc-rename #-}
-  
+
+  incs-rename : ∀ σ x
+     → ⟦ incs σ ⟧ x ≡ rename (↑ 1) (⟦ σ ⟧ x)
+  incs-rename σ x rewrite incs=⨟↑ σ | seq-subst σ (↑ 1) x
+      | rename-subst (↑ 1) (⟦ σ ⟧ x) = refl
+
   abstract
     commute-subst-rename : ∀{M : ABT}{σ : Subst}
                             {ρ : Rename}
@@ -491,17 +492,35 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
        cong bind (commute-subst-rename-arg (λ {x} → G{x}))
        where
        G : ∀{x} → ⟦ exts (exts σ) ⟧ (⦉ ext ρ ⦊ x) ≡ rename (ext ρ) (⟦ exts σ ⟧ x)
-       G {zero} rewrite exts-cons-shift σ = refl
-       G {suc x} rewrite exts-cons-shift (exts σ)
-          | seq-subst (exts σ) (↑ 1) (⦉ ρ ⦊ x) | r {x}
-          | exts-cons-shift σ | seq-subst σ (↑ 1) x
-          | sym (rename-subst (↑ 1) (rename ρ (⟦ σ ⟧ x)))
-          | sym (rename-subst (↑ 1) (⟦ σ ⟧ x))
-          | compose-rename {⟦ σ ⟧ x} {ρ} {↑ 1}
-          | compose-rename {⟦ σ ⟧ x} {↑ 1} {ext ρ}
-          | dropr-ext 0 ρ | sym (dropr-inc 0 ρ)
-          | dropr-0 (inc ρ) | inc=⨟ᵣ↑ ρ = refl
-
+       G {zero} = refl
+       G {suc x} =
+         begin
+            ⟦ exts (exts σ) ⟧ (⦉ ext ρ ⦊ (suc x))
+         ≡⟨ cong (λ □ → ⟦ exts □ ⟧ (⦉ ext ρ ⦊ (suc x))) (exts-cons-shift σ) ⟩
+            ⟦ exts (` 0 • (σ ⨟ ↑ 1)) ⟧ (⦉ ext ρ ⦊ (suc x))
+         ≡⟨ cong (λ □ → ⟦ (` 0) • (` 1 • □) ⟧ (suc (⦉ ρ ⦊ x))) (incs=⨟↑ (σ ⨟ ↑ 1)) ⟩
+            ⟦ (` 0) • (` 1 • ((σ ⨟ ↑ 1) ⨟ ↑ 1)) ⟧ (suc (⦉ ρ ⦊ x))
+         ≡⟨ cong (λ □ → ⟦ (` 1 • (□ ⨟ ↑ 1)) ⟧ (⦉ ρ ⦊ x)) (sym (incs=⨟↑ σ)) ⟩
+            ⟦ exts σ ⨟ ↑ 1 ⟧ (⦉ ρ ⦊ x)
+         ≡⟨ seq-subst (exts σ) (↑ 1) (⦉ ρ ⦊ x) ⟩
+            ⟪ ↑ 1 ⟫ (⟦ exts σ ⟧ (⦉ ρ ⦊ x))
+         ≡⟨ sym (rename-subst (↑ 1) (⟦ exts σ ⟧ (⦉ ρ ⦊ x))) ⟩
+            rename (↑ 1) (⟦ exts σ ⟧ (⦉ ρ ⦊ x))
+         ≡⟨ cong (λ □ → rename (↑ 1) □) (r {x}) ⟩
+            rename (↑ 1) (rename ρ (⟦ σ ⟧ x))
+         ≡⟨ compose-rename {⟦ σ ⟧ x}{ρ} ⟩
+            rename (ρ ⨟ᵣ ↑ 1) (⟦ σ ⟧ x)
+         ≡⟨ cong (λ □ → rename □ (⟦ σ ⟧ x)) (sym (inc=⨟ᵣ↑ ρ)) ⟩
+            rename (inc ρ) (⟦ σ ⟧ x)
+         ≡⟨ cong (λ □ → rename □ (⟦ σ ⟧ x)) (ren-tail {inc ρ}{x}) ⟩
+            rename (↑ 1 ⨟ᵣ (0 • inc ρ)) (⟦ σ ⟧ x)
+         ≡⟨ sym (compose-rename {⟦ σ ⟧ x}{↑ 1}{0 • inc ρ}) ⟩
+            rename (0 • inc ρ) (rename (↑ 1) (⟦ σ ⟧ x))
+         ≡⟨ cong (λ □ → rename (0 • inc ρ) □) (sym (incs-rename σ x)) ⟩
+            rename (0 • inc ρ) (⟦ incs σ ⟧ x)
+         ≡⟨⟩
+            rename (ext ρ) (⟦ exts σ ⟧ (suc x))
+         ∎
     commute-subst-renames {.[]} {nil} r = refl
     commute-subst-renames {.(_ ∷ _)} {cons A As} r =
         cong₂ cons (commute-subst-rename-arg r) (commute-subst-renames r)
@@ -528,8 +547,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   abstract
     exts-seq : ∀ {σ₁ : Subst} {σ₂ : Subst}
              → exts σ₁ ⨟ exts σ₂ ≡ exts (σ₁ ⨟ σ₂)
-    exts-seq {↑ k} {σ₂} rewrite exts-cons-shift σ₂ | exts-cons-shift (drop k σ₂)
-        | drop-seq k σ₂ (↑ 1) = refl
+    exts-seq {↑ k} {σ₂} rewrite drop-incs k σ₂ = refl
     exts-seq {M • σ₁} {σ₂} rewrite exts-0 σ₂
         | commute-subst-rename {M}{σ₂}{↑ 1} (λ {x} → exts-suc' σ₂ x)
         | incs-seq σ₁ σ₂ = refl
@@ -566,7 +584,10 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   abstract
     subst-zero-exts-cons : ∀{σ : Subst}{M : ABT}
                          → exts σ ⨟ subst-zero M ≡ M • σ
-    subst-zero-exts-cons {σ}{M} rewrite exts-cons-shift σ = refl
+    subst-zero-exts-cons {σ}{M} rewrite incs=⨟↑ σ = refl
+    {-
+    rewrite exts-cons-shift σ = {!!} {- refl -}
+    -}
 
     subst-commute : ∀{N : ABT}{M : ABT}{σ : Subst }
         → (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ] ≡ ⟪ σ ⟫ (N [ M ])
