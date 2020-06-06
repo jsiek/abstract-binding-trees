@@ -5,6 +5,7 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Size using (Size)
 open import Var
+open import experimental.ScopedTuple
 open import Syntax
 
 module experimental.Fold3 (Op : Set) (sig : Op → List ℕ) where
@@ -17,7 +18,7 @@ Bind V C (suc b) = V → Bind V C b
 
 record Fold (V C : Set) : Set where
   field ret : V → C
-  field fold-op : (op : Op) → ⟦ sig op ⟧ (Bind V C) → C
+  field fold-op : (op : Op) → Tuple (sig op) (Bind V C) → C
   field var→val : Var → V
   field shift : V → V
 
@@ -26,8 +27,8 @@ record Fold (V C : Set) : Set where
   fold : {s : Size} → Substitution V → Term s → C
   fold-arg : Substitution V → {b : ℕ}{s : Size} → Term s → Bind V C b
 
-  fold σ (var x) = ret (⧼ σ ⧽ x)
-  fold σ (node {s} op args) = fold-op op (map (fold-arg σ) (sig op) args)
+  fold σ (` x) = ret (⧼ σ ⧽ x)
+  fold σ (op ⦅ args ⦆) = fold-op op (map (fold-arg σ) args)
   fold-arg σ {zero} M = fold σ M
   fold-arg σ {suc b} M v = fold-arg (v • σ) {b} M
 
@@ -38,15 +39,15 @@ module Reify (V : Set) (zero-val : V) where
   reify {suc b} f = reify {b} (f zero-val)
 
 Renaming : Fold Var ABT
-Renaming = record { ret = var ; var→val = λ x → x ; shift = suc 
-                  ; fold-op = λ op rs → node op (map RV.reify (sig op) rs) }
+Renaming = record { ret = `_ ; var→val = λ x → x ; shift = suc 
+                  ; fold-op = λ op rs → op ⦅ map RV.reify rs ⦆ }
     where module RV = Reify Var 0
 open Fold Renaming renaming (fold to ren)
 
 Subst : Fold ABT ABT
-Subst = record { ret = λ x → x ; var→val = λ x → var x ; shift = ren (↑ 1) 
-               ; fold-op = λ op rs → node op (map RT.reify (sig op) rs) }
-    where module RT = Reify ABT (var 0)
+Subst = record { ret = λ x → x ; var→val = λ x → ` x ; shift = ren (↑ 1) 
+               ; fold-op = λ op rs → op ⦅ map RT.reify rs ⦆ }
+    where module RT = Reify ABT (` 0)
 
 module RelAux {V₁ C₁}{V₂ C₂} (_∼_ : V₁ → V₂ → Set) (_≈_ : C₁ → C₂ → Set) where
   data _≊_ : Substitution V₁ → Substitution V₂ → Set where
@@ -67,7 +68,7 @@ record Related {V₁ C₁} {V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂
         vars∼ : ∀{x} → ℱ₁.var→val x ∼ ℱ₂.var→val x
         var→val∼ : ∀{x} → ℱ₁.var→val x ∼ ℱ₂.var→val x
   open RelAux _∼_ _≈_ using (_⩳_)
-  field op≈ : ∀{op rs₁ rs₂} → zip _⩳_ (sig op) rs₁ rs₂
+  field op≈ : ∀{op rs₁ rs₂} → zip _⩳_ rs₁ rs₂
             → ℱ₁.fold-op op rs₁ ≈ ℱ₂.fold-op op rs₂
   
 module Simulate {V₁ C₁ V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C₂)
@@ -88,10 +89,10 @@ module Simulate {V₁ C₁ V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ 
   sim-arg : ∀{s : Size}{σ₁}{σ₂}{b}{arg : Term s}
      → σ₁ ≊ σ₂ → (FF₁.fold-arg σ₁ {b} arg) ⩳ (FF₂.fold-arg σ₂ {b} arg)
 
-  sim {s}{var x} {σ₁} {σ₂} σ₁~σ₂ = ret≈ (lookup∼ σ₁~σ₂)
-  sim {s}{node op args}{σ₁}{σ₂} σ₁~σ₂ =
-      op≈ (map-pres-zip _≡_ _⩳_ (FF₁.fold-arg σ₁) (FF₂.fold-arg σ₂) zip-refl
-                        (λ { {b} refl → sim-arg {b = b} σ₁~σ₂ }))
+  sim {s}{` x} {σ₁} {σ₂} σ₁~σ₂ = ret≈ (lookup∼ σ₁~σ₂)
+  sim {s}{op ⦅ args ⦆}{σ₁}{σ₂} σ₁~σ₂ =
+      op≈ (map-pres-zip _≡_ _⩳_ (FF₁.fold-arg σ₁) (FF₂.fold-arg σ₂)
+               (zip-refl args) (λ { {b} refl → sim-arg {b = b} σ₁~σ₂ }))
   sim-arg {s} {σ₁} {σ₂} {zero} {M} σ₁≊σ₂ = sim {s}{M} σ₁≊σ₂
   sim-arg {s} {σ₁} {σ₂} {suc b} {arg} σ₁≊σ₂ v₁∼v₂ =
       sim-arg {b = b} (r-cons v₁∼v₂ σ₁≊σ₂)
@@ -109,22 +110,21 @@ module RelReify (V₁ V₂ : Set) (zero-val₁ : V₁) (zero-val₂ : V₂)
 
 RenSubRel : Related Renaming Subst
 RenSubRel = record
-              { _∼_ = λ x M → var x ≡ M
+              { _∼_ = λ x M → ` x ≡ M
               ; _≈_ = λ M₁ M₂ → M₁ ≡ M₂
               ; ret≈ = λ { refl → refl }
               ; vars∼ = λ {x} → refl
               ; var→val∼ = λ {x} → refl
-              ; op≈ = λ {op} rs≅ → cong (node op) (map-reify rs≅)
+              ; op≈ = λ {op} rs≅ → cong (_⦅_⦆ op) (map-reify rs≅)
               }
   where
-  module R1 = Reify Var 0
-  module R2 = Reify ABT (var 0)
-  open RelAux {C₁ = ABT} (λ x M → _≡_ (var x) M) _≡_ using (_⩳_)
-  open RelReify Var ABT 0 (var 0) (λ x M → _≡_ (var x) M) refl using (rel-arg)
+  module R1 = Reify Var 0 ; module R2 = Reify ABT (` 0)
+  open RelAux {C₁ = ABT} (λ x M → _≡_ (` x) M) _≡_ using (_⩳_)
+  open RelReify Var ABT 0 (` 0) (λ x M → _≡_ (` x) M) refl using (rel-arg)
 
-  map-reify : ∀{bs}{rs₁  : ⟦ bs ⟧ (Bind Var ABT)}{rs₂}
-    → zip _⩳_ bs rs₁ rs₂  →  map R1.reify bs rs₁ ≡ map R2.reify bs rs₂
+  map-reify : ∀{bs}{rs₁  : Tuple bs (Bind Var ABT)}{rs₂}
+    → zip _⩳_ rs₁ rs₂  →  map R1.reify rs₁ ≡ map R2.reify rs₂
   map-reify rs≅ = zip-map→rel _⩳_ _≡_ _≡_ R1.reify R2.reify (λ{b}→ rel-arg{b})
-                              Lift-Eq-Prod rs≅
+                              Lift-Eq-Tuple rs≅
 
 open Simulate Renaming Subst RenSubRel renaming (sim to rensub)
