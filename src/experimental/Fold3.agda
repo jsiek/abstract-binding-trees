@@ -72,6 +72,7 @@ record Map (V : Set) : Set where
         var→val : Var → V
         shift : V → V
         var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x)
+        “_”-0 : “_” (var→val 0) ≡ ` 0
 
   open GenericSubst V var→val shift var→val-suc-shift public
   open Reify V ABT var→val
@@ -276,10 +277,10 @@ module ComposeMaps {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) where
   (v₁ • σ₁) ⨟ σ₂ = Map.map-abt M₂ σ₂ (Map.“_” M₁ v₁) • (σ₁ ⨟ σ₂)
 
 record FusableMap {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set where
-  open Map M₁ using () renaming (map-abt to map₁; map-arg to map-arg₁;
-                         g-ext to ext₁) public
+  open Map M₁ renaming (map-abt to map₁; map-arg to map-arg₁;
+                         g-ext to ext₁; “_”-0 to “_”-0₁) public
   open Map M₂ using () renaming (map-abt to map₂; map-arg to map-arg₂;
-      g-ext to ext₂; g-inc to inc₂; g-drop to drop₂) public
+      g-ext to ext₂; g-inc to inc₂; g-drop to drop₂; “_”-0 to “_”-0₂) public
   open ComposeMaps M₁ M₂ public
   field var : ∀ x σ₁ σ₂ → map₂ σ₂ (map₁ σ₁ (` x)) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ (` x)
 
@@ -293,8 +294,12 @@ module FuseMaps {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂)
           ext₁ (↑ k) ⨟ ext₂ σ₂
       ≡⟨⟩
           map₂ (ext₂ σ₂) (Map.“_” M₁ (Map.var→val M₁ 0)) • ⌈ drop₂ k (inc₂ σ₂) ⌉
+      ≡⟨ cong (λ □ → map₂ (ext₂ σ₂) □ • ⌈ drop₂ k (inc₂ σ₂) ⌉) “_”-0₁ ⟩
+          map₂ (ext₂ σ₂) (` 0) • ⌈ drop₂ k (inc₂ σ₂) ⌉
+      ≡⟨ cong (λ □ → □ • ⌈ drop₂ k (inc₂ σ₂) ⌉) “_”-0₂ ⟩
+          (` 0) • ⌈ drop₂ k (inc₂ σ₂) ⌉
       ≡⟨ {!!} ⟩
-          exts ⌈ drop₂ k σ₂ ⌉
+          (` 0) • incs ⌈ drop₂ k σ₂ ⌉
       ≡⟨⟩
           exts (↑ k ⨟ σ₂)
       ∎
