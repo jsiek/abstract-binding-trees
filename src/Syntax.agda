@@ -37,6 +37,13 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V) where
   g-inc (↑ k) = ↑ (suc k)
   g-inc (v • ρ) = shift v • g-inc ρ
 
+{-
+  g-inc-shift : ∀ ρ x → ⧼ g-inc ρ ⧽ x ≡ shift (⧼ ρ ⧽ x)
+  g-inc-shift (↑ k) x rewrite +-comm k x = {!!}
+  g-inc-shift (y • ρ) zero = refl
+  g-inc-shift (y • ρ) (suc x) = g-inc-shift ρ x
+-}
+
   g-drop : (k : ℕ) → Substitution V → Substitution V
   g-drop k (↑ k') = ↑ (k + k')
   g-drop zero (v • σ) = v • σ
