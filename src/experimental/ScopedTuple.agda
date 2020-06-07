@@ -85,12 +85,19 @@ zip-map→rel  : ∀{bs A1 B1 A2 B2 xs ys}
   → zip P {bs} xs ys  →  R {bs} (map f xs) (map g ys)
 zip-map→rel P Q R f g P→Q L zs = zip→rel Q R L (map-pres-zip P Q f g zs P→Q)
 
-map-compose : ∀{A B C C′}
+map-compose-zip : ∀{A B C C′}
    {g : B ⇨ C} {f : A ⇨ B}{h : A ⇨ C′}
    {bs : Sig}{R : C ✖ C′}
    {xs : Tuple bs A}
    → (∀ {b : ℕ} x → R {b} (g (f x)) (h x))
    → zip R (map g (map f xs)) (map h xs)
-map-compose {A}{B}{C}{C′} {g} {f} {h} {[]} {R} {tt} gf=h = tt
-map-compose {A}{B}{C}{C′} {g} {f} {h} {b ∷ bs} {R} {⟨ x , xs ⟩} gf=h =
-    ⟨ (gf=h x) , (map-compose gf=h) ⟩
+map-compose-zip {A}{B}{C}{C′} {g} {f} {h} {[]} {R} {tt} gf=h = tt
+map-compose-zip {A}{B}{C}{C′} {g} {f} {h} {b ∷ bs} {R} {⟨ x , xs ⟩} gf=h =
+    ⟨ (gf=h x) , (map-compose-zip gf=h) ⟩
+
+map-compose : ∀{A B C} {g : B ⇨ C} {f : A ⇨ B} {bs : Sig} {xs : Tuple bs A}
+   → (map g (map f xs)) ≡ (map (g ∘ f) xs)
+map-compose {A}{B}{C} {g} {f} {[]} {tt} = refl
+map-compose {A}{B}{C} {g} {f} {b ∷ bs} {⟨ x , xs ⟩} =
+    cong₂ ⟨_,_⟩ refl map-compose
+
