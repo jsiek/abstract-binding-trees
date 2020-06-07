@@ -1,3 +1,7 @@
+{-# OPTIONS --rewriting #-}
+
+open import Agda.Builtin.Equality
+open import Agda.Builtin.Equality.Rewrite
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
@@ -9,14 +13,11 @@ open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
 open import Size using (Size)
 open import Var
 open import experimental.ScopedTuple
-open import Syntax
+open import Syntax hiding (⦉_⦊)
 
 module experimental.Fold3 (Op : Set) (sig : Op → List ℕ) where
 
 open import experimental.ABT Op sig
-
-private
-  variable s : Size
 
 {-------------------------------------------------------------------------------
  Folding over an abstract binding tree
@@ -29,14 +30,15 @@ Bind V C (suc b) = V → Bind V C b
 
 record Fold (V C : Set) : Set where
   field ret : V → C
-  field fold-op : (op : Op) → Tuple (sig op) (Bind V C) → C
-  field var→val : Var → V
-  field shift : V → V
+        fold-op : (op : Op) → Tuple (sig op) (Bind V C) → C
+        var→val : Var → V
+        shift : V → V
+        var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x)
+        
+  open GenericSubst V var→val shift var→val-suc-shift public
 
-  open GenericSubst V var→val shift public
-
-  fold : Substitution V → Term s → C
-  fold-arg : Substitution V → {b : ℕ} → Term s → Bind V C b
+  fold : ∀{s : Size} → Substitution V → Term s → C
+  fold-arg : ∀{s : Size} → Substitution V → {b : ℕ} → Term s → Bind V C b
 
   fold σ (` x) = ret (⧼ σ ⧽ x)
   fold σ (op ⦅ args ⦆) = fold-op op (map (fold-arg σ) args)
@@ -74,8 +76,8 @@ module Simulate {V₁ C₁ V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ 
   (R : Related F₁ F₂) where
   module FF₁ = Fold F₁ ; module FF₂ = Fold F₂
   open Related R ; open RelAux _∼_ _≈_ using (_≊_; r-up; r-cons; _⩳_)
-  module GS₁ = GenericSubst V₁ FF₁.var→val FF₁.shift
-  module GS₂ = GenericSubst V₂ FF₂.var→val FF₂.shift
+  module GS₁ = GenericSubst V₁ FF₁.var→val FF₁.shift FF₁.var→val-suc-shift
+  module GS₂ = GenericSubst V₂ FF₂.var→val FF₂.shift FF₂.var→val-suc-shift
   
   lookup∼ : {σ₁ : Substitution V₁} {σ₂ : Substitution V₂} →
       σ₁ ≊ σ₂ → {x : ℕ} → GS₁.⧼ σ₁ ⧽ x ∼ GS₂.⧼ σ₂ ⧽ x
@@ -119,16 +121,13 @@ module Reify (V C : Set) (new : V) where
 record Fusable {V₁ C₁ V₂ C₂ V₃ C₃ : Set}
   (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C₂) (F₃ : Fold V₃ C₃) : Set₁ where
   module 𝐹₁ = Fold F₁ ; module 𝐹₂ = Fold F₂ ; module 𝐹₃ = Fold F₃
-  module 𝑆₁ = GenericSubst V₁ 𝐹₁.var→val 𝐹₁.shift
-  module 𝑆₂ = GenericSubst V₂ 𝐹₂.var→val 𝐹₂.shift {- needed? -}
-  module 𝑆₃ = GenericSubst V₃ 𝐹₃.var→val 𝐹₃.shift
   field “_” : C₁ → ABT
         _⨟_≈_ : Substitution V₁ → Substitution V₂ → Substitution V₃ → Set
         _≃_ : V₂ → V₃ → Set
         _⩯_ : C₂ → C₃ → Set
         new₁ : V₁
         ret⩯ : ∀{s : Size}{x σ₁ σ₂ σ₃} → σ₁ ⨟ σ₂ ≈ σ₃
-             → 𝐹₂.fold σ₂ “ 𝐹₁.ret (𝑆₁.⧼ σ₁ ⧽ x) ” ⩯ 𝐹₃.ret (𝑆₃.⧼ σ₃ ⧽ x)
+             → 𝐹₂.fold σ₂ “ 𝐹₁.ret (𝐹₁.⧼ σ₁ ⧽ x) ” ⩯ 𝐹₃.ret (𝐹₃.⧼ σ₃ ⧽ x)
         ext≈ : ∀{σ₁ σ₂ σ₃ v₂ v₃}
              → σ₁ ⨟ σ₂ ≈ σ₃   →   v₂ ≃ v₃
              → (new₁ • 𝐹₁.g-inc σ₁) ⨟ (v₂ • 𝐹₂.g-inc σ₂) ≈ (v₃ • 𝐹₃.g-inc σ₃)
@@ -136,8 +135,11 @@ record Fusable {V₁ C₁ V₂ C₂ V₃ C₃ : Set}
   open RelAux _≃_ _⩯_ 
   field op⩯ : ∀{s : Size}{σ₁ σ₂ σ₃ op}{args : Tuple (sig op) (λ _ → Term s)}
             → zip (λ {b} → _⩳_ {b})
-              (map (λ {b} M → 𝐹₂.fold-arg σ₂ {b} M)
-                 (map (λ {b} M → “ R1.reify (𝐹₁.fold-arg {s} σ₁ {b} M) ”) args))
+              (map (λ {b} M → 𝐹₂.fold-arg {Size.∞} σ₂ {b} M)
+                 (map (λ {b} M →
+                         let x = R1.reify (𝐹₁.fold-arg {s} σ₁ {b} M) in
+                         let y = “ x ” in
+                         y) args))
               (map (λ {b} M → 𝐹₃.fold-arg {s} σ₃ {b} M) args)
             → 𝐹₂.fold σ₂ “ 𝐹₁.fold-op op (map (λ {b} → 𝐹₁.fold-arg {s} σ₁ {b}) args) ”
               ⩯ 𝐹₃.fold-op op (map (λ {b} → 𝐹₃.fold-arg {s} σ₃ {b}) args)
@@ -170,15 +172,19 @@ module Fuse {V₁ C₁ V₂ C₂ V₃ C₃ : Set}
 
 Renaming : Fold Var ABT
 Renaming = record { ret = `_ ; var→val = λ x → x ; shift = suc 
-                  ; fold-op = λ op rs → op ⦅ map RV.reify rs ⦆ }
+                  ; fold-op = λ op rs → op ⦅ map RV.reify rs ⦆
+                  ; var→val-suc-shift = refl}
     where module RV = Reify Var ABT 0
-open Fold Renaming renaming (fold to ren)
+open Fold Renaming renaming (⧼_⧽ to ⦉_⦊; fold to ren; fold-arg to ren-arg;
+    fold-op to ren-op; g-inc to inc; g-inc-shift to inc-suc)
 
 Subst : Fold ABT ABT
 Subst = record { ret = λ x → x ; var→val = λ x → ` x ; shift = ren (↑ 1) 
-               ; fold-op = λ op rs → op ⦅ map RT.reify rs ⦆ }
+               ; fold-op = λ op rs → op ⦅ map RT.reify rs ⦆
+               ; var→val-suc-shift = refl }
     where module RT = Reify ABT ABT (` 0)
-open Fold Subst renaming (fold to sub)
+open Fold Subst renaming (⧼_⧽ to ⟦_⟧; fold to sub; fold-arg to sub-arg;
+    fold-op to sub-op; g-inc to incs; g-inc-shift to incs-rename)
 
 
 module RelReify {s : Size} (V₁ V₂ : Set) (new₁ : V₁) (new₂ : V₂)
@@ -202,6 +208,7 @@ module RenSubProps where
                 ; vars∼ = λ {x} → refl
                 ; var→val∼ = λ {x} → refl
                 ; op≈ = λ {op} rs≅ → cong (_⦅_⦆ op) (map-reify rs≅)
+                ; shift∼ = λ { refl → refl }
                 }
     where
     module R1 = Reify Var ABT 0 ; module R2 = Reify ABT ABT (` 0)
@@ -213,7 +220,7 @@ module RenSubProps where
     map-reify rs≅ = zip-map→rel _⩳_ _≡_ _≡_ R1.reify R2.reify (λ{b}→ rel-arg{b})
                                 Lift-Eq-Tuple rs≅
 
-  open Simulate Renaming Subst RenSubRel renaming (sim to rensub)
+  open Simulate Renaming Subst RenSubRel using () renaming (sim to rensub)
   open RelAux {C₁ = ABT} (λ x M → _≡_ (` x) M) _≡_ using (_≊_; r-up; r-cons)
 
   ren→sub : Substitution Var → Substitution ABT
@@ -227,8 +234,46 @@ module RenSubProps where
   rename-subst : ∀ {M : ABT} {ρ} → ren ρ M ≡ sub (ren→sub ρ) M
   rename-subst {M}{ρ} = rensub {M = M}{ρ}{ren→sub ρ} (≊-ren→sub ρ)
 
-  open Fold Subst renaming (⧼_⧽ to ⟦_⟧)
-  
+  RenRenFus : Fusable Renaming Renaming Renaming
+  RenRenFus = record
+                { “_” = λ M → M
+                ; _⨟_≈_ = λ ρ₁ ρ₂ ρ₃ → ∀ x → ⦉ ρ₂ ⦊ (⦉ ρ₁ ⦊ x) ≡ ⦉ ρ₃ ⦊ x
+                ; _≃_ = _≡_
+                ; _⩯_ = _≡_
+                ; new₁ = 0
+                ; ret⩯ = λ {s}{x}{σ₁ σ₂ σ₃} → ret≈ {x}{σ₁}{σ₂}{σ₃}
+                ; ext≈ = ext≈
+                ; op⩯ = op⩯
+                }
+      where
+      ret≈ : ∀ {x} {ρ₁ ρ₂ ρ₃}  →  ((x₁ : ℕ) → ⦉ ρ₂ ⦊ (⦉ ρ₁ ⦊ x₁) ≡ ⦉ ρ₃ ⦊ x₁)
+         → ren ρ₂ (` ⦉ ρ₁ ⦊ x) ≡ (` ⦉ ρ₃ ⦊ x)
+      ret≈ {x} f rewrite f x = refl
+      ext≈ : ∀ {σ₁ σ₂ σ₃} {v₂ v₃} → ((x : ℕ) → ⦉ σ₂ ⦊ (⦉ σ₁ ⦊ x) ≡ ⦉ σ₃ ⦊ x)
+         → v₂ ≡ v₃  →  (x : ℕ)
+         → ⦉ v₂ • inc σ₂ ⦊ (⦉ 0 • inc σ₁ ⦊ x) ≡ ⦉ v₃ • inc σ₃ ⦊ x
+      ext≈ {σ₁} {σ₂} {σ₃} {v₂} {.v₂} f refl zero = refl
+      ext≈ {σ₁} {σ₂} {σ₃} {v₂} {.v₂} f refl (suc x) =
+          begin
+              ⦉ v₂ • inc σ₂ ⦊ (⦉ 0 • inc σ₁ ⦊ (suc x))
+          ≡⟨⟩
+              suc (⦉ σ₂ ⦊ (⦉ σ₁ ⦊ x))
+          ≡⟨ cong suc (f x) ⟩
+              suc (⦉ σ₃ ⦊ x)
+          ≡⟨⟩
+              ⦉ v₂ • inc σ₃ ⦊ (suc x)
+          ∎
+      open RelAux {Var}{ABT} _≡_ _≡_ using (_⩳_)
+      open Reify Var ABT 0 using (reify)
+      op⩯ : ∀{s : Size} {σ₁ σ₂ σ₃} {op} {args : Tuple (sig op) (λ _ → Term s)}
+         → zip (λ {b} → _⩳_ {b})
+             (map (ren-arg σ₂)
+                (map (λ {b} M → reify {b} (ren-arg σ₁ M)) args))
+              (map (ren-arg σ₃) args)
+         → ren σ₂ (ren-op op (map (ren-arg σ₁) args))
+           ≡ ren-op op (map (ren-arg σ₃) args)
+      op⩯ {s}{σ₁}{σ₂}{σ₃}{op}{args} z = {!!}
+
   SubRenFus : Fusable Subst Renaming Subst
   SubRenFus = record
                 { “_” = λ M → M
@@ -241,25 +286,31 @@ module RenSubProps where
                 ; op⩯ = {!!}
                 }
     where
-    module GR = GenericSubst Var (λ x → x) suc
-    module GS = GenericSubst ABT (λ x → ` x) (ren (↑ 1))
+    module GR = GenericSubst Var (λ x → x) suc (λ {x} → refl)
+    module GS = GenericSubst ABT `_ (ren (↑ 1)) (λ {x} → refl)
 
     ext≈ : ∀ {σ₁} {ρ₂} {σ₃} {v₂ : Var} {v₃ : ABT} →
-            ((x : ℕ) → FF₁.fold ρ₂ (GS.⧼ σ₁ ⧽ x) ≡ GS.⧼ σ₃ ⧽  x) →
+            ((x : ℕ) → ren ρ₂ (⟦ σ₁ ⟧ x) ≡ ⟦ σ₃ ⟧ x) →
            (` v₂) ≡ v₃ →
-           (x : ℕ) →
-             FF₁.fold (v₂ • FF₁.g-inc ρ₂) (GS.⧼ (` 0) • FF₂.g-inc σ₁ ⧽ x)
-             ≡ GS.⧼ (v₃ • FF₂.g-inc σ₃) ⧽ x
+           (x : ℕ) → ren (v₂ • inc ρ₂) (⟦ (` 0) • incs σ₁ ⟧ x)
+                    ≡ ⟦ v₃ • incs σ₃ ⟧ x
     ext≈ {σ₁} {ρ₂} {σ₃} {v₂} {.(` v₂)} f refl zero = refl
-    ext≈ {σ₁} {ρ₂} {σ₃} {v₂} {.(` v₂)} f refl (suc x) = {!!}
-{-
+    ext≈ {σ₁} {ρ₂} {σ₃} {v₂} {.(` v₂)} f refl (suc x) =
         begin
-            FF₁.fold (v₂ • FF₁.g-inc ρ₂) (GS.⧼ (` 0) • FF₂.g-inc σ₁ ⧽ (suc x))
+            ren (v₂ • inc ρ₂) (⟦ (` 0) • incs σ₁ ⟧ (suc x))
         ≡⟨⟩
-            FF₁.fold (v₂ • FF₁.g-inc ρ₂) (GS.⧼ FF₂.g-inc σ₁ ⧽ x)
+            ren (v₂ • inc ρ₂) (⟦ incs σ₁ ⟧ x)
+        ≡⟨ cong (λ □ → ren (v₂ • inc ρ₂) □) (incs-rename σ₁ x) ⟩
+            ren (v₂ • inc ρ₂) (ren (↑ 1) (⟦ σ₁ ⟧ x))
         ≡⟨ {!!} ⟩
-            GS.⧼ FF₂.g-inc σ₃ ⧽ x
+            ren (inc ρ₂) (⟦ σ₁ ⟧ x)
+        ≡⟨ {!!} ⟩
+            {- ren (ρ₂ ; ↑ 1) (⟦ σ₁ ⟧ x) -}
+            ren (↑ 1) (ren ρ₂ (⟦ σ₁ ⟧ x))
+        ≡⟨ cong (ren (↑ 1)) (f x) ⟩
+            ren (↑ 1) (⟦ σ₃ ⟧ x)
+        ≡⟨ sym (incs-rename σ₃ x) ⟩
+            ⟦ incs σ₃ ⟧ x
         ≡⟨⟩
-            GS.⧼ (` v₂) • FF₂.g-inc σ₃ ⧽ (suc x)
+            ⟦ (` v₂) • incs σ₃ ⟧ (suc x)
         ∎
--}
