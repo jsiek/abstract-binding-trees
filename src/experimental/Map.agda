@@ -13,7 +13,7 @@ open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
 open import Size using (Size)
 open import Var
 open import experimental.ScopedTuple
-open import Syntax hiding (⦉_⦊; ext)
+open import Syntax hiding (⦉_⦊; ext; _⨟ᵣ_)
 
 module experimental.Map (Op : Set) (sig : Op → List ℕ) where
 
@@ -43,47 +43,14 @@ record Map (V : Set) : Set where
   map-arg σ (suc b) M = map-arg (g-ext σ) b M
 
 {-------------------------------------------------------------------------------
- Renaming and substitution 
- ------------------------------------------------------------------------------}
-
-RenameIsMap : Map Var 
-RenameIsMap = record { “_” = `_ ; var→val = λ x → x ; shift = suc
-                     ; var→val-suc-shift = λ {x} → refl
-                     ; “_”-0 = refl }
-open Map RenameIsMap renaming (map-abt to rename; map-arg to rename-arg)
-open Map.S RenameIsMap using ()
-    renaming (⧼_⧽ to ⦉_⦊; g-ext to ext; g-inc to inc; g-drop to dropr;
-    g-drop-add to dropr-add; g-drop-drop to dropr-dropr;
-    g-drop-ext to dropr-ext)
-
-SubstIsMap : Map ABT
-SubstIsMap = record { “_” = λ M → M ; var→val = `_ ; shift = rename (↑ 1)
-                    ; var→val-suc-shift = refl
-                    ; “_”-0 = refl }
-open Map SubstIsMap renaming (map-abt to ⟪_⟫; map-arg to ⟪_⟫ₐ; g-ext to exts;
-    ⧼_⧽ to ⟦_⟧; g-inc to incs; g-drop to drops; g-drop-inc to drops-incs)
-
-{-------------------------------------------------------------------------------
  Fusion of two maps
  ------------------------------------------------------------------------------}
 
 module ComposeMaps {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂)
-   (⌈_⌉ : Substitution V₂ → V₁ → V₂)
-   where
-
-  {-
-   Examples to generalize from:
-    _⨟ᵣ_ : Rename → Rename → Rename
-    ↑ k ⨟ᵣ ρ = dropr k ρ
-    (x • ρ₁) ⨟ᵣ ρ₂ = ⦉ ρ₂ ⦊ x • (ρ₁ ⨟ᵣ ρ₂)
-
-    _⨟_ : Subst → Subst → Subst
-    ↑ k ⨟ τ = drop k τ
-    (M • σ) ⨟ τ = ⟪ τ ⟫ M • (σ ⨟ τ)
-   -}
+   (⌈_⌉ : Substitution V₂ → V₁ → V₂) where
+  {- Generalized from _⨟ᵣ_ and _⨟_ -}
   open GenericSubst V₂ (Map.var→val M₂) (Map.shift M₂)
       (Map.var→val-suc-shift M₂) using (g-drop)
-   
   infixr 5 _⨟_
   _⨟_ : Substitution V₁ → Substitution V₂ → Substitution V₂
   ↑ k ⨟ σ₂ = g-drop k σ₂
@@ -105,10 +72,6 @@ record FusableMap {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set where
   field compose-ext : ∀ (σ₁ : Substitution V₁) (σ₂ : Substitution V₂)
                     → ext₁ σ₁ ⨟ ext₂ σ₂ ≡ ext₂ (σ₁ ⨟ σ₂)
 
-module FuseMaps {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂)
-  (FM : FusableMap M₁ M₂) where
-  open FusableMap FM
-
   fusion : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} (M : Term s)
      → map₂ σ₂ (map₁ σ₁ M) ≡ map₂ (σ₁ ⨟ σ₂) M
   fusion-arg : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} {b}
@@ -128,7 +91,7 @@ module FuseMaps {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂)
       P× : ∀{s : Size}{bs : List ℕ} → Tuple bs (λ _ → Term s) → Set
       P× {s}{bs} args = ∀{s : Size}{σ₁ σ₂} → map (λ {b} → map-arg₂ σ₂ b)
                          (map (λ {b} → map-arg₁ σ₁ b) args)
-                      ≡ map (λ {b} → map-arg₂ (σ₁ ⨟ σ₂) b) args
+                         ≡ map (λ {b} → map-arg₂ (σ₁ ⨟ σ₂) b) args
       L : ∀{s} → Lift-Pred-Tuple (λ {b} → P{s}{b}) (λ {bs} → P×)
       L = record { base = λ {σ₁} {σ₂} → refl
                  ; step = λ Px Pxs → cong₂ ⟨_,_⟩ Px Pxs }
@@ -146,41 +109,3 @@ module FuseMaps {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂)
     ≡⟨⟩
       map-arg₂ (σ₁ ⨟ σ₂) (suc b) arg
     ∎
-
-{-------------------------------------------------------------------------------
- Compose two renamings
- ------------------------------------------------------------------------------}
-module _ where
-  open ComposeMaps RenameIsMap RenameIsMap ⦉_⦊
-
-  seq-rename : ∀ ρ₁ ρ₂ x → ⦉ ρ₁ ⨟ ρ₂ ⦊ x ≡ ⦉ ρ₂ ⦊ (⦉ ρ₁ ⦊ x)
-  seq-rename (↑ k) ρ₂ x = dropr-add k ρ₂
-  seq-rename (x₁ • ρ₁) ρ₂ zero = refl
-  seq-rename (x₁ • ρ₁) ρ₂ (suc x) = seq-rename ρ₁ ρ₂ x
-
-  dropr-seq : ∀ k ρ ρ' → dropr k (ρ ⨟ ρ') ≡ (dropr k ρ ⨟ ρ')
-  dropr-seq k (↑ k₁) ρ' = sym (dropr-dropr k k₁ ρ')
-  dropr-seq zero (x • ρ) ρ' = refl
-  dropr-seq (suc k) (x • ρ) ρ' = dropr-seq k ρ ρ'
-  
-  ren-assoc : ∀ {σ τ θ : Substitution Var}
-            → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
-  ren-assoc {↑ k} {τ} {θ} = sym (dropr-seq k τ θ)
-  ren-assoc {x • σ} {τ} {θ}
-      rewrite seq-rename τ θ x | ren-assoc {σ}{τ}{θ} = refl
-  {-# REWRITE ren-assoc #-}
-
-  inc-seq : ∀ ρ₁ ρ₂ → (inc ρ₁ ⨟ ext ρ₂) ≡ inc (ρ₁ ⨟ ρ₂)
-  inc-seq (↑ k) ρ₂ = dropr-ext k ρ₂
-  inc-seq (x • ρ₁) ρ₂ rewrite inc-seq ρ₁ ρ₂ | ext-suc ρ₂ x = refl
-
-  compose-ext : ∀{ρ₁ ρ₂ : Rename}
-              → (ext ρ₁ ⨟ ext ρ₂) ≡ ext (ρ₁ ⨟ ρ₂)
-  compose-ext {ρ₁}{ρ₂} rewrite inc-seq ρ₁ ρ₂ = refl
-
-  RenRenRus : FusableMap RenameIsMap RenameIsMap
-  RenRenRus = record { ⌈_⌉ = ⦉_⦊ ; var = λ x ρ₁ ρ₂ → sym (seq-rename ρ₁ ρ₂ x)
-                     ; map-quote = λ v₁ ρ₂ → refl
-                     ; compose-ext = λ ρ₁ ρ₂ → compose-ext {ρ₁}{ρ₂}}
-
-
