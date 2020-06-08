@@ -204,7 +204,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     abstract
       inc-seq : ∀ ρ₁ ρ₂ → (inc ρ₁ ⨟ᵣ ext ρ₂) ≡ inc (ρ₁ ⨟ᵣ ρ₂)
       inc-seq (↑ k) ρ₂ = dropr-ext k ρ₂
-      inc-seq (x • ρ₁) ρ₂ rewrite inc-seq ρ₁ ρ₂ | ext-suc ρ₂ x = refl
+      inc-seq (x • ρ₁) ρ₂ rewrite inc-seq ρ₁ ρ₂ = refl
 
   abstract
 

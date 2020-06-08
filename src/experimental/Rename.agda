@@ -21,13 +21,13 @@ Rename = Substitution Var
 RenameIsMap : Map Var 
 RenameIsMap = record { “_” = `_ ; var→val = λ x → x ; shift = suc
     ; var→val-suc-shift = λ {x} → refl ; “_”-0 = refl }
-open Map RenameIsMap renaming (map-abt to rename; map-arg to rename-arg)
+open Map RenameIsMap renaming (map-abt to rename; map-arg to ren-arg) public
 open Map.S RenameIsMap using ()
     renaming (⧼_⧽ to ⦉_⦊; g-ext to ext; g-inc to inc;
     g-drop to dropr;
     g-drop-add to dropr-add; g-drop-drop to dropr-dropr;
-    g-drop-ext to dropr-ext)
-open ComposeMaps RenameIsMap RenameIsMap ⦉_⦊ renaming (_⨟_ to _⨟ᵣ_)
+    g-drop-ext to dropr-ext) public
+open ComposeMaps RenameIsMap RenameIsMap ⦉_⦊ renaming (_⨟_ to _⨟ᵣ_) public
 
 seq-rename : ∀ ρ₁ ρ₂ x → ⦉ ρ₁ ⨟ᵣ ρ₂ ⦊ x ≡ ⦉ ρ₂ ⦊ (⦉ ρ₁ ⦊ x)
 seq-rename (↑ k) ρ₂ x = dropr-add k ρ₂
