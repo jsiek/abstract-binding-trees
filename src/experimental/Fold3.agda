@@ -44,7 +44,6 @@ module Reify (V C : Set) (var→val : Var → V) where
  Folding over an abstract binding tree
  ------------------------------------------------------------------------------}
 
-
 record Fold (V C : Set) : Set where
   field ret : V → C
         fold-op : (op : Op) → Tuple (sig op) (Bind V C) → C
@@ -61,29 +60,6 @@ record Fold (V C : Set) : Set where
   fold σ (op ⦅ args ⦆) = fold-op op (map (fold-arg σ) args)
   fold-arg σ {zero} M = fold σ M
   fold-arg σ {suc b} M v = fold-arg (g-extend v σ) M
-
-{-------------------------------------------------------------------------------
- Mapping over an abstract binding tree
- (generalizes renaming and substitution)
- ------------------------------------------------------------------------------}
-
-record Map (V : Set) : Set where
-  field “_” : V → ABT
-        var→val : Var → V
-        shift : V → V
-        var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x)
-        “_”-0 : “_” (var→val 0) ≡ ` 0
-
-  open GenericSubst V var→val shift var→val-suc-shift public
-  open Reify V ABT var→val
-
-  map-abt : ∀{s : Size} → Substitution V → Term s → ABT
-  map-arg : ∀{s : Size} → Substitution V → (b : ℕ) →  Term s → ABT
-  
-  map-abt σ (` x) = “ ⧼ σ ⧽ x ”
-  map-abt σ (op ⦅ args ⦆) = op ⦅ map (λ {b} → map-arg σ b) args ⦆
-  map-arg σ zero M = map-abt σ M
-  map-arg σ (suc b) M = map-arg (g-ext σ) b M
 
 {-------------------------------------------------------------------------------
  Simulation between two folds
@@ -250,102 +226,6 @@ module FuseFolds {V₁ C₁ V₂ C₂ : Set}
 -}
 -}
 
-RenameIsMap : Map Var 
-RenameIsMap = record { “_” = `_ ; var→val = λ x → x ; shift = suc
-                     ; var→val-suc-shift = λ {x} → refl }
-open Map RenameIsMap renaming (map-abt to rename; map-arg to rename-arg;
-    g-inc to r-inc)
-
-SubstIsMap : Map ABT
-SubstIsMap = record { “_” = λ M → M ; var→val = `_ ; shift = rename (↑ 1)
-                    ; var→val-suc-shift = refl }
-open Map SubstIsMap renaming (map-abt to ⟪_⟫; map-arg to ⟪_⟫ₐ; g-ext to exts;
-    g-inc to incs; g-drop to drops; g-drop-inc to drops-incs)
-
-{-------------------------------------------------------------------------------
- Fusion of two maps
- ------------------------------------------------------------------------------}
-
-module ComposeMaps {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) where
-
-  ⌈_⌉ : Substitution V₂ → Substitution ABT
-  ⌈ ↑ k ⌉ = ↑ k
-  ⌈ v₂ • σ₂ ⌉ = Map.“_” M₂ v₂ • ⌈ σ₂ ⌉
-
-  _⨟_ : Substitution V₁ → Substitution V₂ → Substitution ABT
-  ↑ k ⨟ σ₂ = ⌈ Map.g-drop M₂ k σ₂ ⌉
-  (v₁ • σ₁) ⨟ σ₂ = Map.map-abt M₂ σ₂ (Map.“_” M₁ v₁) • (σ₁ ⨟ σ₂)
-
-record FusableMap {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set where
-  open Map M₁ renaming (map-abt to map₁; map-arg to map-arg₁;
-                         g-ext to ext₁; “_”-0 to “_”-0₁) public
-  open Map M₂ using () renaming (map-abt to map₂; map-arg to map-arg₂;
-      g-ext to ext₂; g-inc to inc₂; g-drop to drop₂; “_”-0 to “_”-0₂) public
-  open ComposeMaps M₁ M₂ public
-  field var : ∀ x σ₁ σ₂ → map₂ σ₂ (map₁ σ₁ (` x)) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ (` x)
-
-module FuseMaps {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂)
-  (FM : FusableMap M₁ M₂) where
-  open FusableMap FM
-
-  compose-ext : ∀{σ₁}{σ₂} → ext₁ σ₁ ⨟ ext₂ σ₂ ≡ exts (σ₁ ⨟ σ₂)
-  compose-ext {↑ k} {σ₂} =
-      begin
-          ext₁ (↑ k) ⨟ ext₂ σ₂
-      ≡⟨⟩
-          map₂ (ext₂ σ₂) (Map.“_” M₁ (Map.var→val M₁ 0)) • ⌈ drop₂ k (inc₂ σ₂) ⌉
-      ≡⟨ cong (λ □ → map₂ (ext₂ σ₂) □ • ⌈ drop₂ k (inc₂ σ₂) ⌉) “_”-0₁ ⟩
-          map₂ (ext₂ σ₂) (` 0) • ⌈ drop₂ k (inc₂ σ₂) ⌉
-      ≡⟨ cong (λ □ → □ • ⌈ drop₂ k (inc₂ σ₂) ⌉) “_”-0₂ ⟩
-          (` 0) • ⌈ drop₂ k (inc₂ σ₂) ⌉
-      ≡⟨ {!!} ⟩
-          (` 0) • incs ⌈ drop₂ k σ₂ ⌉
-      ≡⟨⟩
-          exts (↑ k ⨟ σ₂)
-      ∎
-  {- Goal: 
-     ext₁ (↑ k) ⨟ ext₂ σ₂
-     ≡
-     (` 0 • (↑ suc k)) ⨟ (` 0 • incs σ₂)
-     ≡
-     (` 0) • ((↑ suc k) ⨟ (` 0 • incs σ₂))
-     ≡
-     (` 0) • drop (suc k) (` 0 • incs σ₂)
-     ≡
-     (` 0) • drop k (incs σ₂)
-
-     (` 0) • incs (drop k σ₂)
-     ≡
-     exts (drop k σ₂)
-     ≡
-     exts (↑ k ⨟ σ₂)
-  -}
-  compose-ext {x • σ₁} {σ₂} = {!!}
-
-
-  fusion : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} (M : Term s)
-     → map₂ σ₂ (map₁ σ₁ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
-  fusion-arg : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} {b}
-     → (arg : Term s)
-     → map-arg₂ σ₂ b (map-arg₁ σ₁ b arg) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ₐ b arg
-
-  fusion {.(Size.↑ _)} {σ₁} {σ₂} (` x) = var x σ₁ σ₂
-  fusion {.(Size.↑ _)} {σ₁} {σ₂} (op ⦅ args ⦆) =
-      cong (_⦅_⦆ op) {!!}
-  fusion-arg {s} {σ₁} {σ₂} {zero} arg = fusion arg
-  fusion-arg {s} {σ₁} {σ₂} {suc b} arg =
-    let IH = fusion-arg {s} {ext₁ σ₁} {ext₂ σ₂} {b} arg in
-    begin
-        map-arg₂ σ₂ (suc b) (map-arg₁ σ₁ (suc b) arg)
-    ≡⟨⟩
-        map-arg₂ (ext₂ σ₂) b (map-arg₁ (ext₁ σ₁) b arg)
-    ≡⟨ IH ⟩
-        ⟪ ext₁ σ₁ ⨟ ext₂ σ₂ ⟫ₐ b arg
-    ≡⟨ {!!} ⟩
-        ⟪ exts (σ₁ ⨟ σ₂) ⟫ₐ b arg
-    ≡⟨⟩
-        ⟪ σ₁ ⨟ σ₂ ⟫ₐ (suc b) arg
-    ∎
 
 {-------------------------------------------------------------------------------
  Renaming and substitution

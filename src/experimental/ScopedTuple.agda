@@ -41,6 +41,13 @@ all : ∀{A} → 𝒫 A → {bs : Sig} → Tuple bs A → Set
 all {A} P {[]} tt = ⊤
 all {A} P {b ∷ bs} ⟨ x , xs ⟩ = P x × (all P xs)
 
+all-intro : ∀{A : Scet} → (P : 𝒫 A)
+  → (∀ {b} (a : A b) → P {b} a)
+  → {bs : Sig} → (xs : Tuple bs A)
+  → all P xs
+all-intro {A} P f {[]} tt = tt
+all-intro {A} P f {b ∷ bs} ⟨ x , xs ⟩  = ⟨ (f x) , (all-intro P f xs) ⟩
+
 zip : ∀{A B} → A ✖ B → {bs : Sig} → Tuple bs A → Tuple bs B → Set
 zip R {[]} tt tt = ⊤
 zip R {b ∷ bs} ⟨ a₁ , as₁ ⟩ ⟨ a₂ , as₂ ⟩ = R a₁ a₂ × zip R as₁ as₂
@@ -48,6 +55,14 @@ zip R {b ∷ bs} ⟨ a₁ , as₁ ⟩ ⟨ a₂ , as₂ ⟩ = R a₁ a₂ × zip 
 zip-refl : ∀{bs A} (xs : Tuple bs A) → zip _≡_ xs xs
 zip-refl {[]} tt = tt
 zip-refl {b ∷ bs} {A} ⟨ x , xs ⟩ = ⟨ refl , zip-refl xs ⟩
+
+zip-intro : ∀{A B : Scet} → (R : A ✖ B)
+  → (∀ {c} (a : A c) (b : B c) → R {c} a b)
+  → {bs : Sig} → (xs : Tuple bs A) → (ys : Tuple bs B)
+  → zip R xs ys
+zip-intro {A} {B} R f {[]} tt tt = tt
+zip-intro {A} {B} R f {b ∷ bs} ⟨ x , xs ⟩ ⟨ y , ys ⟩ =
+    ⟨ (f x y) , (zip-intro R f xs ys) ⟩
 
 map-pres-zip : ∀{bs A1 B1 A2 B2 xs ys}
   → (P : A1 ✖ B1) → (Q : A2 ✖ B2) → (f : A1 ⇨ A2) → (g : B1 ⇨ B2)
@@ -58,6 +73,12 @@ map-pres-zip {[]} {xs = tt} {tt} P Q f g tt pres = tt
 map-pres-zip {b ∷ bs}{xs = ⟨ x , xs ⟩} {⟨ y , ys ⟩} P Q f g ⟨ z , zs ⟩ pres =
     ⟨ pres z , map-pres-zip P Q f g zs pres ⟩
 
+record Lift-Pred-Tuple {A} (P : 𝒫 A)
+  (P× : ∀{bs} → Tuple bs A → Set) : Set where
+  field base : (P× {bs = []} tt)
+        step : (∀{b : ℕ}{bs : Sig}{x xs}
+               → P {b} x  →  P× {bs} xs  →  P× ⟨ x , xs ⟩)
+
 record Lift-Rel-Tuple {A B} (R : A ✖ B)
   (R× : ∀{bs} → Tuple bs A → Tuple bs B → Set) : Set where
   field base : (R× {bs = []} tt tt)
@@ -66,6 +87,15 @@ record Lift-Rel-Tuple {A B} (R : A ✖ B)
 
 Lift-Eq-Tuple : ∀{A : Set} → Lift-Rel-Tuple {λ _ → A}{λ _ → A} _≡_ _≡_
 Lift-Eq-Tuple = record { base = refl ; step = λ { refl refl → refl } }
+
+all→pred : ∀{bs A xs}
+  → (P : 𝒫 A)  →  (P× : ∀ {bs} → Tuple bs A → Set)
+  → (L : Lift-Pred-Tuple P P×)
+  → all P {bs} xs  →  P× xs
+all→pred {[]} {xs = tt} P P× L tt = Lift-Pred-Tuple.base L 
+all→pred {b ∷ bs} {xs = ⟨ x , xs ⟩} P P× L ⟨ z , zs ⟩ =
+    let IH = all→pred {bs} {xs = xs} P P× L zs in
+    Lift-Pred-Tuple.step L z IH
 
 zip→rel : ∀{bs A B xs ys}
   → (R : A ✖ B)  →  (R× : ∀ {bs} → Tuple bs A → Tuple bs B → Set)

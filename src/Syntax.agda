@@ -83,6 +83,11 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   g-inc-shift (y • ρ) zero = refl
   g-inc-shift (y • ρ) (suc x) = g-inc-shift ρ x
 
+  g-drop-ext : ∀ k ρ → g-drop (suc k) (g-ext ρ) ≡ g-inc (g-drop k ρ)
+  g-drop-ext k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
+  g-drop-ext zero (x • ρ) = refl
+  g-drop-ext (suc k) (x • ρ) = g-drop-inc k ρ
+
 open GenericSubst Var (λ x → x) suc (λ {x} → refl)
     using () renaming (⧼_⧽ to ⦉_⦊; g-Z-shift to Z-shiftr) public
 open GenericSubst Var (λ x → x) suc (λ {x} → refl)
@@ -90,7 +95,7 @@ open GenericSubst Var (λ x → x) suc (λ {x} → refl)
     renaming (g-inc to inc; g-drop to dropr; g-drop-0 to dropr-0;
               g-drop-add to dropr-add; g-drop-drop to dropr-dropr;
               g-drop-inc to dropr-inc;
-              g-inc-shift to inc-suc)
+              g-inc-shift to inc-suc; g-drop-ext to dropr-ext)
 {-# REWRITE inc-suc #-}
 
 Rename : Set
@@ -197,11 +202,6 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
       dropr-seq (suc k) (x • ρ) ρ' = dropr-seq k ρ ρ'
 
     abstract
-      dropr-ext : ∀ k ρ → dropr (suc k) (ext ρ) ≡ inc (dropr k ρ)
-      dropr-ext k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
-      dropr-ext zero (x • ρ) = refl
-      dropr-ext (suc k) (x • ρ) = dropr-inc k ρ
-
       inc-seq : ∀ ρ₁ ρ₂ → (inc ρ₁ ⨟ᵣ ext ρ₂) ≡ inc (ρ₁ ⨟ᵣ ρ₂)
       inc-seq (↑ k) ρ₂ = dropr-ext k ρ₂
       inc-seq (x • ρ₁) ρ₂ rewrite inc-seq ρ₁ ρ₂ | ext-suc ρ₂ x = refl
