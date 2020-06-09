@@ -41,16 +41,28 @@ all : ∀{A} → 𝒫 A → {bs : Sig} → Tuple bs A → Set
 all {A} P {[]} tt = ⊤
 all {A} P {b ∷ bs} ⟨ x , xs ⟩ = P x × (all P xs)
 
+zip : ∀{A B} → A ✖ B → {bs : Sig} → Tuple bs A → Tuple bs B → Set
+zip R {[]} tt tt = ⊤
+zip R {b ∷ bs} ⟨ a₁ , as₁ ⟩ ⟨ a₂ , as₂ ⟩ = R a₁ a₂ × zip R as₁ as₂
+
+map-cong : ∀{A B}{f g : A ⇨ B} {bs} {xs : Tuple bs A}
+  → (∀{b} (x : A b) → f x ≡ g x)
+  →  map f xs ≡ map g xs
+map-cong {bs = []} {tt} eq = refl
+map-cong {bs = b ∷ bs} {⟨ x , xs ⟩} eq = cong₂ ⟨_,_⟩ (eq x) (map-cong eq)
+
+map-compose : ∀{A B C} {g : B ⇨ C} {f : A ⇨ B} {bs : Sig} {xs : Tuple bs A}
+   → (map g (map f xs)) ≡ (map (g ∘ f) xs)
+map-compose {A}{B}{C} {g} {f} {[]} {tt} = refl
+map-compose {A}{B}{C} {g} {f} {b ∷ bs} {⟨ x , xs ⟩} =
+    cong₂ ⟨_,_⟩ refl map-compose
+
 all-intro : ∀{A : Scet} → (P : 𝒫 A)
   → (∀ {b} (a : A b) → P {b} a)
   → {bs : Sig} → (xs : Tuple bs A)
   → all P xs
 all-intro {A} P f {[]} tt = tt
 all-intro {A} P f {b ∷ bs} ⟨ x , xs ⟩  = ⟨ (f x) , (all-intro P f xs) ⟩
-
-zip : ∀{A B} → A ✖ B → {bs : Sig} → Tuple bs A → Tuple bs B → Set
-zip R {[]} tt tt = ⊤
-zip R {b ∷ bs} ⟨ a₁ , as₁ ⟩ ⟨ a₂ , as₂ ⟩ = R a₁ a₂ × zip R as₁ as₂
 
 zip-refl : ∀{bs A} (xs : Tuple bs A) → zip _≡_ xs xs
 zip-refl {[]} tt = tt
@@ -105,12 +117,6 @@ lift-pred : ∀{A : Scet} → (P : 𝒫 A) → (P× : ∀ {bs} → Tuple bs A �
 lift-pred {A} P P× L f {bs} xs =
   all→pred {bs}{A}{xs} P P× L (all-intro {A} P f {bs} xs)
 
-map-cong : ∀{A B}{f g : A ⇨ B} {bs} {xs : Tuple bs A}
-  → (∀{b} (x : A b) → f x ≡ g x)
-  →  map f xs ≡ map g xs
-map-cong {bs = []} {tt} eq = refl
-map-cong {bs = b ∷ bs} {⟨ x , xs ⟩} eq = cong₂ ⟨_,_⟩ (eq x) (map-cong eq)
-
 zip→rel : ∀{bs A B xs ys}
   → (R : A ✖ B)  →  (R× : ∀ {bs} → Tuple bs A → Tuple bs B → Set)
   → (L : Lift-Rel-Tuple R R×)
@@ -139,9 +145,4 @@ map-compose-zip {A}{B}{C}{C′} {g} {f} {h} {[]} {R} {tt} gf=h = tt
 map-compose-zip {A}{B}{C}{C′} {g} {f} {h} {b ∷ bs} {R} {⟨ x , xs ⟩} gf=h =
     ⟨ (gf=h x) , (map-compose-zip gf=h) ⟩
 
-map-compose : ∀{A B C} {g : B ⇨ C} {f : A ⇨ B} {bs : Sig} {xs : Tuple bs A}
-   → (map g (map f xs)) ≡ (map (g ∘ f) xs)
-map-compose {A}{B}{C} {g} {f} {[]} {tt} = refl
-map-compose {A}{B}{C} {g} {f} {b ∷ bs} {⟨ x , xs ⟩} =
-    cong₂ ⟨_,_⟩ refl map-compose
 

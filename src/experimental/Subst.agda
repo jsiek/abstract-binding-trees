@@ -125,17 +125,18 @@ private
   sub-shift0 : ∀ {s}{σ} (M : Term s) → Shift 0 σ → ⟪ σ ⟫ M ⩭ M
   sub-shift0-arg  : ∀{s}{σ} → (b : ℕ) → (arg : Term s) → Shift 0 σ
      → ⟪ σ ⟫ₐ b arg ⩭ arg
-  sub-shift0-args  : ∀{s}{σ} → (bs : Sig) → (args : Tuple bs (λ _ → Term s))
-     → Shift 0 σ → ⟨ bs ⟩ map (λ {b} → ⟪ σ ⟫ₐ b) args ⩭ args
 
   sub-shift0 {s}{σ}(` x) σ0 rewrite sub-shift-var {σ}{0} x σ0 = var⩭ refl
-  sub-shift0 (_⦅_⦆ op args) σ0 = node⩭ (sub-shift0-args (sig op) args σ0)
+  sub-shift0 {_}{σ}(_⦅_⦆ {s} op args) σ0 =
+      node⩭ (lift-pred _ _ L (λ {b} arg → sub-shift0-arg b arg σ0) args)
+      where
+      L : Lift-Pred-Tuple
+                 (λ {b} arg   → ⟪ σ ⟫ₐ b arg ⩭ arg)
+                 (λ {bs} args → ⟨ bs ⟩ map (λ {b} → ⟪ σ ⟫ₐ b) args ⩭ args)
+      L = record { base = tt ; step = λ arg⩭ args⩭ → ⟨ arg⩭ , args⩭ ⟩ }
   sub-shift0-arg {s} zero arg σ0 = sub-shift0 arg σ0
   sub-shift0-arg {s} (suc b) arg σ0 =
       sub-shift0-arg b arg (shift-• (incs-shift σ0) refl)
-  sub-shift0-args {s} [] tt σ0 = tt
-  sub-shift0-args {s} (b ∷ bs) ⟨ arg , args ⟩ σ0 =
-    ⟨ sub-shift0-arg b arg σ0 , (sub-shift0-args bs args σ0) ⟩
 
 sub-id : ∀ (M : ABT) → ⟪ id ⟫ M ≡ M
 sub-id M = ⩭→≡ (sub-shift0 M (shift-up {0}))
