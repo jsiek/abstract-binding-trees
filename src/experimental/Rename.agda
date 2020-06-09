@@ -7,7 +7,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
-open import Syntax using (Substitution; ↑; _•_)
+open import Syntax using (Substitution; ↑; _•_; Substable)
 open import Var
 
 module experimental.Rename (Op : Set) (sig : Op → List ℕ) where
@@ -18,15 +18,19 @@ open import experimental.Map Op sig
 Rename : Set
 Rename = Substitution Var
 
+RenameIsSubstable : Substable Var
+RenameIsSubstable = record { var→val = λ x → x ; shift = suc
+    ; var→val-suc-shift = λ {x} → refl }
+
 RenameIsMap : Map Var 
-RenameIsMap = record { “_” = `_ ; var→val = λ x → x ; shift = suc
-    ; var→val-suc-shift = λ {x} → refl ; “_”-0 = refl }
+RenameIsMap = record { “_” = `_ ; S = RenameIsSubstable }
 open Map RenameIsMap renaming (map-abt to rename; map-arg to ren-arg) public
-open Map.S RenameIsMap using ()
+open Map.GS RenameIsMap using ()
     renaming (⧼_⧽ to ⦉_⦊; g-ext to ext; g-inc to inc;
     g-drop to dropr;
     g-drop-add to dropr-add; g-drop-drop to dropr-dropr;
-    g-drop-ext to dropr-ext) public
+    g-drop-ext to dropr-ext; Shift to RenShift; g-Shift-var to ren-shift-var)
+    public
 open ComposeMaps RenameIsMap RenameIsMap ⦉_⦊ renaming (_⨟_ to _⨟ᵣ_) public
 
 seq-rename : ∀ ρ₁ ρ₂ x → ⦉ ρ₁ ⨟ᵣ ρ₂ ⦊ x ≡ ⦉ ρ₂ ⦊ (⦉ ρ₁ ⦊ x)

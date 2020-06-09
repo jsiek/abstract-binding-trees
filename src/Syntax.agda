@@ -26,8 +26,13 @@ data Substitution : (V : Set) → Set where
 id : ∀ {V} → Substitution V
 id = ↑ 0
 
-module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
-  (var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x)) where
+record Substable (V : Set) : Set where
+  field var→val : Var → V
+        shift : V → V
+        var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x)
+
+module GenericSubst {V} (S : Substable V) where
+  open Substable S
 
   ⧼_⧽ : Substitution V → Var → V
   ⧼ ↑ k ⧽ x = var→val (k + x)
@@ -112,17 +117,41 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   g-Shift-var {v • σ}{k} (suc x) (shift-• σk refl) rewrite +-suc k x =
       g-Shift-var {σ}{suc k} x σk
 
-  module Relate {V₁}{V₂} (_∼_ : V₁ → V₂ → Set) where
+module Relate {V₁}{V₂} (S₁ : Substable V₁) (S₂ : Substable V₂)
+    (_∼_ : V₁ → V₂ → Set)
+    (var→val∼ : ∀ x → Substable.var→val S₁ x ∼ Substable.var→val S₂ x)
+    (shift∼ : ∀{v₁ v₂}→ v₁ ∼ v₂ → Substable.shift S₁ v₁ ∼ Substable.shift S₂ v₂)
+    where
+    module G₁ = GenericSubst S₁
+    module G₂ = GenericSubst S₂
+
     data _≊_ : Substitution V₁ → Substitution V₂ → Set where
        r-up : ∀{k} → (↑ k) ≊ (↑ k)
        r-cons : ∀{v₁ σ₁ v₂ σ₂}
           → v₁ ∼ v₂  →   σ₁ ≊ σ₂
           → (v₁ • σ₁) ≊ (v₂ • σ₂)
 
+    g-inc-≊ : ∀ {σ₁ σ₂} → σ₁ ≊ σ₂ → G₁.g-inc σ₁ ≊ G₂.g-inc σ₂
+    g-inc-≊ {.(↑ _)} {.(↑ _)} r-up = r-up
+    g-inc-≊ {.(_ • _)} {.(_ • _)} (r-cons v₁~v₂ σ₁≊σ₂) =
+        r-cons (shift∼ v₁~v₂ ) (g-inc-≊ σ₁≊σ₂)
 
-open GenericSubst Var (λ x → x) suc (λ {x} → refl)
+    g-ext-≊ : ∀ {σ₁ σ₂} → σ₁ ≊ σ₂ → G₁.g-ext σ₁ ≊ G₂.g-ext σ₂
+    g-ext-≊ {σ₁}{σ₂} σ₁≊σ₂ = r-cons (var→val∼ 0) (g-inc-≊ σ₁≊σ₂)
+
+    g-lookup : ∀ {σ₁ σ₂} x → σ₁ ≊ σ₂ → G₁.⧼_⧽ σ₁ x ∼ G₂.⧼_⧽ σ₂ x
+    g-lookup x (r-up{k}) = var→val∼ (k + x)
+    g-lookup zero (r-cons v₁∼v₂ σ₁≊σ₂) = v₁∼v₂
+    g-lookup (suc x) (r-cons v₁∼v₂ σ₁≊σ₂) = g-lookup x σ₁≊σ₂
+
+
+RenameIsSubstable : Substable Var
+RenameIsSubstable = record { var→val = λ x → x ; shift = suc
+    ; var→val-suc-shift = λ {x} → refl }
+
+open GenericSubst RenameIsSubstable
     using () renaming (⧼_⧽ to ⦉_⦊; g-Z-shift to Z-shiftr) public
-open GenericSubst Var (λ x → x) suc (λ {x} → refl)
+open GenericSubst RenameIsSubstable
     using ()
     renaming (g-inc to inc; g-drop to dropr; g-drop-0 to dropr-0;
               g-drop-add to dropr-add; g-drop-drop to dropr-dropr;
@@ -284,10 +313,14 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   Subst : Set
   Subst = Substitution ABT
 
-  open GenericSubst ABT `_ (rename (↑ 1)) (λ {x} → refl)
+  SubstIsSubstable : Substable ABT
+  SubstIsSubstable = record { var→val = `_ ; shift = rename (↑ 1)
+      ; var→val-suc-shift = λ {x} → refl }
+
+  open GenericSubst SubstIsSubstable
       using () renaming (⧼_⧽ to ⟦_⟧; g-Z-shift to Z-shift) public
   {-# REWRITE Z-shift #-}
-  open GenericSubst ABT `_ (rename (↑ 1)) (λ {x} → refl)
+  open GenericSubst SubstIsSubstable
       using () renaming (g-inc to incs; g-drop to drop; g-drop-0 to drop-0;
                          g-drop-add to drop-add; g-drop-drop to drop-drop;
                          g-drop-inc to drop-incs;
@@ -572,10 +605,10 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
       drop-exts zero (M • ρ) = refl
       drop-exts (suc k) (M • ρ) = drop-incs k ρ
 
-      incs-seq : ∀ ρ₁ ρ₂ → (incs ρ₁ ⨟ exts ρ₂) ≡ incs (ρ₁ ⨟ ρ₂)
-      incs-seq (↑ k) ρ₂ = drop-exts k ρ₂
-      incs-seq (M • ρ₁) ρ₂ rewrite incs-seq ρ₁ ρ₂
-          | commute-subst-rename {M}{ρ₂}{↑ 1} (λ {x} → exts-suc' ρ₂ x) = refl
+      incs-seq : ∀ σ₁ σ₂ → (incs σ₁ ⨟ exts σ₂) ≡ incs (σ₁ ⨟ σ₂)
+      incs-seq (↑ k) σ₂ = drop-exts k σ₂
+      incs-seq (M • σ₁) σ₂ rewrite incs-seq σ₁ σ₂
+          | commute-subst-rename {M}{σ₂}{↑ 1} (λ {x} → exts-suc' σ₂ x) = refl
 
   abstract
     exts-seq : ∀ {σ₁ : Subst} {σ₂ : Subst}

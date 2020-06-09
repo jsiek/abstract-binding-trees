@@ -15,7 +15,7 @@ open import Relation.Binary.HeterogeneousEquality
     using (_≅_; ≅-to-≡; reflexive)
     renaming (cong to hcong)
 open import Size using (Size)
-open import Syntax using (Substitution; ↑; _•_; id)
+open import Syntax using (Substitution; ↑; _•_; id; Substable)
 open import Var
 
 module experimental.Subst (Op : Set) (sig : Op → List ℕ) where
@@ -27,16 +27,18 @@ open import experimental.Rename Op sig
 Subst : Set
 Subst = Substitution ABT
 
+SubstIsSubstable : Substable ABT
+SubstIsSubstable = record { var→val = `_ ; shift = rename (↑ 1)
+    ; var→val-suc-shift = λ {x} → refl }
+
 SubstIsMap : Map ABT
-SubstIsMap = record { “_” = λ M → M ; var→val = `_ ; shift = rename (↑ 1)
-                    ; var→val-suc-shift = refl
-                    ; “_”-0 = refl }
+SubstIsMap = record { “_” = λ M → M ; S = SubstIsSubstable }
 open Map SubstIsMap renaming (map-abt to ⟪_⟫; map-arg to ⟪_⟫ₐ) public
 ⟪_⟫₊ : ∀{s : Size} → Substitution ABT →(bs : Sig)→ Tuple bs (λ _ → Term s)
      → Tuple bs (λ _ → ABT)
 ⟪_⟫₊ = λ σ bs → map (λ {b} → ⟪ σ ⟫ₐ b) {bs}
-open Map.S SubstIsMap using () renaming (⧼_⧽ to ⟦_⟧; g-ext to exts) public
-open Map.S SubstIsMap using (Shift; shift-up; shift-•) renaming (g-inc to incs;
+open Map.GS SubstIsMap using () renaming (⧼_⧽ to ⟦_⟧; g-ext to exts) public
+open Map.GS SubstIsMap using (Shift; shift-up; shift-•) renaming (g-inc to incs;
     g-drop to drops; g-drop-inc to drops-incs; g-drop-add to drop-add;
     g-Shift-var to sub-shift-var; g-inc-shift to incs-rename;
     g-inc-Shift to incs-Shift)
@@ -86,6 +88,17 @@ rename→subst : Rename → Subst
 rename→subst (↑ k) = ↑ k 
 rename→subst (x • ρ) = ` x • rename→subst ρ
 
+rename-subst : ∀ {s : Size} ρ (M : Term s)
+   → rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
+rename-subst {s} ρ M = MapCong.map-cong-abt MRS (ρ≊ ρ) M
+  where
+  MRS = record { var→val-quote = λ x → refl ; shift-quote = λ { refl → refl } }
+  open MapCong.R MRS
+  ρ≊ : ∀ ρ → ρ ≊ rename→subst ρ
+  ρ≊ (↑ k) = r-up
+  ρ≊ (x • ρ) = r-cons refl (ρ≊ ρ)
+
+{- the following two may not be necessary -}
 private
   incs-rename-inc : ∀ ρ → incs (rename→subst ρ) ≡ rename→subst (inc ρ)
   incs-rename-inc (↑ k) = refl
@@ -96,19 +109,7 @@ exts-rename-ext (↑ k) = refl
 exts-rename-ext (x • ρ) =
     cong (λ □ → (` 0) • (` suc x) • □) (incs-rename-inc ρ)
 
-rename-subst-interp : ∀ ρ x → (` ⦉ ρ ⦊ x) ≡ ⟦ rename→subst ρ ⟧ x
-rename-subst-interp (↑ k) x = refl
-rename-subst-interp (y • ρ) zero = refl
-rename-subst-interp (y • ρ) (suc x) = rename-subst-interp ρ x
 
-rename-subst : ∀ {s : Size} ρ (M : Term s)
-   → rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
-rename-subst {s} ρ M = MapCong.map-cong-abt MRS refl M
-  where
-  MRS : MapCong RenameIsMap SubstIsMap
-  MRS = record { _≈_ = λ ρ σ → σ ≡ rename→subst ρ
-              ; var = λ { {ρ} x refl → rename-subst-interp ρ x }
-              ; ext≈ = λ { {ρ} refl → exts-rename-ext ρ } }
 
 incs=⨟↑ : ∀ σ → incs σ ≡ σ ⨟ ↑ 1
 incs=⨟↑ (↑ k) rewrite +-comm k 1 = refl
@@ -156,4 +157,15 @@ exts-suc' σ x rewrite incs-rename σ x = refl
 exts-suc-rename : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
 exts-suc-rename σ x rewrite incs-rename σ x = refl
 
-
+commute-subst-rename : ∀{s}{σ : Subst} {ρ : Rename}
+   → (M : Term s)
+   → RenShift 1 ρ
+   → ⟪ exts σ ⟫ (rename ρ M) ≡ rename ρ (⟪ σ ⟫ M)
+commute-subst-rename {s}{σ}{ρ} (` x) ρ↑ rewrite ren-shift-var x ρ↑ =
+  {!!}
+  {-
+  Goal: Syntax.GenericSubst.⧼ SubstIsSubstable ⧽
+      (Syntax.GenericSubst.g-inc SubstIsSubstable σ) x
+      ≡ FusableMap.map₁ ρ (Syntax.GenericSubst.⧼ SubstIsSubstable ⧽ σ x)
+  -}
+commute-subst-rename (_⦅_⦆ {s} op args) ρ↑ = {!!}
