@@ -139,3 +139,9 @@ private
 
 sub-id : ∀ (M : ABT) → ⟪ id ⟫ M ≡ M
 sub-id M = ⩭→≡ (sub-shift0 M (shift-up {0}))
+{-# REWRITE sub-id #-}
+
+rename-id : {M : ABT} → rename (↑ 0) M ≡ M
+rename-id {M} = rename-subst (↑ 0) M
+{-# REWRITE rename-id #-}
+
