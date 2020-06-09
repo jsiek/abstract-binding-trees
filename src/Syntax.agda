@@ -401,8 +401,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
   abstract
     exts-cons-shift : ∀ σ → exts σ ≡ (` 0 • (σ ⨟ ↑ 1))
-    exts-cons-shift (↑ k) rewrite +-comm k 1 = refl
-    exts-cons-shift (M • σ) rewrite rename-subst (↑ 1) M | incs=⨟↑ σ = refl
+    exts-cons-shift σ rewrite incs=⨟↑ σ = refl
 
     seq-subst : ∀ σ τ x → ⟦ σ ⨟ τ ⟧ x ≡ ⟪ τ ⟫ (⟦ σ ⟧ x)
     seq-subst (↑ k) τ x = drop-add k τ

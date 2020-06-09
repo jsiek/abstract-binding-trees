@@ -56,9 +56,9 @@ compose-ext ρ₁ ρ₂ rewrite inc-seq ρ₁ ρ₂ = refl
 
 compose-rename : ∀(ρ₁ ρ₂ : Rename)(M : ABT)
    → rename ρ₂ (rename ρ₁ M) ≡ rename (ρ₁ ⨟ᵣ ρ₂) M
-compose-rename ρ₁ ρ₂ M = fusion M
+compose-rename ρ₁ ρ₂ M = FusableMap.fusion FRR M
     where
-    Fus : FusableMap RenameIsMap RenameIsMap
-    Fus = record { ⌈_⌉ = ⦉_⦊ ; var = λ x ρ₁ ρ₂ → sym (seq-rename ρ₁ ρ₂ x)
-        ; map-quote = λ v₁ ρ₂ → refl ; compose-ext = compose-ext}
-    open FusableMap Fus
+    FRR : FusableMap RenameIsMap RenameIsMap
+    FRR = record { ⌈_⌉ = ⦉_⦊ ; var = λ x ρ₁ ρ₂ → sym (seq-rename ρ₁ ρ₂ x)
+          ; map-quote = λ v₁ ρ₂ → refl ; compose-ext = compose-ext}
+

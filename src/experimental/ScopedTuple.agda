@@ -97,6 +97,20 @@ all→pred {b ∷ bs} {xs = ⟨ x , xs ⟩} P P× L ⟨ z , zs ⟩ =
     let IH = all→pred {bs} {xs = xs} P P× L zs in
     Lift-Pred-Tuple.step L z IH
 
+lift-pred : ∀{A : Scet} → (P : 𝒫 A) → (P× : ∀ {bs} → Tuple bs A → Set)
+  → (L : Lift-Pred-Tuple P P×)
+  → (∀ {b} (a : A b) → P {b} a)
+  → {bs : Sig} → (xs : Tuple bs A)
+  →  P× xs
+lift-pred {A} P P× L f {bs} xs =
+  all→pred {bs}{A}{xs} P P× L (all-intro {A} P f {bs} xs)
+
+map-cong : ∀{A B}{f g : A ⇨ B} {bs} {xs : Tuple bs A}
+  → (∀{b} (x : A b) → f x ≡ g x)
+  →  map f xs ≡ map g xs
+map-cong {bs = []} {tt} eq = refl
+map-cong {bs = b ∷ bs} {⟨ x , xs ⟩} eq = cong₂ ⟨_,_⟩ (eq x) (map-cong eq)
+
 zip→rel : ∀{bs A B xs ys}
   → (R : A ✖ B)  →  (R× : ∀ {bs} → Tuple bs A → Tuple bs B → Set)
   → (L : Lift-Rel-Tuple R R×)
