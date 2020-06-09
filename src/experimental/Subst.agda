@@ -4,7 +4,7 @@ open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
-open import Data.Nat.Properties using (+-comm)
+open import Data.Nat.Properties using (+-comm; +-suc)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit using (⊤; tt)
 open import experimental.ScopedTuple
@@ -126,8 +126,8 @@ data _⩭_ : {s : Size} → Term s → {t : Size} → Term t → Set
     → Tuple bs (λ _ → Term t) → Set
 
 data _⩭_ where
-  var≅ : ∀{i j : Size}{k l : Var} → k ≡ l → `_ {s = i} k ⩭ `_ {s = j} l
-  node≅ : ∀{i j : Size}{op}{args args'}
+  var⩭ : ∀{i j : Size}{k l : Var} → k ≡ l → `_ {s = i} k ⩭ `_ {s = j} l
+  node⩭ : ∀{i j : Size}{op}{args args'}
          → ⟨ sig op ⟩ args ⩭ args'
          → _⦅_⦆ {s = i} op args ⩭ _⦅_⦆ {s = j} op args'
 
@@ -137,20 +137,48 @@ data _⩭_ where
 ⟨_⟩⩭→≡ : ∀{s : Size} → (bs : Sig) → {xs ys : Tuple bs (λ _ → Term s)}
     → ⟨ bs ⟩ xs ⩭ ys → xs ≡ ys
 
-⩭→≡ {.(Size.↑ _)} {.(` _)} {.(` _)} (var≅ refl) = refl
-⩭→≡ {.(Size.↑ _)} {.(_ ⦅ _ ⦆)} {.(_ ⦅ _ ⦆)} (node≅ {op = op} args⩭) =
+⩭→≡ {.(Size.↑ _)} {.(` _)} {.(` _)} (var⩭ refl) = refl
+⩭→≡ {.(Size.↑ _)} {.(_ ⦅ _ ⦆)} {.(_ ⦅ _ ⦆)} (node⩭ {op = op} args⩭) =
   cong (_⦅_⦆ op) (⟨ sig op ⟩⩭→≡ args⩭)
 
 ⟨_⟩⩭→≡ {s} [] {tt} {tt} tt = refl
 ⟨_⟩⩭→≡ {s} (b ∷ bs) {⟨ x , xs ⟩} {⟨ y , ys ⟩} ⟨ x=y , xs=ys ⟩
     rewrite ⩭→≡ x=y | ⟨ bs ⟩⩭→≡ xs=ys = refl
 
+data Shift : ℕ → Subst → Set where
+  shift-up : ∀{k} → Shift k (↑ k)
+  shift-• : ∀{k σ} → Shift (suc k) σ → Shift k ((` k) • σ)
 
-sub-id-⩭ : ∀ {s} (M : Term s) → ⟪ id ⟫ M ⩭ M
-sub-id-⟨_⟩⩭  : ∀{s} → (bs : Sig)
-   → ⟨ bs ⟩ map (λ {b} → ⟪ id ⟫ₐ b) args ⩭ args
+incs-shift : ∀ {k σ} → Shift k σ → Shift (suc k) (incs σ)
+incs-shift shift-up = shift-up
+incs-shift (shift-• kσ) = shift-• (incs-shift kσ)
 
+exts-pres-shift-0 : ∀ σ → Shift 0 σ → Shift 0 (exts σ)
+exts-pres-shift-0 (↑ .0) shift-up = shift-• shift-up
+exts-pres-shift-0 (.(` 0) • σ) (shift-• σ0) =
+    shift-• (shift-• (incs-shift σ0))
 
-sub-id-⩭ (`_ x) = var≅ refl
-sub-id-⩭ (_⦅_⦆ op args) = node≅ {!!}
+sub-shift-var : ∀ {σ}{k} (x : Var) → Shift k σ → ⟦ σ ⟧ x ≡ ` (k + x)
+sub-shift-var {.(↑ k)}{k} x shift-up = refl
+sub-shift-var {.((` k) • _)}{k} zero (shift-• σk)
+    rewrite +-comm k 0 = refl
+sub-shift-var {(` k) • σ}{k} (suc x) (shift-• σk) rewrite +-suc k x =
+    sub-shift-var {σ}{suc k} x σk
 
+sub-shift0 : ∀ {s}{σ} (M : Term s) → Shift 0 σ → ⟪ σ ⟫ M ⩭ M
+sub-shift0-arg  : ∀{s}{σ} → (b : ℕ) → (arg : Term s) → Shift 0 σ
+   → ⟪ σ ⟫ₐ b arg ⩭ arg
+sub-shift0-args  : ∀{s}{σ} → (bs : Sig) → (args : Tuple bs (λ _ → Term s))
+   → Shift 0 σ → ⟨ bs ⟩ map (λ {b} → ⟪ σ ⟫ₐ b) args ⩭ args
+
+sub-shift0 {s}{σ}(` x) σ0 rewrite sub-shift-var {σ}{0} x σ0 = var⩭ refl
+sub-shift0 (_⦅_⦆ op args) σ0 = node⩭ (sub-shift0-args (sig op) args σ0)
+sub-shift0-arg {s} zero arg σ0 = sub-shift0 arg σ0
+sub-shift0-arg {s} (suc b) arg σ0 =
+    sub-shift0-arg b arg (shift-• (incs-shift σ0))
+sub-shift0-args {s} [] tt σ0 = tt
+sub-shift0-args {s} (b ∷ bs) ⟨ arg , args ⟩ σ0 =
+  ⟨ sub-shift0-arg b arg σ0 , (sub-shift0-args bs args σ0) ⟩
+
+sub-id : ∀ (M : ABT) → ⟪ id ⟫ M ≡ M
+sub-id M = ⩭→≡ (sub-shift0 M (shift-up {0}))
