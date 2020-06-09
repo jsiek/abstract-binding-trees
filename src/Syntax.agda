@@ -112,6 +112,14 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   g-Shift-var {v • σ}{k} (suc x) (shift-• σk refl) rewrite +-suc k x =
       g-Shift-var {σ}{suc k} x σk
 
+  module Relate {V₁}{V₂} (_∼_ : V₁ → V₂ → Set) where
+    data _≊_ : Substitution V₁ → Substitution V₂ → Set where
+       r-up : ∀{k} → (↑ k) ≊ (↑ k)
+       r-cons : ∀{v₁ σ₁ v₂ σ₂}
+          → v₁ ∼ v₂  →   σ₁ ≊ σ₂
+          → (v₁ • σ₁) ≊ (v₂ • σ₂)
+
+
 open GenericSubst Var (λ x → x) suc (λ {x} → refl)
     using () renaming (⧼_⧽ to ⦉_⦊; g-Z-shift to Z-shiftr) public
 open GenericSubst Var (λ x → x) suc (λ {x} → refl)

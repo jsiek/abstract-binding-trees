@@ -57,6 +57,21 @@ map-compose {A}{B}{C} {g} {f} {[]} {tt} = refl
 map-compose {A}{B}{C} {g} {f} {b ∷ bs} {⟨ x , xs ⟩} =
     cong₂ ⟨_,_⟩ refl map-compose
 
+tuple-pred : ∀{A : Scet}{P : 𝒫 A}
+  → (P× : ∀ bs → Tuple bs A → Set)
+  → (∀ (b : ℕ) → (a : A b) → P {b} a)
+  → {bs : Sig} → (xs : Tuple bs A)
+  → (P× [] tt)
+  → (∀{b : ℕ}{bs : Sig}{x xs}
+       → P {b} x  →  P× bs xs  →  P× (b ∷ bs) ⟨ x , xs ⟩)
+  →  P× bs xs
+tuple-pred {A} {P} P× f {[]} tt base step = base
+tuple-pred {A} {P} P× f {x ∷ bs} ⟨ fst , snd ⟩ base step =
+    step (f x fst) (tuple-pred P× f snd base step)
+
+
+
+
 all-intro : ∀{A : Scet} → (P : 𝒫 A)
   → (∀ {b} (a : A b) → P {b} a)
   → {bs : Sig} → (xs : Tuple bs A)
@@ -116,20 +131,6 @@ lift-pred : ∀{A : Scet} → (P : 𝒫 A) → (P× : ∀ {bs} → Tuple bs A �
   →  P× xs
 lift-pred {A} P P× L f {bs} xs =
   all→pred {bs}{A}{xs} P P× L (all-intro {A} P f {bs} xs)
-
-tuple-pred : ∀{A : Scet}{P : 𝒫 A}
-  → (P× : ∀ {bs} → Tuple bs A → Set)
-  → (∀ {b} (a : A b) → P {b} a)
-  → {bs : Sig} → (xs : Tuple bs A)
-  → (P× {bs = []} tt)
-  → (∀{b : ℕ}{bs : Sig}{x xs}
-       → P {b} x  →  P× {bs} xs  →  P× ⟨ x , xs ⟩)
-  →  P× xs
-tuple-pred {A}{P} P× f {bs} xs base step  =
-  all→pred {bs}{A}{xs} P P× L (all-intro {A} P f {bs} xs)
-  where
-  L : Lift-Pred-Tuple P P×
-  L = record { base = base ; step = step }
 
 zip→rel : ∀{bs A B xs ys}
   → (R : A ✖ B)  →  (R× : ∀ {bs} → Tuple bs A → Tuple bs B → Set)

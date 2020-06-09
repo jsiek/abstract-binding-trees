@@ -13,6 +13,8 @@ open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
 open import Size using (Size)
 open import Var
 open import experimental.ScopedTuple
+    using (Tuple; map; _✖_; zip; zip-refl; map-pres-zip; map-compose-zip;
+           map-compose; zip-map→rel; Lift-Eq-Tuple; Lift-Rel-Tuple; zip→rel)
 open import Syntax hiding (⦉_⦊)
 
 module experimental.Fold3 (Op : Set) (sig : Op → List ℕ) where

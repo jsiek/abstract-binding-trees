@@ -4,6 +4,7 @@ open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
+open import Data.Nat.Properties using (+-comm)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit using (⊤; tt)
 open import Function using (_∘_)
@@ -100,6 +101,13 @@ record FusableMap {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set where
         map-arg₂ (ext₂ (σ₁ ⨟ σ₂)) b arg
     ∎
 
+{-------------------------------------------------------------------------------
+  Congruence of map
+
+  map-cong-abt : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} 
+      → σ₁ ≈ σ₂ → (M : Term s) → map₁ σ₁ M ≡ map₂ σ₂ M
+ ------------------------------------------------------------------------------}
+ 
 record MapCong {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
   open Map M₁ using () renaming (map-abt to map₁; map-arg to map-arg₁;
       “_” to “_”₁) public
@@ -107,6 +115,8 @@ record MapCong {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
   open Map M₂ using () renaming (map-abt to map₂; map-arg to map-arg₂;
       “_” to “_”₂) public
   open Map.S M₂ using () renaming (⧼_⧽ to ⧼_⧽₂; g-ext to ext₂) public
+
+  {- idea: use _≊_ from RelAux instead of _≈_ -}
 
   field _≈_ : Substitution V₁ → Substitution V₂ → Set
         var : ∀ {σ₁ σ₂} x → σ₁ ≈ σ₂ → “ ⧼ σ₁ ⧽₁ x ”₁ ≡ “ ⧼ σ₂ ⧽₂ x ”₂
@@ -124,3 +134,11 @@ record MapCong {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
   map-cong-arg {s} {σ₁} {σ₂} {zero} σ₁≈σ₂ arg = map-cong-abt σ₁≈σ₂ arg
   map-cong-arg {s} {σ₁} {σ₂} {suc b} σ₁≈σ₂ arg =
       map-cong-arg {s} {ext₁ σ₁} {ext₂ σ₂} {b} (ext≈ σ₁≈σ₂) arg
+
+{-------------------------------------------------------------------------------
+  Commutativity of map
+
+  map-commute : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} 
+      → ...
+      → map₁ σ₁ (map₂ σ₂ M) ≡ map₂ σ₂' (map₁ σ₁' M)
+ ------------------------------------------------------------------------------}

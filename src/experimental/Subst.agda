@@ -7,7 +7,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 open import Data.Nat.Properties using (+-comm; +-suc)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit using (⊤; tt)
-open import experimental.ScopedTuple
+open import experimental.ScopedTuple using (Sig; Tuple; map; tuple-pred)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
@@ -38,7 +38,8 @@ open Map SubstIsMap renaming (map-abt to ⟪_⟫; map-arg to ⟪_⟫ₐ) public
 open Map.S SubstIsMap using () renaming (⧼_⧽ to ⟦_⟧; g-ext to exts) public
 open Map.S SubstIsMap using (Shift; shift-up; shift-•) renaming (g-inc to incs;
     g-drop to drops; g-drop-inc to drops-incs; g-drop-add to drop-add;
-    g-Shift-var to sub-shift-var; g-inc-Shift to incs-shift)
+    g-Shift-var to sub-shift-var; g-inc-shift to incs-rename;
+    g-inc-Shift to incs-Shift)
 open ComposeMaps SubstIsMap SubstIsMap ⟪_⟫ using (_⨟_) public
 
 subst-zero : ABT → Subst
@@ -123,17 +124,14 @@ seq-subst (M • σ) τ (suc x) = seq-subst σ τ x
 
 private
   sub-shift0 : ∀ {s}{σ} (M : Term s) → Shift 0 σ → ⟪ σ ⟫ M ⩭ M
-  sub-shift0-arg  : ∀{s}{σ} → (b : ℕ) → (arg : Term s) → Shift 0 σ
+  ss0-arg  : ∀{s}{σ} → Shift 0 σ → (b : ℕ) → (arg : Term s) 
      → ⟪ σ ⟫ₐ b arg ⩭ arg
-
   sub-shift0 {s}{σ}(` x) σ0 rewrite sub-shift-var {σ}{0} x σ0 = var⩭ refl
   sub-shift0 {_}{σ}(_⦅_⦆ {s} op args) σ0 =
-      node⩭ (tuple-pred P× (λ {b} arg → sub-shift0-arg b arg σ0) args
-               tt (λ px pxs → ⟨ px , pxs ⟩))
-      where P× = (λ {bs} args → ⟨ bs ⟩ map (λ {b} → ⟪ σ ⟫ₐ b) args ⩭ args)
-  sub-shift0-arg {s} zero arg σ0 = sub-shift0 arg σ0
-  sub-shift0-arg {s} (suc b) arg σ0 =
-      sub-shift0-arg b arg (shift-• (incs-shift σ0) refl)
+      node⩭ (tuple-pred P× (ss0-arg σ0) args tt ⟨_,_⟩)
+      where P× = (λ bs args → ⟨ bs ⟩ map (λ {b} → ⟪ σ ⟫ₐ b) args ⩭ args)
+  ss0-arg {s} σ0 zero arg = sub-shift0 arg σ0
+  ss0-arg {s} σ0 (suc b) arg = ss0-arg (shift-• (incs-Shift σ0) refl) b arg
 
 sub-id : ∀ (M : ABT) → ⟪ id ⟫ M ≡ M
 sub-id M = ⩭→≡ (sub-shift0 M (shift-up {0}))
@@ -142,4 +140,20 @@ sub-id M = ⩭→≡ (sub-shift0 M (shift-up {0}))
 rename-id : {M : ABT} → rename (↑ 0) M ≡ M
 rename-id {M} = rename-subst (↑ 0) M
 {-# REWRITE rename-id #-}
+
+sub-idR : ∀ σ → σ ⨟ id ≡ σ 
+sub-idR (↑ k) rewrite +-comm k 0 = refl
+sub-idR (M • σ) rewrite sub-idR σ = refl
+{-# REWRITE sub-idR #-}
+
+private
+  exts-0 : ∀ σ → ⟦ exts σ ⟧ 0 ≡ ` 0
+  exts-0 σ = refl
+
+exts-suc' : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟦ σ ⟧ x)
+exts-suc' σ x rewrite incs-rename σ x = refl
+
+exts-suc-rename : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
+exts-suc-rename σ x rewrite incs-rename σ x = refl
+
 
