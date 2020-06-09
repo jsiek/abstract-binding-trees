@@ -128,12 +128,9 @@ private
 
   sub-shift0 {s}{σ}(` x) σ0 rewrite sub-shift-var {σ}{0} x σ0 = var⩭ refl
   sub-shift0 {_}{σ}(_⦅_⦆ {s} op args) σ0 =
-      node⩭ (lift-pred _ _ L (λ {b} arg → sub-shift0-arg b arg σ0) args)
-      where
-      L : Lift-Pred-Tuple
-                 (λ {b} arg   → ⟪ σ ⟫ₐ b arg ⩭ arg)
-                 (λ {bs} args → ⟨ bs ⟩ map (λ {b} → ⟪ σ ⟫ₐ b) args ⩭ args)
-      L = record { base = tt ; step = λ arg⩭ args⩭ → ⟨ arg⩭ , args⩭ ⟩ }
+      node⩭ (tuple-pred P× (λ {b} arg → sub-shift0-arg b arg σ0) args
+               tt (λ px pxs → ⟨ px , pxs ⟩))
+      where P× = (λ {bs} args → ⟨ bs ⟩ map (λ {b} → ⟪ σ ⟫ₐ b) args ⩭ args)
   sub-shift0-arg {s} zero arg σ0 = sub-shift0 arg σ0
   sub-shift0-arg {s} (suc b) arg σ0 =
       sub-shift0-arg b arg (shift-• (incs-shift σ0) refl)

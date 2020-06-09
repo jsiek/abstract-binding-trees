@@ -117,6 +117,20 @@ lift-pred : ∀{A : Scet} → (P : 𝒫 A) → (P× : ∀ {bs} → Tuple bs A �
 lift-pred {A} P P× L f {bs} xs =
   all→pred {bs}{A}{xs} P P× L (all-intro {A} P f {bs} xs)
 
+tuple-pred : ∀{A : Scet}{P : 𝒫 A}
+  → (P× : ∀ {bs} → Tuple bs A → Set)
+  → (∀ {b} (a : A b) → P {b} a)
+  → {bs : Sig} → (xs : Tuple bs A)
+  → (P× {bs = []} tt)
+  → (∀{b : ℕ}{bs : Sig}{x xs}
+       → P {b} x  →  P× {bs} xs  →  P× ⟨ x , xs ⟩)
+  →  P× xs
+tuple-pred {A}{P} P× f {bs} xs base step  =
+  all→pred {bs}{A}{xs} P P× L (all-intro {A} P f {bs} xs)
+  where
+  L : Lift-Pred-Tuple P P×
+  L = record { base = base ; step = step }
+
 zip→rel : ∀{bs A B xs ys}
   → (R : A ✖ B)  →  (R× : ∀ {bs} → Tuple bs A → Tuple bs B → Set)
   → (L : Lift-Rel-Tuple R R×)
