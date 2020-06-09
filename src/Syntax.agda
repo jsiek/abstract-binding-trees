@@ -49,6 +49,10 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   g-drop zero (v • σ) = v • σ
   g-drop (suc k) (v • σ) = g-drop k σ
 
+  shifts : ℕ → V → V
+  shifts zero v = v
+  shifts (suc k) v = shift (shifts k v) 
+
   g-drop-0 : ∀ σ → g-drop 0 σ ≡ σ
   g-drop-0 (↑ k) = refl
   g-drop-0 (v • σ) = refl
@@ -87,6 +91,26 @@ module GenericSubst (V : Set) (var→val : Var → V) (shift : V → V)
   g-drop-ext k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
   g-drop-ext zero (x • ρ) = refl
   g-drop-ext (suc k) (x • ρ) = g-drop-inc k ρ
+
+  data Shift : ℕ → Substitution V → Set where
+    shift-up : ∀{k} → Shift k (↑ k)
+    shift-• : ∀{k σ v} → Shift (suc k) σ → v ≡ shifts k (var→val 0)
+       → Shift k (v • σ)
+
+  g-inc-Shift : ∀ {k σ} → Shift k σ → Shift (suc k) (g-inc σ)
+  g-inc-Shift shift-up = shift-up
+  g-inc-Shift (shift-• kσ refl) = shift-• (g-inc-Shift kσ) refl
+
+  shifts0 : ∀ k → shifts k (var→val 0) ≡ var→val k
+  shifts0 zero = refl
+  shifts0 (suc k) rewrite shifts0 k | var→val-suc-shift {k} = refl
+
+  g-Shift-var : ∀ {σ}{k} (x : Var) → Shift k σ → ⧼ σ ⧽ x ≡ var→val (k + x)
+  g-Shift-var {.(↑ k)}{k} x shift-up = refl
+  g-Shift-var {v • _}{k} zero (shift-• σk refl)
+      rewrite +-comm k 0 = shifts0 k
+  g-Shift-var {v • σ}{k} (suc x) (shift-• σk refl) rewrite +-suc k x =
+      g-Shift-var {σ}{suc k} x σk
 
 open GenericSubst Var (λ x → x) suc (λ {x} → refl)
     using () renaming (⧼_⧽ to ⦉_⦊; g-Z-shift to Z-shiftr) public
