@@ -11,11 +11,11 @@ open import experimental.ScopedTuple using (Sig; Tuple; map; tuple-pred)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
+open import GenericSubstitution renaming (g-drop to drop)
 open import Relation.Binary.HeterogeneousEquality
     using (_≅_; ≅-to-≡; reflexive)
     renaming (cong to hcong)
 open import Size using (Size)
-open import GenericSubstitution renaming (g-drop to drop)
 open import Var
 
 module experimental.Subst (Op : Set) (sig : Op → List ℕ) where
@@ -233,6 +233,7 @@ QSS = record { ⌈_⌉ = ⟪_⟫ ; val₂₃ = λ M → M ; quote-map = λ σ₂
 open Quotable QSS renaming (g-drop-seq to drop-seq)
 
 
+---
 incs-seq : ∀ σ₁ σ₂ → (incs σ₁ ⨟ exts σ₂) ≡ incs (σ₁ ⨟ σ₂)
 incs-seq (↑ k) σ₂ = drop-exts k σ₂
 incs-seq (M • σ₁) σ₂ rewrite incs-seq σ₁ σ₂
@@ -285,3 +286,4 @@ substitution {M}{N}{L} = commute-subst{N = M}{M = N}{σ = subst-zero L}
 
 exts-sub-cons : ∀ σ N V → (⟪ exts σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N
 exts-sub-cons σ N V rewrite exts-cons-shift σ = refl
+

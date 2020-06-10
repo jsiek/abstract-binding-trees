@@ -16,7 +16,8 @@ module Syntax where
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
 open import Var
-open import GenericSubstitution public
+open import GenericSubstitution
+    renaming (g-drop to dropr; g-drop-0 to dropr-0; g-drop-drop to dropr-dropr) public
 
 RenameIsSubstable : Substable Var
 RenameIsSubstable = record { var→val = λ x → x ; shift = suc
@@ -26,8 +27,7 @@ open GenericSubst RenameIsSubstable
     using () renaming (⧼_⧽ to ⦉_⦊; g-Z-shift to Z-shiftr) public
 open GenericSubst RenameIsSubstable
     using ()
-    renaming (g-inc to inc; g-drop to dropr; g-drop-0 to dropr-0;
-              g-drop-add to dropr-add; g-drop-drop to dropr-dropr;
+    renaming (g-inc to inc; g-drop-add to dropr-add; 
               g-drop-inc to dropr-inc;
               g-inc-shift to inc-suc; g-drop-ext to dropr-ext)
 {-# REWRITE inc-suc #-}
@@ -193,11 +193,12 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   open GenericSubst SubstIsSubstable
       using () renaming (⧼_⧽ to ⟦_⟧; g-Z-shift to Z-shift) public
   {-# REWRITE Z-shift #-}
+  drop = dropr
+  drop-0 = dropr-0
+  drop-drop = dropr-dropr
   open GenericSubst SubstIsSubstable
-      using () renaming (g-inc to incs; g-drop to drop; g-drop-0 to drop-0;
-                         g-drop-add to drop-add; g-drop-drop to drop-drop;
-                         g-drop-inc to drop-incs;
-                         g-inc-shift to incs-rename)
+      using () renaming (g-inc to incs; g-drop-add to drop-add; 
+                         g-drop-inc to drop-incs; g-inc-shift to incs-rename)
   
   abstract
     exts : Subst → Subst
