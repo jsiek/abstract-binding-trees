@@ -7,7 +7,7 @@ open import Data.Nat.Properties
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
-open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
+open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
 
@@ -26,37 +26,37 @@ data Substitution : (V : Set) → Set where
 id : ∀ {V} → Substitution V
 id = ↑ 0
 
-g-map-sub : ∀{V W} → (V → W) → Substitution V → Substitution W
-g-map-sub f (↑ k) = ↑ k
-g-map-sub f (v • σ) = f v • g-map-sub f σ
+map-sub : ∀{V W : Set} → (V → W) → Substitution V → Substitution W
+map-sub f (↑ k) = ↑ k
+map-sub f (v • σ) = f v • map-sub f σ
 
-g-map-sub-id : ∀{V} (σ : Substitution V) → g-map-sub (λ x → x) σ ≡ σ
-g-map-sub-id (↑ k) = refl
-g-map-sub-id (v • σ) = cong₂ _•_ refl (g-map-sub-id σ)
-{-# REWRITE g-map-sub-id #-}
+map-sub-id : ∀{V} (σ : Substitution V) → map-sub (λ x → x) σ ≡ σ
+map-sub-id (↑ k) = refl
+map-sub-id (v • σ) = cong₂ _•_ refl (map-sub-id σ)
+{-# REWRITE map-sub-id #-}
 
-g-drop : ∀{V} → (k : ℕ) → Substitution V → Substitution V
-g-drop k (↑ k') = ↑ (k + k')
-g-drop zero (v • σ) = v • σ
-g-drop (suc k) (v • σ) = g-drop k σ
+drop : ∀{V} → (k : ℕ) → Substitution V → Substitution V
+drop k (↑ k') = ↑ (k + k')
+drop zero (v • σ) = v • σ
+drop (suc k) (v • σ) = drop k σ
 
-g-map-sub-drop : ∀ {V W} σ f k
-   → g-map-sub {V}{W} f (g-drop k σ) ≡ g-drop k (g-map-sub f σ)
-g-map-sub-drop (↑ k₁) f k = refl
-g-map-sub-drop (v • σ) f zero = refl
-g-map-sub-drop (v • σ) f (suc k) = g-map-sub-drop σ f k
+map-sub-drop : ∀ {V W} σ f k
+   → map-sub {V}{W} f (drop k σ) ≡ drop k (map-sub f σ)
+map-sub-drop (↑ k₁) f k = refl
+map-sub-drop (v • σ) f zero = refl
+map-sub-drop (v • σ) f (suc k) = map-sub-drop σ f k
 
-g-drop-0 : ∀ {V} σ → g-drop {V} 0 σ ≡ σ
-g-drop-0 (↑ k) = refl
-g-drop-0 (v • σ) = refl
-{-# REWRITE g-drop-0 #-}
+drop-0 : ∀ {V} σ → drop {V} 0 σ ≡ σ
+drop-0 (↑ k) = refl
+drop-0 (v • σ) = refl
+{-# REWRITE drop-0 #-}
   
-g-drop-drop : ∀ {V} k k' σ → g-drop {V} (k + k') σ ≡ g-drop k (g-drop k' σ)
-g-drop-drop k k' (↑ k₁) rewrite +-assoc k k' k₁ = refl
-g-drop-drop zero k' (v • σ) = refl
-g-drop-drop (suc k) zero (v • σ) rewrite +-comm k 0 = refl
-g-drop-drop (suc k) (suc k') (v • σ)
-    with g-drop-drop (suc k) k' σ
+drop-drop : ∀ {V} k k' σ → drop {V} (k + k') σ ≡ drop k (drop k' σ)
+drop-drop k k' (↑ k₁) rewrite +-assoc k k' k₁ = refl
+drop-drop zero k' (v • σ) rewrite drop-0 (drop k' (v • σ)) = refl
+drop-drop (suc k) zero (v • σ) rewrite +-comm k 0 = refl
+drop-drop (suc k) (suc k') (v • σ)
+    with drop-drop (suc k) k' σ
 ... | IH rewrite +-comm k (suc k') | +-comm k k' = IH
 
 record Substable (V : Set) : Set where
@@ -87,12 +87,12 @@ module GenericSubst {V} (S : Substable V) where
   shifts (suc k) v = shift (shifts k v) 
 
   g-drop-add : ∀{x : Var} (k : ℕ) (σ : Substitution V)
-           → ⧼ g-drop k σ ⧽ x ≡ ⧼ σ ⧽ (k + x)
+           → ⧼ drop k σ ⧽ x ≡ ⧼ σ ⧽ (k + x)
   g-drop-add {x} k (↑ k') rewrite +-comm k k' | +-assoc k' k x = refl
   g-drop-add {x} zero (v • σ) = refl
   g-drop-add {x} (suc k) (v • σ) = g-drop-add k σ
 
-  g-drop-inc : ∀ k σ → g-drop k (g-inc σ) ≡ g-inc (g-drop k σ)
+  g-drop-inc : ∀ k σ → drop k (g-inc σ) ≡ g-inc (drop k σ)
   g-drop-inc k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
   g-drop-inc zero (v • σ) = refl
   g-drop-inc (suc k) (v • σ) = g-drop-inc k σ
@@ -112,7 +112,7 @@ module GenericSubst {V} (S : Substable V) where
   g-ext-cong {σ₁} {σ₂} f (suc x)
       rewrite g-inc-shift σ₁ x | g-inc-shift σ₂ x | f x = refl
 
-  g-drop-ext : ∀ k ρ → g-drop (suc k) (g-ext ρ) ≡ g-inc (g-drop k ρ)
+  g-drop-ext : ∀ k ρ → drop (suc k) (g-ext ρ) ≡ g-inc (drop k ρ)
   g-drop-ext k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
   g-drop-ext zero (x • ρ) = refl
   g-drop-ext (suc k) (x • ρ) = g-drop-inc k ρ

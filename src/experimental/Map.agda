@@ -10,7 +10,7 @@ open import Data.Unit using (⊤; tt)
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
-open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
+open Eq.≡-Reasoning
 open import Size using (Size)
 open import Var
 open import experimental.ScopedTuple using (map; map-cong; map-compose)
@@ -52,9 +52,9 @@ module ComposeMaps {V₁ V₂ V₃ : Set} (M₁ : Map V₁) (M₂ : Map V₂)
   {- The following generalizes _⨟ᵣ_ and _⨟_, as well as compositions
      of renaming and subtitution. -}
   infixr 5 _⨟_
-  
+
   _⨟_ : Substitution V₁ → Substitution V₂ → Substitution V₃
-  ↑ k ⨟ σ₂ = g-map-sub val₂₃ (g-drop k σ₂)
+  ↑ k ⨟ σ₂ = map-sub val₂₃ (drop k σ₂)
   (v₁ • σ₁) ⨟ σ₂ = ⌈ σ₂ ⌉ v₁ • (σ₁ ⨟ σ₂)
 
 record Quotable {V₁ V₂ V₃}
@@ -83,7 +83,7 @@ record Quotable {V₁ V₂ V₃}
   open ComposeMaps M₁ M₂ ⌈_⌉ val₂₃
   
   g-map-sub-⧼·⧽ : ∀{x} (σ : Substitution V₂)
-     → ⧼ g-map-sub val₂₃ σ ⧽₃ x ≡ val₂₃ (⧼ σ ⧽₂ x)
+     → ⧼ map-sub val₂₃ σ ⧽₃ x ≡ val₂₃ (⧼ σ ⧽₂ x)
   g-map-sub-⧼·⧽ {x} (↑ k) = var→val₂₃ (k + x)
   g-map-sub-⧼·⧽ {zero} (v₂ • σ) = refl
   g-map-sub-⧼·⧽ {suc x} (v₂ • σ) = g-map-sub-⧼·⧽ {x} σ
@@ -93,11 +93,11 @@ record Quotable {V₁ V₂ V₃}
       begin
           “ ⧼ ↑ k ⨟ σ₂ ⧽₃ x ”₃
       ≡⟨⟩
-          “ ⧼ g-map-sub val₂₃ (g-drop k σ₂) ⧽₃ x ”₃
-      ≡⟨ cong (λ □ → “ ⧼ □ ⧽₃ x ”₃) (g-map-sub-drop σ₂ val₂₃ k) ⟩
-          “ ⧼ g-drop k (g-map-sub val₂₃ σ₂) ⧽₃ x ”₃
-      ≡⟨ cong “_”₃ (g-drop-add₃ k (g-map-sub val₂₃ σ₂)) ⟩
-          “ ⧼ g-map-sub val₂₃ σ₂ ⧽₃ (k + x) ”₃
+          “ ⧼ map-sub val₂₃ (drop k σ₂) ⧽₃ x ”₃
+      ≡⟨ cong (λ □ → “ ⧼ □ ⧽₃ x ”₃) (map-sub-drop σ₂ val₂₃ k) ⟩
+          “ ⧼ drop k (map-sub val₂₃ σ₂) ⧽₃ x ”₃
+      ≡⟨ cong “_”₃ (g-drop-add₃ k (map-sub val₂₃ σ₂)) ⟩
+          “ ⧼ map-sub val₂₃ σ₂ ⧽₃ (k + x) ”₃
       ≡⟨ cong “_”₃ (g-map-sub-⧼·⧽ σ₂) ⟩
           “ val₂₃ (⧼ σ₂ ⧽₂ (k + x)) ”₃
       ≡⟨ quote-val₂₃ (⧼ σ₂ ⧽₂ (k + x)) ⟩
@@ -107,19 +107,19 @@ record Quotable {V₁ V₂ V₃}
       ≡⟨⟩
           map₂ σ₂ “ ⧼ ↑ k ⧽₁ x ”₁
       ∎
-  compose-sub (v₁ • σ₁) σ₂ zero rewrite quote-map σ₂ v₁ = refl
+  compose-sub (v₁ • σ₁) σ₂ zero rewrite sym (quote-map σ₂ v₁) = refl
   compose-sub (v₁ • σ₁) σ₂ (suc x) = compose-sub σ₁ σ₂ x
 
-  g-drop-seq : ∀ k σ₁ σ₂ → g-drop k (σ₁ ⨟ σ₂) ≡ (g-drop k σ₁ ⨟ σ₂)
+  g-drop-seq : ∀ k σ₁ σ₂ → drop k (σ₁ ⨟ σ₂) ≡ (drop k σ₁ ⨟ σ₂)
   g-drop-seq k (↑ k₁) σ₂ = {- sym (g-drop-drop k k₁ σ₂) -}
       begin
-          g-drop k (↑ k₁ ⨟ σ₂)
+          drop k (↑ k₁ ⨟ σ₂)
       ≡⟨⟩
-          g-drop k (g-map-sub val₂₃ (g-drop k₁ σ₂))
-      ≡⟨  sym (g-map-sub-drop (g-drop k₁ σ₂) val₂₃ k) ⟩
-          g-map-sub val₂₃ (g-drop k (g-drop k₁ σ₂))
-      ≡⟨  cong (g-map-sub val₂₃) (sym (g-drop-drop k k₁ σ₂)) ⟩
-          g-map-sub val₂₃ (g-drop (k + k₁) σ₂)
+          drop k (map-sub val₂₃ (drop k₁ σ₂))
+      ≡⟨  sym (map-sub-drop (drop k₁ σ₂) val₂₃ k) ⟩
+          map-sub val₂₃ (drop k (drop k₁ σ₂))
+      ≡⟨  cong (map-sub val₂₃) (sym (drop-drop k k₁ σ₂)) ⟩
+          map-sub val₂₃ (drop (k + k₁) σ₂)
       ≡⟨⟩
           ↑ (k + k₁) ⨟ σ₂
       ∎
@@ -132,7 +132,7 @@ record Quotable {V₁ V₂ V₃}
 -}
 
   g-map-sub-inc : ∀ σ₂ →
-    g-map-sub val₂₃ (g-inc₂ σ₂) ≡  g-inc₃ (g-map-sub val₂₃ σ₂)
+    map-sub val₂₃ (g-inc₂ σ₂) ≡  g-inc₃ (map-sub val₂₃ σ₂)
   g-map-sub-inc (↑ k) = refl
   g-map-sub-inc (v₂ • σ₂) = cong₂ _•_ (val₂₃-shift v₂) (g-map-sub-inc σ₂)
   

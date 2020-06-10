@@ -7,7 +7,7 @@ open import Data.Nat.Properties
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
-open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
+open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
 
@@ -17,7 +17,6 @@ open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
 open import Var
 open import GenericSubstitution
-    renaming (g-drop to dropr; g-drop-0 to dropr-0; g-drop-drop to dropr-dropr) public
 
 RenameIsSubstable : Substable Var
 RenameIsSubstable = record { var→val = λ x → x ; shift = suc
@@ -43,7 +42,7 @@ abstract
   infixr 5 _⨟ᵣ_
 
   _⨟ᵣ_ : Rename → Rename → Rename
-  ↑ k ⨟ᵣ ρ = dropr k ρ
+  ↑ k ⨟ᵣ ρ = drop k ρ
   (x • ρ₁) ⨟ᵣ ρ₂ = ⦉ ρ₂ ⦊ x • (ρ₁ ⨟ᵣ ρ₂)
 
 abstract
@@ -130,8 +129,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   private
 
     abstract 
-      dropr-seq : ∀ k ρ ρ' → dropr k (ρ ⨟ᵣ ρ') ≡ (dropr k ρ ⨟ᵣ ρ')
-      dropr-seq k (↑ k₁) ρ' = sym (dropr-dropr k k₁ ρ')
+      dropr-seq : ∀ k ρ ρ' → drop k (ρ ⨟ᵣ ρ') ≡ (drop k ρ ⨟ᵣ ρ')
+      dropr-seq k (↑ k₁) ρ' = sym (drop-drop k k₁ ρ')
       dropr-seq zero (x • ρ) ρ' = refl
       dropr-seq (suc k) (x • ρ) ρ' = dropr-seq k ρ ρ'
 
@@ -193,9 +192,6 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   open GenericSubst SubstIsSubstable
       using () renaming (⧼_⧽ to ⟦_⟧; g-Z-shift to Z-shift) public
   {-# REWRITE Z-shift #-}
-  drop = dropr
-  drop-0 = dropr-0
-  drop-drop = dropr-dropr
   open GenericSubst SubstIsSubstable
       using () renaming (g-inc to incs; g-drop-add to drop-add; 
                          g-drop-inc to drop-incs; g-inc-shift to incs-rename)

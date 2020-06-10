@@ -1,35 +1,30 @@
-{-# OPTIONS --rewriting #-}
+{-# OPTIONS --rewriting #-} 
 
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
-open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
-open import Data.Nat.Properties using (+-comm; +-suc)
-open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
-open import Data.Unit using (⊤; tt)
+open import Data.List using (List; []; _∷_)
+open import GenericSubstitution
 open import experimental.ScopedTuple using (Sig; Tuple; map; tuple-pred)
-import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
-open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
-open import GenericSubstitution renaming (g-drop to drop)
-open import Relation.Binary.HeterogeneousEquality
-    using (_≅_; ≅-to-≡; reflexive)
-    renaming (cong to hcong)
 open import Size using (Size)
-open import Var
 
 module experimental.Subst (Op : Set) (sig : Op → List ℕ) where
 
 open import experimental.ABT Op sig
-open import experimental.Map Op sig
-open import experimental.Rename Op sig
 
 Subst : Set
 Subst = Substitution ABT
 
+subst-zero : ABT → Subst
+subst-zero M = M • id
+
+open import experimental.Rename Op sig using (rename)
+
 SubstIsSubstable : Substable ABT
 SubstIsSubstable = record { var→val = `_ ; shift = rename (↑ 1)
     ; var→val-suc-shift = λ {x} → refl }
+    
+open import experimental.Map Op sig
 
 SubstIsMap : Map ABT
 SubstIsMap = record { “_” = λ M → M ; S = SubstIsSubstable }
@@ -37,25 +32,42 @@ open Map SubstIsMap renaming (map-abt to ⟪_⟫; map-arg to ⟪_⟫ₐ) public
 ⟪_⟫₊ : ∀{s : Size} → Substitution ABT →(bs : Sig)→ Tuple bs (λ _ → Term s)
      → Tuple bs (λ _ → ABT)
 ⟪_⟫₊ = λ σ bs → map (λ {b} → ⟪ σ ⟫ₐ b) {bs}
+open ComposeMaps SubstIsMap SubstIsMap ⟪_⟫ (λ x → x)
+    using (_⨟_) public
+
+{-
+open import Data.Nat.Properties using (+-comm; +-suc)
+open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
+open import Data.Unit using (⊤; tt)
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
+open Eq.≡-Reasoning
+open import Relation.Binary.HeterogeneousEquality
+    using (_≅_; ≅-to-≡; reflexive)
+    renaming (cong to hcong)
+open import Var
+
+
 open GenericSubst (Map.S SubstIsMap) using ()
     renaming (⧼_⧽ to ⟦_⟧; g-ext to exts) public
 open GenericSubst (Map.S SubstIsMap) using (Shift; shift-up; shift-•)
     renaming (g-inc to incs; g-inc-shift to incs-rename;
     g-drop-inc to drop-incs; g-drop-add to drop-add; g-drop-ext to drop-exts;
-    g-Shift-var to sub-shift-var; 
+    g-Shift-var to sub-shift-var;
     g-inc-Shift to incs-Shift; g-ext-cong to exts-cong)
-open ComposeMaps SubstIsMap SubstIsMap ⟪_⟫ (λ x → x)
-    using (_⨟_) public
+{- REWRITE map-sub-id -}
 
-subst-zero : ABT → Subst
-subst-zero M = M • id
+{-
 
 private {- making sure the following equations are all refl's -}
   sub-head : ∀ M σ → ⟦ M • σ ⟧ 0 ≡ M
   sub-head M σ = refl
+-}
 
+private
   sub-tail : ∀ M σ → (↑ 1 ⨟ M • σ) ≡ σ
-  sub-tail M σ = refl
+  sub-tail M σ rewrite g-drop-0 σ | compose-up 1 (M • σ) = {!!}
+{-
 
   sub-suc : ∀ M σ x → ⟪ M • σ ⟫ (` suc x) ≡ ⟪ σ ⟫ (` x)
   sub-suc M σ x = refl
@@ -64,7 +76,7 @@ private {- making sure the following equations are all refl's -}
   shift-eq x k = refl
 
   sub-idL : (σ : Subst) → id ⨟ σ ≡ σ
-  sub-idL σ = refl
+  sub-idL σ rewrite g-drop-0 σ | g-map-sub-id σ = refl
 
   sub-dist :  ∀ {σ : Subst} {τ : Subst} {M : ABT}
            → ((M • σ) ⨟ τ) ≡ ((⟪ τ ⟫ M) • (σ ⨟ τ))
@@ -81,11 +93,27 @@ private {- making sure the following equations are all refl's -}
     → ⟪ σ ⟫₊ (b ∷ bs) ⟨ arg , args ⟩ ≡ ⟨ ⟪ σ ⟫ₐ b arg , ⟪ σ ⟫₊ bs args ⟩
   sub-cons = refl
 
-
+{- INTERNAL ERROR
+g-map-sub-id (drop 1 σ)
+-}
 sub-η : ∀ (σ : Subst) (x : Var)  →  ⟦ ⟪ σ ⟫ (` 0) • (↑ 1 ⨟ σ) ⟧ x ≡ ⟦ σ ⟧ x
 sub-η σ 0 = refl
-sub-η σ (suc x) = drop-add 1 σ
-{-# REWRITE sub-η #-}
+sub-η σ (suc x) =
+  begin
+      ⟦ ⟪ σ ⟫ (` 0) • (↑ 1 ⨟ σ) ⟧ (suc x)
+  {-
+  ≡⟨ {!!} ⟩
+      ⟦ g-map-sub (λ x → x) (drop 1 σ) ⟧ x
+  -}
+  ≡⟨ {!!} ⟩
+      ⟦ drop 1 σ ⟧ x
+  ≡⟨ drop-add 1 σ ⟩
+      ⟦ σ ⟧ (suc x)
+  ∎
+
+
+
+
 
 rename→subst : Rename → Subst
 rename→subst (↑ k) = ↑ k 
@@ -100,6 +128,7 @@ rename-subst {s} ρ M = MapCong≊.map-cong-abt MRS (ρ≊ ρ) M
   ρ≊ : ∀ ρ → ρ ≊ rename→subst ρ
   ρ≊ (↑ k) = r-up
   ρ≊ (x • ρ) = r-cons refl (ρ≊ ρ)
+
 
 {- the following two may not be necessary -}
 private
@@ -120,7 +149,7 @@ exts-cons-shift : ∀ σ → exts σ ≡ (` 0 • (σ ⨟ ↑ 1))
 exts-cons-shift σ rewrite incs=⨟↑ σ = refl
 
 seq-subst : ∀ σ τ x → ⟦ σ ⨟ τ ⟧ x ≡ ⟪ τ ⟫ (⟦ σ ⟧ x)
-seq-subst (↑ k) τ x = drop-add k τ
+seq-subst (↑ k) τ x rewrite compose-up k τ = drop-add k τ
 seq-subst (M • σ) τ zero = refl
 seq-subst (M • σ) τ (suc x) = seq-subst σ τ x
 
@@ -137,16 +166,16 @@ private
 
 sub-id : ∀ (M : ABT) → ⟪ id ⟫ M ≡ M
 sub-id M = ⩭→≡ (sub-shift0 M (shift-up {0}))
-{-# REWRITE sub-id #-}
+{- REWRITE sub-id -}
 
 rename-id : {M : ABT} → rename (↑ 0) M ≡ M
-rename-id {M} = rename-subst (↑ 0) M
-{-# REWRITE rename-id #-}
+rename-id {M} rewrite rename-subst (↑ 0) M | sub-id M = refl
+{- REWRITE rename-id -}
 
 sub-idR : ∀ σ → σ ⨟ id ≡ σ 
 sub-idR (↑ k) rewrite +-comm k 0 = refl
-sub-idR (M • σ) rewrite sub-idR σ = refl
-{-# REWRITE sub-idR #-}
+sub-idR (M • σ) rewrite sub-idR σ | sub-id M = refl
+{- REWRITE sub-idR -}
 
 private
   exts-0 : ∀ σ → ⟦ exts σ ⟧ 0 ≡ ` 0
@@ -169,10 +198,12 @@ QSR = record { ⌈_⌉ = rename ; val₂₃ = `_ ; quote-map = λ σ₂ v₁ →
 seq-sub-ren : ∀ x σ ρ  →  rename ρ (⟦ σ ⟧ x) ≡ ⟦ σ ⨟ˢᵣ ρ ⟧ x
 seq-sub-ren x σ ρ = sym (Quotable.compose-sub QSR σ ρ x)
 
-compose-incs-ext : ∀ σ ρ → (incs σ ⨟ˢᵣ ext ρ) ≡ incs (σ ⨟ˢᵣ ρ)
+postulate compose-incs-ext : ∀ σ ρ → (incs σ ⨟ˢᵣ ext ρ) ≡ incs (σ ⨟ˢᵣ ρ)
+{- INTERNAL ERROR
 compose-incs-ext (↑ k) ρ
     rewrite dropr-inc k ρ | Quotable.g-map-sub-inc QSR (drop k ρ) = refl
 compose-incs-ext (M • σ) ρ = cong₂ _•_ (commute-↑1 ρ M) (compose-incs-ext σ ρ)
+-}
 
 compose-exts-ext : ∀ σ ρ → (exts σ) ⨟ˢᵣ (ext ρ) ≡ exts (σ ⨟ˢᵣ ρ)
 compose-exts-ext σ ρ rewrite compose-incs-ext σ ρ = refl
@@ -195,7 +226,7 @@ seq-ren-sub : ∀ x ρ σ  →  ⟦ σ ⟧ (⦉ ρ ⦊ x) ≡ ⟦ ρ ⨟ᵣˢ σ
 seq-ren-sub x ρ σ = sym (Quotable.compose-sub QRS ρ σ x)
 
 compose-inc-exts : ∀ ρ σ → (inc ρ ⨟ᵣˢ exts σ) ≡ incs (ρ ⨟ᵣˢ σ)
-compose-inc-exts (↑ k) σ rewrite drop-incs k σ = refl
+compose-inc-exts (↑ k) σ {- drop-incs k σ -} = {!!}
 compose-inc-exts (x • ρ) σ = cong₂ _•_ (incs-rename σ x) (compose-inc-exts ρ σ)
 
 compose-ext-exts : ∀ ρ σ → (ext ρ) ⨟ᵣˢ (exts σ) ≡ exts (ρ ⨟ᵣˢ σ)
@@ -218,7 +249,7 @@ commute-subst-shift {σ} M =
       ⟪ exts σ ⟫ (rename (↑ 1) M)
   ≡⟨ compose-sub-ren (exts σ) (↑ 1) M ⟩
       ⟪ (↑ 1) ⨟ᵣˢ exts σ ⟫ M
-  ≡⟨⟩
+  ≡⟨ {!!} ⟩
       ⟪ incs σ ⟫ M
   ≡⟨ cong (λ □ → ⟪ □ ⟫ M) (incs≡=⨟ˢᵣ↑ σ) ⟩
       ⟪ σ ⨟ˢᵣ ↑ 1 ⟫ M
@@ -233,14 +264,14 @@ QSS = record { ⌈_⌉ = ⟪_⟫ ; val₂₃ = λ M → M ; quote-map = λ σ₂
 open Quotable QSS renaming (g-drop-seq to drop-seq)
 
 
----
 incs-seq : ∀ σ₁ σ₂ → (incs σ₁ ⨟ exts σ₂) ≡ incs (σ₁ ⨟ σ₂)
-incs-seq (↑ k) σ₂ = drop-exts k σ₂
+incs-seq (↑ k) σ₂ rewrite
+      drop-exts k σ₂ = {!!}
 incs-seq (M • σ₁) σ₂ rewrite incs-seq σ₁ σ₂
     | commute-subst-shift {σ₂} M = refl
 
 exts-seq : ∀ σ₁ σ₂ → exts σ₁ ⨟ exts σ₂ ≡ exts (σ₁ ⨟ σ₂)
-exts-seq (↑ k) σ₂ rewrite drop-incs k σ₂ = refl
+exts-seq (↑ k) σ₂ rewrite drop-incs k σ₂ = {!!}
 exts-seq (M • σ₁) σ₂ rewrite exts-0 σ₂
     | commute-subst-shift {σ₂} M | incs-seq σ₁ σ₂ = refl
 
@@ -250,28 +281,31 @@ FSS = record { Q = QSS ; var = λ x σ₁ σ₂ → sym (seq-subst σ₁ σ₂ x
 
 sub-sub : ∀ σ₁ σ₂ M → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
 sub-sub σ₁ σ₂ M = FusableMap.fusion FSS {_}{σ₁}{σ₂} M
-{-# REWRITE sub-sub #-}
+{- REWRITE sub-sub -}
 
-sub-assoc : ∀ {σ τ θ} → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
-sub-assoc {↑ k} {τ} {θ} = sym (drop-seq k τ θ)
-sub-assoc {M • σ} {τ} {θ} rewrite sub-assoc {σ}{τ}{θ} = refl
-{-# REWRITE sub-assoc #-}
+postulate sub-assoc : ∀ {σ τ θ} → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
+{-
+sub-assoc {↑ k} {τ} {θ} rewrite compose-up k (τ ⨟ θ)
+  | g-map-sub-id (dropr k τ) = sym (drop-seq k τ θ)
+sub-assoc {M • σ} {τ} {θ} rewrite sub-assoc {σ}{τ}{θ} = ?
+-}
+{- REWRITE sub-assoc -}
 
 _[_] : ABT → ABT → ABT
 _[_] N M =  ⟪ subst-zero M ⟫ N
 
 subst-zero-exts-cons : ∀{σ M} → exts σ ⨟ subst-zero M ≡ M • σ
-subst-zero-exts-cons {σ}{M} rewrite incs=⨟↑ σ = refl
+subst-zero-exts-cons {σ}{M} rewrite incs=⨟↑ σ = {!!}
 
 subst-commute : ∀{N M σ} → (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ] ≡ ⟪ σ ⟫ (N [ M ])
 subst-commute {N}{M}{σ} =
     begin
         (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]
-    ≡⟨⟩
+    ≡⟨ {!!} ⟩
         ⟪ exts σ ⨟ subst-zero (⟪ σ ⟫ M) ⟫ N
-    ≡⟨  cong (λ □ → ⟪ □ ⟫ N) subst-zero-exts-cons  ⟩
+    ≡⟨ {!!} {- cong (λ □ → ⟪ □ ⟫ N) subst-zero-exts-cons -}  ⟩
         ⟪ subst-zero M ⨟ σ ⟫ N
-    ≡⟨⟩
+    ≡⟨ {!!} ⟩
         ⟪ σ ⟫ (N [ M ])
     ∎
 
@@ -285,5 +319,8 @@ substitution : ∀{M N L} → (M [ N ]) [ L ] ≡ (M 〔 L 〕) [ (N [ L ]) ]
 substitution {M}{N}{L} = commute-subst{N = M}{M = N}{σ = subst-zero L}
 
 exts-sub-cons : ∀ σ N V → (⟪ exts σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N
-exts-sub-cons σ N V rewrite exts-cons-shift σ = refl
+exts-sub-cons σ N V rewrite exts-cons-shift σ = {!!} {- refl -}
 
+
+-}
+-}
