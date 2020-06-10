@@ -13,12 +13,11 @@ open import Var
 
 module experimental.RenSub (Op : Set) (sig : Op → List ℕ) where
 
-open import GenericSubstitution 
 open import experimental.ABT Op sig
 open import experimental.Map Op sig
 
 Rename : Set
-Rename = Substitution Var
+Rename = GSubst Var
 
 RenameIsSubstable : Substable Var
 RenameIsSubstable = record { var→val = λ x → x ; shift = suc
@@ -99,7 +98,7 @@ rename-ext {ρ₁}{ρ₂}{M} f = MapCong.map-cong-abt MC {_}{ρ₁}{ρ₂} f M
 
 
 
-{- Experimenting with putting Substitution stuff here -}
+{- Experimenting with putting GSubst stuff here -}
 
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit using (⊤; tt)
@@ -107,7 +106,7 @@ open import experimental.ScopedTuple using (Sig; Tuple; map; tuple-pred)
 open import Size using (Size)
 
 Subst : Set
-Subst = Substitution ABT
+Subst = GSubst ABT
 
 SubstIsSubstable : Substable ABT
 SubstIsSubstable = record { var→val = `_ ; shift = rename (↑ 1)
@@ -116,7 +115,7 @@ SubstIsSubstable = record { var→val = `_ ; shift = rename (↑ 1)
 SubstIsMap : Map ABT
 SubstIsMap = record { “_” = λ M → M ; S = SubstIsSubstable }
 open Map SubstIsMap renaming (map-abt to ⟪_⟫; map-arg to ⟪_⟫ₐ) public
-⟪_⟫₊ : ∀{s : Size} → Substitution ABT →(bs : Sig)→ Tuple bs (λ _ → Term s)
+⟪_⟫₊ : ∀{s : Size} → GSubst ABT →(bs : Sig)→ Tuple bs (λ _ → Term s)
      → Tuple bs (λ _ → ABT)
 ⟪_⟫₊ = λ σ bs → map (λ {b} → ⟪ σ ⟫ₐ b) {bs}
 

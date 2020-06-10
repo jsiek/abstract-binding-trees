@@ -31,8 +31,8 @@ record Map (V : Set) : Set where
   open Substable S public
   open GenericSubst S
 
-  map-abt : ∀{s : Size} → Substitution V → Term s → ABT
-  map-arg : ∀{s : Size} → Substitution V → (b : ℕ) →  Term s → ABT
+  map-abt : ∀{s : Size} → GSubst V → Term s → ABT
+  map-arg : ∀{s : Size} → GSubst V → (b : ℕ) →  Term s → ABT
   
   map-abt σ (` x) = “ ⧼ σ ⧽ x ”
   map-abt σ (op ⦅ args ⦆) = op ⦅ map (λ {b} → map-arg σ b) args ⦆
@@ -42,18 +42,18 @@ record Map (V : Set) : Set where
 {-------------------------------------------------------------------------------
   Fusion of two maps
 
-  fusion : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} (M : Term s)
+  fusion : ∀{s}{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} (M : Term s)
      → map₂ σ₂ (map₁ σ₁ M) ≡ map₂ (σ₁ ⨟ σ₂) M
  ------------------------------------------------------------------------------}
 
 module ComposeMaps {V₁ V₂ V₃ : Set} (M₁ : Map V₁) (M₂ : Map V₂)
-   (⌈_⌉ : Substitution V₂ → V₁ → V₃)
+   (⌈_⌉ : GSubst V₂ → V₁ → V₃)
    (val₂₃ : V₂ → V₃) where
   {- The following generalizes _⨟ᵣ_ and _⨟_, as well as compositions
      of renaming and subtitution. -}
   infixr 5 _⨟_
 
-  _⨟_ : Substitution V₁ → Substitution V₂ → Substitution V₃
+  _⨟_ : GSubst V₁ → GSubst V₂ → GSubst V₃
   ↑ k ⨟ σ₂ = map-sub val₂₃ (drop k σ₂)
   (v₁ • σ₁) ⨟ σ₂ = ⌈ σ₂ ⌉ v₁ • (σ₁ ⨟ σ₂)
 
@@ -71,7 +71,7 @@ record Quotable {V₁ V₂ V₃}
   open GenericSubst (Map.S M₃) using ()
       renaming (⧼_⧽ to ⧼_⧽₃; g-drop-add to g-drop-add₃; g-inc to g-inc₃) 
   
-  field ⌈_⌉ : Substitution V₂ → V₁ → V₃
+  field ⌈_⌉ : GSubst V₂ → V₁ → V₃
         val₂₃ : V₂ → V₃
         quote-map : ∀ σ₂ v₁ → “ ⌈ σ₂ ⌉ v₁ ”₃ ≡ map₂ σ₂ “ v₁ ”₁
         var→val₂₃ : ∀ x → var→val₃ x ≡ val₂₃ (var→val₂ x)
@@ -82,7 +82,7 @@ record Quotable {V₁ V₂ V₃}
   
   open ComposeMaps M₁ M₂ ⌈_⌉ val₂₃
   
-  g-map-sub-⧼·⧽ : ∀{x} (σ : Substitution V₂)
+  g-map-sub-⧼·⧽ : ∀{x} (σ : GSubst V₂)
      → ⧼ map-sub val₂₃ σ ⧽₃ x ≡ val₂₃ (⧼ σ ⧽₂ x)
   g-map-sub-⧼·⧽ {x} (↑ k) = var→val₂₃ (k + x)
   g-map-sub-⧼·⧽ {zero} (v₂ • σ) = refl
@@ -156,13 +156,13 @@ record FusableMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : M
   open Quotable Q
   open ComposeMaps M₁ M₂ ⌈_⌉ val₂₃ public
   field var : ∀ x σ₁ σ₂ → ⌈ σ₂ ⌉ (⧼ σ₁ ⧽₁ x) ≡ ⧼ (σ₁ ⨟ σ₂) ⧽₃ x
-        compose-ext : ∀ (σ₁ : Substitution V₁) (σ₂ : Substitution V₂)
+        compose-ext : ∀ (σ₁ : GSubst V₁) (σ₂ : GSubst V₂)
                     → ext₁ σ₁ ⨟ ext₂ σ₂ ≡ ext₃ (σ₁ ⨟ σ₂)
 
-  fusion : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} (M : Term s)
+  fusion : ∀{s}{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} (M : Term s)
      → map₂ σ₂ (map₁ σ₁ M) ≡ map₃ (σ₁ ⨟ σ₂) M
      
-  fusion-arg : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} {b}
+  fusion-arg : ∀{s}{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} {b}
      → (arg : Term s)
      → map-arg₂ σ₂ b (map-arg₁ σ₁ b arg) ≡ map-arg₃ (σ₁ ⨟ σ₂) b arg
 
@@ -189,7 +189,7 @@ record FusableMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : M
 {-------------------------------------------------------------------------------
   Congruence of map
 
-  map-cong-abt : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} 
+  map-cong-abt : ∀{s}{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} 
       → σ₁ ≈ σ₂ → (M : Term s) → map₁ σ₁ M ≡ map₂ σ₂ M
  ------------------------------------------------------------------------------}
  
@@ -203,14 +203,14 @@ record MapCong {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
   open GenericSubst (Map.S M₂) using ()
       renaming (⧼_⧽ to ⧼_⧽₂; g-ext to ext₂) public
 
-  field _≈_ : Substitution V₁ → Substitution V₂ → Set
+  field _≈_ : GSubst V₁ → GSubst V₂ → Set
         var : ∀ {σ₁ σ₂} x → σ₁ ≈ σ₂ → “ ⧼ σ₁ ⧽₁ x ”₁ ≡ “ ⧼ σ₂ ⧽₂ x ”₂
         ext≈ : ∀ {σ₁ σ₂} → σ₁ ≈ σ₂ → ext₁ σ₁ ≈ ext₂ σ₂
         
-  map-cong-abt : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} 
+  map-cong-abt : ∀{s}{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} 
       → σ₁ ≈ σ₂ → (M : Term s) → map₁ σ₁ M ≡ map₂ σ₂ M
 
-  map-cong-arg : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} {b : ℕ}
+  map-cong-arg : ∀{s}{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} {b : ℕ}
       → σ₁ ≈ σ₂ → (arg : Term s) → map-arg₁ σ₁ b arg ≡ map-arg₂ σ₂ b arg
 
   map-cong-abt {.(Size.↑ _)} {σ₁} {σ₂} σ₁≈σ₂ (` x) = var x σ₁≈σ₂
@@ -240,10 +240,3 @@ record MapCong≊ {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
   MC = record { _≈_ = _≈_ ; var = lookup ; ext≈ = ext≈ }
   open MapCong MC public
 
-{-------------------------------------------------------------------------------
-  Commutativity of map
-
-  map-commute : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} 
-      → ...
-      → map₁ σ₁ (map₂ σ₂ M) ≡ map₂ σ₂' (map₁ σ₁' M)
- ------------------------------------------------------------------------------}

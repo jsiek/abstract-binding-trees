@@ -19,23 +19,23 @@ open import Var
 
 infixr 6 _•_
 
-data Substitution : (V : Set) → Set where
-  ↑ : (k : ℕ) → ∀{V} → Substitution V
-  _•_ : ∀{V} → V → Substitution V → Substitution V
+data GSubst : (V : Set) → Set where
+  ↑ : (k : ℕ) → ∀{V} → GSubst V
+  _•_ : ∀{V} → V → GSubst V → GSubst V
 
-id : ∀ {V} → Substitution V
+id : ∀ {V} → GSubst V
 id = ↑ 0
 
-map-sub : ∀{V W : Set} → (V → W) → Substitution V → Substitution W
+map-sub : ∀{V W : Set} → (V → W) → GSubst V → GSubst W
 map-sub f (↑ k) = ↑ k
 map-sub f (v • σ) = f v • map-sub f σ
 
-map-sub-id : ∀{V} (σ : Substitution V) → map-sub (λ x → x) σ ≡ σ
+map-sub-id : ∀{V} (σ : GSubst V) → map-sub (λ x → x) σ ≡ σ
 map-sub-id (↑ k) = refl
 map-sub-id (v • σ) = cong₂ _•_ refl (map-sub-id σ)
 {-# REWRITE map-sub-id #-}
 
-drop : ∀{V} → (k : ℕ) → Substitution V → Substitution V
+drop : ∀{V} → (k : ℕ) → GSubst V → GSubst V
 drop k (↑ k') = ↑ (k + k')
 drop zero (v • σ) = v • σ
 drop (suc k) (v • σ) = drop k σ
@@ -67,26 +67,26 @@ record Substable (V : Set) : Set where
 module GenericSubst {V} (S : Substable V) where
   open Substable S
 
-  ⧼_⧽ : Substitution V → Var → V
+  ⧼_⧽ : GSubst V → Var → V
   ⧼ ↑ k ⧽ x = var→val (k + x)
   ⧼ y • σ ⧽ 0 = y
   ⧼ y • σ ⧽ (suc x) = ⧼ σ ⧽ x
 
-  g-inc : Substitution V → Substitution V
+  g-inc : GSubst V → GSubst V
   g-inc (↑ k) = ↑ (suc k)
   g-inc (v • ρ) = shift v • g-inc ρ
 
-  g-extend : V → Substitution V → Substitution V
+  g-extend : V → GSubst V → GSubst V
   g-extend v σ = v • g-inc σ
   
-  g-ext : Substitution V → Substitution V
+  g-ext : GSubst V → GSubst V
   g-ext σ = g-extend (var→val 0) σ
 
   shifts : ℕ → V → V
   shifts zero v = v
   shifts (suc k) v = shift (shifts k v) 
 
-  g-drop-add : ∀{x : Var} (k : ℕ) (σ : Substitution V)
+  g-drop-add : ∀{x : Var} (k : ℕ) (σ : GSubst V)
            → ⧼ drop k σ ⧽ x ≡ ⧼ σ ⧽ (k + x)
   g-drop-add {x} k (↑ k') rewrite +-comm k k' | +-assoc k' k x = refl
   g-drop-add {x} zero (v • σ) = refl
@@ -117,7 +117,7 @@ module GenericSubst {V} (S : Substable V) where
   g-drop-ext zero (x • ρ) = refl
   g-drop-ext (suc k) (x • ρ) = g-drop-inc k ρ
 
-  data Shift : ℕ → Substitution V → Set where
+  data Shift : ℕ → GSubst V → Set where
     shift-up : ∀{k} → Shift k (↑ k)
     shift-• : ∀{k σ v} → Shift (suc k) σ → v ≡ shifts k (var→val 0)
        → Shift k (v • σ)
@@ -137,7 +137,7 @@ module GenericSubst {V} (S : Substable V) where
   g-Shift-var {v • σ}{k} (suc x) (shift-• σk refl) rewrite +-suc k x =
       g-Shift-var {σ}{suc k} x σk
 
-  data ShftAbv : ℕ → ℕ → ℕ → Substitution V → Set where
+  data ShftAbv : ℕ → ℕ → ℕ → GSubst V → Set where
     sha-0 : ∀{k k′ σ}
        → Shift k σ
        → ShftAbv k 0 k′ σ
@@ -173,7 +173,7 @@ module Relate {V₁}{V₂} (S₁ : Substable V₁) (S₂ : Substable V₂)
     module G₁ = GenericSubst S₁
     module G₂ = GenericSubst S₂
 
-    data _≊_ : Substitution V₁ → Substitution V₂ → Set where
+    data _≊_ : GSubst V₁ → GSubst V₂ → Set where
        r-up : ∀{k} → (↑ k) ≊ (↑ k)
        r-cons : ∀{v₁ σ₁ v₂ σ₂}
           → v₁ ∼ v₂  →   σ₁ ≊ σ₂
