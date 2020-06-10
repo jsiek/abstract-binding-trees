@@ -107,34 +107,46 @@ record MapCong {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
   open Map M₁ using () renaming (map-abt to map₁; map-arg to map-arg₁;
       “_” to “_”₁) public
   open Map.GS M₁ using () renaming (⧼_⧽ to ⧼_⧽₁; g-ext to ext₁) public
-  open Substable (Map.S M₁) using ()
-      renaming (var→val to var→val₁; shift to shift₁)
   open Map M₂ using () renaming (map-abt to map₂; map-arg to map-arg₂;
       “_” to “_”₂) public
   open Map.GS M₂ using () renaming (⧼_⧽ to ⧼_⧽₂; g-ext to ext₂) public
-  open Substable (Map.S M₂) using ()
-      renaming (var→val to var→val₂; shift to shift₂)
-  _∼_ = λ v₁ v₂ → “ v₁ ”₁ ≡ “ v₂ ”₂
 
-  field var→val-quote : (x : ℕ) → “ var→val₁ x ”₁ ≡ “ var→val₂ x ”₂
-        shift-quote : ∀{v₁ v₂} → “ v₁ ”₁ ≡ “ v₂ ”₂
-                    → “ shift₁ v₁ ”₁ ≡ “ shift₂ v₂ ”₂
-
-  module R = Relate (Map.S M₁) (Map.S M₂) _∼_ var→val-quote shift-quote
-  open R renaming (_≊_ to _≈_; g-ext-≊ to ext≈; g-lookup to lookup)
-
+  field _≈_ : Substitution V₁ → Substitution V₂ → Set
+        var : ∀ {σ₁ σ₂} x → σ₁ ≈ σ₂ → “ ⧼ σ₁ ⧽₁ x ”₁ ≡ “ ⧼ σ₂ ⧽₂ x ”₂
+        ext≈ : ∀ {σ₁ σ₂} → σ₁ ≈ σ₂ → ext₁ σ₁ ≈ ext₂ σ₂
+        
   map-cong-abt : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} 
       → σ₁ ≈ σ₂ → (M : Term s) → map₁ σ₁ M ≡ map₂ σ₂ M
 
   map-cong-arg : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} {b : ℕ}
       → σ₁ ≈ σ₂ → (arg : Term s) → map-arg₁ σ₁ b arg ≡ map-arg₂ σ₂ b arg
 
-  map-cong-abt {.(Size.↑ _)} {σ₁} {σ₂} σ₁≈σ₂ (` x) = lookup x σ₁≈σ₂
+  map-cong-abt {.(Size.↑ _)} {σ₁} {σ₂} σ₁≈σ₂ (` x) = var x σ₁≈σ₂
   map-cong-abt {.(Size.↑ _)} {σ₁} {σ₂} σ₁≈σ₂ (_⦅_⦆ {s} op args) =
       cong (_⦅_⦆ op) (map-cong λ {b} M → map-cong-arg {_}{σ₁}{σ₂}{b} σ₁≈σ₂ M)
   map-cong-arg {s} {σ₁} {σ₂} {zero} σ₁≈σ₂ arg = map-cong-abt σ₁≈σ₂ arg
   map-cong-arg {s} {σ₁} {σ₂} {suc b} σ₁≈σ₂ arg =
       map-cong-arg {s} {ext₁ σ₁} {ext₂ σ₂} {b} (ext≈ σ₁≈σ₂) arg
+
+
+record MapCong≊ {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
+  open Map M₁ using () renaming (“_” to “_”₁)
+  open Substable (Map.S M₁) using ()
+      renaming (var→val to var→val₁; shift to shift₁)
+  open Map M₂ using () renaming (“_” to “_”₂) 
+  open Substable (Map.S M₂) using ()
+      renaming (var→val to var→val₂; shift to shift₂)
+      
+  _∼_ = λ v₁ v₂ → “ v₁ ”₁ ≡ “ v₂ ”₂
+  field var→val-quote : (x : ℕ) → “ var→val₁ x ”₁ ≡ “ var→val₂ x ”₂
+        shift-quote : ∀{v₁ v₂} → “ v₁ ”₁ ≡ “ v₂ ”₂
+                    → “ shift₁ v₁ ”₁ ≡ “ shift₂ v₂ ”₂
+  module R = Relate (Map.S M₁) (Map.S M₂) _∼_ var→val-quote shift-quote
+  open R renaming (_≊_ to _≈_; g-ext-≊ to ext≈; g-lookup to lookup)
+
+  MC : MapCong M₁ M₂
+  MC = record { _≈_ = _≈_ ; var = lookup ; ext≈ = ext≈ }
+  open MapCong MC public
 
 {-------------------------------------------------------------------------------
   Commutativity of map

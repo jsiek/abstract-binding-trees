@@ -27,7 +27,7 @@ RenameIsMap = record { “_” = `_ ; S = RenameIsSubstable }
 open Map RenameIsMap renaming (map-abt to rename; map-arg to ren-arg) public
 open Map.GS RenameIsMap using ()
     renaming (⧼_⧽ to ⦉_⦊; g-ext to ext; g-inc to inc;
-    g-drop to dropr;
+    g-drop to dropr; g-ext-cong to ext-cong;
     g-drop-add to dropr-add; g-drop-drop to dropr-dropr;
     g-drop-ext to dropr-ext; Shift to RenShift; g-Shift-var to ren-shift-var)
     public
@@ -66,3 +66,12 @@ compose-rename ρ₁ ρ₂ M = FusableMap.fusion FRR M
     FRR = record { ⌈_⌉ = ⦉_⦊ ; var = λ x ρ₁ ρ₂ → sym (seq-rename ρ₁ ρ₂ x)
           ; map-quote = λ v₁ ρ₂ → refl ; compose-ext = compose-ext}
 
+rename-ext : ∀{ρ₁ ρ₂}{M : ABT}
+   → (∀ x → ⦉ ρ₁ ⦊ x ≡ ⦉ ρ₂ ⦊ x)
+   → rename ρ₁ M ≡ rename ρ₂ M
+rename-ext {ρ₁}{ρ₂}{M} f = map-cong-abt {_}{ρ₁}{ρ₂} f M
+  where
+  MC : MapCong RenameIsMap RenameIsMap
+  MC = record { _≈_ = λ ρ₁ ρ₂ → ∀ x → ⦉ ρ₁ ⦊ x ≡ ⦉ ρ₂ ⦊ x
+              ; var = λ x f → cong `_ (f x) ; ext≈ = ext-cong }
+  open MapCong MC

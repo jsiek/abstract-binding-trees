@@ -48,7 +48,7 @@ module GenericSubst {V} (S : Substable V) where
   
   g-ext : Substitution V → Substitution V
   g-ext σ = g-extend (var→val 0) σ
-  
+
   g-drop : (k : ℕ) → Substitution V → Substitution V
   g-drop k (↑ k') = ↑ (k + k')
   g-drop zero (v • σ) = v • σ
@@ -91,6 +91,12 @@ module GenericSubst {V} (S : Substable V) where
   g-inc-shift (↑ k) x rewrite +-comm k x = var→val-suc-shift
   g-inc-shift (y • ρ) zero = refl
   g-inc-shift (y • ρ) (suc x) = g-inc-shift ρ x
+
+  g-ext-cong : ∀ {σ₁ σ₂} → ((x : ℕ) → ⧼ σ₁ ⧽ x ≡ ⧼ σ₂ ⧽ x)
+    → (x : ℕ) → ⧼ g-ext σ₁ ⧽ x ≡ ⧼ g-ext σ₂ ⧽ x
+  g-ext-cong {σ₁} {σ₂} f zero = refl
+  g-ext-cong {σ₁} {σ₂} f (suc x)
+      rewrite g-inc-shift σ₁ x | g-inc-shift σ₂ x | f x = refl
 
   g-drop-ext : ∀ k ρ → g-drop (suc k) (g-ext ρ) ≡ g-inc (g-drop k ρ)
   g-drop-ext k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl

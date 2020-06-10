@@ -41,7 +41,7 @@ open Map.GS SubstIsMap using () renaming (⧼_⧽ to ⟦_⟧; g-ext to exts) pub
 open Map.GS SubstIsMap using (Shift; shift-up; shift-•) renaming (g-inc to incs;
     g-drop to drops; g-drop-inc to drops-incs; g-drop-add to drop-add;
     g-Shift-var to sub-shift-var; g-inc-shift to incs-rename;
-    g-inc-Shift to incs-Shift)
+    g-inc-Shift to incs-Shift; g-ext-cong to exts-cong)
 open ComposeMaps SubstIsMap SubstIsMap ⟪_⟫ using (_⨟_) public
 
 subst-zero : ABT → Subst
@@ -90,10 +90,10 @@ rename→subst (x • ρ) = ` x • rename→subst ρ
 
 rename-subst : ∀ {s : Size} ρ (M : Term s)
    → rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
-rename-subst {s} ρ M = MapCong.map-cong-abt MRS (ρ≊ ρ) M
+rename-subst {s} ρ M = MapCong≊.map-cong-abt MRS (ρ≊ ρ) M
   where
   MRS = record { var→val-quote = λ x → refl ; shift-quote = λ { refl → refl } }
-  open MapCong.R MRS
+  open MapCong≊.R MRS
   ρ≊ : ∀ ρ → ρ ≊ rename→subst ρ
   ρ≊ (↑ k) = r-up
   ρ≊ (x • ρ) = r-cons refl (ρ≊ ρ)
@@ -158,14 +158,25 @@ exts-suc-rename : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟪ �
 exts-suc-rename σ x rewrite incs-rename σ x = refl
 
 commute-subst-rename : ∀{s}{σ : Subst} {ρ : Rename}
-   → (M : Term s)
-   → RenShift 1 ρ
+   → (M : Term s)  →  RenShift 1 ρ
    → ⟪ exts σ ⟫ (rename ρ M) ≡ rename ρ (⟪ σ ⟫ M)
-commute-subst-rename {s}{σ}{ρ} (` x) ρ↑ rewrite ren-shift-var x ρ↑ =
-  {!!}
-  {-
-  Goal: Syntax.GenericSubst.⧼ SubstIsSubstable ⧽
-      (Syntax.GenericSubst.g-inc SubstIsSubstable σ) x
-      ≡ FusableMap.map₁ ρ (Syntax.GenericSubst.⧼ SubstIsSubstable ⧽ σ x)
-  -}
-commute-subst-rename (_⦅_⦆ {s} op args) ρ↑ = {!!}
+comm-subren-arg : ∀{s}{σ : Subst} {ρ : Rename}
+   → RenShift 1 ρ → (b : ℕ) → (arg : Term s) 
+   → ⟪_⟫ₐ (exts σ) b (ren-arg ρ b arg) ≡ ren-arg ρ b (⟪ σ ⟫ₐ b arg)
+commute-subst-rename {s}{σ}{ρ} (` x) ρ↑
+  rewrite ren-shift-var x ρ↑ = begin
+  ⟦ incs σ ⟧ x               ≡⟨ incs-rename σ x ⟩
+  rename (↑ 1) (⟦ σ ⟧ x)     ≡⟨ rename-ext {↑ 1}{ρ}{⟦ σ ⟧ x} (↑1≡shift1 ρ↑)  ⟩
+  rename ρ (⟪ σ ⟫ (` x))    ∎
+  where
+  ↑1≡shift1 : ∀{ρ} → RenShift 1 ρ → (x : ℕ) → ⦉ ↑ 1 ⦊ x ≡ ⦉ ρ ⦊ x
+  ↑1≡shift1 {ρ} ρ↑ x rewrite ren-shift-var x ρ↑ = refl
+
+commute-subst-rename {_}{σ}{ρ} (_⦅_⦆ {s} op args) ρ↑ =
+    cong (_⦅_⦆ op) (tuple-pred P× (comm-subren-arg {_}{σ} ρ↑) args refl
+                      (cong₂ ⟨_,_⟩))
+    where P× = λ bs args →
+             map (λ {b} → ⟪ exts σ ⟫ₐ b) (map (λ {b} → ren-arg ρ b) {bs} args)
+             ≡ map (λ {b} → ren-arg ρ b) (map (λ {b} → ⟪ σ ⟫ₐ b) args)
+comm-subren-arg {s} {σ} {ρ} ρ↑ zero arg = commute-subst-rename arg ρ↑
+comm-subren-arg {s} {σ} {ρ} ρ↑ (suc b) arg = comm-subren-arg {!!} b arg
