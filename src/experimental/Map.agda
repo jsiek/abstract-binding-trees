@@ -14,7 +14,7 @@ open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
 open import Size using (Size)
 open import Var
 open import experimental.ScopedTuple using (map; map-cong; map-compose)
-open import Syntax hiding (⦉_⦊; ext; _⨟ᵣ_)
+open import GenericSubstitution
 
 module experimental.Map (Op : Set) (sig : Op → List ℕ) where
 
@@ -29,7 +29,7 @@ record Map (V : Set) : Set where
   field S : Substable V
         “_” : V → ABT
   open Substable S public
-  module GS = GenericSubst S ; open GS
+  open GenericSubst S
 
   map-abt : ∀{s : Size} → Substitution V → Term s → ABT
   map-arg : ∀{s : Size} → Substitution V → (b : ℕ) →  Term s → ABT
@@ -46,40 +46,128 @@ record Map (V : Set) : Set where
      → map₂ σ₂ (map₁ σ₁ M) ≡ map₂ (σ₁ ⨟ σ₂) M
  ------------------------------------------------------------------------------}
 
-module ComposeMaps {V₁ V₂ : Set} (M₁ : Map V₁) (M₂ : Map V₂)
-   (⌈_⌉ : Substitution V₂ → V₁ → V₂) where
-  open GenericSubst (Map.S M₂) using (g-drop)
-  {- The following generalizes _⨟ᵣ_ and _⨟_ -}
+module ComposeMaps {V₁ V₂ V₃ : Set} (M₁ : Map V₁) (M₂ : Map V₂)
+   (⌈_⌉ : Substitution V₂ → V₁ → V₃)
+   (val₂₃ : V₂ → V₃) where
+  {- The following generalizes _⨟ᵣ_ and _⨟_, as well as compositions
+     of renaming and subtitution. -}
   infixr 5 _⨟_
-  _⨟_ : Substitution V₁ → Substitution V₂ → Substitution V₂
-  ↑ k ⨟ σ₂ = g-drop k σ₂
+  
+  _⨟_ : Substitution V₁ → Substitution V₂ → Substitution V₃
+  ↑ k ⨟ σ₂ = g-map-sub val₂₃ (g-drop k σ₂)
   (v₁ • σ₁) ⨟ σ₂ = ⌈ σ₂ ⌉ v₁ • (σ₁ ⨟ σ₂)
 
-
-record FusableMap {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set where
-  open Map M₁ using () renaming (map-abt to map₁; map-arg to map-arg₁;
-      “_” to “_”₁) public
-  open Map.GS M₁ using () renaming (⧼_⧽ to ⧼_⧽₁; g-ext to ext₁) public
-  open Map M₂ using () renaming (map-abt to map₂; map-arg to map-arg₂;
-      “_” to “_”₂) public
-  open Map.GS M₂ using () renaming (⧼_⧽ to ⧼_⧽₂; g-ext to ext₂) public
+record Quotable {V₁ V₂ V₃}
+  (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : Map V₃) : Set
+  where
+  open Map M₁ using () renaming (“_” to “_”₁; var→val to var→val₁)
+  open GenericSubst (Map.S M₁) using ()
+      renaming (⧼_⧽ to ⧼_⧽₁; g-inc to g-inc₁) 
+  open Map M₂ using () renaming (map-abt to map₂;
+      “_” to “_”₂; var→val to var→val₂; shift to shift₂) 
+  open GenericSubst (Map.S M₂) using () renaming (⧼_⧽ to ⧼_⧽₂; g-inc to g-inc₂) 
+  open Map M₃ using () renaming (“_” to “_”₃; var→val to var→val₃;
+      shift to shift₃) 
+  open GenericSubst (Map.S M₃) using ()
+      renaming (⧼_⧽ to ⧼_⧽₃; g-drop-add to g-drop-add₃; g-inc to g-inc₃) 
   
-  field ⌈_⌉ : Substitution V₂ → V₁ → V₂
-  open ComposeMaps M₁ M₂ ⌈_⌉ public
-  field var : ∀ x σ₁ σ₂ → ⌈ σ₂ ⌉ (⧼ σ₁ ⧽₁ x) ≡ ⧼ σ₁ ⨟ σ₂ ⧽₂ x
-  field map-quote : ∀ v₁ σ₂ → map₂ σ₂ “ v₁ ”₁ ≡ “ ⌈ σ₂ ⌉ v₁ ”₂
-  field compose-ext : ∀ (σ₁ : Substitution V₁) (σ₂ : Substitution V₂)
-                    → ext₁ σ₁ ⨟ ext₂ σ₂ ≡ ext₂ (σ₁ ⨟ σ₂)
+  field ⌈_⌉ : Substitution V₂ → V₁ → V₃
+        val₂₃ : V₂ → V₃
+        quote-map : ∀ σ₂ v₁ → “ ⌈ σ₂ ⌉ v₁ ”₃ ≡ map₂ σ₂ “ v₁ ”₁
+        var→val₂₃ : ∀ x → var→val₃ x ≡ val₂₃ (var→val₂ x)
+        quote-val₂₃ : ∀ v₂ → “ val₂₃ v₂ ”₃ ≡ “ v₂ ”₂
+        map₂-var→val₁ : ∀ x σ₂ → map₂ σ₂ “ var→val₁ x ”₁ ≡ “ ⧼ σ₂ ⧽₂ x ”₂
+        val₂₃-shift : ∀ v₂ → val₂₃ (shift₂ v₂) ≡ shift₃ (val₂₃ v₂)
+
+  
+  open ComposeMaps M₁ M₂ ⌈_⌉ val₂₃
+  
+  g-map-sub-⧼·⧽ : ∀{x} (σ : Substitution V₂)
+     → ⧼ g-map-sub val₂₃ σ ⧽₃ x ≡ val₂₃ (⧼ σ ⧽₂ x)
+  g-map-sub-⧼·⧽ {x} (↑ k) = var→val₂₃ (k + x)
+  g-map-sub-⧼·⧽ {zero} (v₂ • σ) = refl
+  g-map-sub-⧼·⧽ {suc x} (v₂ • σ) = g-map-sub-⧼·⧽ {x} σ
+
+  compose-sub : ∀ σ₁ σ₂ x → “ ⧼ σ₁ ⨟ σ₂ ⧽₃ x ”₃ ≡ (map₂ σ₂ “ ⧼ σ₁ ⧽₁ x ”₁)
+  compose-sub (↑ k) σ₂ x =
+      begin
+          “ ⧼ ↑ k ⨟ σ₂ ⧽₃ x ”₃
+      ≡⟨⟩
+          “ ⧼ g-map-sub val₂₃ (g-drop k σ₂) ⧽₃ x ”₃
+      ≡⟨ cong (λ □ → “ ⧼ □ ⧽₃ x ”₃) (g-map-sub-drop σ₂ val₂₃ k) ⟩
+          “ ⧼ g-drop k (g-map-sub val₂₃ σ₂) ⧽₃ x ”₃
+      ≡⟨ cong “_”₃ (g-drop-add₃ k (g-map-sub val₂₃ σ₂)) ⟩
+          “ ⧼ g-map-sub val₂₃ σ₂ ⧽₃ (k + x) ”₃
+      ≡⟨ cong “_”₃ (g-map-sub-⧼·⧽ σ₂) ⟩
+          “ val₂₃ (⧼ σ₂ ⧽₂ (k + x)) ”₃
+      ≡⟨ quote-val₂₃ (⧼ σ₂ ⧽₂ (k + x)) ⟩
+          “ ⧼ σ₂ ⧽₂ (k + x) ”₂
+      ≡⟨ sym (map₂-var→val₁ (k + x) σ₂) ⟩
+          map₂ σ₂ “ var→val₁ (k + x) ”₁
+      ≡⟨⟩
+          map₂ σ₂ “ ⧼ ↑ k ⧽₁ x ”₁
+      ∎
+  compose-sub (v₁ • σ₁) σ₂ zero rewrite quote-map σ₂ v₁ = refl
+  compose-sub (v₁ • σ₁) σ₂ (suc x) = compose-sub σ₁ σ₂ x
+
+  g-drop-seq : ∀ k σ₁ σ₂ → g-drop k (σ₁ ⨟ σ₂) ≡ (g-drop k σ₁ ⨟ σ₂)
+  g-drop-seq k (↑ k₁) σ₂ = {- sym (g-drop-drop k k₁ σ₂) -}
+      begin
+          g-drop k (↑ k₁ ⨟ σ₂)
+      ≡⟨⟩
+          g-drop k (g-map-sub val₂₃ (g-drop k₁ σ₂))
+      ≡⟨  sym (g-map-sub-drop (g-drop k₁ σ₂) val₂₃ k) ⟩
+          g-map-sub val₂₃ (g-drop k (g-drop k₁ σ₂))
+      ≡⟨  cong (g-map-sub val₂₃) (sym (g-drop-drop k k₁ σ₂)) ⟩
+          g-map-sub val₂₃ (g-drop (k + k₁) σ₂)
+      ≡⟨⟩
+          ↑ (k + k₁) ⨟ σ₂
+      ∎
+  g-drop-seq zero (x • σ₁) σ₂ = refl
+  g-drop-seq (suc k) (x • σ₁) σ₂ = g-drop-seq k σ₁ σ₂
+
+{-
+  g-inc=⨟↑ : ∀ σ → g-inc₁ σ₁ ≡ σ₁ ⨟ ↑ 1
+  g-inc=⨟↑ σ = ?
+-}
+
+  g-map-sub-inc : ∀ σ₂ →
+    g-map-sub val₂₃ (g-inc₂ σ₂) ≡  g-inc₃ (g-map-sub val₂₃ σ₂)
+  g-map-sub-inc (↑ k) = refl
+  g-map-sub-inc (v₂ • σ₂) = cong₂ _•_ (val₂₃-shift v₂) (g-map-sub-inc σ₂)
+  
+
+record FusableMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : Map V₃) : Set
+  where
+  open Map M₁ using () renaming (map-abt to map₁; map-arg to map-arg₁;
+      “_” to “_”₁; var→val to var→val₁) public
+  open GenericSubst (Map.S M₁) using ()
+      renaming (⧼_⧽ to ⧼_⧽₁; g-ext to ext₁) public
+  open Map M₂ using () renaming (map-abt to map₂; map-arg to map-arg₂;
+      “_” to “_”₂; var→val to var→val₂) public
+  open GenericSubst (Map.S M₂) using ()
+      renaming (⧼_⧽ to ⧼_⧽₂; g-ext to ext₂) public
+  open Map M₃ using () renaming (map-abt to map₃; map-arg to map-arg₃;
+      “_” to “_”₃; var→val to var→val₃) public
+  open GenericSubst (Map.S M₃) using ()
+      renaming (⧼_⧽ to ⧼_⧽₃; g-ext to ext₃; g-drop-add to g-drop-add₃) public
+  
+  field Q : Quotable M₁ M₂ M₃
+  open Quotable Q
+  open ComposeMaps M₁ M₂ ⌈_⌉ val₂₃ public
+  field var : ∀ x σ₁ σ₂ → ⌈ σ₂ ⌉ (⧼ σ₁ ⧽₁ x) ≡ ⧼ (σ₁ ⨟ σ₂) ⧽₃ x
+        compose-ext : ∀ (σ₁ : Substitution V₁) (σ₂ : Substitution V₂)
+                    → ext₁ σ₁ ⨟ ext₂ σ₂ ≡ ext₃ (σ₁ ⨟ σ₂)
 
   fusion : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} (M : Term s)
-     → map₂ σ₂ (map₁ σ₁ M) ≡ map₂ (σ₁ ⨟ σ₂) M
+     → map₂ σ₂ (map₁ σ₁ M) ≡ map₃ (σ₁ ⨟ σ₂) M
      
   fusion-arg : ∀{s}{σ₁ : Substitution V₁}{σ₂ : Substitution V₂} {b}
      → (arg : Term s)
-     → map-arg₂ σ₂ b (map-arg₁ σ₁ b arg) ≡ map-arg₂ (σ₁ ⨟ σ₂) b arg
+     → map-arg₂ σ₂ b (map-arg₁ σ₁ b arg) ≡ map-arg₃ (σ₁ ⨟ σ₂) b arg
 
   fusion {.(Size.↑ _)} {σ₁} {σ₂} (` x)
-      rewrite map-quote (⧼ σ₁ ⧽₁ x) σ₂ | var x σ₁ σ₂  = refl
+      rewrite sym (quote-map σ₂ (⧼ σ₁ ⧽₁ x)) | var x σ₁ σ₂  = refl
   fusion {.(Size.↑ _)} {σ₁} {σ₂} (_⦅_⦆ {s} op args) =
       let fa = (λ {b} arg → fusion-arg {_}{σ₁}{σ₂}{b} arg) in
       let mc = map-cong {λ _ → Term s}{λ _ → ABT} (λ{b}→ fa {b}) in
@@ -91,10 +179,12 @@ record FusableMap {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set where
     begin
         map-arg₂ (ext₂ σ₂) b (map-arg₁ (ext₁ σ₁) b arg)
     ≡⟨ IH ⟩
-        map-arg₂ (ext₁ σ₁ ⨟ ext₂ σ₂) b arg
-    ≡⟨ cong (λ □ → map-arg₂ □ b arg) (compose-ext σ₁ σ₂) ⟩
-        map-arg₂ (ext₂ (σ₁ ⨟ σ₂)) b arg
+        map-arg₃ (ext₁ σ₁ ⨟ ext₂ σ₂) b arg
+    ≡⟨ cong (λ □ → map-arg₃ □ b arg) (compose-ext σ₁ σ₂) ⟩
+        map-arg₃ (ext₃ (σ₁ ⨟ σ₂)) b arg
     ∎
+
+
 
 {-------------------------------------------------------------------------------
   Congruence of map
@@ -106,10 +196,12 @@ record FusableMap {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set where
 record MapCong {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
   open Map M₁ using () renaming (map-abt to map₁; map-arg to map-arg₁;
       “_” to “_”₁) public
-  open Map.GS M₁ using () renaming (⧼_⧽ to ⧼_⧽₁; g-ext to ext₁) public
-  open Map M₂ using () renaming (map-abt to map₂; map-arg to map-arg₂;
-      “_” to “_”₂) public
-  open Map.GS M₂ using () renaming (⧼_⧽ to ⧼_⧽₂; g-ext to ext₂) public
+  open GenericSubst (Map.S M₁) using ()
+      renaming (⧼_⧽ to ⧼_⧽₁; g-ext to ext₁) public
+  open Map M₂ using ()
+      renaming (map-abt to map₂; map-arg to map-arg₂; “_” to “_”₂) public
+  open GenericSubst (Map.S M₂) using ()
+      renaming (⧼_⧽ to ⧼_⧽₂; g-ext to ext₂) public
 
   field _≈_ : Substitution V₁ → Substitution V₂ → Set
         var : ∀ {σ₁ σ₂} x → σ₁ ≈ σ₂ → “ ⧼ σ₁ ⧽₁ x ”₁ ≡ “ ⧼ σ₂ ⧽₂ x ”₂

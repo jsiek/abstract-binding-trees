@@ -15,7 +15,7 @@ open import Relation.Binary.HeterogeneousEquality
     using (_≅_; ≅-to-≡; reflexive)
     renaming (cong to hcong)
 open import Size using (Size)
-open import Syntax using (Substitution; ↑; _•_; id; Substable)
+open import GenericSubstitution renaming (g-drop to drop)
 open import Var
 
 module experimental.Subst (Op : Set) (sig : Op → List ℕ) where
@@ -37,12 +37,15 @@ open Map SubstIsMap renaming (map-abt to ⟪_⟫; map-arg to ⟪_⟫ₐ) public
 ⟪_⟫₊ : ∀{s : Size} → Substitution ABT →(bs : Sig)→ Tuple bs (λ _ → Term s)
      → Tuple bs (λ _ → ABT)
 ⟪_⟫₊ = λ σ bs → map (λ {b} → ⟪ σ ⟫ₐ b) {bs}
-open Map.GS SubstIsMap using () renaming (⧼_⧽ to ⟦_⟧; g-ext to exts) public
-open Map.GS SubstIsMap using (Shift; shift-up; shift-•) renaming (g-inc to incs;
-    g-drop to drops; g-drop-inc to drops-incs; g-drop-add to drop-add;
-    g-Shift-var to sub-shift-var; g-inc-shift to incs-rename;
+open GenericSubst (Map.S SubstIsMap) using ()
+    renaming (⧼_⧽ to ⟦_⟧; g-ext to exts) public
+open GenericSubst (Map.S SubstIsMap) using (Shift; shift-up; shift-•)
+    renaming (g-inc to incs; g-inc-shift to incs-rename;
+    g-drop-inc to drops-incs; g-drop-add to drop-add;
+    g-Shift-var to sub-shift-var; 
     g-inc-Shift to incs-Shift; g-ext-cong to exts-cong)
-open ComposeMaps SubstIsMap SubstIsMap ⟪_⟫ using (_⨟_) public
+open ComposeMaps SubstIsMap SubstIsMap ⟪_⟫ (λ x → x)
+    using (_⨟_) public
 
 subst-zero : ABT → Subst
 subst-zero M = M • id
@@ -109,8 +112,6 @@ exts-rename-ext (↑ k) = refl
 exts-rename-ext (x • ρ) =
     cong (λ □ → (` 0) • (` suc x) • □) (incs-rename-inc ρ)
 
-
-
 incs=⨟↑ : ∀ σ → incs σ ≡ σ ⨟ ↑ 1
 incs=⨟↑ (↑ k) rewrite +-comm k 1 = refl
 incs=⨟↑ (M • σ) = cong₂ _•_ (rename-subst (↑ 1) M) (incs=⨟↑ σ)
@@ -157,26 +158,49 @@ exts-suc' σ x rewrite incs-rename σ x = refl
 exts-suc-rename : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
 exts-suc-rename σ x rewrite incs-rename σ x = refl
 
-commute-subst-rename : ∀{s}{σ : Subst} {ρ : Rename}
-   → (M : Term s)  →  RenShift 1 ρ
-   → ⟪ exts σ ⟫ (rename ρ M) ≡ rename ρ (⟪ σ ⟫ M)
-comm-subren-arg : ∀{s}{σ : Subst} {ρ : Rename}
-   → RenShift 1 ρ → (b : ℕ) → (arg : Term s) 
-   → ⟪_⟫ₐ (exts σ) b (ren-arg ρ b arg) ≡ ren-arg ρ b (⟪ σ ⟫ₐ b arg)
-commute-subst-rename {s}{σ}{ρ} (` x) ρ↑
-  rewrite ren-shift-var x ρ↑ = begin
-  ⟦ incs σ ⟧ x               ≡⟨ incs-rename σ x ⟩
-  rename (↑ 1) (⟦ σ ⟧ x)     ≡⟨ rename-ext {↑ 1}{ρ}{⟦ σ ⟧ x} (↑1≡shift1 ρ↑)  ⟩
-  rename ρ (⟪ σ ⟫ (` x))    ∎
-  where
-  ↑1≡shift1 : ∀{ρ} → RenShift 1 ρ → (x : ℕ) → ⦉ ↑ 1 ⦊ x ≡ ⦉ ρ ⦊ x
-  ↑1≡shift1 {ρ} ρ↑ x rewrite ren-shift-var x ρ↑ = refl
+open ComposeMaps SubstIsMap RenameIsMap rename `_
+   renaming (_⨟_ to _⨟ˢᵣ_)
 
-commute-subst-rename {_}{σ}{ρ} (_⦅_⦆ {s} op args) ρ↑ =
-    cong (_⦅_⦆ op) (tuple-pred P× (comm-subren-arg {_}{σ} ρ↑) args refl
-                      (cong₂ ⟨_,_⟩))
-    where P× = λ bs args →
-             map (λ {b} → ⟪ exts σ ⟫ₐ b) (map (λ {b} → ren-arg ρ b) {bs} args)
-             ≡ map (λ {b} → ren-arg ρ b) (map (λ {b} → ⟪ σ ⟫ₐ b) args)
-comm-subren-arg {s} {σ} {ρ} ρ↑ zero arg = commute-subst-rename arg ρ↑
-comm-subren-arg {s} {σ} {ρ} ρ↑ (suc b) arg = comm-subren-arg {!!} b arg
+QSR : Quotable SubstIsMap RenameIsMap SubstIsMap
+QSR = record { ⌈_⌉ = rename ; val₂₃ = `_ ; quote-map = λ σ₂ v₁ → refl
+        ; var→val₂₃ = λ x₁ → refl ; quote-val₂₃ = λ v₂ → refl
+        ; map₂-var→val₁ = λ x₁ σ₂ → refl ; val₂₃-shift = λ v₂ → refl }
+          
+seq-sub-ren : ∀ x σ ρ  →  rename ρ (⟦ σ ⟧ x) ≡ ⟦ σ ⨟ˢᵣ ρ ⟧ x
+seq-sub-ren x σ ρ = sym (Quotable.compose-sub QSR σ ρ x)
+
+compose-incs-ext : ∀ σ ρ → (incs σ ⨟ˢᵣ ext ρ) ≡ incs (σ ⨟ˢᵣ ρ)
+compose-incs-ext (↑ k) ρ
+    rewrite dropr-inc k ρ | Quotable.g-map-sub-inc QSR (drop k ρ) = refl
+compose-incs-ext (M • σ) ρ = cong₂ _•_ (commute-↑1 ρ M) (compose-incs-ext σ ρ)
+
+compose-exts-ext : ∀ σ ρ → (exts σ) ⨟ˢᵣ (ext ρ) ≡ exts (σ ⨟ˢᵣ ρ)
+compose-exts-ext σ ρ rewrite compose-incs-ext σ ρ = refl
+
+compose-ren-sub : ∀ ρ σ M → rename ρ (⟪ σ ⟫ M) ≡ ⟪ σ ⨟ˢᵣ ρ ⟫ M
+compose-ren-sub ρ σ M = FusableMap.fusion FSR {_}{σ}{ρ} M
+  where
+  FSR : FusableMap SubstIsMap RenameIsMap SubstIsMap
+  FSR = record { Q = QSR ; var = seq-sub-ren ; compose-ext = compose-exts-ext }
+
+{-
+commute-subst-shift : ∀{s}{σ : Subst} (M : Term s)
+   → ⟪ exts σ ⟫ (rename (↑ 1) M) ≡ rename (↑ 1) (⟪ σ ⟫ M)
+commute-subst-shift {s}{σ} M = comm-sub-ren {s}{M}{σ}{↑ 1} (exts-suc-rename σ)
+  where
+  comm-sub-ren : ∀{s}{M : Term s}{σ}{ρ}
+       → (∀ x → ⟦ exts σ ⟧ (⦉ ρ ⦊ x) ≡ rename ρ (⟦ σ ⟧ x))
+       → ⟪ exts σ ⟫ (rename ρ M) ≡ rename ρ (⟪ σ ⟫ M)
+  comm-sub-ren-arg : ∀{s}{b}{A : Term s}{σ}{ρ}
+       → (∀ x → ⟦ exts σ ⟧ (⦉ ρ ⦊ x) ≡ rename ρ (⟦ σ ⟧ x))
+       → ⟪ exts σ ⟫ₐ b (ren-arg ρ b A) ≡ ren-arg ρ b (⟪ σ ⟫ₐ b A)
+  comm-sub-ren {_} {` x} {σ} {ρ} var = var x
+  comm-sub-ren {_} {_⦅_⦆ {s} op args} {σ} {ρ} var = {!!}
+  comm-sub-ren-arg {s} {zero} {A} {σ} {ρ} var = comm-sub-ren {s}{A} var
+  comm-sub-ren-arg {s} {suc b} {A} {σ} {ρ} var =
+    comm-sub-ren-arg {s}{b} ext²
+    where
+    ext² : ∀ x → ⟦ exts (exts σ) ⟧ (⦉ ext ρ ⦊ x) ≡ rename (ext ρ) (⟦ exts σ ⟧ x)
+    ext² zero = refl
+    ext² (suc x) = {!!}
+-}
