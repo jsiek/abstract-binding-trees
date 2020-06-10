@@ -11,7 +11,7 @@ open Eq.≡-Reasoning
 open import GenericSubstitution
 open import Var
 
-module experimental.RenSub (Op : Set) (sig : Op → List ℕ) where
+module experimental.Substitution (Op : Set) (sig : Op → List ℕ) where
 
 open import experimental.ABT Op sig
 open import experimental.Map Op sig
