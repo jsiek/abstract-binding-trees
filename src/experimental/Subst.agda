@@ -41,7 +41,7 @@ open GenericSubst (Map.S SubstIsMap) using ()
     renaming (⧼_⧽ to ⟦_⟧; g-ext to exts) public
 open GenericSubst (Map.S SubstIsMap) using (Shift; shift-up; shift-•)
     renaming (g-inc to incs; g-inc-shift to incs-rename;
-    g-drop-inc to drops-incs; g-drop-add to drop-add;
+    g-drop-inc to drop-incs; g-drop-add to drop-add; g-drop-ext to drop-exts;
     g-Shift-var to sub-shift-var; 
     g-inc-Shift to incs-Shift; g-ext-cong to exts-cong)
 open ComposeMaps SubstIsMap SubstIsMap ⟪_⟫ (λ x → x)
@@ -177,30 +177,111 @@ compose-incs-ext (M • σ) ρ = cong₂ _•_ (commute-↑1 ρ M) (compose-incs
 compose-exts-ext : ∀ σ ρ → (exts σ) ⨟ˢᵣ (ext ρ) ≡ exts (σ ⨟ˢᵣ ρ)
 compose-exts-ext σ ρ rewrite compose-incs-ext σ ρ = refl
 
+FSR : FusableMap SubstIsMap RenameIsMap SubstIsMap
+FSR = record { Q = QSR ; var = seq-sub-ren ; compose-ext = compose-exts-ext }
+
 compose-ren-sub : ∀ ρ σ M → rename ρ (⟪ σ ⟫ M) ≡ ⟪ σ ⨟ˢᵣ ρ ⟫ M
 compose-ren-sub ρ σ M = FusableMap.fusion FSR {_}{σ}{ρ} M
-  where
-  FSR : FusableMap SubstIsMap RenameIsMap SubstIsMap
-  FSR = record { Q = QSR ; var = seq-sub-ren ; compose-ext = compose-exts-ext }
 
-{-
-commute-subst-shift : ∀{s}{σ : Subst} (M : Term s)
+open ComposeMaps {Var}{ABT}{ABT} RenameIsMap SubstIsMap ⟦_⟧ (λ M → M)
+   renaming (_⨟_ to _⨟ᵣˢ_)
+
+QRS : Quotable RenameIsMap SubstIsMap SubstIsMap
+QRS = record { ⌈_⌉ = ⟦_⟧ ; val₂₃ = λ M → M ; quote-map = λ σ₂ v₁ → refl
+        ; var→val₂₃ = λ x → refl ; quote-val₂₃ = λ v₂ → refl
+        ; map₂-var→val₁ = λ x σ₂ → refl ; val₂₃-shift = λ v₂ → refl }
+
+seq-ren-sub : ∀ x ρ σ  →  ⟦ σ ⟧ (⦉ ρ ⦊ x) ≡ ⟦ ρ ⨟ᵣˢ σ ⟧ x
+seq-ren-sub x ρ σ = sym (Quotable.compose-sub QRS ρ σ x)
+
+compose-inc-exts : ∀ ρ σ → (inc ρ ⨟ᵣˢ exts σ) ≡ incs (ρ ⨟ᵣˢ σ)
+compose-inc-exts (↑ k) σ rewrite drop-incs k σ = refl
+compose-inc-exts (x • ρ) σ = cong₂ _•_ (incs-rename σ x) (compose-inc-exts ρ σ)
+
+compose-ext-exts : ∀ ρ σ → (ext ρ) ⨟ᵣˢ (exts σ) ≡ exts (ρ ⨟ᵣˢ σ)
+compose-ext-exts ρ σ rewrite compose-inc-exts ρ σ = refl
+
+FRS : FusableMap RenameIsMap SubstIsMap SubstIsMap
+FRS = record { Q = QRS ; var = seq-ren-sub ; compose-ext = compose-ext-exts }
+
+compose-sub-ren : ∀ σ ρ M → ⟪ σ ⟫ (rename ρ M) ≡ ⟪ ρ ⨟ᵣˢ σ ⟫ M
+compose-sub-ren σ ρ M = FusableMap.fusion FRS {_}{ρ}{σ} M
+
+incs≡=⨟ˢᵣ↑ : ∀ σ → incs σ ≡ σ ⨟ˢᵣ ↑ 1
+incs≡=⨟ˢᵣ↑ (↑ k) rewrite +-comm k 1 = refl
+incs≡=⨟ˢᵣ↑ (M • σ) = cong₂ _•_ refl (incs≡=⨟ˢᵣ↑ σ)
+
+commute-subst-shift : ∀{σ : Subst} (M : ABT)
    → ⟪ exts σ ⟫ (rename (↑ 1) M) ≡ rename (↑ 1) (⟪ σ ⟫ M)
-commute-subst-shift {s}{σ} M = comm-sub-ren {s}{M}{σ}{↑ 1} (exts-suc-rename σ)
-  where
-  comm-sub-ren : ∀{s}{M : Term s}{σ}{ρ}
-       → (∀ x → ⟦ exts σ ⟧ (⦉ ρ ⦊ x) ≡ rename ρ (⟦ σ ⟧ x))
-       → ⟪ exts σ ⟫ (rename ρ M) ≡ rename ρ (⟪ σ ⟫ M)
-  comm-sub-ren-arg : ∀{s}{b}{A : Term s}{σ}{ρ}
-       → (∀ x → ⟦ exts σ ⟧ (⦉ ρ ⦊ x) ≡ rename ρ (⟦ σ ⟧ x))
-       → ⟪ exts σ ⟫ₐ b (ren-arg ρ b A) ≡ ren-arg ρ b (⟪ σ ⟫ₐ b A)
-  comm-sub-ren {_} {` x} {σ} {ρ} var = var x
-  comm-sub-ren {_} {_⦅_⦆ {s} op args} {σ} {ρ} var = {!!}
-  comm-sub-ren-arg {s} {zero} {A} {σ} {ρ} var = comm-sub-ren {s}{A} var
-  comm-sub-ren-arg {s} {suc b} {A} {σ} {ρ} var =
-    comm-sub-ren-arg {s}{b} ext²
-    where
-    ext² : ∀ x → ⟦ exts (exts σ) ⟧ (⦉ ext ρ ⦊ x) ≡ rename (ext ρ) (⟦ exts σ ⟧ x)
-    ext² zero = refl
-    ext² (suc x) = {!!}
--}
+commute-subst-shift {σ} M =
+  begin
+      ⟪ exts σ ⟫ (rename (↑ 1) M)
+  ≡⟨ compose-sub-ren (exts σ) (↑ 1) M ⟩
+      ⟪ (↑ 1) ⨟ᵣˢ exts σ ⟫ M
+  ≡⟨⟩
+      ⟪ incs σ ⟫ M
+  ≡⟨ cong (λ □ → ⟪ □ ⟫ M) (incs≡=⨟ˢᵣ↑ σ) ⟩
+      ⟪ σ ⨟ˢᵣ ↑ 1 ⟫ M
+  ≡⟨ sym (compose-ren-sub (↑ 1) σ M)  ⟩
+      rename (↑ 1) (⟪ σ ⟫ M)
+  ∎
+  
+QSS : Quotable SubstIsMap SubstIsMap SubstIsMap
+QSS = record { ⌈_⌉ = ⟪_⟫ ; val₂₃ = λ M → M ; quote-map = λ σ₂ v₁ → refl
+        ; var→val₂₃ = λ x → refl ; quote-val₂₃ = λ v₂ → refl
+        ; map₂-var→val₁ = λ x σ₂ → refl ; val₂₃-shift = λ v₂ → refl }
+open Quotable QSS renaming (g-drop-seq to drop-seq)
+
+
+incs-seq : ∀ σ₁ σ₂ → (incs σ₁ ⨟ exts σ₂) ≡ incs (σ₁ ⨟ σ₂)
+incs-seq (↑ k) σ₂ = drop-exts k σ₂
+incs-seq (M • σ₁) σ₂ rewrite incs-seq σ₁ σ₂
+    | commute-subst-shift {σ₂} M = refl
+
+exts-seq : ∀ σ₁ σ₂ → exts σ₁ ⨟ exts σ₂ ≡ exts (σ₁ ⨟ σ₂)
+exts-seq (↑ k) σ₂ rewrite drop-incs k σ₂ = refl
+exts-seq (M • σ₁) σ₂ rewrite exts-0 σ₂
+    | commute-subst-shift {σ₂} M | incs-seq σ₁ σ₂ = refl
+
+FSS : FusableMap SubstIsMap SubstIsMap SubstIsMap
+FSS = record { Q = QSS ; var = λ x σ₁ σ₂ → sym (seq-subst σ₁ σ₂ x)
+             ; compose-ext = exts-seq }
+
+sub-sub : ∀ σ₁ σ₂ M → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
+sub-sub σ₁ σ₂ M = FusableMap.fusion FSS {_}{σ₁}{σ₂} M
+{-# REWRITE sub-sub #-}
+
+sub-assoc : ∀ {σ τ θ} → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
+sub-assoc {↑ k} {τ} {θ} = sym (drop-seq k τ θ)
+sub-assoc {M • σ} {τ} {θ} rewrite sub-assoc {σ}{τ}{θ} = refl
+{-# REWRITE sub-assoc #-}
+
+_[_] : ABT → ABT → ABT
+_[_] N M =  ⟪ subst-zero M ⟫ N
+
+subst-zero-exts-cons : ∀{σ M} → exts σ ⨟ subst-zero M ≡ M • σ
+subst-zero-exts-cons {σ}{M} rewrite incs=⨟↑ σ = refl
+
+subst-commute : ∀{N M σ} → (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ] ≡ ⟪ σ ⟫ (N [ M ])
+subst-commute {N}{M}{σ} =
+    begin
+        (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]
+    ≡⟨⟩
+        ⟪ exts σ ⨟ subst-zero (⟪ σ ⟫ M) ⟫ N
+    ≡⟨  cong (λ □ → ⟪ □ ⟫ N) subst-zero-exts-cons  ⟩
+        ⟪ subst-zero M ⨟ σ ⟫ N
+    ≡⟨⟩
+        ⟪ σ ⟫ (N [ M ])
+    ∎
+
+commute-subst : ∀{N M σ} → ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]
+commute-subst {N}{M}{σ} = sym (subst-commute {N}{M}{σ})
+
+_〔_〕 : ABT → ABT → ABT
+_〔_〕 N M = ⟪ exts (subst-zero M) ⟫ N
+
+substitution : ∀{M N L} → (M [ N ]) [ L ] ≡ (M 〔 L 〕) [ (N [ L ]) ]
+substitution {M}{N}{L} = commute-subst{N = M}{M = N}{σ = subst-zero L}
+
+exts-sub-cons : ∀ σ N V → (⟪ exts σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N
+exts-sub-cons σ N V rewrite exts-cons-shift σ = refl
