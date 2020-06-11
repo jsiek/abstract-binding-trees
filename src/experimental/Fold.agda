@@ -72,10 +72,6 @@ record Similar {V₁ C₁ V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C
   field op≈ : ∀{op rs₁ rs₂} → zip _⩳_ rs₁ rs₂
             → 𝐹₁.fold-op op rs₁ ≈ 𝐹₂.fold-op op rs₂
   
-module Simulate {V₁ C₁ V₂ C₂ : Set} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C₂)
-  (R : Similar F₁ F₂) where
-  open Similar R 
-
   sim : ∀{s : Size}{σ₁ σ₂}
      → (M : Term s) → σ₁ ≊ σ₂ → (Fold.fold F₁ σ₁ M) ≈ (Fold.fold F₂ σ₂ M)
   sim-arg : ∀{s : Size}{σ₁}{σ₂}{b} (M : Term s)
@@ -121,12 +117,6 @@ record Fusable {V₁ C₁ V₂ C₂ V₃ C₃ : Set}
               (map (𝐹₃.fold-arg {s} σ₃) args)
             → 𝐹₂.fold σ₂ “ 𝐹₁.fold-op op (map (𝐹₁.fold-arg {s} σ₁) args) ”
               ⩯ 𝐹₃.fold-op op (map (𝐹₃.fold-arg {s} σ₃) args)
-
-module Fuse {V₁ C₁ V₂ C₂ V₃ C₃ : Set}
-  (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C₂) (F₃ : Fold V₃ C₃)
-  (Fus : Fusable F₁ F₂ F₃) where
-  open Fusable Fus
-  open RelBind _≃_ _⩯_
 
   fusion : ∀{s}{M : Term s}{σ₁ σ₂ σ₃}
      → σ₁ ⨟ σ₂ ≈ σ₃
