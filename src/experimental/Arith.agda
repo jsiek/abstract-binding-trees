@@ -1,3 +1,4 @@
+open import Data.Bool using (true; false) renaming (Bool to 𝔹)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _⊔_; _∸_)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
@@ -12,11 +13,13 @@ module experimental.Arith where
     op-num : ℕ → Op
     op-mult : Op
     op-let : Op
+    op-bool : 𝔹 → Op
 
   sig : Op → List ℕ
   sig (op-num n) = []
   sig op-mult = 0 ∷ 0 ∷ []
   sig op-let = 0 ∷ 1 ∷ []
+  sig (op-bool b) = []
 
   open import experimental.Fold Op sig
   open import experimental.ScopedTuple
@@ -31,26 +34,32 @@ module experimental.Arith where
 
   open import Data.Maybe using (Maybe; nothing; just)
 
-  _>>=_ : Maybe ℕ → (ℕ → Maybe ℕ) → Maybe ℕ
+  data Val : Set where
+    v-num : ℕ → Val
+    v-bool : 𝔹 → Val
+
+  _>>=_ : Maybe Val → (Val → Maybe Val) → Maybe Val
   x >>= f
       with x
   ... | nothing = nothing
   ... | just n = f n
 
-  eval-op : (op : Op) → Tuple (sig op) (Bind (Maybe ℕ) (Maybe ℕ)) → Maybe ℕ
-  eval-op (op-num x) tt = just x
-  eval-op op-mult ⟨ x , ⟨ y , tt ⟩ ⟩ = do n ← x; m ← y; just (n * m)
+  eval-op : (op : Op) → Tuple (sig op) (Bind (Maybe Val) (Maybe Val))
+          → Maybe Val
+  eval-op (op-num n) tt = just (v-num n)
+  eval-op op-mult ⟨ x , ⟨ y , tt ⟩ ⟩ = do n ← x; m ← y; just (v-num (n * m))
   eval-op op-let ⟨ x , ⟨ f , tt ⟩ ⟩ = do n ← x; f (just n)
+  eval-op (op-bool b) tt = just (v-bool b)
 
-  S : Substable (Maybe ℕ)
+  S : Substable (Maybe Val)
   S = record { var→val = λ x → nothing ; shift = λ r → r
              ; var→val-suc-shift = refl }
 
-  E : Fold (Maybe ℕ) (Maybe ℕ) 
+  E : Fold (Maybe Val) (Maybe Val) 
   E = record { S = S ; ret = λ x → x ; fold-op = eval-op }
   open Fold E
 
-  eval : AST → Maybe ℕ
+  eval : AST → Maybe Val
   eval = fold (↑ 0)
 
   open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
