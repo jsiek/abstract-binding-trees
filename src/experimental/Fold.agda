@@ -39,7 +39,7 @@ record Fold (V C : Set) : Set where
         ret : V → C
         fold-op : (op : Op) → Tuple (sig op) (Bind V C) → C
         
-  open GenericSubst S public
+  open GenericSubst S using (⧼_⧽; g-extend)
 
   fold : ∀{s : Size} → GSubst V → Term s → C
   fold-arg : ∀{s : Size} → GSubst V → {b : ℕ} → Term s → Bind V C b
@@ -97,16 +97,18 @@ record Fusable {V₁ C₁ V₂ C₂ V₃ C₃ : Set}
   (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C₂) (F₃ : Fold V₃ C₃) : Set₁ where
   module 𝐹₁ = Fold F₁ ; module 𝐹₂ = Fold F₂ ; module 𝐹₃ = Fold F₃
   module S₁ = Substable 𝐹₁.S ; module S₂ = Substable 𝐹₂.S
+  module G₁ = GenericSubst 𝐹₁.S ; module G₂ = GenericSubst 𝐹₂.S
+  module G₃ = GenericSubst 𝐹₃.S
   field
      “_” : C₁ → ABT
      _⨟_≈_ : GSubst V₁ → GSubst V₂ → GSubst V₃ → Set
      _≃_ : V₂ → V₃ → Set
      _⩯_ : C₂ → C₃ → Set
      ret⩯ : ∀{s : Size}{x σ₁ σ₂ σ₃} → σ₁ ⨟ σ₂ ≈ σ₃
-          → 𝐹₂.fold σ₂ “ 𝐹₁.ret (𝐹₁.⧼ σ₁ ⧽ x) ” ⩯ 𝐹₃.ret (𝐹₃.⧼ σ₃ ⧽ x)
+          → 𝐹₂.fold σ₂ “ 𝐹₁.ret (G₁.⧼ σ₁ ⧽ x) ” ⩯ 𝐹₃.ret (G₃.⧼ σ₃ ⧽ x)
      ext≈ : ∀{σ₁ σ₂ σ₃ v₂ v₃}
         → σ₁ ⨟ σ₂ ≈ σ₃   →   v₂ ≃ v₃
-        → (S₁.var→val 0 • 𝐹₁.g-inc σ₁) ⨟ (v₂ • 𝐹₂.g-inc σ₂) ≈ (v₃ • 𝐹₃.g-inc σ₃)
+        → (S₁.var→val 0 • G₁.g-inc σ₁) ⨟ (v₂ • G₂.g-inc σ₂) ≈ (v₃ • G₃.g-inc σ₃)
   module R1 = Reify V₁ C₁ S₁.var→val
   open RelBind _≃_ _⩯_ 
   field op⩯ : ∀{s : Size}{σ₁ σ₂ σ₃ op}{args : Tuple (sig op) (λ _ → Term s)}
