@@ -1,5 +1,8 @@
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
+open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
+open import Data.Unit using (⊤; tt)
+open import experimental.ScopedTuple
 
 module AbstractBindingTree (Op : Set) (sig : Op → List ℕ)  where
 
@@ -43,3 +46,22 @@ max-var-arg (bind arg) = (max-var-arg arg) ∸ 1
 
 max-var-args nil = 0
 max-var-args (cons arg args) = (max-var-arg arg) ⊔ (max-var-args args)
+
+{- Helper functions -}
+
+map₊ : ∀{bs} → (∀ {b} → Arg b → Arg b) → Args bs → Args bs
+map₊ {[]} f nil = nil
+map₊ {b ∷ bs} f (cons arg args) = cons (f arg) (map₊ f args)
+
+{- Convert to tuples -}
+
+⌊_⌋ : ∀{bs} → Args bs → Tuple bs (λ _ → ABT)
+⌊_⌋ₐ : ∀{b} → Arg b → ABT
+
+⌊_⌋ₐ {zero} (ast M) = M
+⌊_⌋ₐ {suc b} (bind arg) = ⌊ arg ⌋ₐ
+
+⌊_⌋ {[]} args = tt
+⌊_⌋ {b ∷ bs} (cons arg args) = ⟨ ⌊ arg ⌋ₐ , ⌊ args ⌋ ⟩
+
+

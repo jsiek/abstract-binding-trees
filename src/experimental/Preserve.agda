@@ -142,7 +142,7 @@ module ABTPred {I : Set}{V C : Set} (𝑃 : Op → List I → I → Set)
     let IH = lookup-pres' {s}{σ}{Γ}{Δ}{x}{A} σ⦂ ∋x in
     ext-⊢v {σ}{v = v} IH
 
-record Preservable {V C}(I : Set) (F : Fold V C) : Set₁ where
+record PreserveFold {V C}(I : Set) (F : Fold V C) : Set₁ where
   open Fold F ; open Substable S ; open GenericSubst S
   field 𝑃 : Op → List I → I → Set
   field 𝐴 : List I → ABT → V → I → Set
