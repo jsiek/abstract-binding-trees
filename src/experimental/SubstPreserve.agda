@@ -21,11 +21,11 @@ open import Relation.Binary.PropositionalEquality
   renaming (subst to eq-subst)
 
 
-module SubstPreserve (Op : Set) (sig : Op → List ℕ) where
+module experimental.SubstPreserve (Op : Set) (sig : Op → List ℕ) where
 
-open import AbstractBindingTree Op sig
-open import Fold
-open import Preserve Op sig
+open import experimental.ABT Op sig
+open import experimental.Fold
+open import experimental.Preserve Op sig
 open import GenericSubstitution
 open import Var
 
@@ -41,13 +41,13 @@ record SubstPreservableOut {V}{I} (S : Substable V)
   𝒜 : List I → ABT → V → I → Set
   𝒜 _ M _ _ = (M ≡ ` 0)
   open Substable S
-  open GenericSub V var→val shift using (⧼_⧽)
-  open ABTPred 𝒫
+  open GenericSubst S using (⧼_⧽)
   field _⊢v_↝_⦂_ : List I → ABT → V → I → Set
   field _⊢c_↝_⦂_ : List I → ABT → ABT → I → Set
+  open ABTPred 𝒫 ? _⊢v_↝_⦂_ _⊢c_↝_⦂_ S
   field ⊢var→val : ∀{Δ x A} → (Δ ∋ x ⦂ A) → Δ ⊢v (` x) ↝ var→val x ⦂ A
   field val→abt : V → ABT
-  open GenericSubst V var→val shift Op sig val→abt using (gen-subst-is-foldable)
+  open GenericSubst S
   open Foldable gen-subst-is-foldable using (ret; fold-op)
   field 𝒜-var→val : ∀{B Δ} → 𝒜 (B ∷ Δ) (` 0) (var→val 0) B
   field ⊢shift : ∀{Δ A B σ x} → Δ ⊢v ` x ↝ ⧼ σ ⧽ x ⦂ B → (A ∷ Δ) ⊢v ` suc x ↝ shift (⧼ σ ⧽ x) ⦂ B

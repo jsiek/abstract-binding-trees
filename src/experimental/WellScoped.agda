@@ -1,16 +1,13 @@
 
-{- NEEDS TO BE UPDATED -}
-
-open import Syntax
-open import Generic
-
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_)
 open import Data.Unit using (⊤; tt)
 
-module WellScoped (Op : Set) (sig : Op → List ℕ) where
+module experimental.WellScoped (Op : Set) (sig : Op → List ℕ) where
 
-  open OpSig Op sig hiding (rename)
+  open import experimental.ABT Op sig
+  open import experimental.Substitution Op sig
+  open import experimental.Preserve Op sig
 
   𝒫 : Op → List ⊤ → ⊤ → Set
   𝒫 op Γ A = ⊤
@@ -19,14 +16,13 @@ module WellScoped (Op : Set) (sig : Op → List ℕ) where
   mk-list 0 = []
   mk-list (suc n) = tt ∷ mk-list n
 
-  open ABTPred Op sig 𝒫
+  open ABTPred 𝒫 ? ? ? ?
   
   WS : ℕ → ABT → Set
   WS n M = (mk-list n) ⊢ M ⦂ tt
 
   module RenamingPreserves where
 
-    open Rename Op sig
     open RenamePres Op sig 𝒫
 
     WS-Rename : ℕ → Rename → ℕ → Set
@@ -38,7 +34,6 @@ module WellScoped (Op : Set) (sig : Op → List ℕ) where
 
   module SubstPreserves where
   
-    open Subst Op sig
     open SubstPres Op sig 𝒫
 
     WS-Subst : ℕ → Subst → ℕ → Set
