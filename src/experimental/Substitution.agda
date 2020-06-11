@@ -8,11 +8,11 @@ open import Data.Nat.Properties using (+-comm)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open Eq.≡-Reasoning 
-open import GenericSubstitution
 open import Var
 
 module experimental.Substitution (Op : Set) (sig : Op → List ℕ) where
 
+open import GenericSubstitution public
 open import experimental.ABT Op sig
 open import experimental.Map Op sig
 

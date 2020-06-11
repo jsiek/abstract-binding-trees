@@ -32,7 +32,7 @@ open GenericSubst RenameIsSubstable
 {-# REWRITE inc-suc #-}
 
 Rename : Set
-Rename = Substitution Var
+Rename = GSubst Var
 
 abstract
   ext : Rename → Rename
@@ -183,7 +183,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
    ---------------------------------------------------------------------------}
 
   Subst : Set
-  Subst = Substitution ABT
+  Subst = GSubst ABT
 
   SubstIsSubstable : Substable ABT
   SubstIsSubstable = record { var→val = `_ ; shift = rename (↑ 1)
