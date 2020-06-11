@@ -27,7 +27,7 @@ open import experimental.ABT Op sig
 open import GenericSubstitution
 open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
-open import experimental.Fold
+open import experimental.Fold Op sig
 open import experimental.ScopedTuple
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; cong; cong₂)
@@ -43,11 +43,11 @@ module ABTPred {I : Set} (𝒫 : Op → List I → I → Set) where
   
   data _⊢_⦂_ : List I → ABT → I → Set
   data _∣_⊢a_⦂_ : (b : ℕ) → List I → ABT → I → Set 
-  data _∣_⊢as_⦂_ : (bs : List ℕ) → List I → Tuple bs (λ _ → ABT) → List I → Set   
+  data _∣_⊢as_⦂_ : (bs : List ℕ) → List I → Tuple bs (λ _ → ABT) → List I → Set
   
   data _⊢_⦂_ where
     var-p : ∀{Γ x A}
-       → Γ ∋ x ⦂ A
+       → Γ ∋ x ⦂ A   {- use a predicate here too? -}
        → Γ ⊢ ` x ⦂ A
     op-op : ∀{Γ op args}{B As}
        → (sig op) ∣ Γ ⊢as args ⦂ As
@@ -83,20 +83,21 @@ module PresArgResult {V C : Set}{I : Set}
   open ABTPred 𝒫
   
   data _∣_⊢r_↝_⦂_ : (b : ℕ) → List I → ABT → Bind V C b → I → Set where
-    ast-r : ∀{Δ}{M}{c}{A}
+    ast-r : ∀{s}{Δ}{M : Term s}{c}{A}
        → Δ ⊢c M ↝ c ⦂ A
        → 0 ∣ Δ ⊢r M ↝ c ⦂ A
        
-    bind-r : ∀{b}{A B Δ}{f}{M}
-          → (∀ {v}{M} → (B ∷ Δ) ⊢v M ↝ v ⦂ B
+    bind-r : ∀{s}{b}{A B Δ}{f}{arg : Term s}
+          → (∀{v}{M : Term s} → (B ∷ Δ) ⊢v M ↝ v ⦂ B
                       → 𝒜 (B ∷ Δ) M v B
                       → b ∣ (B ∷ Δ) ⊢r M ↝ (f v) ⦂ A)
-          → (suc b) ∣ Δ ⊢r M ↝ f ⦂ A
+          → (suc b) ∣ Δ ⊢r arg ↝ f ⦂ A
   
-  data _∣_⊢rs_↝_⦂_ : (bs : List ℕ) → List I → Tuple bs (λ _ → ABT)
-                → Tuple bs (λ _ → C) → List I → Set where
-    nil-r : ∀{Δ} → [] ∣ Δ ⊢rs tt ↝ tt ⦂ []
-    cons-r : ∀{b bs}{r rs}{Δ}{A}{As}{arg}{args}
+  data _∣_⊢rs_↝_⦂_ : ∀{s}(bs : List ℕ) → List I → Tuple bs (λ _ → Term s)
+                → Tuple bs (Bind V C) → List I → Set where
+    nil-r : ∀{s}{Δ} → _∣_⊢rs_↝_⦂_ {s} [] Δ tt tt []
+    cons-r : ∀{s}{b bs}{r rs}{Δ}{A}{As}
+              {arg : Term s}{args : Tuple bs (λ _ → Term s)}
         → b ∣ Δ ⊢r arg ↝ r ⦂ A
         → bs ∣ Δ ⊢rs args ↝ rs ⦂ As
         → (b ∷ bs) ∣ Δ ⊢rs ⟨ arg , args ⟩ ↝ ⟨ r , rs ⟩ ⦂ (A ∷ As)
@@ -112,50 +113,63 @@ record Preservable {V C}(I : Set) (F : Fold V C) : Set₁ where
   open Fold F
   open Substable S
 
-  field lookup-pres : ∀{σ}{Γ Δ}{x}{A} → σ ⦂ Γ ⇒ Δ → Γ ∋ x ⦂ A
-           → Δ ⊢v ` x ↝ ⧼ σ ⧽ x ⦂ A
+  field lookup-pres : ∀{s}{σ}{Γ Δ}{x}{A} → σ ⦂ Γ ⇒ Δ → Γ ∋ x ⦂ A
+           → Δ ⊢v `_ {s} x ↝ ⧼ σ ⧽ x ⦂ A
   field extend-pres : ∀ {v}{σ}{Γ Δ A}{M} → (A ∷ Δ) ⊢v M ↝ v ⦂ A
-           → 𝐴 (A ∷ Δ) M v A → σ ⦂ Γ ⇒ Δ → (v • σ) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+           → 𝐴 (A ∷ Δ) M v A → σ ⦂ Γ ⇒ Δ → (v • g-inc σ) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
   field ret-pres : ∀{v}{Δ}{A}{M} → Δ ⊢v M ↝ v ⦂ A → Δ ⊢c M ↝ (ret v) ⦂ A
-  field var-pres : ∀{x}{Δ}{A} → Δ ∋ x ⦂ A → Δ ⊢v ` x ↝ var→val x ⦂ A
-  field op-pres : ∀ {op}{Rs}{Δ}{A}{As}{args} → sig op ∣ Δ ⊢rs args ↝ Rs ⦂ As
+  field op-pres : ∀ {s}{op}{Rs}{Δ}{A}{As}{args : Tuple (sig op) (λ _ → Term s)}
+           → sig op ∣ Δ ⊢rs args ↝ Rs ⦂ As
            → 𝑃 op As A → Δ ⊢c op ⦅ args ⦆ ↝ (fold-op op Rs) ⦂ A
 
 
-module Preservation{V C Env}{I} (F : Fold V C) (P : Preservable I F)
+module Preservation{V C}{I} (F : Fold V C) (P : Preservable I F)
   where
-  open Fold F using (fold; fold-arg; fold-op)
+  open Fold F using (fold; fold-arg; fold-op; g-inc)
   open Preservable P
 
   open ABTPred 𝑃
   open PresArgResult 𝑃 𝐴 _⊢v_↝_⦂_ _⊢c_↝_⦂_ public
 
-  preserve : ∀{M}{σ}{Γ Δ}{A}
+  ScopedEnv : (b : ℕ) → Set
+  ScopedEnv 0 = GSubst V
+  ScopedEnv (suc b) = V → ScopedEnv b
+
+  Ext : (b : ℕ) → GSubst V → ScopedEnv b
+  Ext 0 σ = σ
+  Ext (suc b) σ v = Ext b (v • g-inc σ)
+
+  preserve : ∀{s}{M : Term s}{σ : GSubst V}{Γ Δ : List I}{A : I}
      → Γ ⊢ M ⦂ A
      → σ ⦂ Γ ⇒ Δ
-     → Δ ⊢c M ↝ fold σ M ⦂ A
-  pres-arg : ∀{b}{Γ Δ}{arg : ABT}{A}{σ}
+     → Δ ⊢c M ↝ fold {s} σ M ⦂ A
+  pres-arg : ∀{s}{b}{Γ Δ}{arg : Term s}{A}{σ}
      → b ∣ Γ ⊢a arg ⦂ A
      → σ ⦂ Γ ⇒ Δ
-     → b ∣ Δ ⊢r arg ↝ fold-arg σ arg ⦂ A
-  pres-args : ∀{bs}{Γ Δ}{args : Tuple bs (λ _ → ABT)}{As}{σ}
+     → b ∣ Δ ⊢r arg ↝ fold-arg {s} σ arg ⦂ A
+  pres-args : ∀{s}{bs}{Γ Δ}{args : Tuple bs (λ _ → Term s)}{As}{σ}
      → bs ∣ Γ ⊢as args ⦂ As
      → σ ⦂ Γ ⇒ Δ
      → bs ∣ Δ ⊢rs args ↝ map (fold-arg σ) args ⦂ As
-  preserve {` x} {σ} {Γ} {Δ} {A} (var-p ∋x) σΓΔ =
-      ret-pres (lookup-pres σΓΔ ∋x)
-  preserve {op ⦅ args ⦆} {σ} {Γ} {Δ} {A} (op-op ⊢args 𝑃op) σΓΔ =
-      op-pres (pres-args ⊢args σΓΔ) 𝑃op
-  pres-arg {zero} {Γ} {Δ} {M} {A} {σ} (ast-a ⊢M) σΓΔ =
-      ast-r (preserve ⊢M σΓΔ)
-  pres-arg {suc b} {Γ} {Δ} {arg} {A} {σ} (bind-a {b}{B} ⊢arg) σΓΔ =
-      bind-r G
+  preserve {_}{`_ {s} x} {σ} {Γ} {Δ} {A} (var-p ∋x) σΓΔ =
+      ret-pres (lookup-pres {s} σΓΔ ∋x)
+  preserve {_}{_⦅_⦆ {s} op args} {σ} {Γ} {Δ} {A} (op-op ⊢args 𝑃op) σΓΔ =
+      op-pres {s} (pres-args {s} ⊢args σΓΔ) 𝑃op
+  pres-arg {s}{zero} {Γ} {Δ} {arg} {A} {σ} (ast-a ⊢arg) σΓΔ =
+      ast-r (preserve ⊢arg σΓΔ)
+  pres-arg {s}{suc b} {Γ} {Δ} {arg} {A} {σ} (bind-a {b}{B} ⊢arg) σΓΔ =
+      bind-r {s}{b}{A}{B}{arg = arg} G
       where
-      G : ∀ {v}{M}
+      G : ∀{v}{M : Term s}
          → (B ∷ Δ) ⊢v M ↝ v ⦂ B
          → 𝐴 (B ∷ Δ) M v B
-         → b ∣ B ∷ Δ ⊢r arg ↝ fold-arg σ arg v ⦂ A
-      G {v} ⊢v⦂B 𝐴Mv = pres-arg {b} {arg = arg} ⊢arg (extend-pres ⊢v⦂B 𝐴Mv σΓΔ)
-  pres-args {[]} {Γ} {Δ} {tt} {[]} ⊢args σΓΔ = nil-r
-  pres-args {b ∷ bs} {Γ} {Δ} {⟨ arg , args ⟩} {A ∷ As} (cons-a ⊢arg ⊢args) σΓΔ =
-      cons-r (pres-arg {b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
+         → b ∣ B ∷ Δ ⊢r M ↝ fold-arg σ arg v ⦂ A
+      G {v}{M} ⊢v⦂B 𝐴Mv =
+        let e = extend-pres ⊢v⦂B 𝐴Mv σΓΔ in
+        let pa = pres-arg {_}{b} {arg = M}{A} {!!} e in
+        {!!}
+  pres-args {s}{[]} {Γ} {Δ} {tt} {[]} ⊢args σΓΔ = nil-r {s}
+  pres-args {s}{b ∷ bs} {Γ} {Δ} {⟨ arg , args ⟩} {A ∷ As}
+      (cons-a ⊢arg ⊢args) σΓΔ =
+      cons-r {s} (pres-arg {s}{b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
+
