@@ -8,7 +8,7 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import Var
-open import experimental.ScopedTuple using (map; map-cong; map-compose)
+open import ScopedTuple using (map; map-cong; map-compose)
 open import GenericSubstitution
 
 module Map (Op : Set) (sig : Op → List ℕ) where

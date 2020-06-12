@@ -4,9 +4,8 @@ open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_�
 open import Data.Unit using (⊤; tt)
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Size
 
-module experimental.ScopedTuple where
+module ScopedTuple where
 
 {- Scet: A scoped Set -}
 Scet : Set₁
