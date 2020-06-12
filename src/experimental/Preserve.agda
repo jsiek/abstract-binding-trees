@@ -46,41 +46,39 @@ BTypes : Set → List ℕ → Set
 BTypes I [] = ⊤
 BTypes I (b ∷ bs) = BType I b × BTypes I bs
 
-{----- Predicate on ABT's (e.g. Type System) -----}
+{----- Predicate on ABT's (e.g. type system for expressions) -----}
 
 module ABTPred {I : Set}
-  (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set)
-  where
+  (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set) where
 
   data _⊢_⦂_ : List I → ABT → I → Set
   data _∣_∣_⊢a_⦂_ : (b : ℕ) → List I → BType I b → Arg b → I → Set 
-  data _∣_∣_⊢as_⦂_ : (bs : List ℕ) → List I → BTypes I bs → Args bs → Vec I (length bs) → Set
+  data _∣_∣_⊢as_⦂_ : (bs : List ℕ) → List I → BTypes I bs → Args bs
+                  → Vec I (length bs) → Set
   
   data _⊢_⦂_ where
     var-p : ∀{Γ x A}
        → Γ ∋ x ⦂ A   {- use a predicate here too? -}
        → Γ ⊢ ` x ⦂ A
-    op-op : ∀{Γ op}{args : Args (sig op)}{A}{As : Vec I (length (sig op))}{Bs : BTypes I (sig op)}
+    op-op : ∀{Γ op}{args : Args (sig op)}{A}{As : Vec I (length (sig op))}
+             {Bs : BTypes I (sig op)}
        → (sig op) ∣ Γ ∣ Bs ⊢as args ⦂ As
        → 𝑃 op As Bs A
        → Γ ⊢ op ⦅ args ⦆ ⦂ A
 
   data _∣_∣_⊢a_⦂_ where
-    ast-a : ∀{Γ}{M}{A}
-       → Γ ⊢ M ⦂ A
-       → 0 ∣ Γ ∣ tt ⊢a ast M ⦂ A
+    ast-a : ∀{Γ}{M}{A}  →  Γ ⊢ M ⦂ A  →  0 ∣ Γ ∣ tt ⊢a ast M ⦂ A
        
-    bind-a : ∀{b}{B Bs Γ arg A}
-       → b ∣ (B ∷ Γ) ∣ Bs ⊢a arg ⦂ A
+    bind-a : ∀{b}{B Bs Γ arg A} → b ∣ (B ∷ Γ) ∣ Bs ⊢a arg ⦂ A
        → (suc b) ∣ Γ ∣ ⟨ B , Bs ⟩ ⊢a bind arg ⦂ A
 
   data _∣_∣_⊢as_⦂_ where
     nil-a : ∀{Γ} → [] ∣ Γ ∣ tt ⊢as nil ⦂ []̌ 
     cons-a : ∀{b bs}{arg args}{Γ}{A}{As}{Bs}{Bss}
-       → b ∣ Γ ∣ Bs ⊢a arg ⦂ A
-       → bs ∣ Γ ∣ Bss ⊢as args ⦂ As
+       → b ∣ Γ ∣ Bs ⊢a arg ⦂ A  →  bs ∣ Γ ∣ Bss ⊢as args ⦂ As
        → (b ∷ bs) ∣ Γ ∣ ⟨ Bs , Bss ⟩ ⊢as cons arg args ⦂ (A ∷̌ As)
 
+{----- Predicate on result of fold (e.g. type system for values) -----}
 
 module FoldPred {I : Set}{V C : Set}
   (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set)
