@@ -100,7 +100,7 @@ module examples.Arith where
   _ = refl
 
 
-  {--- Type Safety via preserve-fold ---}
+  {--- Type Safety ---}
 
   open import experimental.Preserve Op sig
 
@@ -130,6 +130,8 @@ module examples.Arith where
   
   _⊢c_⦂_ : List Type → Maybe Val → Type → Set
   Γ ⊢c mv ⦂ A = Γ ⊢v mv ⦂ A
+
+  {--- Type Safety via preserve-fold ---}
   
   open PreserveFold Eval 𝑃 𝐴 _⊢v_⦂_ _⊢c_⦂_
   open GenericSubstitution
@@ -143,8 +145,6 @@ module examples.Arith where
   compress-⊢v : ∀{v A B Δ} → (B ∷ Δ) ⊢v v ⦂ A → Δ ⊢v v ⦂ A
   compress-⊢v {.nothing} ⊢v-none = ⊢v-none
   compress-⊢v {.(just _)} (⊢v-just x) = ⊢v-just x
-
-  open ExtV (λ{σ}{A}{B}{Δ}{v} ⊢v⦂ → ext-⊢v{v}{A}{B}{Δ} ⊢v⦂)
 
   ret-pres : ∀{v}{Δ}{A} → Δ ⊢v v ⦂ A → Δ ⊢c (ret v) ⦂ A
   ret-pres ⊢v⦂ = ⊢v⦂
@@ -180,6 +180,7 @@ module examples.Arith where
   ... | true = Pthn
   ... | false = Pels
 
+  open ExtV (λ{σ}{A}{B}{Δ}{v} ⊢v⦂ → ext-⊢v{v}{A}{B}{Δ} ⊢v⦂)
   open Reqs ret-pres op-pres
   
   type-safety : ∀ M → [] ⊢ M ⦂ t-nat → [] ⊢c eval M ⦂ t-nat
