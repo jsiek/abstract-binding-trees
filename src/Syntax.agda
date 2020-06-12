@@ -253,6 +253,9 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   exts-cons-shift : ∀ σ → exts σ ≡ (` 0 • (σ ⨟ ↑ 1))
   exts-cons-shift σ rewrite exts-def σ | incs=⨟↑ σ = refl 
 
+  exts-suc : ∀ σ x → ⟦ exts σ ⟧ (suc x) ≡ ⟦ σ ⨟ ↑ 1 ⟧ x
+  exts-suc σ x rewrite exts-cons-shift σ = refl
+
   seq-subst : ∀ σ τ x → ⟦ σ ⨟ τ ⟧ x ≡ ⟪ τ ⟫ (⟦ σ ⟧ x)
   seq-subst (↑ k) τ x rewrite sub-up-seq k τ | drop-add k τ x = refl
   seq-subst (M • σ) τ zero rewrite sub-cons-seq M σ τ = refl

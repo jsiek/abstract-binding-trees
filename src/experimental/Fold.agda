@@ -12,7 +12,7 @@ open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import Size using (Size)
 open import Var
-open import experimental.ScopedTuple
+open import ScopedTuple
     using (Tuple; map; _✖_; zip; zip-refl; map-pres-zip; map-compose-zip;
            map-compose; zip-map→rel; Lift-Eq-Tuple; Lift-Rel-Tuple; zip→rel)
 open import GenericSubstitution
