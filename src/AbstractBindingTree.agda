@@ -1,13 +1,14 @@
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
+open import Data.Nat.Properties using (+-suc; +-identityʳ)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit using (⊤; tt)
 open import experimental.ScopedTuple
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
+open import Var
 
 module AbstractBindingTree (Op : Set) (sig : Op → List ℕ)  where
-
-open import Data.Nat.Properties using (+-suc; +-identityʳ)
-open import Var
 
 data Args : List ℕ → Set
 
@@ -22,6 +23,9 @@ data Arg : ℕ → Set where
 data Args where
   nil : Args []
   cons : ∀{n bs} → Arg n → Args bs → Args (n ∷ bs)
+
+var-injective : ∀ {x y} → ` x ≡ ` y → x ≡ y
+var-injective refl = refl
 
 bind-arg : ∀{m} → (n : ℕ) → Arg m → Arg (n + m)
 bind-arg  zero A = A

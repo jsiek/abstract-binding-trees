@@ -1,5 +1,3 @@
-{-# OPTIONS --rewriting #-}
-
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; pred; _≤_; _<_; _≟_; s≤s; z≤n)
@@ -10,12 +8,9 @@ open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
+open import Var
 
 module GenericSubstitution where
-
-open import Agda.Builtin.Equality
-open import Agda.Builtin.Equality.Rewrite
-open import Var
 
 infixr 6 _•_
 
@@ -33,7 +28,6 @@ map-sub f (v • σ) = f v • map-sub f σ
 map-sub-id : ∀{V} (σ : GSubst V) → map-sub (λ x → x) σ ≡ σ
 map-sub-id (↑ k) = refl
 map-sub-id (v • σ) = cong₂ _•_ refl (map-sub-id σ)
-{-# REWRITE map-sub-id #-}
 
 drop : ∀{V} → (k : ℕ) → GSubst V → GSubst V
 drop k (↑ k') = ↑ (k + k')
@@ -49,7 +43,6 @@ map-sub-drop (v • σ) f (suc k) = map-sub-drop σ f k
 drop-0 : ∀ {V} σ → drop {V} 0 σ ≡ σ
 drop-0 (↑ k) = refl
 drop-0 (v • σ) = refl
-{-# REWRITE drop-0 #-}
   
 drop-drop : ∀ {V} k k' σ → drop {V} (k + k') σ ≡ drop k (drop k' σ)
 drop-drop k k' (↑ k₁) rewrite +-assoc k k' k₁ = refl
@@ -79,18 +72,21 @@ module GenericSubst {V} (S : Substable V) where
   g-extend : V → GSubst V → GSubst V
   g-extend v σ = v • g-inc σ
   
-  g-ext : GSubst V → GSubst V
-  g-ext σ = g-extend (var→val 0) σ
+  abstract
+    g-ext : GSubst V → GSubst V
+    g-ext σ = g-extend (var→val 0) σ
+
+    g-ext-def : ∀ σ → g-ext σ ≡ g-extend (var→val 0) σ
+    g-ext-def σ = refl
 
   shifts : ℕ → V → V
   shifts zero v = v
   shifts (suc k) v = shift (shifts k v) 
 
-  g-drop-add : ∀{x : Var} (k : ℕ) (σ : GSubst V)
-           → ⧼ drop k σ ⧽ x ≡ ⧼ σ ⧽ (k + x)
-  g-drop-add {x} k (↑ k') rewrite +-comm k k' | +-assoc k' k x = refl
-  g-drop-add {x} zero (v • σ) = refl
-  g-drop-add {x} (suc k) (v • σ) = g-drop-add k σ
+  g-drop-add : ∀ k σ x → ⧼ drop k σ ⧽ x ≡ ⧼ σ ⧽ (k + x)
+  g-drop-add k (↑ k') x rewrite +-comm k k' | +-assoc k' k x = refl
+  g-drop-add zero (v • σ) x = refl
+  g-drop-add (suc k) (v • σ) x = g-drop-add k σ x
 
   g-drop-inc : ∀ k σ → drop k (g-inc σ) ≡ g-inc (drop k σ)
   g-drop-inc k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
@@ -106,16 +102,17 @@ module GenericSubst {V} (S : Substable V) where
   g-inc-shift (y • ρ) zero = refl
   g-inc-shift (y • ρ) (suc x) = g-inc-shift ρ x
 
-  g-ext-cong : ∀ {σ₁ σ₂} → ((x : ℕ) → ⧼ σ₁ ⧽ x ≡ ⧼ σ₂ ⧽ x)
-    → (x : ℕ) → ⧼ g-ext σ₁ ⧽ x ≡ ⧼ g-ext σ₂ ⧽ x
-  g-ext-cong {σ₁} {σ₂} f zero = refl
-  g-ext-cong {σ₁} {σ₂} f (suc x)
-      rewrite g-inc-shift σ₁ x | g-inc-shift σ₂ x | f x = refl
+  abstract 
+   g-ext-cong : ∀ {σ₁ σ₂} → ((x : ℕ) → ⧼ σ₁ ⧽ x ≡ ⧼ σ₂ ⧽ x)
+     → (x : ℕ) → ⧼ g-ext σ₁ ⧽ x ≡ ⧼ g-ext σ₂ ⧽ x
+   g-ext-cong {σ₁} {σ₂} f zero = refl
+   g-ext-cong {σ₁} {σ₂} f (suc x)
+       rewrite g-inc-shift σ₁ x | g-inc-shift σ₂ x | f x = refl
 
-  g-drop-ext : ∀ k ρ → drop (suc k) (g-ext ρ) ≡ g-inc (drop k ρ)
-  g-drop-ext k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
-  g-drop-ext zero (x • ρ) = refl
-  g-drop-ext (suc k) (x • ρ) = g-drop-inc k ρ
+   g-drop-ext : ∀ k ρ → drop (suc k) (g-ext ρ) ≡ g-inc (drop k ρ)
+   g-drop-ext k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
+   g-drop-ext zero (x • ρ) = refl
+   g-drop-ext (suc k) (x • ρ) = g-drop-inc k ρ
 
   data Shift : ℕ → GSubst V → Set where
     shift-up : ∀{k} → Shift k (↑ k)
@@ -153,12 +150,13 @@ module GenericSubst {V} (S : Substable V) where
   g-inc-ShftAbv {k} {.(suc _)} {k′} {.(_ • _)} (sha-suc σkc refl) =
      sha-suc (g-inc-ShftAbv σkc) refl
 
-  g-ext-ShftAbv : ∀ {k c σ}
-     → ShftAbv k c 0 σ
-     → ShftAbv k (suc c) 0 (g-ext σ)
-  g-ext-ShftAbv {k} {.0} {σ} (sha-0 σk) = sha-suc (sha-0 (g-inc-Shift σk)) refl
-  g-ext-ShftAbv {k} {.(suc _)} {.(_ • _)} (sha-suc σk refl) =
-      sha-suc (sha-suc (g-inc-ShftAbv σk) refl) refl
+  abstract
+   g-ext-ShftAbv : ∀ {k c σ}
+      → ShftAbv k c 0 σ
+      → ShftAbv k (suc c) 0 (g-ext σ)
+   g-ext-ShftAbv {k} {.0} {σ} (sha-0 σk) = sha-suc (sha-0 (g-inc-Shift σk)) refl
+   g-ext-ShftAbv {k} {.(suc _)} {.(_ • _)} (sha-suc σk refl) =
+       sha-suc (sha-suc (g-inc-ShftAbv σk) refl) refl
 
   g-ShftAbv→Shift : ∀ {k c σ} → ShftAbv k c k σ → Shift k σ
   g-ShftAbv→Shift {k} {.0} (sha-0 σk) = σk
@@ -185,7 +183,8 @@ module Relate {V₁}{V₂} (S₁ : Substable V₁) (S₂ : Substable V₂)
         r-cons (shift∼ v₁~v₂ ) (g-inc-≊ σ₁≊σ₂)
 
     g-ext-≊ : ∀ {σ₁ σ₂} → σ₁ ≊ σ₂ → G₁.g-ext σ₁ ≊ G₂.g-ext σ₂
-    g-ext-≊ {σ₁}{σ₂} σ₁≊σ₂ = r-cons (var→val∼ 0) (g-inc-≊ σ₁≊σ₂)
+    g-ext-≊ {σ₁}{σ₂} σ₁≊σ₂ rewrite G₁.g-ext-def σ₁
+        | G₂.g-ext-def σ₂ = r-cons (var→val∼ 0) (g-inc-≊ σ₁≊σ₂)
 
     g-lookup : ∀ {σ₁ σ₂} x → σ₁ ≊ σ₂ → G₁.⧼_⧽ σ₁ x ∼ G₂.⧼_⧽ σ₂ x
     g-lookup x (r-up{k}) = var→val∼ (k + x)

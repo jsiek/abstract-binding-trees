@@ -6,17 +6,14 @@
 
 -}
 
-{-# OPTIONS --rewriting #-}
-
-module examples.Lambda where
-
-open import Agda.Builtin.Equality
-open import Agda.Builtin.Equality.Rewrite
-
 import Syntax
+open import Data.List using (List)
+open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
+
+module examples.Lambda where
 
 data Op : Set where
   op-lam : Op
@@ -95,6 +92,7 @@ _ : ∀ L M → (ƛ ((ƛ (` 0 · ` 1)) · M)) · L
 _ = λ L M → ξ-·₁ (ξ-ƛ β-ƛ)
 
 
+{---}
 data Type : Set where
   Bot   : Type
   _⇒_   : Type → Type → Type
@@ -173,7 +171,7 @@ ext-pres : ∀ {Γ Δ ρ B}
     --------------------------------
   → WTRename (Γ , B) (ext ρ) (Δ , B)
 ext-pres {ρ = ρ } ⊢ρ Z =  Z
-ext-pres {ρ = ρ } ⊢ρ (S {x = x} ∋x) =  S (⊢ρ ∋x)
+ext-pres {ρ = ρ } ⊢ρ (S {x = x} ∋x) =  {!!} {- S (⊢ρ ∋x) -}
 
 rename-pres : ∀ {Γ Δ ρ M A}
   → WTRename Γ ρ Δ
@@ -192,7 +190,7 @@ exts-pres : ∀ {Γ Δ σ B}
     --------------------------------
   → WTSubst (Γ , B) (exts σ) (Δ , B)
 exts-pres {σ = σ} Γ⊢σ Z = ⊢` Z
-exts-pres {σ = σ} Γ⊢σ (S {x = x} ∋x) = rename-pres {ρ = ↑ 1} S (Γ⊢σ ∋x)
+exts-pres {σ = σ} Γ⊢σ (S {x = x} ∋x) = {!!} {- rename-pres {ρ = ↑ 1} S (Γ⊢σ ∋x) -}
 
 subst : ∀ {Γ Δ σ N A}
   → WTSubst Γ σ Δ
@@ -224,3 +222,4 @@ preserve (⊢· ⊢L ⊢M) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L—→
 preserve (⊢· ⊢L ⊢M) (ξ-·₂ M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′)
 preserve (⊢ƛ ⊢M) (ξ-ƛ M—→N) = ⊢ƛ (preserve ⊢M M—→N)
 preserve (⊢· (⊢ƛ ⊢N) ⊢M) β-ƛ = substitution ⊢M ⊢N
+

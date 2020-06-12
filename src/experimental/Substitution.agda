@@ -44,6 +44,9 @@ private
 ext-suc : ∀ ρ x → ⦉ ext ρ ⦊ (suc x) ≡ suc (⦉ ρ ⦊ x)
 ext-suc ρ x rewrite inc-suc ρ x = refl
 
+ren-tail : ∀ x ρ → (↑ 1 ⨟ᵣ x • ρ) ≡ ρ
+ren-tail x ρ rewrite drop-0 ρ | map-sub-id ρ = refl
+
 inc=⨟ᵣ↑ : ∀ ρ → inc ρ ≡ ρ ⨟ᵣ ↑ 1
 inc=⨟ᵣ↑ (↑ k) rewrite +-comm k 1 = refl
 inc=⨟ᵣ↑ (x • ρ) = cong (_•_ (suc x)) (inc=⨟ᵣ↑ ρ)
@@ -61,15 +64,15 @@ seq-rename ρ₁ ρ₂ x = var-injective (Quotable.compose-sub QRR ρ₁ ρ₂ x
 {-# REWRITE seq-rename #-}
 
 ren-assoc : ∀ {σ τ θ} → (σ ⨟ᵣ τ) ⨟ᵣ θ ≡ σ ⨟ᵣ τ ⨟ᵣ θ
-ren-assoc {↑ k} {τ} {θ} {- rewrite g-map-sub-id (dropr k τ)
-    | sym (g-map-sub-id ((dropr k τ) ⨟ᵣ θ)) -} = refl
+ren-assoc {↑ k} {τ} {θ} rewrite map-sub-id (drop k τ)
+    | sym (map-sub-id ((drop k τ) ⨟ᵣ θ)) = refl
 ren-assoc {x • σ} {τ} {θ} rewrite ren-assoc {σ}{τ}{θ} = refl
 {-# REWRITE ren-assoc #-}
 
 {- why not other direction? -}
 inc-seq : ∀ ρ₁ ρ₂ → (inc ρ₁ ⨟ᵣ ext ρ₂) ≡ inc (ρ₁ ⨟ᵣ ρ₂)
-inc-seq (↑ k) ρ₂ rewrite dropr-ext k ρ₂ {-| g-map-sub-id (dropr k ρ₂)
-  | g-map-sub-id (inc (dropr k ρ₂))-} = refl
+inc-seq (↑ k) ρ₂ rewrite dropr-ext k ρ₂ | map-sub-id (drop k ρ₂)
+  | map-sub-id (inc (drop k ρ₂)) = refl
 inc-seq (x • ρ₁) ρ₂ rewrite inc-seq ρ₁ ρ₂ | inc-suc ρ₂ x = refl
 
 compose-ext : ∀(ρ₁ ρ₂ : Rename) → (ext ρ₁ ⨟ᵣ ext ρ₂) ≡ ext (ρ₁ ⨟ᵣ ρ₂)
@@ -84,8 +87,18 @@ compose-rename : ∀(ρ₁ ρ₂ : Rename)(M : ABT)
 compose-rename ρ₁ ρ₂ M = FusableMap.fusion FRR M
 
 commute-↑1 : ∀ ρ M → rename (ext ρ) (rename (↑ 1) M) ≡ rename (↑ 1) (rename ρ M)
-commute-↑1 ρ M rewrite compose-rename (↑ 1) (ext ρ) M | inc=⨟ᵣ↑ ρ
-    | {-g-map-sub-id (ρ ⨟ᵣ ↑ 1 ) |-} sym (compose-rename ρ (↑ 1) M) = refl
+commute-↑1 ρ M =
+    begin
+        rename (ext ρ) (rename (↑ 1) M)
+    ≡⟨ compose-rename (↑ 1) (ext ρ) M ⟩
+        rename (↑ 1 ⨟ᵣ 0 • inc ρ) M
+    ≡⟨ cong (λ □ → rename □ M) (ren-tail 0 (inc ρ)) ⟩
+        rename (inc ρ) M
+    ≡⟨ cong (λ □ → rename □ M) (inc=⨟ᵣ↑ ρ)  ⟩
+        rename (ρ ⨟ᵣ ↑ 1) M
+    ≡⟨ sym (compose-rename ρ (↑ 1) M) ⟩
+        rename (↑ 1) (rename ρ M)
+    ∎
 
 rename-ext : ∀{ρ₁ ρ₂}{M : ABT}
    → (∀ x → ⦉ ρ₁ ⦊ x ≡ ⦉ ρ₂ ⦊ x)
@@ -131,40 +144,39 @@ open ComposeMaps SubstIsMap SubstIsMap ⟪_⟫ (λ x → x)
     using (_⨟_) public
 
 
-private {- making sure the following equations are all refl's -}
-  sub-head : ∀ M σ → ⟦ M • σ ⟧ 0 ≡ M
-  sub-head M σ = refl
+sub-head : ∀ M σ → ⟦ M • σ ⟧ 0 ≡ M
+sub-head M σ = refl
 
-  sub-tail : ∀ (M : ABT) σ → (↑ 1 ⨟ M • σ) ≡ σ
-  sub-tail M σ = refl
+sub-tail : ∀ (M : ABT) σ → (↑ 1 ⨟ M • σ) ≡ σ
+sub-tail M σ rewrite drop-0 σ | map-sub-id σ = refl
 
-  sub-suc : ∀ M σ x → ⟪ M • σ ⟫ (` suc x) ≡ ⟪ σ ⟫ (` x)
-  sub-suc M σ x = refl
+sub-suc : ∀ M σ x → ⟪ M • σ ⟫ (` suc x) ≡ ⟪ σ ⟫ (` x)
+sub-suc M σ x = refl
 
-  shift-eq : ∀ x k → ⟪ ↑ k ⟫ (` x) ≡ ` (k + x)
-  shift-eq x k = refl
+shift-eq : ∀ x k → ⟪ ↑ k ⟫ (` x) ≡ ` (k + x)
+shift-eq x k = refl
 
-  sub-idL : (σ : Subst) → id ⨟ σ ≡ σ
-  sub-idL σ = refl
+sub-idL : (σ : Subst) → id ⨟ σ ≡ σ
+sub-idL σ rewrite drop-0 σ | map-sub-id σ = refl
 
-  sub-dist :  ∀ {σ : Subst} {τ : Subst} {M : ABT}
-           → ((M • σ) ⨟ τ) ≡ ((⟪ τ ⟫ M) • (σ ⨟ τ))
-  sub-dist = refl
+sub-dist :  ∀ {σ : Subst} {τ : Subst} {M : ABT}
+       → ((M • σ) ⨟ τ) ≡ ((⟪ τ ⟫ M) • (σ ⨟ τ))
+sub-dist = refl
 
-  sub-op : ∀ {s : Size}{σ}{op}{args}
-     → ⟪ σ ⟫ (op ⦅ args ⦆) ≡ op ⦅ ⟪ σ ⟫₊ (sig op) args  ⦆
-  sub-op = refl
+sub-op : ∀ {s : Size}{σ}{op}{args}
+ → ⟪ σ ⟫ (op ⦅ args ⦆) ≡ op ⦅ ⟪ σ ⟫₊ (sig op) args  ⦆
+sub-op = refl
 
-  sub-nil : ∀ {σ} → ⟪ σ ⟫₊ [] tt ≡ tt
-  sub-nil = refl
+sub-nil : ∀ {σ} → ⟪ σ ⟫₊ [] tt ≡ tt
+sub-nil = refl
 
-  sub-cons : ∀{σ b bs arg args}
-    → ⟪ σ ⟫₊ (b ∷ bs) ⟨ arg , args ⟩ ≡ ⟨ ⟪ σ ⟫ₐ b arg , ⟪ σ ⟫₊ bs args ⟩
-  sub-cons = refl
+sub-cons : ∀{σ b bs arg args}
+   → ⟪ σ ⟫₊ (b ∷ bs) ⟨ arg , args ⟩ ≡ ⟨ ⟪ σ ⟫ₐ b arg , ⟪ σ ⟫₊ bs args ⟩
+sub-cons = refl
 
 sub-η : ∀ (σ : Subst) (x : Var)  →  ⟦ ⟪ σ ⟫ (` 0) • (↑ 1 ⨟ σ) ⟧ x ≡ ⟦ σ ⟧ x
 sub-η σ 0 = refl
-sub-η σ (suc x) rewrite drop-add {x} 1 σ = refl
+sub-η σ (suc x) rewrite map-sub-id (drop 1 σ) | drop-add {x} 1 σ = refl
 
 rename→subst : Rename → Subst
 rename→subst (↑ k) = ↑ k 
@@ -188,7 +200,7 @@ exts-cons-shift : ∀ σ → exts σ ≡ (` 0 • (σ ⨟ ↑ 1))
 exts-cons-shift σ rewrite incs=⨟↑ σ = refl
 
 seq-subst : ∀ σ τ x → ⟦ σ ⨟ τ ⟧ x ≡ ⟪ τ ⟫ (⟦ σ ⟧ x)
-seq-subst (↑ k) τ x = drop-add k τ
+seq-subst (↑ k) τ x rewrite map-sub-id (drop k τ) | drop-add{x} k τ = refl
 seq-subst (M • σ) τ zero = refl
 seq-subst (M • σ) τ (suc x) = seq-subst σ τ x
 
@@ -263,7 +275,8 @@ seq-ren-sub : ∀ x ρ σ  →  ⟦ σ ⟧ (⦉ ρ ⦊ x) ≡ ⟦ ρ ⨟ᵣˢ σ
 seq-ren-sub x ρ σ = sym (Quotable.compose-sub QRS ρ σ x)
 
 compose-inc-exts : ∀ ρ σ → (inc ρ ⨟ᵣˢ exts σ) ≡ incs (ρ ⨟ᵣˢ σ)
-compose-inc-exts (↑ k) σ = drop-incs k σ
+compose-inc-exts (↑ k) σ rewrite drop-incs k σ
+    | map-sub-id (drop k σ) | map-sub-id (incs (drop k σ)) = refl
 compose-inc-exts (x • ρ) σ = cong₂ _•_ (incs-rename σ x) (compose-inc-exts ρ σ)
 
 compose-ext-exts : ∀ ρ σ → (ext ρ) ⨟ᵣˢ (exts σ) ≡ exts (ρ ⨟ᵣˢ σ)
@@ -279,6 +292,9 @@ incs≡=⨟ˢᵣ↑ : ∀ σ → incs σ ≡ σ ⨟ˢᵣ ↑ 1
 incs≡=⨟ˢᵣ↑ (↑ k) rewrite +-comm k 1 = refl
 incs≡=⨟ˢᵣ↑ (M • σ) = cong₂ _•_ refl (incs≡=⨟ˢᵣ↑ σ)
 
+msd : ∀ (σ : Subst) → map-sub (λ x → x) (drop 0 σ) ≡ σ
+msd σ rewrite drop-0 σ | map-sub-id σ = refl
+
 commute-subst-shift : ∀{σ : Subst} (M : ABT)
    → ⟪ exts σ ⟫ (rename (↑ 1) M) ≡ rename (↑ 1) (⟪ σ ⟫ M)
 commute-subst-shift {σ} M =
@@ -287,6 +303,8 @@ commute-subst-shift {σ} M =
   ≡⟨ compose-sub-ren (exts σ) (↑ 1) M ⟩
       ⟪ (↑ 1) ⨟ᵣˢ exts σ ⟫ M
   ≡⟨⟩
+      ⟪ map-sub (λ x → x) (drop 0 (incs σ)) ⟫ M
+  ≡⟨  cong (λ □ → ⟪ □ ⟫ M) (msd (incs σ)) ⟩
       ⟪ incs σ ⟫ M
   ≡⟨ cong (λ □ → ⟪ □ ⟫ M) (incs≡=⨟ˢᵣ↑ σ) ⟩
       ⟪ σ ⨟ˢᵣ ↑ 1 ⟫ M
@@ -302,12 +320,12 @@ open Quotable QSS renaming (g-drop-seq to drop-seq)
 
 
 incs-seq : ∀ σ₁ σ₂ → (incs σ₁ ⨟ exts σ₂) ≡ incs (σ₁ ⨟ σ₂)
-incs-seq (↑ k) σ₂ rewrite drop-exts k σ₂ = refl
+incs-seq (↑ k) σ₂ rewrite drop-exts k σ₂ = {!!}
 incs-seq (M • σ₁) σ₂ rewrite incs-seq σ₁ σ₂
     | commute-subst-shift {σ₂} M = refl
 
 exts-seq : ∀ σ₁ σ₂ → exts σ₁ ⨟ exts σ₂ ≡ exts (σ₁ ⨟ σ₂)
-exts-seq (↑ k) σ₂ rewrite drop-incs k σ₂ = refl
+exts-seq (↑ k) σ₂ rewrite drop-incs k σ₂ = {!!}
 exts-seq (M • σ₁) σ₂ rewrite exts-0 σ₂
     | commute-subst-shift {σ₂} M | incs-seq σ₁ σ₂ = refl
 
@@ -320,7 +338,7 @@ sub-sub σ₁ σ₂ M = FusableMap.fusion FSS {_}{σ₁}{σ₂} M
 {-# REWRITE sub-sub #-}
 
 sub-assoc : ∀ {σ τ θ} → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
-sub-assoc {↑ k} {τ} {θ} = sym (drop-seq k τ θ)
+sub-assoc {↑ k} {τ} {θ} rewrite sym (drop-seq k τ θ) = {!!}
 sub-assoc {M • σ} {τ} {θ} rewrite sub-assoc {σ}{τ}{θ} = refl
 {-# REWRITE sub-assoc #-}
 
@@ -339,7 +357,7 @@ subst-commute {N}{M}{σ} =
         (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]
     ≡⟨⟩
         ⟪ exts σ ⨟ subst-zero (⟪ σ ⟫ M) ⟫ N
-    ≡⟨ cong (λ □ → ⟪ □ ⟫ N) subst-zero-exts-cons ⟩
+    ≡⟨ {!!} {- cong (λ □ → ⟪ □ ⟫ N) subst-zero-exts-cons -} ⟩
         ⟪ subst-zero M ⨟ σ ⟫ N
     ≡⟨⟩
         ⟪ σ ⟫ (N [ M ])
