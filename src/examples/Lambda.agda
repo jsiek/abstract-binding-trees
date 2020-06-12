@@ -23,10 +23,10 @@ sig : Op → List ℕ
 sig op-lam = 1 ∷ []
 sig op-app = 0 ∷ 0 ∷ []
 
-open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext)
+open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext; ext-0; ext-suc)
 
 open Syntax.OpSig Op sig
-  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; ⟦_⟧; rename)
+  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; ⟦_⟧; rename; exts-0; exts-suc-rename)
   renaming (ABT to Term)
 
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
@@ -170,8 +170,8 @@ ext-pres : ∀ {Γ Δ ρ B}
   → WTRename Γ ρ Δ
     --------------------------------
   → WTRename (Γ , B) (ext ρ) (Δ , B)
-ext-pres {ρ = ρ } ⊢ρ Z =  Z
-ext-pres {ρ = ρ } ⊢ρ (S {x = x} ∋x) =  {!!} {- S (⊢ρ ∋x) -}
+ext-pres {ρ = ρ } ⊢ρ Z rewrite ext-0 ρ =  Z
+ext-pres {ρ = ρ } ⊢ρ (S {x = x} ∋x) rewrite ext-suc ρ x = S (⊢ρ ∋x)
 
 rename-pres : ∀ {Γ Δ ρ M A}
   → WTRename Γ ρ Δ
@@ -189,8 +189,8 @@ exts-pres : ∀ {Γ Δ σ B}
   → WTSubst Γ σ Δ
     --------------------------------
   → WTSubst (Γ , B) (exts σ) (Δ , B)
-exts-pres {σ = σ} Γ⊢σ Z = ⊢` Z
-exts-pres {σ = σ} Γ⊢σ (S {x = x} ∋x) = {!!} {- rename-pres {ρ = ↑ 1} S (Γ⊢σ ∋x) -}
+exts-pres {σ = σ} Γ⊢σ Z rewrite exts-0 σ = ⊢` Z
+exts-pres {σ = σ} Γ⊢σ (S {x = x} ∋x) rewrite exts-suc-rename σ x = rename-pres {ρ = ↑ 1} S (Γ⊢σ ∋x)
 
 subst : ∀ {Γ Δ σ N A}
   → WTSubst Γ σ Δ
