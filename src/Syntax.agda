@@ -10,13 +10,13 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
-open import Var
 
 module Syntax where
 
 open GenericSubstitution
     using (GSubst; ↑; _•_; Substable; id; drop; map-sub; map-sub-id; drop-0)
     public
+open import Var public
 
 {----------------------------------------------------------------------------
                              Renaming
@@ -274,15 +274,15 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     ss0-args σ0 (b ∷ bs) (cons arg args) =
         cong₂ cons (ss0-arg σ0 b arg) (ss0-args σ0 bs args)
 
-  sub-id : ∀ (M : ABT) → ⟪ id ⟫ M ≡ M
-  sub-id M = (sub-shift0 M (shift-up {0}))
+  sub-id : ∀ {M : ABT} → ⟪ id ⟫ M ≡ M
+  sub-id {M} = (sub-shift0 M (shift-up {0}))
 
   rename-id : {M : ABT} → rename (↑ 0) M ≡ M
-  rename-id {M} rewrite rename-subst (↑ 0) M | sub-id M = refl
+  rename-id {M} rewrite rename-subst (↑ 0) M | sub-id {M} = refl
 
   sub-idR : ∀ σ → σ ⨟ id ≡ σ 
   sub-idR (↑ k) rewrite sub-up-seq k id | +-comm k 0 = refl
-  sub-idR (M • σ) rewrite sub-cons-seq M σ id | sub-idR σ | sub-id M = refl
+  sub-idR (M • σ) rewrite sub-cons-seq M σ id | sub-idR σ | sub-id {M} = refl
 
   exts-0 : ∀ σ → ⟦ exts σ ⟧ 0 ≡ ` 0
   exts-0 σ rewrite exts-def σ = refl
@@ -453,8 +453,8 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   FSS = record { Q = QSS ; var = λ x σ₁ σ₂ → sym (seq-subst σ₁ σ₂ x)
                ; compose-ext = exts-seq }
 
-  sub-sub : ∀ σ₁ σ₂ M → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
-  sub-sub σ₁ σ₂ M = FusableMap.fusion FSS {σ₁}{σ₂} M
+  sub-sub : ∀ {M σ₁ σ₂} → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
+  sub-sub {M}{σ₁}{σ₂} = FusableMap.fusion FSS {σ₁}{σ₂} M
 
   sub-assoc : ∀ {σ τ θ} → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
   sub-assoc {↑ k} {τ} {θ}= begin
@@ -466,7 +466,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     (M • σ ⨟ τ) ⨟ θ                   ≡⟨ cong (λ □ → □ ⨟ θ) (sub-cons-seq _ _ _) ⟩
     (⟪ τ ⟫ M • (σ ⨟ τ)) ⨟ θ           ≡⟨ sub-cons-seq _ _ _ ⟩
     ⟪ θ ⟫ (⟪ τ ⟫ M) • ((σ ⨟ τ) ⨟ θ)   ≡⟨ cong (λ □ → ⟪ θ ⟫ (⟪ τ ⟫ M) • □) sub-assoc ⟩
-    ⟪ θ ⟫ (⟪ τ ⟫ M) • (σ ⨟ (τ ⨟ θ))   ≡⟨ cong (λ □ → □ • (σ ⨟ (τ ⨟ θ))) (sub-sub τ θ M) ⟩
+    ⟪ θ ⟫ (⟪ τ ⟫ M) • (σ ⨟ (τ ⨟ θ))   ≡⟨ cong (λ □ → □ • (σ ⨟ (τ ⨟ θ))) (sub-sub {M}{τ}{θ}) ⟩
     ⟪ τ ⨟ θ ⟫ M • (σ ⨟ (τ ⨟ θ))       ≡⟨ sym (sub-cons-seq _ _ _) ⟩ 
     (M • σ) ⨟ (τ ⨟ θ)                 ∎
 
@@ -487,12 +487,12 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
   subst-commute : ∀{N M σ} → (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ] ≡ ⟪ σ ⟫ (N [ M ])
   subst-commute {N}{M}{σ} =  begin
-    (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]           ≡⟨ sub-sub (exts σ) _ N ⟩
+    (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]           ≡⟨ sub-sub {N}{exts σ} ⟩
     ⟪ exts σ ⨟ subst-zero (⟪ σ ⟫ M) ⟫ N  ≡⟨ cong (λ □ → ⟪ □ ⟫ N) subst-zero-exts-cons ⟩
     ⟪ (⟪ σ ⟫ M) • σ ⟫ N                  ≡⟨ cong (λ □ → ⟪ ⟪ σ ⟫ M • □ ⟫ N) (sym (sub-idL _)) ⟩
     ⟪ ⟪ σ ⟫ M • (id ⨟ σ) ⟫ N             ≡⟨ cong (λ □ → ⟪ □ ⟫ N) (sym (sub-cons-seq _ _ _)) ⟩
     ⟪ M • id ⨟ σ ⟫ N                     ≡⟨⟩
-    ⟪ subst-zero M ⨟ σ ⟫ N               ≡⟨ sym (sub-sub (subst-zero M) σ N) ⟩
+    ⟪ subst-zero M ⨟ σ ⟫ N               ≡⟨ sym (sub-sub {N}{subst-zero M}{σ}) ⟩
     ⟪ σ ⟫ (⟪ subst-zero M ⟫ N)           ≡⟨⟩
     ⟪ σ ⟫ (N [ M ])      ∎
 
@@ -508,7 +508,7 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
   exts-sub-cons : ∀ σ N V → (⟪ exts σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N
   exts-sub-cons σ N V {-rewrite exts-cons-shift σ -} = begin
      (⟪ exts σ ⟫ N) [ V ]                 ≡⟨⟩
-     ⟪ subst-zero V ⟫ (⟪ exts σ ⟫ N)      ≡⟨ sub-sub (exts σ) (subst-zero V) N ⟩
+     ⟪ subst-zero V ⟫ (⟪ exts σ ⟫ N)      ≡⟨ sub-sub {N}{exts σ}{subst-zero V} ⟩
      ⟪ exts σ ⨟ subst-zero V ⟫ N           ≡⟨ cong (λ □ → ⟪ □ ⨟ subst-zero V ⟫ N) (exts-cons-shift σ) ⟩
      ⟪ (` 0 • (σ ⨟ ↑ 1)) ⨟ (V • id) ⟫ N     ≡⟨ cong (λ □ → ⟪ □ ⟫ N) (sub-cons-seq _ _ _) ⟩
      ⟪ V • ((σ ⨟ ↑ 1) ⨟ (V • id)) ⟫ N      ≡⟨ cong (λ □ → ⟪ V • □ ⟫ N) sub-assoc ⟩
