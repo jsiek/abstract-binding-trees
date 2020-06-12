@@ -36,7 +36,7 @@ _∋_⦂_ {I} [] x A = ⊥
 _∋_⦂_ {I} (B ∷ Γ) zero A = A ≡ B
 _∋_⦂_ {I} (B ∷ Γ) (suc x) A = Γ ∋ x ⦂ A
 
-{----- Predicate on ABT's (e.g. Type System) -----}
+{--- types for bound variables ---}
 
 BType : Set → ℕ → Set
 BType I zero = ⊤
@@ -45,6 +45,8 @@ BType I (suc b) = I × BType I b
 BTypes : Set → List ℕ → Set
 BTypes I [] = ⊤
 BTypes I (b ∷ bs) = BType I b × BTypes I bs
+
+{----- Predicate on ABT's (e.g. Type System) -----}
 
 module ABTPred {I : Set}
   (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set)
@@ -79,26 +81,19 @@ module ABTPred {I : Set}
        → bs ∣ Γ ∣ Bss ⊢as args ⦂ As
        → (b ∷ bs) ∣ Γ ∣ ⟨ Bs , Bss ⟩ ⊢as cons arg args ⦂ (A ∷̌ As)
 
-{- Predicate on result C's. -}
 
 module FoldPred {I : Set}{V C : Set}
   (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set)
   (𝐴 : List I → V → I → Set)
-  (_⊢v_⦂_ : List I → V → I → Set)
-  (_⊢c_⦂_ : List I → C → I → Set)
-  (Env : Substable V)
-  where
+  (_⊢v_⦂_ : List I → V → I → Set) (_⊢c_⦂_ : List I → C → I → Set)
+  (Env : Substable V) where
   open GenericSubst Env
 
   data _∣_∣_⊢r_⦂_ : (b : ℕ) → List I → BType I b → Bind V C b → I → Set where
-    ast-r : ∀{Δ}{c}{A}
-       → Δ ⊢c c ⦂ A
-       → 0 ∣ Δ ∣ tt ⊢r c ⦂ A
-       
-    bind-r : ∀{b}{A B Bs Δ}{f}
-          → (∀{v} → (B ∷ Δ) ⊢v v ⦂ B
-                      → 𝐴 (B ∷ Δ) v B
-                      → b ∣ (B ∷ Δ) ∣ Bs ⊢r (f v) ⦂ A)
+    ast-r : ∀{Δ}{c}{A}  →  Δ ⊢c c ⦂ A  →  0 ∣ Δ ∣ tt ⊢r c ⦂ A
+    bind-r : ∀{b A B Bs Δ f}
+          → (∀{v} → (B ∷ Δ) ⊢v v ⦂ B → 𝐴 (B ∷ Δ) v B
+                  → b ∣ (B ∷ Δ) ∣ Bs ⊢r (f v) ⦂ A)
           → (suc b) ∣ Δ ∣ ⟨ B , Bs ⟩ ⊢r f ⦂ A
 
   ⊢r→⊢c : ∀{Δ}{Bs}{c}{A}  →  0 ∣ Δ ∣ Bs ⊢r c ⦂ A  →  Δ ⊢c c ⦂ A
@@ -107,18 +102,14 @@ module FoldPred {I : Set}{V C : Set}
   data _∣_∣_⊢rs_⦂_ : ∀(bs : List ℕ) → List I → BTypes I bs
                 → Tuple bs (Bind V C) → Vec I (length bs) → Set where
     nil-r : ∀{Δ} → [] ∣ Δ ∣ tt ⊢rs tt ⦂ []̌ 
-    cons-r : ∀{b bs}{r rs}{Δ}{A}{As}{Bs Bss}
-        → b ∣ Δ ∣ Bs ⊢r r ⦂ A
+    cons-r : ∀{b bs r rs Δ A As Bs Bss} → b ∣ Δ ∣ Bs ⊢r r ⦂ A
         → bs ∣ Δ ∣ Bss ⊢rs rs ⦂ As
         → (b ∷ bs) ∣ Δ ∣ ⟨ Bs , Bss ⟩ ⊢rs ⟨ r , rs ⟩ ⦂ (A ∷̌ As)
 
   data _⦂_⇒_ : GSubst V → List I → List I → Set where
     empty-env : ∀{k} → ↑ k ⦂ [] ⇒ []
-    ext-env : ∀{v σ Γ Δ A}
-       → (A ∷ Δ) ⊢v v ⦂ A
-       → 𝐴 (A ∷ Δ) v A
-       → (_⦂_⇒_ σ Γ Δ)
-       → _⦂_⇒_ (g-extend v σ) (A ∷ Γ) (A ∷ Δ)
+    ext-env : ∀{v σ Γ Δ A} → (A ∷ Δ) ⊢v v ⦂ A → 𝐴 (A ∷ Δ) v A
+       → (_⦂_⇒_ σ Γ Δ) → _⦂_⇒_ (g-extend v σ) (A ∷ Γ) (A ∷ Δ)
 
 module PreserveFold {V C I : Set} (F : Fold V C)
  (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set)
@@ -140,12 +131,10 @@ module PreserveFold {V C I : Set} (F : Fold V C)
       rewrite g-inc-shift σ x =
       ext-⊢v {σ} (lookup-pres {σ}{Γ}{Δ}{x}{A} σ⦂ ∋x)
 
-  extend-pres : ∀{v}{σ}{Γ Δ A}
-     → (A ∷ Δ) ⊢v v ⦂ A
-     → 𝐴 (A ∷ Δ) v A
-     → σ ⦂ Γ ⇒ Δ
+  extend-pres : ∀{v σ Γ Δ A} → (A ∷ Δ) ⊢v v ⦂ A → 𝐴 (A ∷ Δ) v A → σ ⦂ Γ ⇒ Δ
      → (g-extend v σ) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
-  extend-pres {v} {_} {.[]} {.[]} {A} ⊢v⦂ 𝐴v empty-env = ext-env ⊢v⦂ 𝐴v empty-env
+  extend-pres {v} {_} {.[]} {.[]} {A} ⊢v⦂ 𝐴v empty-env =
+      ext-env ⊢v⦂ 𝐴v empty-env
   extend-pres {v} {_} {.(_ ∷ _)} {.(_ ∷ _)} {A} ⊢v⦂ 𝐴v (ext-env ⊢v₁⦂ 𝐴v₁ σ⦂) =
       ext-env ⊢v⦂ 𝐴v (extend-pres ⊢v₁⦂ 𝐴v₁ σ⦂)
 
@@ -156,31 +145,23 @@ module PreserveFold {V C I : Set} (F : Fold V C)
             → 𝑃 op As Bs A
             → Δ ⊢c (fold-op op Rs) ⦂ A)
     where
-    preserve-fold : ∀{M : ABT}{σ : GSubst V}{Γ Δ : List I}{A : I}
-       → Γ ⊢ M ⦂ A
-       → σ ⦂ Γ ⇒ Δ
-       → Δ ⊢c fold σ M ⦂ A
-    pres-arg : ∀{b}{Γ Δ}{arg : Arg b}{A}{σ}{Bs}
-       → b ∣ Γ ∣ Bs ⊢a arg ⦂ A
-       → σ ⦂ Γ ⇒ Δ
+    preserve-fold : ∀{M σ Γ Δ A} → Γ ⊢ M ⦂ A → σ ⦂ Γ ⇒ Δ → Δ ⊢c fold σ M ⦂ A
+    pres-arg : ∀{b Γ Δ}{arg : Arg b}{A σ Bs} → b ∣ Γ ∣ Bs ⊢a arg ⦂ A → σ ⦂ Γ ⇒ Δ
        → b ∣ Δ ∣ Bs ⊢r fold-arg  σ {b} arg ⦂ A
-    pres-args : ∀{bs}{Γ Δ}{args : Args bs}{As}{σ}{Bss}
-       → bs ∣ Γ ∣ Bss ⊢as args ⦂ As
-       → σ ⦂ Γ ⇒ Δ
-       → bs ∣ Δ ∣ Bss ⊢rs fold-args σ args ⦂ As
+    pres-args : ∀{bs Γ Δ}{args : Args bs}{As σ Bss} → bs ∣ Γ ∣ Bss ⊢as args ⦂ As
+       → σ ⦂ Γ ⇒ Δ  →  bs ∣ Δ ∣ Bss ⊢rs fold-args σ args ⦂ As
     preserve-fold {` x} {σ} {Γ} {Δ} {A} (var-p ∋x) σΓΔ =
         ret-pres (lookup-pres {σ} σΓΔ ∋x)
     preserve-fold {op ⦅ args ⦆} {σ} {Γ} {Δ} {A} (op-op ⊢args 𝑃op) σΓΔ =
         op-pres  (pres-args  ⊢args σΓΔ) 𝑃op
-    pres-arg {zero} {Γ} {Δ} {ast M} {A} {σ} (ast-a ⊢arg) σΓΔ =
+    pres-arg {zero}{Γ}{Δ}{ast M}{A}{σ} (ast-a ⊢arg) σΓΔ =
         ast-r (preserve-fold ⊢arg σΓΔ)
-    pres-arg {suc b} {Γ} {Δ} {bind arg} {A} {σ}{⟨ B , Bs ⟩} (bind-a {b}{B} ⊢arg) σΓΔ =
-        bind-r G
-        where
-        G : ∀{v} → (B ∷ Δ) ⊢v v ⦂ B
-           → 𝐴 (B ∷ Δ) v B
-           → b ∣ B ∷ Δ ∣ Bs ⊢r fold-arg σ (bind arg) v ⦂ A
-        G {v} ⊢v⦂B 𝐴Mv = pres-arg ⊢arg (extend-pres ⊢v⦂B 𝐴Mv σΓΔ)
+    pres-arg {suc b}{Γ}{Δ}{bind arg}{A}{σ}{⟨ B , Bs ⟩} (bind-a {b}{B} ⊢arg)
+        σΓΔ = bind-r G
+        where G : ∀{v} → (B ∷ Δ) ⊢v v ⦂ B
+                 → 𝐴 (B ∷ Δ) v B
+                 → b ∣ B ∷ Δ ∣ Bs ⊢r fold-arg σ (bind arg) v ⦂ A
+              G {v} ⊢v⦂B 𝐴Mv = pres-arg ⊢arg (extend-pres ⊢v⦂B 𝐴Mv σΓΔ)
     pres-args {[]} {Γ} {Δ} {nil} {[]̌} ⊢args σΓΔ = nil-r 
     pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷̌ As}
         (cons-a ⊢arg ⊢args) σΓΔ =
