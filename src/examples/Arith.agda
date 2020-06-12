@@ -74,9 +74,9 @@ module examples.Arith where
   S = record { var→val = λ x → nothing ; shift = λ r → r
              ; var→val-suc-shift = refl }
 
-  E : Fold (Maybe Val) (Maybe Val) 
-  E = record { S = S ; ret = λ x → x ; fold-op = eval-op }
-  open Fold E
+  Eval : Fold (Maybe Val) (Maybe Val) 
+  Eval = record { S = S ; ret = λ x → x ; fold-op = eval-op }
+  open Fold Eval
 
   eval : AST → Maybe Val
   eval = fold (↑ 0)
@@ -95,3 +95,14 @@ module examples.Arith where
   _ : eval (bind ` 0 ｛ $ 2 ⊗ $ 21 ｝) ≡ nothing
   _ = refl
 
+
+  {--- Type Safety via preserve-fold ---}
+
+  data Type : Set where
+    t-nat : Type
+    t-bool : Type
+
+{-
+  open import experimental.Preserve Op sig
+  open PreserveFold Eval 𝑃 𝐴 _⊢v_⦂_ _⊢c_⦂_
+-}
