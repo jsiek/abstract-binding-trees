@@ -159,14 +159,14 @@ module PreserveFold {V C I : Set} (F : Fold V C)
     preserve-fold : ∀{M : ABT}{σ : GSubst V}{Γ Δ : List I}{A : I}
        → Γ ⊢ M ⦂ A
        → σ ⦂ Γ ⇒ Δ
-       → Δ ⊢c fold  σ M ⦂ A
+       → Δ ⊢c fold σ M ⦂ A
     pres-arg : ∀{b}{Γ Δ}{arg : Arg b}{A}{σ}{Bs}
        → b ∣ Γ ∣ Bs ⊢a arg ⦂ A
        → σ ⦂ Γ ⇒ Δ
        → b ∣ Δ ∣ Bs ⊢r fold-arg  σ {b} arg ⦂ A
     pres-args : ∀{bs}{Γ Δ}{args : Args bs}{As}{σ}{Bss}
        → bs ∣ Γ ∣ Bss ⊢as args ⦂ As
-       → _⦂_⇒_  σ Γ Δ
+       → σ ⦂ Γ ⇒ Δ
        → bs ∣ Δ ∣ Bss ⊢rs fold-args σ args ⦂ As
     preserve-fold {` x} {σ} {Γ} {Δ} {A} (var-p ∋x) σΓΔ =
         ret-pres (lookup-pres {σ} σΓΔ ∋x)
