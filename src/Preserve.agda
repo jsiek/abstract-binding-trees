@@ -24,7 +24,7 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit using (⊤; tt)
 
-module experimental.Preserve (Op : Set) (sig : Op → List ℕ) where
+module Preserve (Op : Set) (sig : Op → List ℕ) where
 
 open import AbstractBindingTree Op sig
 open import GenericSubstitution

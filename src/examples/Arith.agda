@@ -102,7 +102,7 @@ module examples.Arith where
 
   {--- Type Safety ---}
 
-  open import experimental.Preserve Op sig
+  open import Preserve Op sig
 
   data Type : Set where
     t-nat : Type
