@@ -12,6 +12,11 @@
      → σ ⦂ Γ ⇒ Δ
      → Δ ⊢c M ↝ fold σ M ⦂ A
 
+  preserve-map : ∀{M σ Γ Δ A}
+     → Γ ⊢ M ⦂ A
+     → σ ⦂ Γ ⇒ Δ
+     → Δ ⊢ map-abt σ M ⦂ A
+
  ---------------------------}
 
 open import Data.List using (List; []; _∷_; length)
@@ -25,6 +30,7 @@ open import AbstractBindingTree Op sig
 open import GenericSubstitution
 open import Data.Empty using (⊥)
 open import Fold Op sig
+open import Map Op sig
 open import ScopedTuple
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 open import Relation.Binary.PropositionalEquality
@@ -60,7 +66,7 @@ module ABTPred {I : Set}
     var-p : ∀{Γ x A}
        → Γ ∋ x ⦂ A   {- use a predicate here too? -}
        → Γ ⊢ ` x ⦂ A
-    op-op : ∀{Γ op}{args : Args (sig op)}{A}{As : Vec I (length (sig op))}
+    op-p : ∀{Γ op}{args : Args (sig op)}{A}{As : Vec I (length (sig op))}
              {Bs : BTypes I (sig op)}
        → (sig op) ∣ Γ ∣ Bs ⊢as args ⦂ As
        → 𝑃 op As Bs A
@@ -107,7 +113,7 @@ module FoldPred {I : Set}{V C : Set}
   data _⦂_⇒_ : GSubst V → List I → List I → Set where
     empty-env : ∀{k} → ↑ k ⦂ [] ⇒ []
     ext-env : ∀{v σ Γ Δ A} → (A ∷ Δ) ⊢v v ⦂ A → 𝐴 (A ∷ Δ) v A
-       → (_⦂_⇒_ σ Γ Δ) → _⦂_⇒_ (g-extend v σ) (A ∷ Γ) (A ∷ Δ)
+           → σ ⦂ Γ ⇒ Δ → (g-extend v σ) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
 
 module PreserveFold {V C I : Set} (F : Fold V C)
  (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set)
@@ -115,6 +121,7 @@ module PreserveFold {V C I : Set} (F : Fold V C)
  (_⊢v_⦂_ : List I → V → I → Set)
  (_⊢c_⦂_ : List I → C → I → Set)
  where
+ 
  open Fold F ; open Substable S ; open GenericSubst S 
  open ABTPred 𝑃 public ; open FoldPred 𝑃 𝐴 _⊢v_⦂_ _⊢c_⦂_ S public
 
@@ -150,7 +157,7 @@ module PreserveFold {V C I : Set} (F : Fold V C)
        → σ ⦂ Γ ⇒ Δ  →  bs ∣ Δ ∣ Bss ⊢rs fold-args σ args ⦂ As
     preserve-fold {` x} {σ} {Γ} {Δ} {A} (var-p ∋x) σΓΔ =
         ret-pres (lookup-pres {σ} σΓΔ ∋x)
-    preserve-fold {op ⦅ args ⦆} {σ} {Γ} {Δ} {A} (op-op ⊢args 𝑃op) σΓΔ =
+    preserve-fold {op ⦅ args ⦆} {σ} {Γ} {Δ} {A} (op-p ⊢args 𝑃op) σΓΔ =
         op-pres  (pres-args  ⊢args σΓΔ) 𝑃op
     pres-arg {zero}{Γ}{Δ}{ast M}{A}{σ} (ast-a ⊢arg) σΓΔ =
         ast-r (preserve-fold ⊢arg σΓΔ)
@@ -164,4 +171,54 @@ module PreserveFold {V C I : Set} (F : Fold V C)
     pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷̌ As}
         (cons-a ⊢arg ⊢args) σΓΔ =
         cons-r  (pres-arg {b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
+
+module PreserveMap {V I : Set} (M : Map V)
+ (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set)
+ (_⊢v_⦂_ : List I → V → I → Set)
+ where
+ open Map M ; open Substable S ; open GenericSubst S
+ open ABTPred 𝑃 public
+ 
+ module ExtV
+   (ext-⊢v : ∀{σ : GSubst V}{A B : I}{Δ : List I}{v : V}
+           → Δ ⊢ “ v ” ⦂ A
+           → (B ∷ Δ) ⊢ “ shift v ” ⦂ A)
+   (⊢v→⊢ : ∀{Γ v A} → Γ ⊢v v ⦂ A → Γ ⊢ “ v ” ⦂ A)
+   (⊢v0 : ∀{B Δ} → (B ∷ Δ) ⊢v var→val 0 ⦂ B)
+   where
+                    
+  𝐴 : List I → V → I → Set
+  𝐴 Γ M A = ⊤
+
+  open FoldPred {I}{V}{V} 𝑃 𝐴 _⊢v_⦂_ _⊢v_⦂_ S
+
+  lookup-pres : ∀{σ}{Γ Δ}{x}{A} → σ ⦂ Γ ⇒ Δ → Γ ∋ x ⦂ A → Δ ⊢ “ ⧼ σ ⧽ x ” ⦂ A
+  lookup-pres {x = zero}{A} (ext-env {v}{σ} ⊢v0 A0 σ⦂) refl = ⊢v→⊢ ⊢v0
+  lookup-pres {x = suc x}{A} (ext-env {v}{σ}{Γ}{Δ}{B} ⊢v0 𝐴0 σ⦂) ∋x
+      rewrite g-inc-shift σ x =
+      ext-⊢v {σ} (lookup-pres {σ}{Γ}{Δ}{x}{A} σ⦂ ∋x)
+
+  extend-pres : ∀{σ Γ Δ B}  → σ ⦂ Γ ⇒ Δ → g-ext σ ⦂ B ∷ Γ ⇒ (B ∷ Δ)
+  extend-pres {σ} σ⦂ rewrite g-ext-def σ = ext-env ⊢v0 tt σ⦂
+
+  preserve-map : ∀{M σ Γ Δ A}
+        → Γ ⊢ M ⦂ A
+        → σ ⦂ Γ ⇒ Δ
+        → Δ ⊢ map-abt σ M ⦂ A
+        
+  pres-arg : ∀{b Γ Δ}{arg : Arg b}{A σ Bs}
+        → b ∣ Γ ∣ Bs ⊢a arg ⦂ A → σ ⦂ Γ ⇒ Δ
+        → b ∣ Δ ∣ Bs ⊢a map-arg σ {b} arg ⦂ A
+  pres-args : ∀{bs Γ Δ}{args : Args bs}{As σ Bss}
+        → bs ∣ Γ ∣ Bss ⊢as args ⦂ As → σ ⦂ Γ ⇒ Δ
+        → bs ∣ Δ ∣ Bss ⊢as map-args σ {bs} args ⦂ As
+  preserve-map {` x}{σ} (var-p ∋x) σ⦂ = lookup-pres σ⦂ ∋x
+  preserve-map {op ⦅ args ⦆} (op-p ⊢args Pop) σ⦂ =
+      op-p (pres-args ⊢args σ⦂) Pop
+  pres-arg {zero} {arg = ast M} (ast-a ⊢M) σ⦂ = ast-a (preserve-map ⊢M σ⦂)
+  pres-arg {suc b} {arg = bind arg} (bind-a {B = B}{A = A} ⊢arg) σ⦂ =
+      bind-a (pres-arg ⊢arg (extend-pres σ⦂))
+  pres-args {[]} {args = nil} nil-a σ⦂ = nil-a
+  pres-args {b ∷ bs} {args = cons arg args} (cons-a ⊢arg ⊢args) σ⦂ =
+    cons-a (pres-arg ⊢arg σ⦂) (pres-args ⊢args σ⦂)
 
