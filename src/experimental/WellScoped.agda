@@ -4,12 +4,13 @@ open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.Unit using (⊤; tt)
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
+open Eq using (_≡_; refl; sym; cong; cong₂; cong-app; subst)
 
 module experimental.WellScoped (Op : Set) (sig : Op → List ℕ) where
 
   open import Syntax using (Var; Substable; Rename; ⦉_⦊; ↑; _•_)
-  open Syntax.OpSig Op sig using (ABT; RenameIsMap; rename; SubstIsMap; ⟪_⟫)
+  open Syntax.OpSig Op sig
+      using (ABT; RenameIsMap; rename; SubstIsMap; ⟪_⟫; Subst; ⟦_⟧)
   open import Preserve Op sig
   open import Map Op sig
   open import Data.Vec using (Vec) renaming ([] to []̆; _∷_ to _∷̆_)
@@ -41,13 +42,16 @@ module experimental.WellScoped (Op : Set) (sig : Op → List ℕ) where
       RenPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ x A → Γ ∋ x ⦂ A
                 ; ∋→⊢v-var→val = λ x → x ; ext-⊢v = λ ∋x → ∋x
                   ; ⊢v→⊢ = var-p ; ⊢v0 = refl }
-      open PreserveMap RenPres using (_⦂_⇒_; preserve-map)
+      open PreserveMap RenPres using (_⦂_⇒_)
+      
+    open PreserveMap RenPres using ()
+        renaming (preserve-map to ren-preserve-map) public
 
     WFRename : ℕ → Rename → ℕ → Set
     WFRename Γ ρ Δ = ∀ {x} → x < Γ → (⦉ ρ ⦊ x) < Δ
 
     WF-rename : ∀ {Γ Δ ρ M} → WFRename Γ ρ Δ → WF Γ M → WF Δ (rename ρ M)
-    WF-rename {Γ}{Δ}{ρ}{M} wfΓ wfM = preserve-map wfM wfρ
+    WF-rename {Γ}{Δ}{ρ}{M} wfΓ wfM = ren-preserve-map wfM wfρ
         where
         wfρ : ρ ⦂ mk-list Γ ⇒ mk-list Δ
         wfρ {x}{A} ∋x
@@ -58,29 +62,25 @@ module experimental.WellScoped (Op : Set) (sig : Op → List ℕ) where
             with <→∋x{mk-list Δ} x<Δ 
         ... | ∋x' rewrite len-mk-list Δ = ∋x' 
 
-{-
-
   module _ where
     private
-      V : Set
-      V = ABT
+      SubstPres : PreserveMap SubstIsMap
+      SubstPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ M A → Γ ⊢ M ⦂ A
+                    ; ∋→⊢v-var→val = λ ∋x → var-p ∋x
+                    ; ext-⊢v = λ {A}{B}{Δ}{M} ⊢M → ren-preserve-map ⊢M λ x → x
+                    ; ⊢v→⊢ = λ x → x ; ⊢v0 = λ { {tt}{b} → var-p refl } }
+      open PreserveMap SubstPres using (_⦂_⇒_)
       
-      𝑃 : (op : Op) → Vec ⊤ (length (sig op)) → BTypes ⊤ (sig op) → ⊤ → Set
-      𝑃 op vs Bs A = ⊤
+    open PreserveMap SubstPres using ()
+        renaming (preserve-map to sub-preserve-map) public
 
-      open import AbstractBindingTree Op sig
-      open ABTPred 𝑃
+    WFSubst : ℕ → Subst → ℕ → Set
+    WFSubst Γ σ Δ = ∀ {x} → x < Γ → WF Δ (⟦ σ ⟧ x)
 
-      _⊢v_⦂_ : List ⊤ → V → ⊤ → Set
-      Γ ⊢v M ⦂ A = Γ ⊢ M ⦂ A
-      
-      ∋→⊢v-var→val : ∀ {Γ x A} → Γ ∋ x ⦂ A → Γ ⊢v ` x ⦂ A
-      ∋→⊢v-var→val ∋x = var-p ∋x
-
-      open PreserveMap SubstIsMap 𝑃 _⊢v_⦂_ (λ {Γ}{x}{A} → ∋→⊢v-var→val{Γ}{x}{A})
-      open Substable (Map.S SubstIsMap)
-      open Map SubstIsMap
-      
-      ext-⊢v : ∀{A B Δ v} → Δ ⊢v v ⦂ A → (B ∷ Δ) ⊢v shift v ⦂ A
-      ext-⊢v {v = x} ∋x = {!!}
--}
+    WF-subst : ∀{Γ Δ σ M} → WFSubst Γ σ Δ → WF Γ M → WF Δ (⟪ σ ⟫ M)
+    WF-subst {Γ}{Δ}{σ}{M} wfσ wfM = sub-preserve-map wfM σ⦂
+        where
+        σ⦂ : σ ⦂ mk-list Γ ⇒ mk-list Δ
+        σ⦂ {x}{tt} ∋x
+            with ∋x→<{mk-list Γ} ∋x
+        ... | x<Γ rewrite len-mk-list Γ = wfσ{x} x<Γ
