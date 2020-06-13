@@ -6,10 +6,11 @@ open import Data.Unit using (⊤; tt)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app; subst)
 
-module experimental.WellScoped (Op : Set) (sig : Op → List ℕ) where
+module WellScoped (Op : Set) (sig : Op → List ℕ) where
 
-  open import Syntax using (Var; Substable; Rename; ⦉_⦊; ↑; _•_)
-  open Syntax.OpSig Op sig
+  open import Var
+  open import Substitution using (Substable; Rename; ⦉_⦊; ↑; _•_)
+  open Substitution.OpSig Op sig
       using (ABT; RenameIsMap; rename; SubstIsMap; ⟪_⟫; Subst; ⟦_⟧)
   open import Preserve Op sig
   open import Map Op sig
