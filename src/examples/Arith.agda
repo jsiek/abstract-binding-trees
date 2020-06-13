@@ -117,9 +117,6 @@ module examples.Arith where
   𝑃 (op-bool x) []̌ Bss Tᵣ = Tᵣ ≡ t-bool
   𝑃 op-if (Tᶜ ∷̌ Tᵗ ∷̌ Tₑ ∷̌ []̌) Bss Tᵣ = Tᶜ ≡ t-bool × Tᵗ ≡ Tₑ × Tₑ ≡ Tᵣ
 
-  𝐴 : List Type → Maybe Val → Type → Set
-  𝐴 Γ mv T = ⊤
-
   data ⊢_⦂_ : Val → Type → Set where
     ⊢-nat :  ∀{n} → ⊢ (v-num n) ⦂ t-nat
     ⊢-bool :  ∀{b} → ⊢ (v-bool b) ⦂ t-bool
@@ -133,22 +130,19 @@ module examples.Arith where
 
   {--- Type Safety via preserve-fold ---}
   
-  open PreserveFold Eval 𝑃 𝐴 _⊢v_⦂_ _⊢c_⦂_
-  open GenericSubstitution
-  open GenericSubst Sub
-  open import Var
-
   ext-⊢v : ∀{v A B Δ} → Δ ⊢v v ⦂ A → (B ∷ Δ) ⊢v shift v ⦂ A
   ext-⊢v {nothing} ⊢vσx = ⊢v-none
   ext-⊢v {just x₁} (⊢v-just ⊢v⦂) = ⊢v-just ⊢v⦂
+  
+  open GenericSubstitution
+  open GenericSubst Sub
+  open import Var
+  open FoldPred 𝑃 (λ Γ mv T → ⊤) _⊢v_⦂_ _⊢v_⦂_ Sub
 
   compress-⊢v : ∀{v A B Δ} → (B ∷ Δ) ⊢v v ⦂ A → Δ ⊢v v ⦂ A
   compress-⊢v {.nothing} ⊢v-none = ⊢v-none
   compress-⊢v {.(just _)} (⊢v-just x) = ⊢v-just x
 
-  ret-pres : ∀{v}{Δ}{A} → Δ ⊢v v ⦂ A → Δ ⊢c (ret v) ⦂ A
-  ret-pres ⊢v⦂ = ⊢v⦂
-  
   op-pres : ∀ {op}{Rs}{Δ}{A : Type}{As : Vec Type (length (sig op))}{Bs}
             → sig op ∣ Δ ∣ Bs ⊢rs Rs ⦂ As
             → 𝑃 op As Bs A → Δ ⊢c (fold-op op Rs) ⦂ A
@@ -179,9 +173,17 @@ module examples.Arith where
       with b
   ... | true = Pthn
   ... | false = Pels
-
-  open ExtV (λ{σ}{A}{B}{Δ}{v} ⊢v⦂ → ext-⊢v{v}{A}{B}{Δ} ⊢v⦂)
-  open Reqs ret-pres op-pres
   
-  type-safety : ∀ M → [] ⊢ M ⦂ t-nat → [] ⊢c eval M ⦂ t-nat
-  type-safety M ⊢M = preserve-fold ⊢M empty-env
+  EvalPres : PreserveFold Eval 
+  EvalPres = record { 𝑃 = 𝑃 ; 𝐴 = λ Γ mv T → ⊤
+             ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢v_⦂_
+             ; ext-⊢v = ext-⊢v ; ∋→⊢v-var→val = λ x → ⊢v-none
+             ; ret-pres = λ x → x ; op-pres = op-pres }
+  open PreserveFold EvalPres using (_⊢_⦂_)
+      renaming (preserve-fold to eval-preserve)
+
+  type-safety : ∀ M
+     → [] ⊢ M ⦂ t-nat
+     → [] ⊢c eval M ⦂ t-nat
+  type-safety M ⊢M = eval-preserve ⊢M (λ x → ⊢v-none)
+
