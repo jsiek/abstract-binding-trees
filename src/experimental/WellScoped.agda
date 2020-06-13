@@ -45,13 +45,13 @@ module experimental.WellScoped (Op : Set) (sig : Op → List ℕ) where
       open PreserveMap RenPres using (_⦂_⇒_)
       
     open PreserveMap RenPres using ()
-        renaming (preserve-map to ren-preserve-map) public
+        renaming (preserve-map to ren-preserve) public
 
     WFRename : ℕ → Rename → ℕ → Set
     WFRename Γ ρ Δ = ∀ {x} → x < Γ → (⦉ ρ ⦊ x) < Δ
 
     WF-rename : ∀ {Γ Δ ρ M} → WFRename Γ ρ Δ → WF Γ M → WF Δ (rename ρ M)
-    WF-rename {Γ}{Δ}{ρ}{M} wfΓ wfM = ren-preserve-map wfM wfρ
+    WF-rename {Γ}{Δ}{ρ}{M} wfΓ wfM = ren-preserve wfM wfρ
         where
         wfρ : ρ ⦂ mk-list Γ ⇒ mk-list Δ
         wfρ {x}{A} ∋x
@@ -67,18 +67,18 @@ module experimental.WellScoped (Op : Set) (sig : Op → List ℕ) where
       SubstPres : PreserveMap SubstIsMap
       SubstPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ M A → Γ ⊢ M ⦂ A
                     ; ∋→⊢v-var→val = λ ∋x → var-p ∋x
-                    ; ext-⊢v = λ {A}{B}{Δ}{M} ⊢M → ren-preserve-map ⊢M λ x → x
+                    ; ext-⊢v = λ {A}{B}{Δ}{M} ⊢M → ren-preserve ⊢M λ x → x
                     ; ⊢v→⊢ = λ x → x ; ⊢v0 = λ { {tt}{b} → var-p refl } }
       open PreserveMap SubstPres using (_⦂_⇒_)
       
     open PreserveMap SubstPres using ()
-        renaming (preserve-map to sub-preserve-map) public
+        renaming (preserve-map to sub-preserve) public
 
     WFSubst : ℕ → Subst → ℕ → Set
     WFSubst Γ σ Δ = ∀ {x} → x < Γ → WF Δ (⟦ σ ⟧ x)
 
     WF-subst : ∀{Γ Δ σ M} → WFSubst Γ σ Δ → WF Γ M → WF Δ (⟪ σ ⟫ M)
-    WF-subst {Γ}{Δ}{σ}{M} wfσ wfM = sub-preserve-map wfM σ⦂
+    WF-subst {Γ}{Δ}{σ}{M} wfσ wfM = sub-preserve wfM σ⦂
         where
         σ⦂ : σ ⦂ mk-list Γ ⇒ mk-list Δ
         σ⦂ {x}{tt} ∋x
