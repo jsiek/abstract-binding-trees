@@ -29,8 +29,7 @@ module examples.Arith where
   open import ScopedTuple
   open import Syntax using (Substable; ↑)
 
-  open import AbstractBindingTree Op sig
-    renaming (ABT to AST)
+  open import AbstractBindingTree Op sig renaming (ABT to AST)
   pattern $ n  = op-num n ⦅ nil ⦆
   infixl 7  _⊗_
   pattern _⊗_ L M = op-mult ⦅ cons (ast L) (cons (ast M) nil) ⦆
@@ -144,7 +143,7 @@ module examples.Arith where
   compress-⊢v {.(just _)} (⊢v-just x) = ⊢v-just x
 
   op-pres : ∀ {op}{Rs}{Δ}{A : Type}{As : Vec Type (length (sig op))}{Bs}
-            → sig op ∣ Δ ∣ Bs ⊢rs Rs ⦂ As
+            → sig op ∣ Δ ∣ Bs ⊢ᵣ₊ Rs ⦂ As
             → 𝑃 op As Bs A → Δ ⊢c (fold-op op Rs) ⦂ A
   op-pres {op-num n} nil-r refl = ⊢v-just ⊢-nat
   op-pres {op-mult} (cons-r (ast-r Px) (cons-r (ast-r Py) nil-r))
@@ -161,7 +160,7 @@ module examples.Arith where
   ... | nothing = ⊢v-none
   ... | just v =
          let wtres : (T₁ ∷ Δ) ⊢c f (just v) ⦂ T₂
-             wtres = ⊢r→⊢c (Pbody {just v} (ext-⊢v Prhs) tt) in
+             wtres = ⊢ᵣ→⊢c (Pbody {just v} (ext-⊢v Prhs) tt) in
          compress-⊢v wtres
   op-pres {op-bool b} nil-r refl = ⊢v-just ⊢-bool
   op-pres {op-if} (cons-r (ast-r Pc) (cons-r (ast-r Pthn)
@@ -175,7 +174,7 @@ module examples.Arith where
   ... | false = Pels
   
   EvalPres : PreserveFold Eval 
-  EvalPres = record { 𝑃 = 𝑃 ; 𝐴 = λ Γ mv T → ⊤
+  EvalPres = record { 𝑉 = λ Γ x A → ⊤ ; 𝑃 = 𝑃 ; 𝐴 = λ Γ mv T → ⊤
              ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢v_⦂_
              ; ext-⊢v = ext-⊢v ; ∋→⊢v-var→val = λ x → ⊢v-none
              ; ret-pres = λ x → x ; op-pres = op-pres }
