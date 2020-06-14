@@ -43,7 +43,7 @@ ext-0 ρ rewrite ext-def ρ = refl
 ext-suc : ∀ ρ x → ⦉ ext ρ ⦊ (suc x) ≡ suc (⦉ ρ ⦊ x)
 ext-suc ρ x rewrite ext-def ρ | inc-suc ρ x = refl
 
-module OpSig (Op : Set) (sig : Op → List ℕ)  where
+module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
   open import AbstractBindingTree Op sig public
 
