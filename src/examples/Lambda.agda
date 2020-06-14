@@ -7,10 +7,11 @@
 -}
 
 import Syntax
-open import Data.List using (List)
-open import Data.Nat using (ℕ)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; length)
 open import Data.Nat using (ℕ; zero; suc)
+open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
+open import Data.Unit using (⊤; tt)
+open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 
 module examples.Lambda where
@@ -23,10 +24,13 @@ sig : Op → List ℕ
 sig op-lam = 1 ∷ []
 sig op-app = 0 ∷ 0 ∷ []
 
-open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext; ext-0; ext-suc)
+open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext; ext-0; ext-suc;
+    RenameIsSubstable)
 
 open Syntax.OpSig Op sig
-  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; ⟦_⟧; rename; exts-0; exts-suc-rename)
+  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; ⟦_⟧;
+         rename; exts-0; exts-suc-rename;
+         RenameIsMap; SubstIsSubstable; SubstIsMap)
   renaming (ABT to Term)
 
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
@@ -92,47 +96,26 @@ _ : ∀ L M → (ƛ ((ƛ (` 0 · ` 1)) · M)) · L
 _ = λ L M → ξ-·₁ (ξ-ƛ β-ƛ)
 
 
-{---}
 data Type : Set where
   Bot   : Type
   _⇒_   : Type → Type → Type
 
-data Context : Set where
-  ∅   : Context
-  _,_ : Context → Type → Context
+open import Var using (Var)
+open import Preserve Op sig
 
-infix  4  _∋_⦂_
+𝑉 : List Type → Var → Type → Set
+𝑉 Γ x A = ⊤
 
-data _∋_⦂_ : Context → ℕ → Type → Set where
+𝑃 : (op : Op) → Vec Type (length (sig op)) → BTypes Type (sig op) → Type → Set
+𝑃 op-lam (B ∷̌ []̌) ⟨ ⟨ A , tt ⟩ , tt ⟩ A→B = A→B ≡ A ⇒ B
+𝑃 op-app (A→B ∷̌ A ∷̌ []̌) ⟨ tt , ⟨ tt , tt ⟩ ⟩ B = A→B ≡ A ⇒ B
 
-  Z : ∀ {Γ A}
-      ------------------
-    → Γ , A ∋ 0 ⦂ A
+open ABTPred 𝑉 𝑃
 
-  S : ∀ {Γ x A B}
-    → Γ ∋ x ⦂ A
-      ------------------
-    → Γ , B ∋ (suc x) ⦂ A
-
-infix  4  _⊢_⦂_
-
-data _⊢_⦂_ : Context → Term → Type → Set where
-
-  ⊢` : ∀ {Γ x A}
-    → Γ ∋ x ⦂ A
-      -----------
-    → Γ ⊢ ` x ⦂ A
-
-  ⊢ƛ : ∀ {Γ N A B}
-    → Γ , A ⊢ N ⦂ B
-      -------------------
-    → Γ ⊢ ƛ N ⦂ A ⇒ B
-
-  ⊢· : ∀ {Γ L M A B}
-    → Γ ⊢ L ⦂ A ⇒ B
-    → Γ ⊢ M ⦂ A
-      -------------
-    → Γ ⊢ L · M ⦂ B
+pattern ⊢` ∋x = var-p ∋x tt
+pattern ⊢ƛ ⊢N eq = op-p {op = op-lam} (cons-p (bind-p (ast-p ⊢N)) nil-p) eq
+pattern ⊢· ⊢L ⊢M eq = op-p {op = op-app}
+                           (cons-p (ast-p ⊢L) (cons-p (ast-p ⊢M) nil-p)) eq
 
 data Value : Term → Set where
 
@@ -153,73 +136,52 @@ data Progress (M : Term) : Set where
     → Progress M
 
 progress : ∀ {M A}
-  → ∅ ⊢ M ⦂ A
+  → [] ⊢ M ⦂ A
     ----------
   → Progress M
 progress (⊢` ())
-progress (⊢ƛ ⊢N)                            =  done V-ƛ
-progress (⊢· ⊢L ⊢M)
+progress (⊢ƛ ⊢N _)                            =  done V-ƛ
+progress (⊢· ⊢L ⊢M _)
     with progress ⊢L
 ... | step L—→L′                            =  step (ξ-·₁ L—→L′)
 ... | done V-ƛ                              =  step β-ƛ
 
-WTRename : Context → Rename → Context → Set
-WTRename Γ ρ Δ = ∀ {x A} → Γ ∋ x ⦂ A → Δ ∋ ⦉ ρ ⦊ x ⦂ A
 
-ext-pres : ∀ {Γ Δ ρ B}
-  → WTRename Γ ρ Δ
-    --------------------------------
-  → WTRename (Γ , B) (ext ρ) (Δ , B)
-ext-pres {ρ = ρ } ⊢ρ Z rewrite ext-0 ρ =  Z
-ext-pres {ρ = ρ } ⊢ρ (S {x = x} ∋x) rewrite ext-suc ρ x = S (⊢ρ ∋x)
+module _ where
+  open FoldPred 𝑃 (λ Γ v A → ⊤) _∋_⦂_ _⊢_⦂_ RenameIsSubstable
+  RenPres : PreserveMap {I = Type} RenameIsMap
+  RenPres = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _∋_⦂_ ; ∋→⊢v-var→val = λ x → x
+            ; ext-⊢v = λ x → x ; ⊢v→⊢ = λ x → ⊢` x ; ⊢v0 = refl }
+  open PreserveMap RenPres using ()
+      renaming (preserve-map to rename-pres) public
 
-rename-pres : ∀ {Γ Δ ρ M A}
-  → WTRename Γ ρ Δ
-  → Γ ⊢ M ⦂ A
-    ------------------
-  → Δ ⊢ rename ρ M ⦂ A
-rename-pres ⊢ρ (⊢` ∋w)            =  ⊢` (⊢ρ ∋w)
-rename-pres {ρ = ρ} ⊢ρ (⊢ƛ ⊢N)    =  ⊢ƛ (rename-pres {ρ = ext ρ} (ext-pres {ρ = ρ} ⊢ρ) ⊢N)
-rename-pres {ρ = ρ} ⊢ρ (⊢· ⊢L ⊢M) =  ⊢· (rename-pres {ρ = ρ} ⊢ρ ⊢L) (rename-pres {ρ = ρ} ⊢ρ ⊢M)
-
-WTSubst : Context → Subst → Context → Set
-WTSubst Γ σ Δ = ∀ {A x} → Γ ∋ x ⦂ A → Δ ⊢ ⟦ σ ⟧ x ⦂ A
-
-exts-pres : ∀ {Γ Δ σ B}
-  → WTSubst Γ σ Δ
-    --------------------------------
-  → WTSubst (Γ , B) (exts σ) (Δ , B)
-exts-pres {σ = σ} Γ⊢σ Z rewrite exts-0 σ = ⊢` Z
-exts-pres {σ = σ} Γ⊢σ (S {x = x} ∋x) rewrite exts-suc-rename σ x = rename-pres {ρ = ↑ 1} S (Γ⊢σ ∋x)
-
-subst : ∀ {Γ Δ σ N A}
-  → WTSubst Γ σ Δ
-  → Γ ⊢ N ⦂ A
-    ---------------
-  → Δ ⊢ ⟪ σ ⟫ N ⦂ A
-subst Γ⊢σ (⊢` eq)              = Γ⊢σ eq
-subst {σ = σ} Γ⊢σ (⊢ƛ ⊢N)      = ⊢ƛ (subst {σ = exts σ} (exts-pres {σ = σ} Γ⊢σ) ⊢N) 
-subst {σ = σ} Γ⊢σ (⊢· ⊢L ⊢M)   = ⊢· (subst {σ = σ} Γ⊢σ ⊢L) (subst {σ = σ} Γ⊢σ ⊢M) 
+open FoldPred 𝑃 (λ Γ v A → ⊤) _⊢_⦂_ _⊢_⦂_ SubstIsSubstable
+SubstPres : PreserveMap SubstIsMap
+SubstPres = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _⊢_⦂_
+              ; ∋→⊢v-var→val = λ ∋x → ⊢` ∋x
+              ; ext-⊢v = λ {M} ⊢M → rename-pres ⊢M (λ z → z)
+              ; ⊢v→⊢ = λ x → x ; ⊢v0 = λ {B}{Δ} → ⊢` refl }
+open PreserveMap SubstPres using ()
+    renaming (preserve-map to subst-pres) public
 
 substitution : ∀{Γ A B M N}
    → Γ ⊢ M ⦂ A
-   → (Γ , A) ⊢ N ⦂ B
+   → (A ∷ Γ) ⊢ N ⦂ B
      ---------------
    → Γ ⊢ N [ M ] ⦂ B
-substitution {Γ}{A}{B}{M}{N} ⊢M ⊢N = subst {σ = M • ↑ 0} G ⊢N
+substitution {Γ}{A}{B}{M}{N} ⊢M ⊢N =
+    subst-pres {σ = M • ↑ 0} ⊢N (λ {x} → ext⦂ {x})
     where
-    G : ∀ {A₁ : Type} {x : ℕ}
-      → (Γ , A) ∋ x ⦂ A₁ → Γ ⊢ ⟪ M • ↑ 0 ⟫ (` x) ⦂ A₁
-    G {A₁} {zero} Z = ⊢M
-    G {A₁} {suc x} (S ∋x) = ⊢` ∋x
+    ext⦂ : (M • ↑ 0) ⦂ A ∷ Γ ⇒ Γ
+    ext⦂ {zero} {B} refl = ⊢M
+    ext⦂ {suc x} {B} ∋x = ⊢` ∋x
 
 preserve : ∀ {Γ M N A}
   → Γ ⊢ M ⦂ A
   → M —→ N
     ----------
   → Γ ⊢ N ⦂ A
-preserve (⊢· ⊢L ⊢M) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L—→L′) ⊢M
-preserve (⊢· ⊢L ⊢M) (ξ-·₂ M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′)
-preserve (⊢ƛ ⊢M) (ξ-ƛ M—→N) = ⊢ƛ (preserve ⊢M M—→N)
-preserve (⊢· (⊢ƛ ⊢N) ⊢M) β-ƛ = substitution ⊢M ⊢N
-
+preserve (⊢· ⊢L ⊢M refl) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L—→L′) ⊢M refl
+preserve (⊢· ⊢L ⊢M refl) (ξ-·₂ M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′) refl
+preserve (⊢ƛ ⊢M refl) (ξ-ƛ M—→N) = ⊢ƛ (preserve ⊢M M—→N) refl
+preserve (⊢· (⊢ƛ ⊢N refl) ⊢M refl) β-ƛ = substitution ⊢M ⊢N

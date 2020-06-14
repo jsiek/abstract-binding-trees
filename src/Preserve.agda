@@ -174,7 +174,7 @@ record PreserveFold {V C I : Set} (F : Fold V C) : Set₁ where
       (cons-p ⊢arg ⊢args) σΓΔ =
       cons-r  (pres-arg {b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
 
-{-------------------- Preserve Fold ---------------------}
+{-------------------- Preserve Map ---------------------}
 
 record PreserveMap {V I : Set} (M : Map V) : Set₁ where
   field 𝑉 : List I → Var → I → Set
