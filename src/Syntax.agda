@@ -25,7 +25,9 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     Well-formed Abstract Binding Trees
    ---------------------------------------------------------------------------}
 
-  {- TODO: add context stuff to WellScoped.agda, then remove this. -Jeremy -}
+  {- TODO: add context stuff to WellScoped.agda, then remove this.
+     Problem: denotation depends on lots of details, such as
+     constructor names. -Jeremy -}
 
   data WF-arg : ℕ → {b : ℕ} → Arg b → Set
   data WF-args : ℕ → {bs : List ℕ} → Args bs → Set 
