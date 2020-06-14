@@ -10,7 +10,7 @@ module WellScoped (Op : Set) (sig : Op → List ℕ) where
 
   open import Var
   open import Substitution using (Substable; Rename; ⦉_⦊; ↑; _•_)
-  open Substitution.OpSig Op sig
+  open Substitution.ABTOps Op sig
       using (ABT; RenameIsMap; rename; SubstIsMap; ⟪_⟫; Subst; ⟦_⟧)
   open import Preserve Op sig
   open import Map Op sig

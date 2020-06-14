@@ -13,9 +13,6 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 
 module Syntax where
 
-open GenericSubstitution
-    using (GSubst; ↑; _•_; Substable; id; drop; map-sub; map-sub-id; drop-0)
-    public
 open import Var public
 
 open import Substitution public
