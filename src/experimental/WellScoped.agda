@@ -7,7 +7,7 @@ open import Data.Unit using (⊤; tt)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app; subst)
 
-module WellScoped (Op : Set) (sig : Op → List ℕ) where
+module experimental.WellScoped (Op : Set) (sig : Op → List ℕ) where
 
 open import Var
 open import Substitution using (Substable; Rename; ⦉_⦊; ↑; _•_)
