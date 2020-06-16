@@ -190,3 +190,23 @@ module Relate {V₁}{V₂} (S₁ : Substable V₁) (S₂ : Substable V₂)
     g-lookup x (r-up{k}) = var→val∼ (k + x)
     g-lookup zero (r-cons v₁∼v₂ σ₁≊σ₂) = v₁∼v₂
     g-lookup (suc x) (r-cons v₁∼v₂ σ₁≊σ₂) = g-lookup x σ₁≊σ₂
+
+module ComposeGSubst {V₁ V₂ V₃ : Set} 
+   (⌈_⌉ : GSubst V₂ → V₁ → V₃)
+   (val₂₃ : V₂ → V₃) where
+  {- The following generalizes _⨟ᵣ_ and _⨟_, as well as compositions
+     of renaming and subtitution. -}
+  infixr 5 _⨟_
+
+  abstract
+    _⨟_ : GSubst V₁ → GSubst V₂ → GSubst V₃
+    ↑ k ⨟ σ₂ = map-sub val₂₃ (drop k σ₂)
+    (v₁ • σ₁) ⨟ σ₂ = ⌈ σ₂ ⌉ v₁ • (σ₁ ⨟ σ₂)
+
+  abstract
+    up-seq : ∀ k σ₂ → ↑ k ⨟ σ₂ ≡ map-sub val₂₃ (drop k σ₂)
+    up-seq k σ₂ = refl
+
+    cons-seq : ∀ v₁ σ₁ σ₂ → (v₁ • σ₁) ⨟ σ₂ ≡ ⌈ σ₂ ⌉ v₁ • (σ₁ ⨟ σ₂)
+    cons-seq  v₁ σ₁ σ₂ = refl
+

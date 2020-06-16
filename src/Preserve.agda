@@ -23,6 +23,7 @@ open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; z≤n; s≤s)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit using (⊤; tt)
+import Substitution
 
 module Preserve (Op : Set) (sig : Op → List ℕ) where
 
@@ -33,9 +34,16 @@ open import Fold Op sig
 open import Map Op sig
 open import ScopedTuple
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
-open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; sym; cong; cong₂)
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
+open Eq.≡-Reasoning
 open import Var
+
+postulate
+  extensionality : ∀ {A B : Set} {f g : A → B}
+    → (∀ (x : A) → f x ≡ g x)
+      -----------------------
+    → f ≡ g
 
 _∋_⦂_ : ∀{I : Set} → List I → Var → I → Set
 _∋_⦂_ {I} [] x A = ⊥
@@ -126,7 +134,7 @@ module FoldPred {I : Set}{V C : Set}
   _⦂_⇒_ : GSubst V → List I → List I → Set
   σ ⦂ Γ ⇒ Δ = ∀{x A} → Γ ∋ x ⦂ A  →  Δ ⊢v ⧼ σ ⧽ x ⦂ A
 
-{-------------------- Preserve Fold ---------------------}
+{-------------------- Fold Preserves ABTPred ---------------------}
 
 record PreserveFold {V C I : Set} (F : Fold V C) : Set₁ where
   field 𝑉 : List I → Var → I → Set
@@ -174,7 +182,7 @@ record PreserveFold {V C I : Set} (F : Fold V C) : Set₁ where
       (cons-p ⊢arg ⊢args) σΓΔ =
       cons-r  (pres-arg {b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
 
-{-------------------- Preserve Map ---------------------}
+{-------------------- Map Preserves ABTPred ---------------------}
 
 record PreserveMap {V I : Set} (M : Map V) : Set₁ where
   field 𝑉 : List I → Var → I → Set
@@ -221,3 +229,180 @@ record PreserveMap {V I : Set} (M : Map V) : Set₁ where
   pres-args {b ∷ bs} {args = cons arg args} (cons-p ⊢arg ⊢args) σ⦂ =
     cons-p (pres-arg ⊢arg σ⦂) (pres-args ⊢args σ⦂)
 
+{-------------------- Rename Preserves Fold ---------------------}
+
+module RenamePreserveFold {V C : Set} (F : Fold V C) where
+  open Fold F
+  open Substable (Fold.S F)
+  open GenericSubst (Fold.S F)
+  open Substitution using (Rename; ⦉_⦊; ext; ext-0; ext-suc)
+  open Substitution.ABTOps Op sig using (rename; ren-arg; ren-args)
+
+  _⨟_≈_ : Rename → GSubst V → GSubst V → Set
+  ρ ⨟ σ₁ ≈ σ₂ = ∀ x → ⧼ σ₁ ⧽ (⦉ ρ ⦊ x) ≡ ⧼ σ₂ ⧽ x
+
+  ext-⨟≈ : ∀{ρ σ₁ σ₂ v} → ρ ⨟ σ₁ ≈ σ₂
+         → ext ρ ⨟ v • g-inc σ₁ ≈ (v • g-inc σ₂)
+  ext-⨟≈ {ρ} {σ₁} {σ₂} {v} ρ⨟σ₁≈σ₂ zero rewrite ext-0 ρ = refl
+  ext-⨟≈ {ρ} {σ₁} {σ₂} {v} ρ⨟σ₁≈σ₂ (suc x) rewrite ext-suc ρ x
+      | g-inc-shift σ₁ (⦉ ρ ⦊ x) | g-inc-shift σ₂ x = cong shift (ρ⨟σ₁≈σ₂ x)
+
+  {- use RelBind here? -}
+
+  rename-fold : ∀{ρ σ₁ σ₂} (M : ABT)
+    → ρ ⨟ σ₁ ≈ σ₂
+    → fold σ₁ (rename ρ M) ≡ fold σ₂ M
+
+  rf-arg : ∀{b}{ρ σ₁ σ₂} (arg : Arg b)
+     → ρ ⨟ σ₁ ≈ σ₂
+     → fold-arg σ₁ (ren-arg ρ arg) ≡ fold-arg σ₂ arg
+  rf-args : ∀{bs}{ρ σ₁ σ₂} (args : Args bs)
+     → ρ ⨟ σ₁ ≈ σ₂
+     → fold-args σ₁ (ren-args ρ args) ≡ fold-args σ₂ args
+  rename-fold {ρ} {σ₁} {σ₂} (` x) σ₁∘ρ=σ₂ = cong ret (σ₁∘ρ=σ₂ x)
+  rename-fold {ρ} {σ₁} {σ₂} (op ⦅ args ⦆) σ₁∘ρ=σ₂ =
+      cong (fold-op op) (rf-args args σ₁∘ρ=σ₂)
+  rf-arg {zero} {ρ} {σ₁} {σ₂} (ast M) ρ⨟σ₁≈σ₂ = rename-fold M ρ⨟σ₁≈σ₂
+  rf-arg {suc b} {ρ} {σ₁} {σ₂} (bind arg) ρ⨟σ₁≈σ₂ = extensionality G
+      where
+      G : ∀ v → fold-arg σ₁ (ren-arg ρ (bind arg)) v ≡ fold-arg σ₂ (bind arg) v
+      G v = rf-arg{b}{ext ρ}{v • g-inc σ₁}{v • g-inc σ₂} arg (ext-⨟≈ ρ⨟σ₁≈σ₂)
+  rf-args {[]} {ρ} {σ₁} {σ₂} nil ρ⨟σ₁≈σ₂ = refl
+  rf-args {b ∷ bs} {ρ} {σ₁} {σ₂} (cons arg args) ρ⨟σ₁≈σ₂ =
+      cong₂ ⟨_,_⟩ (rf-arg arg ρ⨟σ₁≈σ₂) (rf-args args ρ⨟σ₁≈σ₂)
+
+{-------------------- Map Preserves Fold ---------------------}
+
+{- 
+   example: Fold is denotational semantics, V₂ = Value, C₂ = Value → Set
+            Map is substitution, V₁ = ABT
+
+       Env = Var → Value
+       Denotation : Env → Value → Set
+
+  _`⊢_↓_ : Env → Subst → Env → Set
+  _`⊢_↓_ δ σ γ = (∀ (x : Var) → ℰ (⟦ σ ⟧ x) δ (γ x))
+
+    subst-pres : ∀ {v} {γ : Env} {δ : Env} {M : Term}
+      → (σ : Subst)  →  δ `⊢ σ ↓ γ  →  ℰ M γ v
+      → ℰ (⟪ σ ⟫ M) δ v
+
+-}
+
+
+module BindShift (V₂ C₂ : Set) (shift₂ : V₂ → V₂) (shiftᶜ : C₂ → C₂) where
+
+  bind-shiftᶜ : ∀{b} → Bind V₂ C₂ b → Bind V₂ C₂ b
+  bind-shiftᶜ {zero} c₂ = shiftᶜ c₂
+  bind-shiftᶜ {suc b} f v₂ = bind-shiftᶜ {b} (f v₂)
+  
+record MapPreserveFold  {Vᵐ Vᶠ Cᶠ I : Set} (M : Map Vᵐ) (F : Fold Vᶠ Cᶠ)
+  : Set₁
+  where
+  open Map M ; open Fold F
+  open Substable (Map.S M) using ()
+      renaming (shift to shiftᵐ; var→val to var→valᵐ)
+  open Substable (Fold.S F) using () renaming (shift to shiftᶠ)
+  open GenericSubst (Map.S M)
+      using (g-ext-def) renaming (⧼_⧽ to ⧼_⧽ᵐ; g-ext to extᵐ;
+      g-inc-shift to g-inc-shiftᵐ; g-inc to g-incᵐ)
+  open GenericSubst (Fold.S F)
+      using (g-extend; g-inc) renaming (⧼_⧽ to ⧼_⧽ᶠ; g-ext to extᶠ;
+      g-inc-shift to g-inc-shiftᶠ)
+  open Substitution.ABTOps Op sig using (rename)
+
+  field var→val-“” : ∀ x → “ var→valᵐ x ” ≡ ` x
+        shiftᶜ : Cᶠ → Cᶠ
+        shift-ret : ∀ vᶠ → shiftᶜ (ret vᶠ) ≡ ret (shiftᶠ vᶠ)
+        shift-“” : ∀ vᵐ → “ shiftᵐ vᵐ ” ≡ rename (↑ 1) “ vᵐ ”
+  open RelBind {Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ}
+           (λ v v' → v ≡ shiftᶠ v') (λ c c' → c ≡ shiftᶜ c') public
+  field op-shift : ∀ op {rs↑ rs} → zip _⩳_ rs↑ rs
+                 → fold-op op rs↑ ≡ shiftᶜ (fold-op op rs)
+
+  _⨟_≈_ : GSubst Vᵐ → GSubst Vᶠ → GSubst Vᶠ → Set
+  σ ⨟ δ ≈ γ = ∀ x → fold δ “ ⧼ σ ⧽ᵐ x ” ≡ ret (⧼ γ ⧽ᶠ x)
+
+  open RenamePreserveFold F using (rename-fold)
+
+  module _ where
+    
+    fold-inc : ∀ δ δ↑ M
+        → (∀ x → ⧼ δ↑ ⧽ᶠ x ≡ shiftᶠ (⧼ δ ⧽ᶠ x))
+        → fold δ↑ M ≡ shiftᶜ (fold δ M)
+    fold-inc-arg : ∀ δ δ↑ {b} (arg : Arg b)
+        → (∀ x → ⧼ δ↑ ⧽ᶠ x ≡ shiftᶠ (⧼ δ ⧽ᶠ x))
+        → fold-arg δ↑ arg ⩳ fold-arg δ arg
+    fold-inc-args : ∀ (δ : GSubst Vᶠ) (δ↑ : GSubst Vᶠ) {bs} (args : Args bs)
+        → (∀ x → ⧼ δ↑ ⧽ᶠ x ≡ shiftᶠ (⧼ δ ⧽ᶠ x))
+        → zip _⩳_ (fold-args δ↑ args) (fold-args δ args)
+
+    fold-inc δ δ↑ (` x) δ=shift rewrite (δ=shift x)| shift-ret (⧼ δ ⧽ᶠ x) = refl
+    fold-inc δ δ↑ (op ⦅ args ⦆) δ=shift =
+        op-shift op (fold-inc-args δ δ↑ args δ=shift)
+    fold-inc-arg δ δ↑ (ast M) δ=shift = fold-inc δ δ↑ M δ=shift
+    fold-inc-arg δ δ↑ (bind arg) δ=shift {_}{vᶠ} refl =
+        fold-inc-arg (g-extend vᶠ δ) (g-extend (shiftᶠ vᶠ) δ↑) arg G
+        where
+        G : ∀ x → ⧼ g-extend (shiftᶠ vᶠ) δ↑ ⧽ᶠ x ≡ shiftᶠ (⧼ g-extend vᶠ δ ⧽ᶠ x)
+        G zero = refl
+        G (suc x) =
+            begin
+            ⧼ g-inc δ↑ ⧽ᶠ x           ≡⟨ g-inc-shiftᶠ δ↑ x ⟩
+            shiftᶠ (⧼ δ↑ ⧽ᶠ x)        ≡⟨ cong shiftᶠ (δ=shift x) ⟩
+            shiftᶠ (shiftᶠ (⧼ δ ⧽ᶠ x)) ≡⟨ cong shiftᶠ (sym (g-inc-shiftᶠ δ x)) ⟩
+            shiftᶠ (⧼ g-inc δ ⧽ᶠ x)
+            ∎
+    fold-inc-args δ δ↑ nil δ=shift = tt
+    fold-inc-args δ δ↑ (cons arg args) δ=shift =
+        ⟨ fold-inc-arg δ δ↑ arg δ=shift , fold-inc-args δ δ↑ args δ=shift ⟩
+
+  exts : ∀{σ δ γ}{v : Vᶠ} → σ ⨟ δ ≈ γ
+     → extᵐ σ ⨟ g-extend v δ ≈ g-extend v γ
+  exts {σ} {δ} {γ} {v} σ⨟δ≈γ zero rewrite g-ext-def σ | var→val-“” 0 = refl
+  exts {σ} {δ} {γ} {v} σ⨟δ≈γ (suc x) rewrite g-inc-shiftᶠ γ x
+      | g-ext-def σ | g-inc-shiftᵐ σ x | sym (shift-ret (⧼ γ ⧽ᶠ x))
+      | shift-“” (⧼ σ ⧽ᵐ x) =
+       begin
+           fold (v • g-inc δ) (rename (↑ 1) “ ⧼ σ ⧽ᵐ x ”)
+       ≡⟨ RF ⟩
+           fold (g-inc δ) “ ⧼ σ ⧽ᵐ x ”
+       ≡⟨ fold-inc δ (g-inc δ) “ ⧼ σ ⧽ᵐ x ” (g-inc-shiftᶠ δ) ⟩
+           shiftᶜ (fold δ “ ⧼ σ ⧽ᵐ x ”)
+       ≡⟨ cong shiftᶜ (σ⨟δ≈γ x) ⟩
+           shiftᶜ (ret (⧼ γ ⧽ᶠ x))
+       ∎
+      where
+      G : (RenamePreserveFold._⨟_≈_ F (↑ 1) (v • g-inc δ) (g-inc δ))
+      G x rewrite g-inc-shiftᶠ δ x = refl
+      RF : fold (v • g-inc δ) (rename (↑ 1) “ ⧼ σ ⧽ᵐ x ”)
+         ≡ fold (g-inc δ) “ ⧼ σ ⧽ᵐ x ”
+      RF = rename-fold {↑ 1}{v • g-inc δ}{g-inc δ} “ ⧼ σ ⧽ᵐ x ” G 
+
+  
+  map-preserve-fold : ∀{M σ δ γ}
+     → σ ⨟ δ ≈ γ
+     → fold δ (map-abt σ M)  ≡ fold γ M
+
+  {- use RelBind here? -}
+  mpf-arg : ∀{b}{arg : Arg b}{σ δ γ}
+     → σ ⨟ δ ≈ γ
+     → fold-arg δ (map-arg σ arg) ≡ fold-arg γ arg
+  mpf-args : ∀{bs}{args : Args bs}{σ δ γ}
+     → σ ⨟ δ ≈ γ
+     → (fold-args δ (map-args σ args)) ≡ (fold-args γ args)
+  map-preserve-fold {` x} {σ} {δ} {γ} σ⨟δ≈γ = σ⨟δ≈γ x
+  map-preserve-fold {op ⦅ args ⦆} {σ} {δ} {γ} σ⨟δ≈γ =
+      cong (fold-op op) (mpf-args {sig op}{args}{σ}{δ}{γ} σ⨟δ≈γ)
+  mpf-arg {zero} {ast M} {σ} {δ} {γ} σ⨟δ≈γ =
+      map-preserve-fold {M} σ⨟δ≈γ
+  mpf-arg {suc b} {bind arg} {σ} {δ} {γ} σ⨟δ≈γ =
+    extensionality G
+    where
+    G : ∀ v₂ → fold-arg δ (map-arg σ (bind arg)) v₂ ≡ fold-arg γ (bind arg) v₂
+    G v₂ = mpf-arg {b}{arg}{extᵐ σ}{g-extend v₂ δ}{g-extend v₂ γ} (exts σ⨟δ≈γ)
+
+
+  mpf-args {[]} {nil} {σ} {δ} {γ} σ⨟δ≈γ = refl
+  mpf-args {b ∷ bs} {cons arg args} {σ} {δ} {γ} σ⨟δ≈γ =
+      cong₂ ⟨_,_⟩ (mpf-arg{b}{arg}{σ}{δ}{γ} σ⨟δ≈γ) (mpf-args σ⨟δ≈γ)

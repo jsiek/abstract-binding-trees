@@ -45,7 +45,7 @@ record Fold (V C : Set) : Set where
   fold-arg σ {zero} (ast M) = fold σ M
   fold-arg σ {suc b} (bind arg) v = fold-arg (g-extend v σ) arg
   fold-args σ {[]} nil = tt
-  fold-args σ {b ∷ bs} (cons arg args) = ⟨ (fold-arg σ arg) , (fold-args σ args) ⟩
+  fold-args σ {b ∷ bs} (cons arg args) = ⟨ fold-arg σ arg , fold-args σ args ⟩
 
 {-------------------------------------------------------------------------------
  Simulation between two folds

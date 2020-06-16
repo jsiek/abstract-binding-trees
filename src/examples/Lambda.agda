@@ -170,11 +170,11 @@ substitution : ∀{Γ A B M N}
      ---------------
    → Γ ⊢ N [ M ] ⦂ B
 substitution {Γ}{A}{B}{M}{N} ⊢M ⊢N =
-    subst-pres {σ = M • ↑ 0} ⊢N (λ {x} → ext⦂ {x})
+    subst-pres {σ = M • ↑ 0} ⊢N (λ {x} → subM {x})
     where
-    ext⦂ : (M • ↑ 0) ⦂ A ∷ Γ ⇒ Γ
-    ext⦂ {zero} {B} refl = ⊢M
-    ext⦂ {suc x} {B} ∋x = ⊢` ∋x
+    subM : (M • id) ⦂ A ∷ Γ ⇒ Γ
+    subM {zero} {B} refl = ⊢M
+    subM {suc x} {B} ∋x = ⊢` ∋x
 
 preserve : ∀ {Γ M N A}
   → Γ ⊢ M ⦂ A

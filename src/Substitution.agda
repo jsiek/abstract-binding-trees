@@ -52,7 +52,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   RenameIsMap = record { “_” = `_ ; S = RenameIsSubstable }
   open Map RenameIsMap renaming (map-abt to rename; map-arg to ren-arg;
      map-args to ren-args) public
-  open ComposeMaps RenameIsMap RenameIsMap ⦉_⦊ (λ x → x)
+  open GenericSubstitution.ComposeGSubst ⦉_⦊ (λ x → x)
       using () renaming (_⨟_ to _⨟ᵣ_; up-seq to up-seqᵣ;
       cons-seq to cons-seqᵣ) public
 
@@ -188,7 +188,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   open Map SubstIsMap
       renaming (map-abt to ⟪_⟫; map-arg to ⟪_⟫ₐ; map-args to ⟪_⟫₊) public
   
-  open ComposeMaps SubstIsMap SubstIsMap ⟪_⟫ (λ x → x)
+  open GenericSubstitution.ComposeGSubst ⟪_⟫ (λ x → x)
       using (_⨟_; up-seq; cons-seq) public
 
   sub-up-seq : ∀ k σ → ↑ k ⨟ σ ≡ drop k σ
@@ -298,7 +298,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
   {------ Composing substitution and renaming -------}
 
-  open ComposeMaps SubstIsMap RenameIsMap rename `_
+  open GenericSubstitution.ComposeGSubst rename `_
      renaming (_⨟_ to _⨟ˢᵣ_; up-seq to up-seqˢᵣ; cons-seq to cons-seqˢᵣ)
 
   sr-up-seq : ∀ k ρ → ↑ k ⨟ˢᵣ ρ ≡ map-sub `_ (drop k ρ)
@@ -348,7 +348,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
   {------ Composing renaming and substitution -------}
 
-  open ComposeMaps {Var}{ABT}{ABT} RenameIsMap SubstIsMap ⟦_⟧ (λ M → M)
+  open GenericSubstitution.ComposeGSubst {Var}{ABT}{ABT} ⟦_⟧ (λ M → M)
      renaming (_⨟_ to _⨟ᵣˢ_; up-seq to up-seqᵣˢ; cons-seq to cons-seqᵣˢ)
 
   rs-up-seq : ∀ k σ → ↑ k ⨟ᵣˢ σ ≡ drop k σ

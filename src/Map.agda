@@ -44,25 +44,6 @@ record Map (V : Set) : Set where
      → map₂ σ₂ (map₁ σ₁ M) ≡ map₂ (σ₁ ⨟ σ₂) M
  ------------------------------------------------------------------------------}
 
-module ComposeMaps {V₁ V₂ V₃ : Set} (M₁ : Map V₁) (M₂ : Map V₂)
-   (⌈_⌉ : GSubst V₂ → V₁ → V₃)
-   (val₂₃ : V₂ → V₃) where
-  {- The following generalizes _⨟ᵣ_ and _⨟_, as well as compositions
-     of renaming and subtitution. -}
-  infixr 5 _⨟_
-
-  abstract
-    _⨟_ : GSubst V₁ → GSubst V₂ → GSubst V₃
-    ↑ k ⨟ σ₂ = map-sub val₂₃ (drop k σ₂)
-    (v₁ • σ₁) ⨟ σ₂ = ⌈ σ₂ ⌉ v₁ • (σ₁ ⨟ σ₂)
-
-  abstract
-    up-seq : ∀ k σ₂ → ↑ k ⨟ σ₂ ≡ map-sub val₂₃ (drop k σ₂)
-    up-seq k σ₂ = refl
-
-    cons-seq : ∀ v₁ σ₁ σ₂ → (v₁ • σ₁) ⨟ σ₂ ≡ ⌈ σ₂ ⌉ v₁ • (σ₁ ⨟ σ₂)
-    cons-seq  v₁ σ₁ σ₂ = refl
-
 record Quotable {V₁ V₂ V₃}
   (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : Map V₃) : Set
   where
@@ -88,8 +69,7 @@ record Quotable {V₁ V₂ V₃}
         map₂-var→val₁ : ∀ x σ₂ → map₂ σ₂ “ var→val₁ x ”₁ ≡ “ ⧼ σ₂ ⧽₂ x ”₂
         val₂₃-shift : ∀ v₂ → val₂₃ (shift₂ v₂) ≡ shift₃ (val₂₃ v₂)
 
-  
-  open ComposeMaps M₁ M₂ ⌈_⌉ val₂₃
+  open ComposeGSubst ⌈_⌉ val₂₃
   
   g-map-sub-⧼·⧽ : ∀{x} (σ : GSubst V₂)
      → ⧼ map-sub val₂₃ σ ⧽₃ x ≡ val₂₃ (⧼ σ ⧽₂ x)
@@ -147,7 +127,7 @@ record FusableMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : M
   
   field Q : Quotable M₁ M₂ M₃
   open Quotable Q
-  open ComposeMaps M₁ M₂ ⌈_⌉ val₂₃ public
+  open ComposeGSubst ⌈_⌉ val₂₃ public
   field var : ∀ x σ₁ σ₂ → ⌈ σ₂ ⌉ (⧼ σ₁ ⧽₁ x) ≡ ⧼ (σ₁ ⨟ σ₂) ⧽₃ x
         compose-ext : ∀ (σ₁ : GSubst V₁) (σ₂ : GSubst V₂)
                     → ext₁ σ₁ ⨟ ext₂ σ₂ ≡ ext₃ (σ₁ ⨟ σ₂)
