@@ -3,7 +3,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 open import Data.Nat.Properties using (+-comm)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit using (⊤; tt)
-open import Env using (EnvI)
+import Env
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
@@ -24,9 +24,10 @@ open import AbstractBindingTree Op sig
 {- MapEnv is abstract with respect to the environment -}
 
 record MapEnv (V : Set) (Env : Set) : Set where
-  field “_” : V → ABT
-        env : Env.EnvI V Env
-  open EnvI env public
+  field S : Shiftable V
+        “_” : V → ABT
+        env : Env.EnvI S Env
+  open Env.EnvI env public
   
   map-abt : Env → ABT → ABT
   map-arg : Env → {b : ℕ} →  Arg b → Arg b
@@ -35,7 +36,7 @@ record MapEnv (V : Set) (Env : Set) : Set where
   map-abt σ (` x) = “ lookup σ x ”
   map-abt σ (op ⦅ args ⦆) = op ⦅ map-args σ args ⦆
   map-arg σ {zero} (ast M) = ast (map-abt σ M)
-  map-arg σ {suc b} (bind M) = bind (map-arg (ext σ) M)
+  map-arg σ {suc b} (bind M) = bind (map-arg (ext-env σ) M)
   map-args σ {[]} nil = nil
   map-args σ {b ∷ bs} (cons x args) = cons (map-arg σ x) (map-args σ args)
 
@@ -44,9 +45,9 @@ record Map (V : Set) : Set where
   field S : Shiftable V
         “_” : V → ABT
   open Shiftable S public
-  open Env.GSubstIsEnv V S public
+  open Env.EnvI (Env.GSubstIsEnv S) public
   GSubstMapEnv : MapEnv V (GSubst V)
-  GSubstMapEnv = record { “_” = “_” ; env = GSubstIsEnv }
+  GSubstMapEnv = record { “_” = “_” ; env = Env.GSubstIsEnv S }
   open MapEnv GSubstMapEnv using (map-abt; map-arg; map-args) public
 
 {-------------------------------------------------------------------------------
@@ -62,13 +63,13 @@ record FusableMapEnv {V₁ Env₁ V₂ Env₂ V₃ Env₃}
   where
   open MapEnv M₁ using () renaming (
       map-abt to map₁; map-arg to map-arg₁; map-args to map-args₁;
-      “_” to “_”₁; lookup to lookup₁; ext to ext₁) public
+      “_” to “_”₁; lookup to lookup₁; ext-env to ext₁) public
   open MapEnv M₂ using () renaming (
       map-abt to map₂; map-arg to map-arg₂; map-args to map-args₂;
-      “_” to “_”₂; lookup to lookup₂; ext to ext₂) public
+      “_” to “_”₂; lookup to lookup₂; ext-env to ext₂) public
   open MapEnv M₃ using () renaming (
       map-abt to map₃; map-arg to map-arg₃; map-args to map-args₃;
-      “_” to “_”₃; lookup to lookup₃; ext to ext₃) public
+      “_” to “_”₃; lookup to lookup₃; ext-env to ext₃) public
 
   _∘_≈_ : (σ₂ : Env₂)(σ₁ : Env₁)(σ₃ : Env₃) → Set
   σ₂ ∘ σ₁ ≈ σ₃ = ∀ x → map₂ σ₂ “ lookup₁ σ₁ x ”₁ ≡ “ lookup₃ σ₃ x ”₃

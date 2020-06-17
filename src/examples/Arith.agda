@@ -133,9 +133,9 @@ module examples.Arith where
 
   {--- Type Safety via preserve-fold ---}
   
-  ext-⊢v : ∀{v A B Δ} → Δ ⊢v v ⦂ A → (B ∷ Δ) ⊢v shift v ⦂ A
-  ext-⊢v {nothing} ⊢vσx = ⊢v-none
-  ext-⊢v {just x₁} (⊢v-just ⊢v⦂) = ⊢v-just ⊢v⦂
+  shift-⊢v : ∀{v A B Δ} → Δ ⊢v v ⦂ A → (B ∷ Δ) ⊢v shift v ⦂ A
+  shift-⊢v {nothing} ⊢vσx = ⊢v-none
+  shift-⊢v {just x₁} (⊢v-just ⊢v⦂) = ⊢v-just ⊢v⦂
   
   open FoldPred 𝑃 (λ Γ mv T → ⊤) _⊢v_⦂_ _⊢v_⦂_ 
 
@@ -161,7 +161,7 @@ module examples.Arith where
   ... | nothing = ⊢v-none
   ... | just v =
          let wtres : (T₁ ∷ Δ) ⊢c f (just v) ⦂ T₂
-             wtres = ⊢ᵣ→⊢c (Pbody {just v} (ext-⊢v Prhs) tt) in
+             wtres = ⊢ᵣ→⊢c (Pbody {just v} (shift-⊢v Prhs) tt) in
          compress-⊢v wtres
   op-pres {op-bool b} nil-r refl = ⊢v-just ⊢-bool
   op-pres {op-if} (cons-r (ast-r Pc) (cons-r (ast-r Pthn)
@@ -182,7 +182,7 @@ module examples.Arith where
     EvalPres : PreserveFold Eval 
     EvalPres = record { 𝑉 = λ Γ x A → ⊤ ; 𝑃 = 𝑃 ; 𝐴 = 𝐴
                ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢v_⦂_
-               ; ext-⊢v = ext-⊢v ; ret-pres = λ x → x ; op-pres = op-pres }
+               ; shift-⊢v = shift-⊢v ; ret-pres = λ x → x ; op-pres = op-pres }
     open PreserveFold EvalPres using (_⊢_⦂_; preserve-fold)
 
     type-safety : ∀ M
@@ -192,8 +192,7 @@ module examples.Arith where
 
   module TypeSafetyViaPreserveFoldEnv where
   
-    open Env (Maybe Val)
-    open FunIsEnv ShiftVal
+    open Env ShiftVal
 
     Eval2 : FoldEnv (Var → Maybe Val) (Maybe Val) (Maybe Val) 
     Eval2 = record { ret = λ x → x; fold-op = eval-op; env = FunIsEnv }
@@ -203,13 +202,13 @@ module examples.Arith where
     eval2 = fold₂ (λ x → nothing)
 
     FEPE : FunEnvPredExt _⊢v_⦂_ 𝐴 ShiftVal
-    FEPE = record { ext-⊢v = ext-⊢v }
+    FEPE = record { shift-⊢v = shift-⊢v }
     open FunEnvPredExt FEPE
 
     EvalPres : PreserveFoldEnv Eval2
     EvalPres = record { 𝑉 = λ Γ x A → ⊤ ; 𝑃 = 𝑃 ; 𝐴 = 𝐴
                ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢v_⦂_
-               ; ext-env = ext-env ; ret-pres = λ x → x ; op-pres = op-pres }
+               ; ext-pres = ext-pres ; ret-pres = λ x → x ; op-pres = op-pres }
     open PreserveFoldEnv EvalPres using (_⊢_⦂_; preserve-fold)
 
     type-safety : ∀ M

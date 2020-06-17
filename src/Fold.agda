@@ -2,7 +2,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit.Polymorphic using (⊤; tt)
-open import Env using (EnvI)
+import Env
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
@@ -34,10 +34,11 @@ module Reify {ℓ : Level} (V : Set) (C : Set ℓ) (var→val : Var → V) where
 
 {- FoldEnv is abstract with respect to the environment -}
 record FoldEnv  {ℓᶜ : Level}(Env V : Set)(C : Set ℓᶜ) : Set (lsuc ℓᶜ) where
-  field ret : V → C
+  field S : Shiftable V
+        ret : V → C
         fold-op : (op : Op) → Tuple (sig op) (Bind V C) → C
-        env : Env.EnvI V Env
-  open EnvI env public
+        env : Env.EnvI S Env
+  open Env.EnvI env public
         
   fold : Env → ABT → C
   fold-arg : Env → {b : ℕ} → Arg b → Bind V C b
@@ -55,9 +56,9 @@ record Fold {ℓᶜ : Level}(V : Set)(C : Set ℓᶜ) : Set (lsuc ℓᶜ) where
   field S : Shiftable V
         ret : V → C
         fold-op : (op : Op) → Tuple (sig op) (Bind V C) → C
-  open Env.GSubstIsEnv V S public
+  open Env.EnvI (Env.GSubstIsEnv S) public
   FE : FoldEnv (GSubst V) V C
-  FE = record { ret = ret ; fold-op = fold-op ; env = GSubstIsEnv }
+  FE = record { ret = ret ; fold-op = fold-op ; env = Env.GSubstIsEnv S }
   open FoldEnv FE using (fold; fold-arg; fold-args) public
 
 {-------------------------------------------------------------------------------

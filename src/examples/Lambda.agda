@@ -150,8 +150,8 @@ progress (⊢· ⊢L ⊢M _)
 module _ where
   open FoldPred 𝑃 (λ Γ v A → ⊤) _∋_⦂_ _⊢_⦂_ 
   RenPres : PreserveMap {I = Type} RenameIsMap
-  RenPres = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _∋_⦂_ ; ∋→⊢v-var→val = λ x → x
-            ; ext-⊢v = λ x → x ; ⊢v→⊢ = λ x → ⊢` x ; ⊢v0 = refl }
+  RenPres = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _∋_⦂_ ; quote-⊢v = λ x → ⊢` x
+            ; shift-⊢v = λ x → x ; ⊢v0 = refl }
   open PreserveMap RenPres using ()
       renaming (preserve-map to rename-pres) public
 
@@ -160,9 +160,8 @@ open GSubstPred SubstIsShiftable _⊢_⦂_
 
 SubstPres : PreserveMap SubstIsMap
 SubstPres = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _⊢_⦂_
-              ; ∋→⊢v-var→val = λ ∋x → ⊢` ∋x
-              ; ext-⊢v = λ {M} ⊢M → rename-pres ⊢M (λ z → z)
-              ; ⊢v→⊢ = λ x → x ; ⊢v0 = λ {B}{Δ} → ⊢` refl }
+              ; shift-⊢v = λ {M} ⊢M → rename-pres ⊢M (λ z → z)
+              ; quote-⊢v = λ x → x ; ⊢v0 = λ {B}{Δ} → ⊢` refl }
 open PreserveMap SubstPres using ()
     renaming (preserve-map to subst-pres) public
 
