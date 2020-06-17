@@ -15,7 +15,7 @@ open import Var
 module Substitution where
 
 open GenericSubstitution
-    using (GSubst; ↑; _•_; Substable; id; drop; map-sub; map-sub-id; drop-0)
+    using (GSubst; ↑; _•_; Shiftable; id; drop; map-sub; map-sub-id; drop-0)
     public
     
 {----------------------------------------------------------------------------
@@ -25,13 +25,13 @@ open GenericSubstitution
 Rename : Set
 Rename = GSubst Var
 
-RenameIsSubstable : Substable Var
-RenameIsSubstable = record { var→val = λ x → x ; shift = suc
+RenameIsShiftable : Shiftable Var
+RenameIsShiftable = record { var→val = λ x → x ; shift = suc
     ; var→val-suc-shift = λ {x} → refl }
 
-open GenericSubstitution.GenericSubst RenameIsSubstable
+open GenericSubstitution.GenericSubst RenameIsShiftable
     using () renaming (⧼_⧽ to ⦉_⦊; g-ext to ext; g-Z-shift to Z-shiftr) public
-open GenericSubstitution.GenericSubst RenameIsSubstable
+open GenericSubstitution.GenericSubst RenameIsShiftable
     using ()
     renaming (g-inc to inc; g-ext-cong to ext-cong; g-inc-shift to inc-suc;
               g-drop-add to dropr-add; g-drop-inc to dropr-inc;
@@ -49,7 +49,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
   open import Map Op sig
   RenameIsMap : Map Var 
-  RenameIsMap = record { “_” = `_ ; S = RenameIsSubstable }
+  RenameIsMap = record { “_” = `_ ; S = RenameIsShiftable }
   open Map RenameIsMap renaming (map-abt to rename; map-arg to ren-arg;
      map-args to ren-args) public
   open GenericSubstitution.ComposeGSubst ⦉_⦊ (λ x → x)
@@ -93,8 +93,8 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   QRR = record
           { ⌈_⌉ = ⦉_⦊ ; val₂₃ = λ x → x ; quote-map = λ σ₂ v₁ → refl
           ; var→val₂₃ = λ x → refl ; quote-val₂₃ = λ v₂ → refl
-          ; map₂-var→val₁ = λ x σ₂ → refl ; val₂₃-shift = λ v₂ → refl }
-  open Quotable QRR renaming (g-drop-seq to dropr-seq)
+          ; quote-var→val₁ = λ x → refl ; val₂₃-shift = λ v₂ → refl }
+  open Quotable QRR using () renaming (g-drop-seq to dropr-seq)
 
   {------ Composing renamings -------}
   
@@ -170,13 +170,13 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   Subst : Set
   Subst = GSubst ABT
 
-  SubstIsSubstable : Substable ABT
-  SubstIsSubstable = record { var→val = `_ ; shift = rename (↑ 1)
+  SubstIsShiftable : Shiftable ABT
+  SubstIsShiftable = record { var→val = `_ ; shift = rename (↑ 1)
       ; var→val-suc-shift = λ {x} → refl }
 
-  open GenericSubstitution.GenericSubst SubstIsSubstable using ()
+  open GenericSubstitution.GenericSubst SubstIsShiftable using ()
       renaming (⧼_⧽ to ⟦_⟧; g-ext to exts; g-Z-shift to Z-shift) public
-  open GenericSubstitution.GenericSubst SubstIsSubstable
+  open GenericSubstitution.GenericSubst SubstIsShiftable
       using (Shift; shift-up; shift-•)
       renaming (g-inc to incs; g-inc-shift to incs-rename;
       g-drop-inc to drop-incs; g-drop-add to drop-add; g-drop-ext to drop-exts;
@@ -184,8 +184,8 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
       g-inc-Shift to incs-Shift; g-ext-cong to exts-cong)
 
   SubstIsMap : Map ABT
-  SubstIsMap = record { “_” = λ M → M ; S = SubstIsSubstable }
-  open Map SubstIsMap
+  SubstIsMap = record { “_” = λ M → M ; S = SubstIsShiftable }
+  open Map SubstIsMap using ()
       renaming (map-abt to ⟪_⟫; map-arg to ⟪_⟫ₐ; map-args to ⟪_⟫₊) public
   
   open GenericSubstitution.ComposeGSubst ⟪_⟫ (λ x → x)
@@ -310,7 +310,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   QSR : Quotable SubstIsMap RenameIsMap SubstIsMap
   QSR = record { ⌈_⌉ = rename ; val₂₃ = `_ ; quote-map = λ σ₂ v₁ → refl
           ; var→val₂₃ = λ x₁ → refl ; quote-val₂₃ = λ v₂ → refl
-          ; map₂-var→val₁ = λ x₁ σ₂ → refl ; val₂₃-shift = λ v₂ → refl }
+          ; quote-var→val₁ = λ x₁ → refl ; val₂₃-shift = λ v₂ → refl }
 
   seq-sub-ren : ∀ x σ ρ  →  rename ρ (⟦ σ ⟧ x) ≡ ⟦ σ ⨟ˢᵣ ρ ⟧ x
   seq-sub-ren x σ ρ = sym (Quotable.compose-sub QSR σ ρ x)
@@ -360,7 +360,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   QRS : Quotable RenameIsMap SubstIsMap SubstIsMap
   QRS = record { ⌈_⌉ = ⟦_⟧ ; val₂₃ = λ M → M ; quote-map = λ σ₂ v₁ → refl
           ; var→val₂₃ = λ x → refl ; quote-val₂₃ = λ v₂ → refl
-          ; map₂-var→val₁ = λ x σ₂ → refl ; val₂₃-shift = λ v₂ → refl }
+          ; quote-var→val₁ = λ x → refl ; val₂₃-shift = λ v₂ → refl }
 
   seq-ren-sub : ∀ x ρ σ  →  ⟦ σ ⟧ (⦉ ρ ⦊ x) ≡ ⟦ ρ ⨟ᵣˢ σ ⟧ x
   seq-ren-sub x ρ σ = sym (Quotable.compose-sub QRS ρ σ x)
@@ -406,7 +406,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   QSS : Quotable SubstIsMap SubstIsMap SubstIsMap
   QSS = record { ⌈_⌉ = ⟪_⟫ ; val₂₃ = λ M → M ; quote-map = λ σ₂ v₁ → refl
           ; var→val₂₃ = λ x → refl ; quote-val₂₃ = λ v₂ → refl
-          ; map₂-var→val₁ = λ x σ₂ → refl ; val₂₃-shift = λ v₂ → refl }
+          ; quote-var→val₁ = λ x → refl ; val₂₃-shift = λ v₂ → refl }
   open Quotable QSS renaming (g-drop-seq to drop-seq)
 
   incs-seq : ∀ σ₁ σ₂ → (incs σ₁ ⨟ exts σ₂) ≡ incs (σ₁ ⨟ σ₂)

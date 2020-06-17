@@ -22,7 +22,7 @@
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; z≤n; s≤s)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
-open import Data.Unit using (⊤; tt)
+open import Data.Unit.Polymorphic using (⊤; tt)
 import Substitution
 
 module Preserve (Op : Set) (sig : Op → List ℕ) where
@@ -105,8 +105,7 @@ module FoldPred {I : Set}{V C : Set}
   (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set)
   (𝐴 : List I → V → I → Set)
   (_⊢v_⦂_ : List I → V → I → Set) (_⊢c_⦂_ : List I → C → I → Set)
-  (Env : Substable V) where
-  open GenericSubst Env
+  where
 
   data _∣_∣_⊢ᵣ_⦂_ : (b : ℕ) → List I → BType I b → Bind V C b → I → Set where
     ast-r : ∀{Δ}{c}{A}  →  Δ ⊢c c ⦂ A  →  0 ∣ Δ ∣ tt ⊢ᵣ c ⦂ A
@@ -125,8 +124,82 @@ module FoldPred {I : Set}{V C : Set}
         → bs ∣ Δ ∣ Bss ⊢ᵣ₊ rs ⦂ As
         → (b ∷ bs) ∣ Δ ∣ ⟨ Bs , Bss ⟩ ⊢ᵣ₊ ⟨ r , rs ⟩ ⦂ (A ∷̌ As)
 
+module GSubstPred {V I : Set} (S : Shiftable V)
+  (_⊢v_⦂_ : List I → V → I → Set) where
+  open GenericSubst S
+  
   _⦂_⇒_ : GSubst V → List I → List I → Set
   σ ⦂ Γ ⇒ Δ = ∀{x A} → Γ ∋ x ⦂ A  →  Δ ⊢v ⧼ σ ⧽ x ⦂ A
+  
+{-------------------- FoldEnv Preserves ABTPred ---------------------}
+
+record PreserveFoldEnv {V C Env I : Set} (F : FoldEnv Env V C) : Set₁ where
+  field 𝑉 : List I → Var → I → Set
+        𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set
+        𝐴 : List I → V → I → Set
+        _⊢v_⦂_ : List I → V → I → Set
+        _⊢c_⦂_ : List I → C → I → Set
+
+  open FoldEnv F
+  open ABTPred 𝑉 𝑃 public ; open FoldPred 𝑃 𝐴 _⊢v_⦂_ _⊢c_⦂_ public
+
+  _⦂_⇒_ : Env → List I → List I → Set
+  σ ⦂ Γ ⇒ Δ = ∀{x A} → Γ ∋ x ⦂ A  →  Δ ⊢v lookup σ x ⦂ A
+  
+  field ext-env : ∀{v σ Γ Δ A} → (A ∷ Δ) ⊢v v ⦂ A → 𝐴 (A ∷ Δ) v A
+                → σ ⦂ Γ ⇒ Δ → (σ , v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+        ret-pres : ∀{v}{Δ}{A} → Δ ⊢v v ⦂ A → Δ ⊢c ret v ⦂ A
+        op-pres : ∀ {op}{Rs}{Δ}{A : I}{As : Vec I (length (sig op))}{Bs}
+             → sig op ∣ Δ ∣ Bs ⊢ᵣ₊ Rs ⦂ As
+             → 𝑃 op As Bs A
+             → Δ ⊢c (fold-op op Rs) ⦂ A
+
+  preserve-fold : ∀{M σ Γ Δ A} → Γ ⊢ M ⦂ A → σ ⦂ Γ ⇒ Δ → Δ ⊢c fold σ M ⦂ A
+  pres-arg : ∀{b Γ Δ}{arg : Arg b}{A σ Bs} → b ∣ Γ ∣ Bs ⊢ₐ arg ⦂ A → σ ⦂ Γ ⇒ Δ
+     → b ∣ Δ ∣ Bs ⊢ᵣ fold-arg  σ {b} arg ⦂ A
+  pres-args : ∀{bs Γ Δ}{args : Args bs}{As σ Bss} → bs ∣ Γ ∣ Bss ⊢₊ args ⦂ As
+     → σ ⦂ Γ ⇒ Δ  →  bs ∣ Δ ∣ Bss ⊢ᵣ₊ fold-args σ args ⦂ As
+  preserve-fold {` x} {σ} {Γ} {Δ} {A} (var-p ∋x 𝑉x) σ⦂ = ret-pres (σ⦂ ∋x)
+  preserve-fold {op ⦅ args ⦆} {σ} {Γ} {Δ} {A} (op-p ⊢args 𝑃op) σΓΔ =
+      op-pres  (pres-args  ⊢args σΓΔ) 𝑃op
+  pres-arg {zero}{Γ}{Δ}{ast M}{A}{σ} (ast-p ⊢arg) σΓΔ =
+      ast-r (preserve-fold ⊢arg σΓΔ)
+  pres-arg {suc b}{Γ}{Δ}{bind arg}{A}{σ}{⟨ B , Bs ⟩} (bind-p {b}{B} ⊢arg)
+      σΓΔ = bind-r G
+      where G : ∀{v} → (B ∷ Δ) ⊢v v ⦂ B
+               → 𝐴 (B ∷ Δ) v B
+               → b ∣ B ∷ Δ ∣ Bs ⊢ᵣ fold-arg σ (bind arg) v ⦂ A
+            G {v} ⊢v⦂B 𝐴Mv =
+                pres-arg ⊢arg (λ {x} → ext-env {v}{σ}{Γ} ⊢v⦂B 𝐴Mv σΓΔ {x})
+  pres-args {[]} {Γ} {Δ} {nil} {[]̌} ⊢args σΓΔ = nil-r 
+  pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷̌ As}
+      (cons-p ⊢arg ⊢args) σΓΔ =
+      cons-r  (pres-arg {b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
+
+
+record FunEnvPredExt {V I : Set} (_⊢v_⦂_ : List I → V → I → Set)
+  (𝐴 : List I → V → I → Set) (S : Shiftable V) : Set where
+  
+  open Shiftable S
+  field ext-⊢v : ∀{A B Δ v} → Δ ⊢v v ⦂ A → (B ∷ Δ) ⊢v shift v ⦂ A
+  
+  Env = Var → V
+  open import Env V
+
+  open FunIsEnv S
+  open EnvI FunIsEnv
+
+  _⦂_⇒_ : Env → List I → List I → Set
+  σ ⦂ Γ ⇒ Δ = ∀{x A} → Γ ∋ x ⦂ A  →  Δ ⊢v lookup σ x ⦂ A
+
+  ext-env : ∀{v σ Γ Δ A}
+          → (A ∷ Δ) ⊢v v ⦂ A   →   𝐴 (A ∷ Δ) v A
+          → σ ⦂ Γ ⇒ Δ
+          → (σ , v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+  ext-env ⊢v⦂ Av σ⦂ {zero} {B} refl = ⊢v⦂
+  ext-env {v}{σ}{Γ}{Δ}{A} ⊢v⦂ Av σ⦂ {suc x} {B} ∋x = ext-⊢v (σ⦂ ∋x)
+
+
 
 {-------------------- Fold Preserves ABTPred ---------------------}
 
@@ -137,12 +210,12 @@ record PreserveFold {V C I : Set} (F : Fold V C) : Set₁ where
         _⊢v_⦂_ : List I → V → I → Set
         _⊢c_⦂_ : List I → C → I → Set
 
-  open Fold F ; open Substable S ; open GenericSubst S 
-  open ABTPred 𝑉 𝑃 public ; open FoldPred 𝑃 𝐴 _⊢v_⦂_ _⊢c_⦂_ S public
+  open Fold F ; open Shiftable S ; open GenericSubst S 
+  open ABTPred 𝑉 𝑃 public ; open FoldPred 𝑃 𝐴 _⊢v_⦂_ _⊢c_⦂_ public
+  open GSubstPred S _⊢v_⦂_ public
 
   field ext-⊢v : ∀{A B Δ v} → Δ ⊢v v ⦂ A → (B ∷ Δ) ⊢v shift v ⦂ A
-        ∋→⊢v-var→val : ∀{Γ x A} → Γ ∋ x ⦂ A → Γ ⊢v var→val x ⦂ A
-        ret-pres : ∀{v}{Δ}{A} → Δ ⊢v v ⦂ A → Δ ⊢c (ret v) ⦂ A
+        ret-pres : ∀{v}{Δ}{A} → Δ ⊢v v ⦂ A → Δ ⊢c ret v ⦂ A
         op-pres : ∀ {op}{Rs}{Δ}{A : I}{As : Vec I (length (sig op))}{Bs}
              → sig op ∣ Δ ∣ Bs ⊢ᵣ₊ Rs ⦂ As
              → 𝑃 op As Bs A
@@ -176,6 +249,47 @@ record PreserveFold {V C I : Set} (F : Fold V C) : Set₁ where
       (cons-p ⊢arg ⊢args) σΓΔ =
       cons-r  (pres-arg {b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
 
+{-------------------- MapEnv Preserves ABTPred ---------------------}
+
+record PreserveMapEnv {V Env I : Set} (M : MapEnv V Env) : Set₁ where
+  field 𝑉 : List I → Var → I → Set
+        𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set
+        _⊢v_⦂_ : List I → V → I → Set
+
+  open MapEnv M
+  open ABTPred 𝑉 𝑃 public
+ 
+  𝐴 : List I → V → I → Set
+  𝐴 Γ M A = ⊤
+
+  _⦂_⇒_ : Env → List I → List I → Set
+  σ ⦂ Γ ⇒ Δ = ∀{x A} → Γ ∋ x ⦂ A  →  Δ ⊢v lookup σ x ⦂ A
+  
+  field ⊢v→⊢ : ∀{Γ v A} → Γ ⊢v v ⦂ A → Γ ⊢ “ v ” ⦂ A
+        ext-env : ∀{σ Γ Δ A} → σ ⦂ Γ ⇒ Δ → ext σ ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+
+  preserve-map : ∀{M σ Γ Δ A}
+        → Γ ⊢ M ⦂ A
+        → σ ⦂ Γ ⇒ Δ
+        → Δ ⊢ map-abt σ M ⦂ A
+        
+  pres-arg : ∀{b Γ Δ}{arg : Arg b}{A σ Bs}
+        → b ∣ Γ ∣ Bs ⊢ₐ arg ⦂ A → σ ⦂ Γ ⇒ Δ
+        → b ∣ Δ ∣ Bs ⊢ₐ map-arg σ {b} arg ⦂ A
+  pres-args : ∀{bs Γ Δ}{args : Args bs}{As σ Bss}
+        → bs ∣ Γ ∣ Bss ⊢₊ args ⦂ As → σ ⦂ Γ ⇒ Δ
+        → bs ∣ Δ ∣ Bss ⊢₊ map-args σ {bs} args ⦂ As
+  preserve-map {` x}{σ} (var-p ∋x 𝑉x) σ⦂ = ⊢v→⊢ (σ⦂ ∋x)
+  preserve-map {op ⦅ args ⦆} (op-p ⊢args Pop) σ⦂ =
+      op-p (pres-args ⊢args σ⦂) Pop
+  pres-arg {zero} {arg = ast M} (ast-p ⊢M) σ⦂ = ast-p (preserve-map ⊢M σ⦂)
+  pres-arg {suc b} {arg = bind arg} (bind-p {B = B}{A = A} ⊢arg) σ⦂ =
+      bind-p (pres-arg ⊢arg (ext-env σ⦂))
+  pres-args {[]} {args = nil} nil-p σ⦂ = nil-p
+  pres-args {b ∷ bs} {args = cons arg args} (cons-p ⊢arg ⊢args) σ⦂ =
+    cons-p (pres-arg ⊢arg σ⦂) (pres-args ⊢args σ⦂)
+
+
 {-------------------- Map Preserves ABTPred ---------------------}
 
 record PreserveMap {V I : Set} (M : Map V) : Set₁ where
@@ -183,9 +297,9 @@ record PreserveMap {V I : Set} (M : Map V) : Set₁ where
         𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set
         _⊢v_⦂_ : List I → V → I → Set
         ∋→⊢v-var→val : ∀{Γ x A} → Γ ∋ x ⦂ A
-                   → Γ ⊢v Substable.var→val (Map.S M) x ⦂ A
+                     → Γ ⊢v Shiftable.var→val (Map.S M) x ⦂ A
 
-  open Map M ; open Substable S ; open GenericSubst S
+  open Map M ; open GenericSubst S
   open ABTPred 𝑉 𝑃 public
  
   field ext-⊢v : ∀{A B Δ v} → Δ ⊢v v ⦂ A → (B ∷ Δ) ⊢v shift v ⦂ A
@@ -195,8 +309,9 @@ record PreserveMap {V I : Set} (M : Map V) : Set₁ where
   𝐴 : List I → V → I → Set
   𝐴 Γ M A = ⊤
 
-  open FoldPred {I}{V}{V} 𝑃 𝐴 _⊢v_⦂_ _⊢v_⦂_ S public
-
+  open FoldPred {I}{V}{V} 𝑃 𝐴 _⊢v_⦂_ _⊢v_⦂_ public
+  open GSubstPred S _⊢v_⦂_ public
+  
   ext-env : ∀{σ Γ Δ A} → σ ⦂ Γ ⇒ Δ → (g-ext σ) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
   ext-env {σ} {Γ} {Δ} {A} σ⦂ {zero} {B} refl rewrite g-ext-def σ = ⊢v0
   ext-env {σ} {Γ} {Δ} {A} σ⦂ {suc x} {B} ∋x
@@ -227,7 +342,7 @@ record PreserveMap {V I : Set} (M : Map V) : Set₁ where
 
 record RenamePreserveFold {V C : Set} (F : Fold V C) : Set₁ where
   open Fold F
-  open Substable (Fold.S F)
+  open Shiftable (Fold.S F)
   open GenericSubst (Fold.S F)
   open Substitution using (Rename; ⦉_⦊; ext; ext-0; ext-suc)
   open Substitution.ABTOps Op sig using (rename; ren-arg; ren-args)
@@ -265,6 +380,46 @@ record RenamePreserveFold {V C : Set} (F : Fold V C) : Set₁ where
   rf-args {b ∷ bs} {ρ} {σ₁} {σ₂} (cons arg args) ρ⨟σ₁≈σ₂ =
       ⟨ rf-arg arg ρ⨟σ₁≈σ₂ , rf-args args ρ⨟σ₁≈σ₂ ⟩
 
+{-------------------- MapEnv Preserves FoldEnv ---------------------}
+
+record MapEnvPreserveFoldEnv  {Vᵐ Vᶠ Cᶠ Envᵐ Envᶠ I : Set} (M : MapEnv Vᵐ Envᵐ)
+  (F : FoldEnv Envᶠ Vᶠ Cᶠ)
+  : Set₁
+  where
+  open MapEnv M renaming (lookup to lookupᵐ; “_” to “_”ᵐ; ext to extᵐ)
+  open FoldEnv F renaming (lookup to lookupᶠ; _,_ to _,ᶠ_)
+  open RelBind {Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ} _≡_ _≡_
+
+  _⨟_≈_ : Envᵐ → Envᶠ → Envᶠ → Set
+  σ ⨟ δ ≈ γ = ∀ x → fold δ (“ lookupᵐ σ x ”ᵐ) ≡ ret (lookupᶠ γ x)
+
+  field op-cong : ∀ op rs rs' → zip _⩳_ rs rs' → fold-op op rs ≡ fold-op op rs'
+        ext-env : ∀{σ : Envᵐ}{δ γ : Envᶠ}{v : Vᶠ} → σ ⨟ δ ≈ γ
+                → (extᵐ σ) ⨟ (δ ,ᶠ v) ≈ (γ ,ᶠ v)
+
+  map-preserve-fold : ∀{M σ δ γ}
+     → σ ⨟ δ ≈ γ
+     → fold δ (map-abt σ M)  ≡ fold γ M
+
+  mpf-arg : ∀{b}{arg : Arg b}{σ δ γ}
+     → σ ⨟ δ ≈ γ
+     → fold-arg δ (map-arg σ arg) ⩳ fold-arg γ arg
+  mpf-args : ∀{bs}{args : Args bs}{σ δ γ}
+     → σ ⨟ δ ≈ γ
+     → zip _⩳_ (fold-args δ (map-args σ args)) (fold-args γ args)
+  map-preserve-fold {` x} {σ} {δ} {γ} σ⨟δ≈γ = σ⨟δ≈γ x
+  map-preserve-fold {op ⦅ args ⦆} {σ} {δ} {γ} σ⨟δ≈γ =
+      let mpf = (mpf-args {sig op}{args}{σ}{δ}{γ} σ⨟δ≈γ) in
+      op-cong op (fold-args δ (map-args σ args)) (fold-args γ args) mpf
+  mpf-arg {zero} {ast M} {σ} {δ} {γ} σ⨟δ≈γ =
+      map-preserve-fold {M} σ⨟δ≈γ
+  mpf-arg {suc b} {bind arg} {σ} {δ} {γ} σ⨟δ≈γ refl =
+      mpf-arg {b}{arg} (ext-env σ⨟δ≈γ)
+  mpf-args {[]} {nil} {σ} {δ} {γ} σ⨟δ≈γ = tt
+  mpf-args {b ∷ bs} {cons arg args} {σ} {δ} {γ} σ⨟δ≈γ =
+      ⟨ mpf-arg{b}{arg}{σ}{δ}{γ} σ⨟δ≈γ , mpf-args σ⨟δ≈γ ⟩
+
+
 {-------------------- Map Preserves Fold ---------------------}
 
 {- 
@@ -294,9 +449,9 @@ record MapPreserveFold  {Vᵐ Vᶠ Cᶠ I : Set} (M : Map Vᵐ) (F : Fold Vᶠ C
   : Set₁
   where
   open Map M ; open Fold F
-  open Substable (Map.S M) using ()
+  open Shiftable (Map.S M) using ()
       renaming (shift to shiftᵐ; var→val to var→valᵐ)
-  open Substable (Fold.S F) using () renaming (shift to shiftᶠ)
+  open Shiftable (Fold.S F) using () renaming (shift to shiftᶠ)
   open GenericSubst (Map.S M)
       using (g-ext-def) renaming (⧼_⧽ to ⧼_⧽ᵐ; g-ext to extᵐ;
       g-inc-shift to g-inc-shiftᵐ; g-inc to g-incᵐ)

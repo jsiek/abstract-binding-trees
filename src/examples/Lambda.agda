@@ -10,7 +10,7 @@ import Syntax
 open import Data.List using (List; []; _∷_; length)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
-open import Data.Unit using (⊤; tt)
+open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 
@@ -25,12 +25,12 @@ sig op-lam = 1 ∷ []
 sig op-app = 0 ∷ 0 ∷ []
 
 open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext; ext-0; ext-suc;
-    RenameIsSubstable)
+    RenameIsShiftable)
 
 open Syntax.OpSig Op sig
   using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; ⟦_⟧;
          rename; exts-0; exts-suc-rename;
-         RenameIsMap; SubstIsSubstable; SubstIsMap)
+         RenameIsMap; SubstIsShiftable; SubstIsMap)
   renaming (ABT to Term)
 
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
@@ -148,14 +148,16 @@ progress (⊢· ⊢L ⊢M _)
 
 
 module _ where
-  open FoldPred 𝑃 (λ Γ v A → ⊤) _∋_⦂_ _⊢_⦂_ RenameIsSubstable
+  open FoldPred 𝑃 (λ Γ v A → ⊤) _∋_⦂_ _⊢_⦂_ 
   RenPres : PreserveMap {I = Type} RenameIsMap
   RenPres = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _∋_⦂_ ; ∋→⊢v-var→val = λ x → x
             ; ext-⊢v = λ x → x ; ⊢v→⊢ = λ x → ⊢` x ; ⊢v0 = refl }
   open PreserveMap RenPres using ()
       renaming (preserve-map to rename-pres) public
 
-open FoldPred 𝑃 (λ Γ v A → ⊤) _⊢_⦂_ _⊢_⦂_ SubstIsSubstable
+open FoldPred 𝑃 (λ Γ v A → ⊤) _⊢_⦂_ _⊢_⦂_ 
+open GSubstPred SubstIsShiftable _⊢_⦂_
+
 SubstPres : PreserveMap SubstIsMap
 SubstPres = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _⊢_⦂_
               ; ∋→⊢v-var→val = λ ∋x → ⊢` ∋x

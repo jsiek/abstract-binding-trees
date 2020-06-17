@@ -1,7 +1,8 @@
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
-open import Data.Unit using (⊤; tt)
+open import Data.Unit.Polymorphic using (⊤; tt)
+open import Env using (EnvI)
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
@@ -11,16 +12,18 @@ open import ScopedTuple
     using (Tuple; map; _✖_; zip; zip-refl; map-pres-zip; map-compose-zip;
            map-compose; zip-map→rel; Lift-Eq-Tuple; Lift-Rel-Tuple; zip→rel)
 open import GenericSubstitution
+open import Agda.Primitive using (Level; lzero; lsuc)
+    renaming (_⊔_ to _⊔'_)
 
 module Fold (Op : Set) (sig : Op → List ℕ) where
 
 open import AbstractBindingTree Op sig
 
-Bind : Set → Set → ℕ → Set
+Bind : {ℓᶜ : Level} → Set → Set ℓᶜ → ℕ → Set ℓᶜ
 Bind V C zero = C
 Bind V C (suc b) = V → Bind V C b
 
-module Reify (V C : Set) (var→val : Var → V) where
+module Reify {ℓ : Level} (V : Set) (C : Set ℓ) (var→val : Var → V) where
   reify : {b : ℕ} → Bind V C b → C
   reify {zero} M = M
   reify {suc b} f = reify {b} (f (var→val 0))
@@ -29,23 +32,33 @@ module Reify (V C : Set) (var→val : Var → V) where
  Folding over an abstract binding tree
  ------------------------------------------------------------------------------}
 
-record Fold (V C : Set) : Set where
-  field S : Substable V
-        ret : V → C
+{- FoldEnv is abstract with respect to the environment -}
+record FoldEnv  {ℓᶜ : Level}(Env V : Set)(C : Set ℓᶜ) : Set (lsuc ℓᶜ) where
+  field ret : V → C
         fold-op : (op : Op) → Tuple (sig op) (Bind V C) → C
+        env : Env.EnvI V Env
+  open EnvI env public
         
-  open GenericSubst S using (⧼_⧽; g-extend)
+  fold : Env → ABT → C
+  fold-arg : Env → {b : ℕ} → Arg b → Bind V C b
+  fold-args : Env → {bs : List ℕ} → Args bs → Tuple bs (Bind V C)
 
-  fold : GSubst V → ABT → C
-  fold-arg : GSubst V → {b : ℕ} → Arg b → Bind V C b
-  fold-args : GSubst V → {bs : List ℕ} → Args bs → Tuple bs (Bind V C)
-
-  fold σ (` x) = ret (⧼ σ ⧽ x)
+  fold σ (` x) = ret (lookup σ x)
   fold σ (op ⦅ args ⦆) = fold-op op (fold-args σ {sig op} args)
   fold-arg σ {zero} (ast M) = fold σ M
-  fold-arg σ {suc b} (bind arg) v = fold-arg (g-extend v σ) arg
+  fold-arg σ {suc b} (bind arg) v = fold-arg (σ , v) arg
   fold-args σ {[]} nil = tt
   fold-args σ {b ∷ bs} (cons arg args) = ⟨ fold-arg σ arg , fold-args σ args ⟩
+
+{- Fold instantiates FoldEnv using substitutions for the environment -}
+record Fold {ℓᶜ : Level}(V : Set)(C : Set ℓᶜ) : Set (lsuc ℓᶜ) where
+  field S : Shiftable V
+        ret : V → C
+        fold-op : (op : Op) → Tuple (sig op) (Bind V C) → C
+  open Env.GSubstIsEnv V S public
+  FE : FoldEnv (GSubst V) V C
+  FE = record { ret = ret ; fold-op = fold-op ; env = GSubstIsEnv }
+  open FoldEnv FE using (fold; fold-arg; fold-args) public
 
 {-------------------------------------------------------------------------------
  Simulation between two folds
@@ -58,7 +71,7 @@ module RelBind {V₁ C₁}{V₂ C₂} (_∼_ : V₁ → V₂ → Set) (_≈_ : C
 
 record Similar {V₁ C₁ V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C₂) : Set₁ where
   module 𝐹₁ = Fold F₁ ; module 𝐹₂ = Fold F₂
-  module S₁ = Substable 𝐹₁.S ; module S₂ = Substable 𝐹₂.S
+  module S₁ = Shiftable 𝐹₁.S ; module S₂ = Shiftable 𝐹₂.S
   field _∼_ : V₁ → V₂ → Set
         _≈_ : C₁ → C₂ → Set
         ret≈ : ∀{v₁ v₂} → v₁ ∼ v₂ → 𝐹₁.ret v₁ ≈ 𝐹₂.ret v₂
@@ -84,5 +97,6 @@ record Similar {V₁ C₁ V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C
   sim-arg {b = suc b} (bind arg) σ₁≊σ₂ v₁∼v₂ =
       sim-arg {b = b} arg (r-cons v₁∼v₂ (g-inc-≊ σ₁≊σ₂))
   sim-args {bs = []} args σ₁≊σ₂ = tt
-  sim-args {bs = b ∷ bs} (cons arg args) σ₁≊σ₂ = ⟨ sim-arg arg σ₁≊σ₂ , sim-args args σ₁≊σ₂ ⟩
+  sim-args {bs = b ∷ bs} (cons arg args) σ₁≊σ₂ =
+      ⟨ sim-arg arg σ₁≊σ₂ , sim-args args σ₁≊σ₂ ⟩
 

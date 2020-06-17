@@ -2,12 +2,15 @@ open import Data.Bool using (true; false; if_then_else_) renaming (Bool to 𝔹)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _⊔_; _∸_)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
-open import Data.Unit using (⊤; tt)
+open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
+import Env
 import GenericSubstitution
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
+open import Var
+open import Agda.Primitive
 
 module examples.Arith where
 
@@ -25,9 +28,8 @@ module examples.Arith where
   sig (op-bool b) = []
   sig op-if = 0 ∷ 0 ∷ 0 ∷ []
 
-  open import Fold Op sig
   open import ScopedTuple
-  open import Syntax using (Substable; ↑)
+  open import Syntax using (Shiftable; ↑)
 
   open import AbstractBindingTree Op sig renaming (ABT to AST)
   pattern $ n  = op-num n ⦅ nil ⦆
@@ -60,6 +62,8 @@ module examples.Arith where
   ... | v-bool b = f b
   ... | _ = nothing
 
+  open import Fold Op sig
+  
   eval-op : (op : Op) → Tuple (sig op) (Bind (Maybe Val) (Maybe Val))
           → Maybe Val
   eval-op (op-num n) tt = just (v-num n)
@@ -72,13 +76,13 @@ module examples.Arith where
      vᶜ ← cnd
      bool? vᶜ (λ b → if b then thn else els)
 
-  Sub : Substable (Maybe Val)
-  Sub = record { var→val = λ x → nothing ; shift = λ r → r
-             ; var→val-suc-shift = refl }
-  open Substable Sub
+  ShiftVal : Shiftable (Maybe Val)
+  ShiftVal = record { var→val = λ x → nothing ; shift = λ r → r
+               ; var→val-suc-shift = refl }
+  open Shiftable ShiftVal
 
   Eval : Fold (Maybe Val) (Maybe Val) 
-  Eval = record { S = Sub ; ret = λ x → x ; fold-op = eval-op }
+  Eval = record { S = ShiftVal ; ret = λ x → x ; fold-op = eval-op }
   open Fold Eval
 
   eval : AST → Maybe Val
@@ -133,10 +137,7 @@ module examples.Arith where
   ext-⊢v {nothing} ⊢vσx = ⊢v-none
   ext-⊢v {just x₁} (⊢v-just ⊢v⦂) = ⊢v-just ⊢v⦂
   
-  open GenericSubstitution
-  open GenericSubst Sub
-  open import Var
-  open FoldPred 𝑃 (λ Γ mv T → ⊤) _⊢v_⦂_ _⊢v_⦂_ Sub
+  open FoldPred 𝑃 (λ Γ mv T → ⊤) _⊢v_⦂_ _⊢v_⦂_ 
 
   compress-⊢v : ∀{v A B Δ} → (B ∷ Δ) ⊢v v ⦂ A → Δ ⊢v v ⦂ A
   compress-⊢v {.nothing} ⊢v-none = ⊢v-none
@@ -172,17 +173,47 @@ module examples.Arith where
       with b
   ... | true = Pthn
   ... | false = Pels
-  
-  EvalPres : PreserveFold Eval 
-  EvalPres = record { 𝑉 = λ Γ x A → ⊤ ; 𝑃 = 𝑃 ; 𝐴 = λ Γ mv T → ⊤
-             ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢v_⦂_
-             ; ext-⊢v = ext-⊢v ; ∋→⊢v-var→val = λ x → ⊢v-none
-             ; ret-pres = λ x → x ; op-pres = op-pres }
-  open PreserveFold EvalPres using (_⊢_⦂_)
-      renaming (preserve-fold to eval-preserve)
 
-  type-safety : ∀ M
-     → [] ⊢ M ⦂ t-nat
-     → [] ⊢c eval M ⦂ t-nat
-  type-safety M ⊢M = eval-preserve ⊢M (λ x → ⊢v-none)
+  𝐴 : List Type → Maybe Val → Type → Set
+  𝐴 = λ Γ mv T → ⊤
+
+  module TypeSafetyViaPreserveFold where
+
+    EvalPres : PreserveFold Eval 
+    EvalPres = record { 𝑉 = λ Γ x A → ⊤ ; 𝑃 = 𝑃 ; 𝐴 = 𝐴
+               ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢v_⦂_
+               ; ext-⊢v = ext-⊢v ; ret-pres = λ x → x ; op-pres = op-pres }
+    open PreserveFold EvalPres using (_⊢_⦂_; preserve-fold)
+
+    type-safety : ∀ M
+       → [] ⊢ M ⦂ t-nat
+       → [] ⊢c eval M ⦂ t-nat
+    type-safety M ⊢M = preserve-fold ⊢M (λ x → ⊢v-none)
+
+  module TypeSafetyViaPreserveFoldEnv where
+  
+    open Env (Maybe Val)
+    open FunIsEnv ShiftVal
+
+    Eval2 : FoldEnv (Var → Maybe Val) (Maybe Val) (Maybe Val) 
+    Eval2 = record { ret = λ x → x; fold-op = eval-op; env = FunIsEnv }
+    open FoldEnv Eval2 renaming (fold to fold₂)
+
+    eval2 : AST → Maybe Val
+    eval2 = fold₂ (λ x → nothing)
+
+    FEPE : FunEnvPredExt _⊢v_⦂_ 𝐴 ShiftVal
+    FEPE = record { ext-⊢v = ext-⊢v }
+    open FunEnvPredExt FEPE
+
+    EvalPres : PreserveFoldEnv Eval2
+    EvalPres = record { 𝑉 = λ Γ x A → ⊤ ; 𝑃 = 𝑃 ; 𝐴 = 𝐴
+               ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢v_⦂_
+               ; ext-env = ext-env ; ret-pres = λ x → x ; op-pres = op-pres }
+    open PreserveFoldEnv EvalPres using (_⊢_⦂_; preserve-fold)
+
+    type-safety : ∀ M
+       → [] ⊢ M ⦂ t-nat
+       → [] ⊢c eval2 M ⦂ t-nat
+    type-safety M ⊢M = preserve-fold ⊢M (λ ())
 

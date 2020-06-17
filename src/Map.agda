@@ -3,6 +3,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 open import Data.Nat.Properties using (+-comm)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit using (⊤; tt)
+open import Env using (EnvI)
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
@@ -20,43 +21,94 @@ open import AbstractBindingTree Op sig
  (generalizes renaming and substitution)
  ------------------------------------------------------------------------------}
 
-record Map (V : Set) : Set where
-  field S : Substable V
-        “_” : V → ABT
-  open Substable S 
-  open GenericSubst S
+{- MapEnv is abstract with respect to the environment -}
 
-  map-abt : GSubst V → ABT → ABT
-  map-arg : GSubst V → {b : ℕ} →  Arg b → Arg b
-  map-args : GSubst V → {bs : List ℕ} →  Args bs → Args bs
+record MapEnv (V : Set) (Env : Set) : Set where
+  field “_” : V → ABT
+        env : Env.EnvI V Env
+  open EnvI env public
   
-  map-abt σ (` x) = “ ⧼ σ ⧽ x ”
-  map-abt σ (op ⦅ args ⦆) = op ⦅ map-args σ {sig op} args ⦆
+  map-abt : Env → ABT → ABT
+  map-arg : Env → {b : ℕ} →  Arg b → Arg b
+  map-args : Env → {bs : List ℕ} →  Args bs → Args bs
+  
+  map-abt σ (` x) = “ lookup σ x ”
+  map-abt σ (op ⦅ args ⦆) = op ⦅ map-args σ args ⦆
   map-arg σ {zero} (ast M) = ast (map-abt σ M)
-  map-arg σ {suc b} (bind M) = bind (map-arg (g-ext σ) M)
+  map-arg σ {suc b} (bind M) = bind (map-arg (ext σ) M)
   map-args σ {[]} nil = nil
   map-args σ {b ∷ bs} (cons x args) = cons (map-arg σ x) (map-args σ args)
 
-{-------------------------------------------------------------------------------
-  Fusion of two maps
+{- Map instantiates MapEnv using substitutions for the environment -}
+record Map (V : Set) : Set where
+  field S : Shiftable V
+        “_” : V → ABT
+  open Shiftable S public
+  open Env.GSubstIsEnv V S public
+  GSubstMapEnv : MapEnv V (GSubst V)
+  GSubstMapEnv = record { “_” = “_” ; env = GSubstIsEnv }
+  open MapEnv GSubstMapEnv using (map-abt; map-arg; map-args) public
 
-  fusion : ∀{s}{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} (M : Term s)
-     → map₂ σ₂ (map₁ σ₁ M) ≡ map₂ (σ₁ ⨟ σ₂) M
+{-------------------------------------------------------------------------------
+  Fusion of two maps into a third
+
+  fusion : ∀{s}{σ₁ : Env₁}{σ₂ : Env₂} {σ₃ : Env₃} (M : ABT)
+     → σ₂ ∘ σ₁ ≈ σ₃
+     → map₂ σ₂ (map₁ σ₁ M) ≡ map₃ σ₃ M
  ------------------------------------------------------------------------------}
+
+record FusableMapEnv {V₁ Env₁ V₂ Env₂ V₃ Env₃}
+  (M₁ : MapEnv V₁ Env₁) (M₂ : MapEnv V₂ Env₂) (M₃ : MapEnv V₃ Env₃) : Set
+  where
+  open MapEnv M₁ using () renaming (
+      map-abt to map₁; map-arg to map-arg₁; map-args to map-args₁;
+      “_” to “_”₁; lookup to lookup₁; ext to ext₁) public
+  open MapEnv M₂ using () renaming (
+      map-abt to map₂; map-arg to map-arg₂; map-args to map-args₂;
+      “_” to “_”₂; lookup to lookup₂; ext to ext₂) public
+  open MapEnv M₃ using () renaming (
+      map-abt to map₃; map-arg to map-arg₃; map-args to map-args₃;
+      “_” to “_”₃; lookup to lookup₃; ext to ext₃) public
+
+  _∘_≈_ : (σ₂ : Env₂)(σ₁ : Env₁)(σ₃ : Env₃) → Set
+  σ₂ ∘ σ₁ ≈ σ₃ = ∀ x → map₂ σ₂ “ lookup₁ σ₁ x ”₁ ≡ “ lookup₃ σ₃ x ”₃
+
+  field compose-ext : ∀{σ₁ : Env₁}{σ₂ : Env₂}{σ₃ : Env₃}
+                    → σ₂ ∘ σ₁ ≈ σ₃ → ext₂ σ₂ ∘ ext₁ σ₁ ≈ ext₃ σ₃
+
+  fusion : ∀{σ₁ : Env₁}{σ₂ : Env₂}{σ₃ : Env₃} (M : ABT)
+     → σ₂ ∘ σ₁ ≈ σ₃
+     → map₂ σ₂ (map₁ σ₁ M) ≡ map₃ σ₃ M
+  fusion-arg : ∀{σ₁ : Env₁}{σ₂ : Env₂}{σ₃ : Env₃} {b} (arg : Arg b)
+     → σ₂ ∘ σ₁ ≈ σ₃
+     → map-arg₂ σ₂ (map-arg₁ σ₁ arg) ≡ map-arg₃ σ₃ arg
+  fusion-args : ∀{σ₁ : Env₁}{σ₂ : Env₂}{σ₃ : Env₃} {bs} (args : Args bs)
+     → σ₂ ∘ σ₁ ≈ σ₃
+     → map-args₂ σ₂ (map-args₁ σ₁ args) ≡ map-args₃ σ₃ args
+
+  fusion (` x) σ₂∘σ₁≈σ₃ = σ₂∘σ₁≈σ₃ x
+  fusion (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ = cong (_⦅_⦆ op) (fusion-args args σ₂∘σ₁≈σ₃)
+  fusion-arg {b = zero} (ast M) σ₂∘σ₁≈σ₃ = cong ast (fusion M σ₂∘σ₁≈σ₃)
+  fusion-arg {b = suc b} (bind arg) σ₂∘σ₁≈σ₃ =
+      cong bind (fusion-arg arg (compose-ext σ₂∘σ₁≈σ₃))
+  fusion-args {bs = []} nil σ₂∘σ₁≈σ₃ = refl
+  fusion-args {bs = b ∷ bs} (cons arg args) σ₂∘σ₁≈σ₃ =
+      cong₂ cons (fusion-arg arg σ₂∘σ₁≈σ₃) (fusion-args args σ₂∘σ₁≈σ₃)
+
 
 record Quotable {V₁ V₂ V₃}
   (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : Map V₃) : Set
   where
   open Map M₁ using () renaming (“_” to “_”₁)
-  open Substable (Map.S M₁) using () renaming (var→val to var→val₁)
+  open Shiftable (Map.S M₁) using () renaming (var→val to var→val₁)
   open GenericSubst (Map.S M₁) using ()
       renaming (⧼_⧽ to ⧼_⧽₁; g-inc to g-inc₁) 
   open Map M₂ using () renaming (map-abt to map₂; “_” to “_”₂)
-  open Substable (Map.S M₂) using ()
+  open Shiftable (Map.S M₂) using ()
       renaming (var→val to var→val₂; shift to shift₂)
   open GenericSubst (Map.S M₂) using () renaming (⧼_⧽ to ⧼_⧽₂; g-inc to g-inc₂) 
   open Map M₃ using () renaming (“_” to “_”₃) 
-  open Substable (Map.S M₃) using ()
+  open Shiftable (Map.S M₃) using ()
     renaming (var→val to var→val₃; shift to shift₃)
   open GenericSubst (Map.S M₃) using ()
       renaming (⧼_⧽ to ⧼_⧽₃; g-drop-add to g-drop-add₃; g-inc to g-inc₃) 
@@ -66,7 +118,14 @@ record Quotable {V₁ V₂ V₃}
         quote-map : ∀ σ₂ v₁ → “ ⌈ σ₂ ⌉ v₁ ”₃ ≡ map₂ σ₂ “ v₁ ”₁
         var→val₂₃ : ∀ x → var→val₃ x ≡ val₂₃ (var→val₂ x)
         quote-val₂₃ : ∀ v₂ → “ val₂₃ v₂ ”₃ ≡ “ v₂ ”₂
+{-
         map₂-var→val₁ : ∀ x σ₂ → map₂ σ₂ “ var→val₁ x ”₁ ≡ “ ⧼ σ₂ ⧽₂ x ”₂
+-}
+        quote-var→val₁ : ∀ x → “ var→val₁ x ”₁ ≡ ` x
+{-
+        quote-var→val₂ : ∀ x → “ var→val₂ x ”₂ ≡ ` x
+        quote-var→val₃ : ∀ x → “ var→val₃ x ”₃ ≡ ` x
+-}
         val₂₃-shift : ∀ v₂ → val₂₃ (shift₂ v₂) ≡ shift₃ (val₂₃ v₂)
 
   open ComposeGSubst ⌈_⌉ val₂₃
@@ -84,7 +143,8 @@ record Quotable {V₁ V₂ V₃}
     “ ⧼ drop k (map-sub val₂₃ σ₂) ⧽₃ x ”₃  ≡⟨ cong “_”₃ (g-drop-add₃ k (map-sub val₂₃ σ₂) x) ⟩
     “ ⧼ map-sub val₂₃ σ₂ ⧽₃ (k + x) ”₃     ≡⟨ cong “_”₃ (g-map-sub-⧼·⧽ σ₂) ⟩
     “ val₂₃ (⧼ σ₂ ⧽₂ (k + x)) ”₃           ≡⟨ quote-val₂₃ (⧼ σ₂ ⧽₂ (k + x)) ⟩
-    “ ⧼ σ₂ ⧽₂ (k + x) ”₂                   ≡⟨ sym (map₂-var→val₁ (k + x) σ₂) ⟩
+    “ ⧼ σ₂ ⧽₂ (k + x) ”₂                   ≡⟨⟩
+    map₂ σ₂ (` (k + x))                    ≡⟨ cong (map₂ σ₂) (sym (quote-var→val₁ (k + x)) ) ⟩
     map₂ σ₂ “ ⧼ ↑ k ⧽₁ x ”₁                ∎
   compose-sub (v₁ • σ₁) σ₂ zero rewrite sym (quote-map σ₂ v₁)
       | cons-seq v₁ σ₁ σ₂ = refl
@@ -106,6 +166,12 @@ record Quotable {V₁ V₂ V₃}
   g-map-sub-inc (↑ k) = refl
   g-map-sub-inc (v₂ • σ₂) = cong₂ _•_ (val₂₃-shift v₂) (g-map-sub-inc σ₂)
 
+{-------------------------------------------------------------------------------
+  Fusion of two maps
+
+  fusion : ∀{s}{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} (M : ABT)
+     → map₂ σ₂ (map₁ σ₁ M) ≡ map₂ (σ₁ ⨟ σ₂) M
+ ------------------------------------------------------------------------------}
 
 record FusableMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : Map V₃) : Set
   where
@@ -113,17 +179,17 @@ record FusableMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : M
       map-abt to map₁; map-arg to map-arg₁; map-args to map-args₁;
       “_” to “_”₁; var→val to var→val₁) public
   open GenericSubst (Map.S M₁) using ()
-      renaming (⧼_⧽ to ⧼_⧽₁; g-ext to ext₁) public
+      renaming (⧼_⧽ to ⧼_⧽₁; g-ext to ext₁; g-ext-def to g-ext-def₁) public
   open Map M₂ using () renaming (
       map-abt to map₂; map-arg to map-arg₂; map-args to map-args₂;
       “_” to “_”₂; var→val to var→val₂) public
   open GenericSubst (Map.S M₂) using ()
-      renaming (⧼_⧽ to ⧼_⧽₂; g-ext to ext₂) public
+      renaming (⧼_⧽ to ⧼_⧽₂; g-ext to ext₂; g-ext-def to g-ext-def₂) public
   open Map M₃ using () renaming (
       map-abt to map₃; map-arg to map-arg₃; map-args to map-args₃;
       “_” to “_”₃; var→val to var→val₃) public
   open GenericSubst (Map.S M₃) using ()
-      renaming (⧼_⧽ to ⧼_⧽₃; g-ext to ext₃; g-drop-add to g-drop-add₃) public
+      renaming (⧼_⧽ to ⧼_⧽₃; g-ext to ext₃; g-ext-def to g-ext-def₃; g-drop-add to g-drop-add₃) public
   
   field Q : Quotable M₁ M₂ M₃
   open Quotable Q
@@ -132,6 +198,18 @@ record FusableMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : M
         compose-ext : ∀ (σ₁ : GSubst V₁) (σ₂ : GSubst V₂)
                     → ext₁ σ₁ ⨟ ext₂ σ₂ ≡ ext₃ (σ₁ ⨟ σ₂)
 
+{-
+  comp-ext : ∀ {σ₁ : GSubst V₁} {σ₂ : GSubst V₂} {σ₃ : GSubst V₃} →
+      (∀ x →  map₂ σ₂ (“ ⧼ σ₁ ⧽₁  x ”₁ ) ≡ “ ⧼ σ₃ ⧽₃ x ”₃)
+      → (x : Var) →
+         map₂ (ext₂ σ₂)  (“ ⧼ ext₁ σ₁ ⧽₁ x ”₁) ≡ “ ⧼ ext₃ σ₃ ⧽₃ x ”₃
+  comp-ext {σ₁} {σ₂} {σ₃} σ₂∘σ₁=σ₃ zero rewrite g-ext-def₁ σ₁ | g-ext-def₂ σ₂ | g-ext-def₃ σ₃
+      | quote-var→val₁ 0 | quote-var→val₂ 0 | quote-var→val₃ 0 = refl
+  comp-ext {σ₁} {σ₂} {σ₃} σ₂∘σ₁=σ₃ (suc x) rewrite g-ext-def₁ σ₁ | g-ext-def₂ σ₂ | g-ext-def₃ σ₃ = {!!}
+
+  FME : FusableMapEnv (Map.GSubstEnv M₁) (Map.GSubstEnv M₂) (Map.GSubstEnv M₃)
+  FME = record { compose-ext = comp-ext }
+-}
   fusion : ∀{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} (M : ABT)
      → map₂ σ₂ (map₁ σ₁ M) ≡ map₃ (σ₁ ⨟ σ₂) M
      
@@ -201,10 +279,10 @@ record MapCong {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
 
 record MapCong≊ {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
   open Map M₁ using () renaming (“_” to “_”₁)
-  open Substable (Map.S M₁) using ()
+  open Shiftable (Map.S M₁) using ()
       renaming (var→val to var→val₁; shift to shift₁)
   open Map M₂ using () renaming (“_” to “_”₂) 
-  open Substable (Map.S M₂) using ()
+  open Shiftable (Map.S M₂) using ()
       renaming (var→val to var→val₂; shift to shift₂)
       
   _∼_ = λ v₁ v₂ → “ v₁ ”₁ ≡ “ v₂ ”₂

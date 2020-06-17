@@ -1,29 +1,30 @@
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
-open import Data.Unit using (⊤; tt)
+open import Data.Unit.Polymorphic using (⊤; tt)
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Agda.Primitive using (Level; lzero; lsuc)
 
 module ScopedTuple where
 
 {- Scet: A scoped Set -}
-Scet : Set₁
-Scet = ℕ → Set
+Scet : {ℓ : Level} → Set (lsuc ℓ)
+Scet {ℓ} = ℕ → Set ℓ
 
 _⇨_ : Scet → Scet → Set
 A ⇨ B = (∀ {b : ℕ} → A b → B b)
 
-𝒫 : Scet → Set₁
-𝒫 A = (∀ {b : ℕ} → A b → Set)
+𝒫 : {ℓ : Level} → Scet {ℓ} → Set (lsuc ℓ)
+𝒫 {ℓ} A = (∀ {b : ℕ} → A b → Set ℓ)
 
-_✖_ : Scet → Scet → Set₁
-A ✖ B = (∀ {b : ℕ} → A b → B b → Set)
+_✖_ : {ℓ : Level} → Scet {ℓ} → Scet {ℓ} → Set (lsuc ℓ)
+_✖_ {ℓ} A B = (∀ {b : ℕ} → A b → B b → Set ℓ)
 
 Sig : Set
 Sig = List ℕ
 
-Tuple : Sig → Scet → Set
+Tuple : {ℓ : Level} → Sig → Scet {ℓ} → Set ℓ
 Tuple [] A = ⊤
 Tuple (b ∷ bs) A = A b × Tuple bs A
 
@@ -31,8 +32,8 @@ map : ∀{A B} → (A ⇨ B) → {bs : Sig} → Tuple bs A → Tuple bs B
 map f {[]} ⊤ = tt
 map f {b ∷ bs} ⟨ x , xs ⟩ = ⟨ f x , map f xs ⟩
 
-foldr : ∀{A}{B : Set} → (∀ {b} → A b → B → B)
-   → B → {bs : Sig} → Tuple bs A → B
+foldr : ∀{ℓ : Level}{A}{B : Set} → (∀ {b} → A b → B → B)
+   → B → {bs : Sig} → Tuple {ℓ} bs A → B
 foldr c n {[]} tt = n
 foldr c n {b ∷ bs} ⟨ x , xs ⟩ = c x (foldr c n xs)
 
@@ -56,7 +57,7 @@ map-compose {A}{B}{C} {g} {f} {[]} {tt} = refl
 map-compose {A}{B}{C} {g} {f} {b ∷ bs} {⟨ x , xs ⟩} =
     cong₂ ⟨_,_⟩ refl map-compose
 
-tuple-pred : ∀{A : Scet}{P : 𝒫 A}
+tuple-pred : ∀{ℓ}{A : Scet {ℓ}}{P : 𝒫 A}
   → (P× : ∀ bs → Tuple bs A → Set)
   → (∀ (b : ℕ) → (a : A b) → P {b} a)
   → {bs : Sig} → (xs : Tuple bs A)

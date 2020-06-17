@@ -9,16 +9,17 @@ open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
 open import Var
+open import Agda.Primitive using (Level; lzero; lsuc)
 
 module GenericSubstitution where
 
 infixr 6 _•_
 
-data GSubst : (V : Set) → Set where
-  ↑ : (k : ℕ) → ∀{V} → GSubst V
+data GSubst {ℓ : Level} : (V : Set ℓ) → Set ℓ where
+  ↑ : (k : ℕ) → ∀{V : Set ℓ} → GSubst {ℓ} V
   _•_ : ∀{V} → V → GSubst V → GSubst V
 
-id : ∀ {V} → GSubst V
+id : ∀ {ℓ}{V : Set ℓ} → GSubst V
 id = ↑ 0
 
 map-sub : ∀{V W : Set} → (V → W) → GSubst V → GSubst W
@@ -29,7 +30,7 @@ map-sub-id : ∀{V} (σ : GSubst V) → map-sub (λ x → x) σ ≡ σ
 map-sub-id (↑ k) = refl
 map-sub-id (v • σ) = cong₂ _•_ refl (map-sub-id σ)
 
-drop : ∀{V} → (k : ℕ) → GSubst V → GSubst V
+drop : ∀{ℓ}{V : Set ℓ} → (k : ℕ) → GSubst V → GSubst V
 drop k (↑ k') = ↑ (k + k')
 drop zero (v • σ) = v • σ
 drop (suc k) (v • σ) = drop k σ
@@ -40,11 +41,11 @@ map-sub-drop (↑ k₁) f k = refl
 map-sub-drop (v • σ) f zero = refl
 map-sub-drop (v • σ) f (suc k) = map-sub-drop σ f k
 
-drop-0 : ∀ {V} σ → drop {V} 0 σ ≡ σ
+drop-0 : ∀ {ℓ}{V : Set ℓ} σ → drop {ℓ}{V} 0 σ ≡ σ
 drop-0 (↑ k) = refl
 drop-0 (v • σ) = refl
   
-drop-drop : ∀ {V} k k' σ → drop {V} (k + k') σ ≡ drop k (drop k' σ)
+drop-drop : ∀ {ℓ}{V} k k' σ → drop {ℓ} {V} (k + k') σ ≡ drop k (drop k' σ)
 drop-drop k k' (↑ k₁) rewrite +-assoc k k' k₁ = refl
 drop-drop zero k' (v • σ) rewrite drop-0 (drop k' (v • σ)) = refl
 drop-drop (suc k) zero (v • σ) rewrite +-comm k 0 = refl
@@ -52,13 +53,13 @@ drop-drop (suc k) (suc k') (v • σ)
     with drop-drop (suc k) k' σ
 ... | IH rewrite +-comm k (suc k') | +-comm k k' = IH
 
-record Substable (V : Set) : Set where
+record Shiftable (V : Set) : Set where
   field var→val : Var → V
         shift : V → V
         var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x)
 
-module GenericSubst {V} (S : Substable V) where
-  open Substable S
+module GenericSubst {V : Set} (S : Shiftable V) where
+  open Shiftable S
 
   ⧼_⧽ : GSubst V → Var → V
   ⧼ ↑ k ⧽ x = var→val (k + x)
@@ -163,10 +164,11 @@ module GenericSubst {V} (S : Substable V) where
   g-ShftAbv→Shift {k} {suc c} {v • σ} (sha-suc σkc refl) =
       shift-• (g-ShftAbv→Shift{suc k}{c}{σ} σkc) refl
 
-module Relate {V₁}{V₂} (S₁ : Substable V₁) (S₂ : Substable V₂)
+module Relate {V₁ : Set}{V₂ : Set}
+    (S₁ : Shiftable V₁) (S₂ : Shiftable V₂)
     (_∼_ : V₁ → V₂ → Set)
-    (var→val∼ : ∀ x → Substable.var→val S₁ x ∼ Substable.var→val S₂ x)
-    (shift∼ : ∀{v₁ v₂}→ v₁ ∼ v₂ → Substable.shift S₁ v₁ ∼ Substable.shift S₂ v₂)
+    (var→val∼ : ∀ x → Shiftable.var→val S₁ x ∼ Shiftable.var→val S₂ x)
+    (shift∼ : ∀{v₁ v₂}→ v₁ ∼ v₂ → Shiftable.shift S₁ v₁ ∼ Shiftable.shift S₂ v₂)
     where
     module G₁ = GenericSubst S₁
     module G₂ = GenericSubst S₂
