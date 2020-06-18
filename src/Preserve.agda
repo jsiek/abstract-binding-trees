@@ -227,28 +227,13 @@ record FoldPreserveABTPred {V I : Set} {ℓ : Level}{C : Set ℓ}
   ext-pres {v} {σ} {Γ} {Δ} {A} ⊢v⦂ Av σ⦂ {zero} {B} refl = ⊢v⦂
   ext-pres {v} {σ} {Γ} {Δ} {A} ⊢v⦂ Av σ⦂ {suc x} {B} ∋x
       rewrite g-inc-shift σ x = shift-⊢v (σ⦂ {x}{B} ∋x)
-  
-  preserve-fold : ∀{M σ Γ Δ A} → Γ ⊢ M ⦂ A → σ ⦂ Γ ⇒ Δ → Δ ⊢c fold σ M ⦂ A
-  pres-arg : ∀{b Γ Δ}{arg : Arg b}{A σ Bs} → b ∣ Γ ∣ Bs ⊢ₐ arg ⦂ A → σ ⦂ Γ ⇒ Δ
-     → b ∣ Δ ∣ Bs ⊢ᵣ fold-arg  σ {b} arg ⦂ A
-  pres-args : ∀{bs Γ Δ}{args : Args bs}{As σ Bss} → bs ∣ Γ ∣ Bss ⊢₊ args ⦂ As
-     → σ ⦂ Γ ⇒ Δ  →  bs ∣ Δ ∣ Bss ⊢ᵣ₊ fold-args σ args ⦂ As
-  preserve-fold {` x} {σ} {Γ} {Δ} {A} (var-p ∋x 𝑉x) σ⦂ = ret-pres (σ⦂ ∋x)
-  preserve-fold {op ⦅ args ⦆} {σ} {Γ} {Δ} {A} (op-p ⊢args 𝑃op) σΓΔ =
-      op-pres  (pres-args  ⊢args σΓΔ) 𝑃op
-  pres-arg {zero}{Γ}{Δ}{ast M}{A}{σ} (ast-p ⊢arg) σΓΔ =
-      ast-r (preserve-fold ⊢arg σΓΔ)
-  pres-arg {suc b}{Γ}{Δ}{bind arg}{A}{σ}{⟨ B , Bs ⟩} (bind-p {b}{B} ⊢arg)
-      σΓΔ = bind-r G
-      where G : ∀{v} → (B ∷ Δ) ⊢v v ⦂ B
-               → 𝐴 (B ∷ Δ) v B
-               → b ∣ B ∷ Δ ∣ Bs ⊢ᵣ fold-arg σ (bind arg) v ⦂ A
-            G {v} ⊢v⦂B 𝐴Mv =
-                pres-arg ⊢arg (λ {x} → ext-pres {v}{σ}{Γ} ⊢v⦂B 𝐴Mv σΓΔ {x})
-  pres-args {[]} {Γ} {Δ} {nil} {[]̌} ⊢args σΓΔ = nil-r 
-  pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷̌ As}
-      (cons-p ⊢arg ⊢args) σΓΔ =
-      cons-r  (pres-arg {b} ⊢arg σΓΔ) (pres-args ⊢args σΓΔ)
+
+  FEPP : FoldEnvPreserveABTPred FE
+  FEPP = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; 𝐴 = 𝐴 ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢c_⦂_
+           ; ext-pres = ext-pres ; ret-pres = ret-pres ; op-pres = op-pres }
+  open FoldEnvPreserveABTPred FEPP
+     using (preserve-fold; pres-arg; pres-args) public
+
 
 {-------------------- MapEnv Preserves ABTPred ---------------------}
 
