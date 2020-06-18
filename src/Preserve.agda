@@ -19,6 +19,7 @@
 
  ---------------------------}
 
+open import Agda.Primitive using (Level; lzero; lsuc)
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; z≤n; s≤s)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
@@ -102,7 +103,7 @@ module ABTPred {I : Set}
 
 {----- Predicate on result of fold (e.g. type system for values) -----}
 
-module FoldPred {I : Set}{V C : Set}
+module FoldPred {I : Set}{V : Set}{ℓ : Level}{C : Set ℓ}
   (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set)
   (𝐴 : List I → V → I → Set)
   (_⊢v_⦂_ : List I → V → I → Set) (_⊢c_⦂_ : List I → C → I → Set)
@@ -134,7 +135,8 @@ module GSubstPred {V I : Set} (S : Shiftable V)
   
 {-------------------- FoldEnv Preserves ABTPred ---------------------}
 
-record PreserveFoldEnv {V C Env I : Set} (F : FoldEnv Env V C) : Set₁ where
+record FoldEnvPreserveABTPred {V Env I : Set}{ℓ : Level}{C : Set ℓ}
+  (F : FoldEnv Env V C) : Set (lsuc ℓ) where
   field 𝑉 : List I → Var → I → Set
         𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set
         𝐴 : List I → V → I → Set
@@ -201,7 +203,8 @@ record FunEnvPredExt {V I : Set} (_⊢v_⦂_ : List I → V → I → Set)
 
 {-------------------- Fold Preserves ABTPred ---------------------}
 
-record PreserveFold {V C I : Set} (F : Fold V C) : Set₁ where
+record FoldPreserveABTPred {V I : Set} {ℓ : Level}{C : Set ℓ}
+  (F : Fold V C) : Set (lsuc ℓ) where
   field 𝑉 : List I → Var → I → Set
         𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set
         𝐴 : List I → V → I → Set
@@ -249,7 +252,7 @@ record PreserveFold {V C I : Set} (F : Fold V C) : Set₁ where
 
 {-------------------- MapEnv Preserves ABTPred ---------------------}
 
-record PreserveMapEnv {V Env I : Set} (M : MapEnv V Env) : Set₁ where
+record MapEnvPreserveABTPred {V Env I : Set} (M : MapEnv V Env) : Set₁ where
   field 𝑉 : List I → Var → I → Set
         𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set
         _⊢v_⦂_ : List I → V → I → Set
@@ -290,7 +293,7 @@ record PreserveMapEnv {V Env I : Set} (M : MapEnv V Env) : Set₁ where
 
 {-------------------- Map Preserves ABTPred ---------------------}
 
-record PreserveMap {V I : Set} (M : Map V) : Set₁ where
+record MapPreserveABTPred {V I : Set} (M : Map V) : Set₁ where
   field 𝑉 : List I → Var → I → Set
         𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set
         _⊢v_⦂_ : List I → V → I → Set
@@ -309,22 +312,21 @@ record PreserveMap {V I : Set} (M : Map V) : Set₁ where
   ext-pres {σ} {Γ} {Δ} {A} σ⦂ {suc x} {B} ∋x
       rewrite g-ext-def σ | g-inc-shift σ x = shift-⊢v (σ⦂ {x}{B} ∋x)
 
-  PME : PreserveMapEnv GSubstMapEnv
+  PME : MapEnvPreserveABTPred GSubstMapEnv
   PME = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _⊢v_⦂_ ; quote-⊢v = quote-⊢v
                ; ext-pres = ext-pres }
-  open PreserveMapEnv PME hiding (ext-pres) public
+  open MapEnvPreserveABTPred PME hiding (ext-pres) public
 
 {-------------------- MapEnv Preserves FoldEnv ---------------------}
 
-record MapEnvPreserveFoldEnv  {Vᵐ Vᶠ Cᶠ Envᵐ Envᶠ : Set} (M : MapEnv Vᵐ Envᵐ)
-  (F : FoldEnv Envᶠ Vᶠ Cᶠ)
-  : Set₁
+record MapEnvPreserveFoldEnv  {Vᵐ Vᶠ Envᵐ Envᶠ : Set} {ℓ : Level}{Cᶠ : Set ℓ}
+  (M : MapEnv Vᵐ Envᵐ) (F : FoldEnv Envᶠ Vᶠ Cᶠ) : Set (lsuc ℓ)
   where
   open MapEnv M renaming (lookup to lookupᵐ; “_” to “_”ᵐ; ext-env to extᵐ)
   open FoldEnv F renaming (lookup to lookupᶠ; _,_ to _,ᶠ_)
-  open RelBind {Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ} _≡_ _≡_
+  open RelBind {ℓ}{Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ} _≡_ _≡_
 
-  _⨟_≈_ : Envᵐ → Envᶠ → Envᶠ → Set
+  _⨟_≈_ : Envᵐ → Envᶠ → Envᶠ → Set ℓ
   σ ⨟ δ ≈ γ = ∀ x → fold δ (“ lookupᵐ σ x ”ᵐ) ≡ ret (lookupᶠ γ x)
 
   field op-cong : ∀ op rs rs' → zip _⩳_ rs rs' → fold-op op rs ≡ fold-op op rs'
@@ -355,13 +357,14 @@ record MapEnvPreserveFoldEnv  {Vᵐ Vᶠ Cᶠ Envᵐ Envᶠ : Set} (M : MapEnv V
 
 {-------------------- Rename Preserves FoldEnv ---------------------}
 
-record RenamePreserveFoldEnv {Env V C : Set} (F : FoldEnv Env V C) : Set₁ where
+record RenamePreserveFoldEnv {Env V : Set} {ℓ : Level}{C : Set ℓ}
+  (F : FoldEnv Env V C) : Set (lsuc ℓ) where
   open FoldEnv F
   open Shiftable S
   open Substitution using (Rename; ⦉_⦊; ext; ext-0; ext-suc)
   open Substitution.ABTOps Op sig using (rename; ren-arg; ren-args; RenameIsMap)
 
-  open RelBind {V}{C}{V}{C} _≡_ _≡_
+  open RelBind {ℓ}{V}{C}{V}{C} _≡_ _≡_
   field op-eq : ∀ op rs rs' → zip _⩳_ rs rs' → fold-op op rs ≡ fold-op op rs'
         ret-inj : ∀ {v v'} → ret v ≡ ret v' → v ≡ v'
 
@@ -374,14 +377,14 @@ record RenamePreserveFoldEnv {Env V C : Set} (F : FoldEnv Env V C) : Set₁ wher
   ext-pres {ρ} {σ₁} {σ₂} {v} ρ⨟σ₁≈σ₂ (suc x) rewrite ext-suc ρ x
       | lookup-suc σ₂ v x | lookup-suc σ₁ v (⦉ ρ ⦊ x) | ρ⨟σ₁≈σ₂ x = refl
 
-  _⨟′_≈_ : Rename → Env → Env → Set
+  _⨟′_≈_ : Rename → Env → Env → Set ℓ
   ρ ⨟′ σ₁ ≈ σ₂ = ∀ x → fold σ₁ (` (⦉ ρ ⦊ x)) ≡ ret (lookup σ₂ x)
   ext-pres′ : ∀{ρ σ₁ σ₂ v} → ρ ⨟′ σ₁ ≈ σ₂ → ext ρ ⨟′ (σ₁ , v) ≈ (σ₂ , v)
   ext-pres′ {ρ}{σ₁}{σ₂}{v} prem x =
     let ep = ext-pres{ρ}{σ₁}{σ₂}{v} (λ x → ret-inj (prem x)) in
     cong ret (ep x)
 
-  MEPFE : MapEnvPreserveFoldEnv{Var}{V}{C} (Map.GSubstMapEnv RenameIsMap) F
+  MEPFE : MapEnvPreserveFoldEnv{Var}{V}{ℓ = ℓ}{Cᶠ = C} (Map.GSubstMapEnv RenameIsMap) F
   MEPFE = record { op-cong = op-eq ; ext-pres = ext-pres′ }
   open MapEnvPreserveFoldEnv MEPFE using ()
     renaming (map-preserve-fold to rename-fold;
@@ -390,9 +393,10 @@ record RenamePreserveFoldEnv {Env V C : Set} (F : FoldEnv Env V C) : Set₁ wher
 
 {-------------------- Rename Preserves Fold ---------------------}
 
-record RenamePreserveFold {V C : Set} (F : Fold V C) : Set₁ where
+record RenamePreserveFold {V : Set} {ℓ : Level}{C : Set ℓ} (F : Fold V C) : Set (lsuc ℓ)
+  where
   open Fold F
-  open RelBind {V}{C}{V}{C} _≡_ _≡_
+  open RelBind {ℓ}{V}{C}{V}{C} _≡_ _≡_
   field op-eq : ∀ op rs rs' → zip _⩳_ rs rs' → fold-op op rs ≡ fold-op op rs'
         ret-inj : ∀ {v v'} → ret v ≡ ret v' → v ≡ v'
 
@@ -419,8 +423,8 @@ record RenamePreserveFold {V C : Set} (F : Fold V C) : Set₁ where
 
 -}
 
-record MapPreserveFoldEnv {Envᶠ Vᵐ Vᶠ Cᶠ I : Set}
-  (M : Map Vᵐ) (F : FoldEnv Envᶠ Vᶠ Cᶠ) : Set₁ where
+record MapPreserveFoldEnv {Envᶠ Vᵐ Vᶠ : Set}{ℓ : Level}{Cᶠ : Set ℓ}
+  (M : Map Vᵐ) (F : FoldEnv Envᶠ Vᶠ Cᶠ) : Set (lsuc ℓ) where
   
   open Map M renaming (var→val to var→valᵐ; shift to shiftᵐ)
   open FoldEnv F renaming (lookup to lookupᶠ; _,_ to _,ᶠ_;
@@ -438,8 +442,8 @@ record MapPreserveFoldEnv {Envᶠ Vᵐ Vᶠ Cᶠ I : Set}
 
   field shiftᶜ : Cᶠ → Cᶠ
 
-  open RelBind {Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ} _≡_ _≡_ renaming (_⩳_ to _⩳ᶠ_)
-  open RelBind {Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ}
+  open RelBind {ℓ}{Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ} _≡_ _≡_ renaming (_⩳_ to _⩳ᶠ_)
+  open RelBind {ℓ}{Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ}
            (λ v v' → v ≡ shiftᶠ v') (λ c c' → c ≡ shiftᶜ c') public
            
   field op-cong : ∀ op rs rs' → zip _⩳ᶠ_ rs rs'
@@ -483,7 +487,7 @@ record MapPreserveFoldEnv {Envᶠ Vᵐ Vᶠ Cᶠ I : Set}
   RPF = record { op-eq = op-cong ; ret-inj = ret-inj }
   open RenamePreserveFoldEnv RPF using (rename-fold)
 
-  _⨟_≈_ : GSubst Vᵐ → Envᶠ → Envᶠ → Set
+  _⨟_≈_ : GSubst Vᵐ → Envᶠ → Envᶠ → Set ℓ
   σ ⨟ δ ≈ γ = ∀ x → fold δ (“ ⧼ σ ⧽ x ”ᵐ) ≡ ret (lookupᶠ γ x)
 
   ext-pres : ∀{σ : GSubst Vᵐ}{δ γ : Envᶠ}{v : Vᶠ} → σ ⨟ δ ≈ γ
@@ -512,98 +516,67 @@ record MapPreserveFoldEnv {Envᶠ Vᵐ Vᶠ Cᶠ I : Set}
   MEPFE = record { op-cong = op-cong ; ext-pres = ext-pres }
   open MapEnvPreserveFoldEnv MEPFE public hiding (_⨟_≈_; ext-pres)
   
+{-------------------- Subst Preserves FoldEnv ---------------------}
+
+{- The following too much junk for too little benefit.
+   Is there an idiom that would streamline this? -}
+
+record SubstPreserveFoldEnv {Env V : Set} {ℓ : Level}{C : Set ℓ}
+  (F : FoldEnv Env V C) : Set (lsuc ℓ) where
+  open FoldEnv F
+  open Shiftable S
+  open Substitution.ABTOps Op sig using (SubstIsMap)
+
+  field shiftᶜ : C → C
+  
+  open RelBind {ℓ}{V}{C}{V}{C} _≡_ _≡_ renaming (_⩳_ to _⩳ᶠ_)
+  open RelBind {ℓ}{V}{C}{V}{C}
+           (λ v v' → v ≡ shift v') (λ c c' → c ≡ shiftᶜ c') public
+
+  field op-cong : ∀ op rs rs' → zip _⩳ᶠ_ rs rs'
+                → fold-op op rs ≡ fold-op op rs'
+        ret-inj : ∀ {v v'} → ret v ≡ ret v' → v ≡ v'
+        shift-ret : ∀ vᶠ → shiftᶜ (ret vᶠ) ≡ ret (shift vᶠ)
+        op-shift : ∀ op {rs↑ rs} → zip _⩳_ rs↑ rs
+                 → fold-op op rs↑ ≡ shiftᶜ (fold-op op rs)
+
+  MPFE : MapPreserveFoldEnv SubstIsMap F
+  MPFE = record
+           { shiftᶜ = shiftᶜ
+           ; op-cong = op-cong
+           ; var→val-“” = λ x → refl
+           ; shift-“” = λ vᵐ → refl
+           ; ret-inj = ret-inj
+           ; shift-ret = shift-ret
+           ; op-shift = op-shift
+           }
+  
 
 {-------------------- Map Preserves Fold ---------------------}
 
-{- TODO: change proof to go via MapPreserveFoldEnv -}
-
-record MapPreserveFold  {Vᵐ Vᶠ Cᶠ I : Set} (M : Map Vᵐ) (F : Fold Vᶠ Cᶠ)
-  : Set₁
-  where
+record MapPreserveFold  {Vᵐ Vᶠ : Set} {ℓ : Level}{Cᶠ : Set ℓ}
+  (M : Map Vᵐ) (F : Fold Vᶠ Cᶠ) : Set (lsuc ℓ) where
   open Map M ; open Fold F
   open Shiftable (Map.S M) using ()
       renaming (shift to shiftᵐ; var→val to var→valᵐ)
   open Shiftable (Fold.S F) using () renaming (shift to shiftᶠ)
-  open GenericSubst (Map.S M)
-      using (g-ext-def) renaming (⧼_⧽ to ⧼_⧽ᵐ; g-ext to extᵐ;
-      g-inc-shift to g-inc-shiftᵐ; g-inc to g-incᵐ)
-  open GenericSubst (Fold.S F)
-      using (g-extend; g-inc) renaming (⧼_⧽ to ⧼_⧽ᶠ; g-ext to extᶠ;
-      g-inc-shift to g-inc-shiftᶠ)
   open Substitution.ABTOps Op sig using (rename)
 
   field var→val-“” : ∀ x → “ var→valᵐ x ” ≡ ` x
         shiftᶜ : Cᶠ → Cᶠ
         shift-ret : ∀ vᶠ → shiftᶜ (ret vᶠ) ≡ ret (shiftᶠ vᶠ)
         shift-“” : ∀ vᵐ → “ shiftᵐ vᵐ ” ≡ rename (↑ 1) “ vᵐ ”
-  open RelBind {Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ}
+  open RelBind {ℓ}{Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ}
            (λ v v' → v ≡ shiftᶠ v') (λ c c' → c ≡ shiftᶜ c') public
-  open RelBind {Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ} _≡_ _≡_ renaming (_⩳_ to _⩳ᶠ_)
+  open RelBind {ℓ}{Vᶠ}{Cᶠ}{Vᶠ}{Cᶠ} _≡_ _≡_ renaming (_⩳_ to _⩳ᶠ_)
            
   field op-shift : ∀ op {rs↑ rs} → zip _⩳_ rs↑ rs
                  → fold-op op rs↑ ≡ shiftᶜ (fold-op op rs)
         op-eq : ∀ op rs rs' → zip _⩳ᶠ_ rs rs' → fold-op op rs ≡ fold-op op rs'
         ret-inj : ∀ {v v'} → ret v ≡ ret v' → v ≡ v'
 
-  _⨟_≈_ : GSubst Vᵐ → GSubst Vᶠ → GSubst Vᶠ → Set
-  σ ⨟ δ ≈ γ = ∀ x → fold δ “ ⧼ σ ⧽ᵐ x ” ≡ ret (⧼ γ ⧽ᶠ x)
-
-  RPF : RenamePreserveFold F
-  RPF = record { op-eq = op-eq ; ret-inj = ret-inj }
-  open RenamePreserveFold RPF using (rename-fold)
-
-  fold-inc : ∀ δ δ↑ M
-      → (∀ x → ⧼ δ↑ ⧽ᶠ x ≡ shiftᶠ (⧼ δ ⧽ᶠ x))
-      → fold δ↑ M ≡ shiftᶜ (fold δ M)
-  fold-inc-arg : ∀ δ δ↑ {b} (arg : Arg b)
-      → (∀ x → ⧼ δ↑ ⧽ᶠ x ≡ shiftᶠ (⧼ δ ⧽ᶠ x))
-      → fold-arg δ↑ arg ⩳ fold-arg δ arg
-  fold-inc-args : ∀ (δ : GSubst Vᶠ) (δ↑ : GSubst Vᶠ) {bs} (args : Args bs)
-      → (∀ x → ⧼ δ↑ ⧽ᶠ x ≡ shiftᶠ (⧼ δ ⧽ᶠ x))
-      → zip _⩳_ (fold-args δ↑ args) (fold-args δ args)
-
-  fold-inc δ δ↑ (` x) δ=shift rewrite (δ=shift x)| shift-ret (⧼ δ ⧽ᶠ x) = refl
-  fold-inc δ δ↑ (op ⦅ args ⦆) δ=shift =
-      op-shift op (fold-inc-args δ δ↑ args δ=shift)
-  fold-inc-arg δ δ↑ (ast M) δ=shift = fold-inc δ δ↑ M δ=shift
-  fold-inc-arg δ δ↑ (bind arg) δ=shift {_}{vᶠ} refl =
-      fold-inc-arg (g-extend vᶠ δ) (g-extend (shiftᶠ vᶠ) δ↑) arg G
-      where
-      G : ∀ x → ⧼ g-extend (shiftᶠ vᶠ) δ↑ ⧽ᶠ x ≡ shiftᶠ (⧼ g-extend vᶠ δ ⧽ᶠ x)
-      G zero = refl
-      G (suc x) = begin
-                      ⧼ g-inc δ↑ ⧽ᶠ x
-                  ≡⟨ g-inc-shiftᶠ δ↑ x ⟩
-                      shiftᶠ (⧼ δ↑ ⧽ᶠ x)
-                  ≡⟨ cong shiftᶠ (δ=shift x) ⟩
-                      shiftᶠ (shiftᶠ (⧼ δ ⧽ᶠ x))
-                  ≡⟨ cong shiftᶠ (sym (g-inc-shiftᶠ δ x)) ⟩
-                      shiftᶠ (⧼ g-inc δ ⧽ᶠ x)
-                  ∎
-  fold-inc-args δ δ↑ nil δ=shift = tt
-  fold-inc-args δ δ↑ (cons arg args) δ=shift =
-      ⟨ fold-inc-arg δ δ↑ arg δ=shift , fold-inc-args δ δ↑ args δ=shift ⟩
-
-  ext-pres : ∀{σ δ γ}{v : Vᶠ} → σ ⨟ δ ≈ γ
-     → extᵐ σ ⨟ g-extend v δ ≈ g-extend v γ
-  ext-pres {σ} {δ} {γ} {v} σ⨟δ≈γ zero rewrite g-ext-def σ | var→val-“” 0 = refl
-  ext-pres {σ} {δ} {γ} {v} σ⨟δ≈γ (suc x) rewrite g-inc-shiftᶠ γ x
-      | g-ext-def σ | g-inc-shiftᵐ σ x | sym (shift-ret (⧼ γ ⧽ᶠ x))
-      | shift-“” (⧼ σ ⧽ᵐ x) =
-       begin
-           fold (v • g-inc δ) (rename (↑ 1) “ ⧼ σ ⧽ᵐ x ”)
-       ≡⟨ rename-fold {↑ 1}{v • g-inc δ}{g-inc δ} “ ⧼ σ ⧽ᵐ x ” H  ⟩
-           fold (g-inc δ) “ ⧼ σ ⧽ᵐ x ”
-       ≡⟨ fold-inc δ (g-inc δ) “ ⧼ σ ⧽ᵐ x ” (g-inc-shiftᶠ δ) ⟩
-           shiftᶜ (fold δ “ ⧼ σ ⧽ᵐ x ”)
-       ≡⟨ cong shiftᶜ (σ⨟δ≈γ x) ⟩
-           shiftᶜ (ret (⧼ γ ⧽ᶠ x))
-       ∎
-      where
-      H : (RenamePreserveFoldEnv.MEPFE (RenamePreserveFold.RPFE RPF)
-                MapEnvPreserveFoldEnv.⨟ ↑ 1 ≈ (v • g-inc δ)) (g-inc δ)
-      H x rewrite g-inc-shiftᶠ δ x = refl
-
-  MPFE : MapEnvPreserveFoldEnv GSubstMapEnv FE
-  MPFE = record { op-cong = op-eq ; ext-pres = ext-pres }
-  open MapEnvPreserveFoldEnv MPFE hiding (ext-pres)
+  MPFE : MapPreserveFoldEnv M FE
+  MPFE = record { shiftᶜ = shiftᶜ ; op-cong = op-eq ; var→val-“” = var→val-“”
+           ; shift-“” = shift-“” ; ret-inj = ret-inj ; shift-ret = shift-ret
+           ; op-shift = op-shift }
+  open MapPreserveFoldEnv MPFE

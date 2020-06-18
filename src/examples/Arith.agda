@@ -179,11 +179,11 @@ module examples.Arith where
 
   module TypeSafetyViaPreserveFold where
 
-    EvalPres : PreserveFold Eval 
+    EvalPres : FoldPreserveABTPred Eval 
     EvalPres = record { 𝑉 = λ Γ x A → ⊤ ; 𝑃 = 𝑃 ; 𝐴 = 𝐴
                ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢v_⦂_
                ; shift-⊢v = shift-⊢v ; ret-pres = λ x → x ; op-pres = op-pres }
-    open PreserveFold EvalPres using (_⊢_⦂_; preserve-fold)
+    open FoldPreserveABTPred EvalPres using (_⊢_⦂_; preserve-fold)
 
     type-safety : ∀ M
        → [] ⊢ M ⦂ t-nat
@@ -205,11 +205,11 @@ module examples.Arith where
     FEPE = record { shift-⊢v = shift-⊢v }
     open FunEnvPredExt FEPE
 
-    EvalPres : PreserveFoldEnv Eval2
+    EvalPres : FoldEnvPreserveABTPred Eval2
     EvalPres = record { 𝑉 = λ Γ x A → ⊤ ; 𝑃 = 𝑃 ; 𝐴 = 𝐴
                ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢v_⦂_
                ; ext-pres = ext-pres ; ret-pres = λ x → x ; op-pres = op-pres }
-    open PreserveFoldEnv EvalPres using (_⊢_⦂_; preserve-fold)
+    open FoldEnvPreserveABTPred EvalPres using (_⊢_⦂_; preserve-fold)
 
     type-safety : ∀ M
        → [] ⊢ M ⦂ t-nat

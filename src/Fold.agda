@@ -13,7 +13,6 @@ open import ScopedTuple
            map-compose; zip-map→rel; Lift-Eq-Tuple; Lift-Rel-Tuple; zip→rel)
 open import GenericSubstitution
 open import Agda.Primitive using (Level; lzero; lsuc)
-    renaming (_⊔_ to _⊔'_)
 
 module Fold (Op : Set) (sig : Op → List ℕ) where
 
@@ -65,7 +64,8 @@ record Fold {ℓᶜ : Level}(V : Set)(C : Set ℓᶜ) : Set (lsuc ℓᶜ) where
  Simulation between two folds
  ------------------------------------------------------------------------------}
 
-module RelBind {V₁ C₁}{V₂ C₂} (_∼_ : V₁ → V₂ → Set) (_≈_ : C₁ → C₂ → Set) where
+module RelBind {ℓ : Level}{V₁}{C₁ : Set ℓ}{V₂}{C₂ : Set ℓ}
+  (_∼_ : V₁ → V₂ → Set) (_≈_ : C₁ → C₂ → Set ℓ) where
   _⩳_  : (Bind V₁ C₁) ✖ (Bind V₂ C₂)
   _⩳_ {zero} c₁ c₂ = c₁ ≈ c₂
   _⩳_ {suc b} r₁ r₂ = ∀{v₁ v₂} → v₁ ∼ v₂ → r₁ v₁ ⩳ r₂ v₂

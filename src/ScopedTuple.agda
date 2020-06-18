@@ -41,7 +41,7 @@ all : ∀{A} → 𝒫 A → {bs : Sig} → Tuple bs A → Set
 all {A} P {[]} tt = ⊤
 all {A} P {b ∷ bs} ⟨ x , xs ⟩ = P x × (all P xs)
 
-zip : ∀{A B} → A ✖ B → {bs : Sig} → Tuple bs A → Tuple bs B → Set
+zip : ∀{ℓ}{A B} → _✖_ {ℓ} A B → {bs : Sig} → Tuple bs A → Tuple bs B → Set ℓ
 zip R {[]} tt tt = ⊤
 zip R {b ∷ bs} ⟨ a₁ , as₁ ⟩ ⟨ a₂ , as₂ ⟩ = R a₁ a₂ × zip R as₁ as₂
 
@@ -79,11 +79,11 @@ all-intro : ∀{A : Scet} → (P : 𝒫 A)
 all-intro {A} P f {[]} tt = tt
 all-intro {A} P f {b ∷ bs} ⟨ x , xs ⟩  = ⟨ (f x) , (all-intro P f xs) ⟩
 
-zip-refl : ∀{bs A} (xs : Tuple bs A) → zip _≡_ xs xs
-zip-refl {[]} tt = tt
-zip-refl {b ∷ bs} {A} ⟨ x , xs ⟩ = ⟨ refl , zip-refl xs ⟩
+zip-refl : ∀{ℓ}{bs A} (xs : Tuple {ℓ} bs A) → zip {ℓ} _≡_ xs xs
+zip-refl {ℓ}{[]} tt = tt
+zip-refl {ℓ}{b ∷ bs} {A} ⟨ x , xs ⟩ = ⟨ refl , zip-refl xs ⟩
 
-zip-intro : ∀{A B : Scet} → (R : A ✖ B)
+zip-intro : ∀{ℓ}{A B : Scet {ℓ}} → (R : A ✖ B)
   → (∀ {c} (a : A c) (b : B c) → R {c} a b)
   → {bs : Sig} → (xs : Tuple bs A) → (ys : Tuple bs B)
   → zip R xs ys

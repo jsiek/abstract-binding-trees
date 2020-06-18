@@ -80,14 +80,14 @@ mk-vec-unique {ℓ}{suc n} {v ∷̆ vs} = cong₂ _∷̆_ refl mk-vec-unique
 
 module _ where
   private
-    RenPres : PreserveMap RenameIsMap
+    RenPres : MapPreserveABTPred RenameIsMap
     RenPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ x A → Γ ∋ x ⦂ A
               ; 𝑉 = λ Γ x A → suc x ≤ length Γ
               ; shift-⊢v = λ ∋x → ∋x ; ⊢v0 = refl
               ; quote-⊢v = λ {Γ}{x}{tt} ∋x → WF-var ∋x (∋x→< {⊤}{Γ} ∋x) }
-    open PreserveMap RenPres using (_⦂_⇒_)
+    open MapPreserveABTPred RenPres using (_⦂_⇒_)
 
-  open PreserveMap RenPres using ()
+  open MapPreserveABTPred RenPres using ()
       renaming (preserve-map to ren-preserve) public
 
   WFRename : ℕ → Rename → ℕ → Set
@@ -107,14 +107,14 @@ module _ where
 
 module _ where
   private
-    SubstPres : PreserveMap SubstIsMap
+    SubstPres : MapPreserveABTPred SubstIsMap
     SubstPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ M A → Γ ⊢ M ⦂ A
                   ; 𝑉 = λ Γ x A → suc x ≤ length Γ 
                   ; shift-⊢v = λ {A}{B}{Δ}{M} ⊢M → ren-preserve ⊢M λ x → x
                   ; quote-⊢v = λ x → x ; ⊢v0 = λ{ {tt} → WF-var refl (s≤s z≤n)}}
-    open PreserveMap SubstPres using (_⦂_⇒_)
+    open MapPreserveABTPred SubstPres using (_⦂_⇒_)
 
-  open PreserveMap SubstPres using ()
+  open MapPreserveABTPred SubstPres using ()
       renaming (preserve-map to sub-preserve) public
 
   WFSubst : ℕ → Subst → ℕ → Set
