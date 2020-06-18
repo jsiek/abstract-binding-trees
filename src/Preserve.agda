@@ -41,33 +41,6 @@ open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import Var
 
-_∋_⦂_ : ∀{I : Set} → List I → Var → I → Set
-_∋_⦂_ {I} [] x A = ⊥
-_∋_⦂_ {I} (B ∷ Γ) zero A = A ≡ B
-_∋_⦂_ {I} (B ∷ Γ) (suc x) A = Γ ∋ x ⦂ A
-
-∋x→< : ∀{I : Set}{Γ : List I}{x A} → Γ ∋ x ⦂ A → x < (length Γ)
-∋x→< {I}{B ∷ Γ} {zero} {A} ∋x = s≤s z≤n
-∋x→< {I}{B ∷ Γ} {suc x} {A} ∋x = s≤s (∋x→< {I}{Γ} ∋x)
-
-<→∋x : ∀{I : Set}{Γ : List ⊤}{x A} → x < (length Γ) → Γ ∋ x ⦂ A
-<→∋x {I}{B ∷ Γ} {zero} {A} x<Γ = refl
-<→∋x {I}{B ∷ Γ} {suc x} {A} (s≤s x<Γ) = <→∋x {I}{Γ}{x}{A} x<Γ
-
-∋++ : ∀{I}{Γ Δ : List I}{x A} →  Γ ∋ x ⦂ A  → (Δ ++ Γ) ∋ (length Δ + x) ⦂ A  
-∋++ {I}{Γ} {[]} {x} {A} ∋ΔΓ = ∋ΔΓ
-∋++ {I}{Γ} {B ∷ Δ} {x} {A} ∋ΔΓ = ∋++ {I}{Γ}{Δ}{x}{A} ∋ΔΓ
-
-{--- types for bound variables ---}
-
-BType : Set → ℕ → Set
-BType I zero = ⊤
-BType I (suc b) = I × BType I b
-
-BTypes : Set → List ℕ → Set
-BTypes I [] = ⊤
-BTypes I (b ∷ bs) = BType I b × BTypes I bs
-
 {----- Predicate on ABT's (e.g. type system for expressions) -----}
 
 module ABTPred {I : Set}
@@ -233,6 +206,110 @@ record FoldPreserveABTPred {V I : Set} {ℓ : Level}{C : Set ℓ}
            ; ext-pres = ext-pres ; ret-pres = ret-pres ; op-pres = op-pres }
   open FoldEnvPreserveABTPred FEPP
      using (preserve-fold; pres-arg; pres-args) public
+
+
+{-------------------- FoldEnv(ABT) Preserves FoldEnv ---------------------}
+
+{-
+  Example: 
+     F is a compilation pass from language Lˢ to Lᵗ
+     Fˢ is the denotational semantics Lˢ
+     Fᵗ is the denotational semantics of Lᵗ
+
+    Lˢ
+    | \         
+    F  \_Fˢ_
+    |       \__   
+    V          V
+    Lᵗ - Fᵗ -> C
+
+
+ -}
+
+record FoldEnvPreserveFoldEnv {Vᶠ Envᶠ : Set}{V Env : Set}{ℓ : Level}{C : Set ℓ}
+  (F : FoldEnv Envᶠ Vᶠ ABT)
+  (Fˢ : FoldEnv Env V C) (Fᵗ : FoldEnv Env V C) : Set (lsuc ℓ)
+  where
+  open FoldEnv F using (fold; fold-arg; fold-args; ret; fold-op; lookup; _,_;
+      lookup-0; lookup-suc)
+  open Shiftable (FoldEnv.S F) using (var→val; shift)
+  open FoldEnv Fˢ using ()
+    renaming (fold to foldˢ; fold-arg to fold-argˢ; fold-args to fold-argsˢ;
+    ret to retˢ; lookup to lookupˢ; _,_ to _,ˢ_; lookup-0 to lookup-0ˢ;
+    lookup-suc to lookup-sucˢ)
+  open Shiftable (FoldEnv.S Fˢ) using () renaming (shift to shiftˢ)    
+  open FoldEnv Fᵗ using ()
+    renaming (fold to foldᵗ; fold-arg to fold-argᵗ; fold-args to fold-argsᵗ;
+    fold-op to fold-opᵗ; ret to retᵗ; lookup to lookupᵗ; _,_ to _,ᵗ_;
+    lookup-0 to lookup-0ᵗ; lookup-suc to lookup-sucᵗ; shift-env to shift-envᵗ)
+
+  field ret-var→val : ∀ x → ret (var→val x) ≡ ` x
+        retᵗ-retˢ : ∀ v → retᵗ v ≡ retˢ v
+        shiftᶜ : C → C
+        shift-ret : ∀ v → shiftᶜ (retˢ v) ≡ retˢ (shiftˢ v)
+
+  _⨟_≈_ : Envᶠ → Env → Env → Set ℓ
+  γ ⨟ τ ≈ σ = ∀ x → foldᵗ τ (ret (lookup γ x)) ≡ retˢ (lookupˢ σ x)
+
+  open RelBind {ℓ}{V}{C}{V}{C} _≡_ _≡_
+
+  reify-arg : {b : ℕ} → Bind Vᶠ ABT b → Arg b
+  reify-arg {zero} M = ast M
+  reify-arg {suc b} f = bind (reify-arg {b} (f (var→val 0)))
+
+  reify-args : {bs : List ℕ} → Tuple bs (Bind Vᶠ ABT) → Args bs
+  reify-args {[]} tt = nil
+  reify-args {b ∷ bs} ⟨ r , rs ⟩ = cons (reify-arg r) (reify-args rs)
+  
+  preserve : ∀{γ σ τ } (M : ABT)
+    → γ ⨟ τ ≈ σ
+    → foldᵗ τ (fold γ M) ≡ foldˢ σ M
+
+  pres-arg : ∀{γ σ τ}{b : ℕ} (arg : Arg b)
+    → γ ⨟ τ ≈ σ
+    → fold-argᵗ τ (reify-arg (fold-arg γ arg)) ⩳ fold-argˢ σ arg
+
+  pres-args : ∀{γ σ τ}{bs : List ℕ} (args : Args bs)
+    → γ ⨟ τ ≈ σ
+    → zip _⩳_ (fold-argsᵗ τ (reify-args (fold-args γ args)))
+              (fold-argsˢ σ args)
+
+  open Substitution.ABTOps Op sig using (rename; ren-arg; ren-args; RenameIsMap)
+
+  ext-pres : ∀{γ τ σ v} → γ ⨟ τ ≈ σ  →  (γ , var→val 0) ⨟ τ ,ᵗ v ≈ (σ ,ˢ v)
+  ext-pres {γ} {τ} {σ} {v} γ⨟τ≈σ zero rewrite lookup-0 γ (var→val 0)
+      | lookup-0ˢ σ v | ret-var→val 0 | lookup-0ᵗ τ v = retᵗ-retˢ v
+  ext-pres {γ} {τ} {σ} {v} γ⨟τ≈σ (suc x) rewrite lookup-suc γ (var→val 0) x
+      | lookup-sucˢ σ v x =
+      begin
+      foldᵗ (τ ,ᵗ v) (ret (shift (lookup γ x)))
+          ≡⟨ {!!} ⟩
+      foldᵗ (τ ,ᵗ v) (rename (↑ 1) (ret (lookup γ x)))
+          ≡⟨ {!!} ⟩
+      foldᵗ (shift-envᵗ τ) (ret (lookup γ x))
+          ≡⟨ {!!} ⟩
+      shiftᶜ (foldᵗ τ (ret (lookup γ x)))
+          ≡⟨ cong shiftᶜ (γ⨟τ≈σ x) ⟩
+      shiftᶜ (retˢ (lookupˢ σ x))
+          ≡⟨ shift-ret (lookupˢ σ x) ⟩
+      retˢ (shiftˢ (lookupˢ σ x))
+      ∎
+
+
+
+
+  preserve {γ}{σ}{τ} (` x) γ⨟τ≈σ = γ⨟τ≈σ x
+  preserve {γ}{σ}{τ} (op ⦅ args ⦆) γ⨟τ≈σ = {!!}
+  {-
+     foldᵗ τ (fold-op op (fold-args γ args)) 
+   ≡ fold-op op (fold-args σ args)
+
+  -}
+  pres-arg {γ} {σ} {τ} (ast M) γ⨟τ≈σ = preserve M γ⨟τ≈σ
+  pres-arg {γ} {σ} {τ} (bind arg) γ⨟τ≈σ refl = pres-arg arg (ext-pres γ⨟τ≈σ)
+  pres-args {γ} {σ} {τ} nil γ⨟τ≈σ = tt
+  pres-args {γ} {σ} {τ}{b ∷ bs} (cons arg args) γ⨟τ≈σ =
+      ⟨ pres-arg {b = b} arg γ⨟τ≈σ , pres-args {bs = bs} args γ⨟τ≈σ ⟩
 
 
 {-------------------- MapEnv Preserves ABTPred ---------------------}
@@ -567,3 +644,4 @@ record MapPreserveFold  {Vᵐ Vᶠ : Set} {ℓ : Level}{Cᶠ : Set ℓ}
            ; shift-“” = shift-“” ; shift-ret = shift-ret
            ; op-shift = op-shift }
   open MapPreserveFoldEnv MPFE
+
