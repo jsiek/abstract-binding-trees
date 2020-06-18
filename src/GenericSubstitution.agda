@@ -212,3 +212,10 @@ module ComposeGSubst {V₁ V₂ V₃ : Set}
     cons-seq : ∀ v₁ σ₁ σ₂ → (v₁ • σ₁) ⨟ σ₂ ≡ ⌈ σ₂ ⌉ v₁ • (σ₁ ⨟ σ₂)
     cons-seq  v₁ σ₁ σ₂ = refl
 
+module GSubstPred {V I : Set} (S : Shiftable V)
+  (_⊢v_⦂_ : List I → V → I → Set) where
+  open GenericSubst S
+  
+  _⦂_⇒_ : GSubst V → List I → List I → Set
+  σ ⦂ Γ ⇒ Δ = ∀{x A} → Γ ∋ x ⦂ A  →  Δ ⊢v ⧼ σ ⧽ x ⦂ A
+  

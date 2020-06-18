@@ -8,6 +8,8 @@ AGDA =	ScopedTuple.agda \
 	Map.agda \
 	Fold.agda \
 	Substitution.agda \
+	ABTPredicate.agda \
+	MapPreserve.agda \
 	Preserve.agda \
 	WellScoped.agda \
 	Syntax.agda \

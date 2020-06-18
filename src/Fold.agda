@@ -27,6 +27,14 @@ module Reify {ℓ : Level} (V : Set) (C : Set ℓ) (var→val : Var → V) where
   reify {zero} M = M
   reify {suc b} f = reify {b} (f (var→val 0))
 
+  reify-arg : {b : ℕ} → Bind V ABT b → Arg b
+  reify-arg {zero} M = ast M
+  reify-arg {suc b} f = bind (reify-arg {b} (f (var→val 0)))
+
+  reify-args : {bs : List ℕ} → Tuple bs (Bind V ABT) → Args bs
+  reify-args {[]} tt = nil
+  reify-args {b ∷ bs} ⟨ r , rs ⟩ = cons (reify-arg r) (reify-args rs)
+
 {-------------------------------------------------------------------------------
  Folding over an abstract binding tree
  ------------------------------------------------------------------------------}

@@ -7,7 +7,7 @@ open import Var
 
 {----- Predicate on ABT's (e.g. type system for expressions) -----}
 
-module ABTPred {I : Set}
+module ABTPredicate {I : Set}
   (Op : Set) (sig : Op → List ℕ)
   (𝑉 : List I → Var → I → Set)
   (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set) where
