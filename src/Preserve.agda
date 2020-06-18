@@ -37,7 +37,7 @@ open import Map Op sig
 open import ScopedTuple
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
+open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import Var
 
@@ -366,26 +366,29 @@ record RenamePreserveFoldEnv {Env V : Set} {ℓ : Level}{C : Set ℓ}
 
   open RelBind {ℓ}{V}{C}{V}{C} _≡_ _≡_
   field op-eq : ∀ op rs rs' → zip _⩳_ rs rs' → fold-op op rs ≡ fold-op op rs'
-        ret-inj : ∀ {v v'} → ret v ≡ ret v' → v ≡ v'
+        shiftᶜ : C → C
+        shift-ret : ∀ v → shiftᶜ (ret v) ≡ ret (shift v)
 
-  _⨟_≈_ : Rename → Env → Env → Set
-  ρ ⨟ σ₁ ≈ σ₂ = ∀ x → lookup σ₁ (⦉ ρ ⦊ x) ≡ lookup σ₂ x
-
+  _⨟_≈_ : Rename → Env → Env → Set ℓ
+  ρ ⨟ σ₁ ≈ σ₂ = ∀ x → fold σ₁ (` (⦉ ρ ⦊ x)) ≡ ret (lookup σ₂ x)
+  
   ext-pres : ∀{ρ σ₁ σ₂ v} → ρ ⨟ σ₁ ≈ σ₂ → ext ρ ⨟ (σ₁ , v) ≈ (σ₂ , v)
-  ext-pres {ρ}{σ₁}{σ₂}{v} ρ⨟σ₁≈σ₂ zero rewrite ext-0 ρ
+  ext-pres {ρ} {σ₁} {σ₂} {v} prem zero rewrite ext-0 ρ
       | lookup-0 σ₁ v | lookup-0 σ₂ v = refl
-  ext-pres {ρ} {σ₁} {σ₂} {v} ρ⨟σ₁≈σ₂ (suc x) rewrite ext-suc ρ x
-      | lookup-suc σ₂ v x | lookup-suc σ₁ v (⦉ ρ ⦊ x) | ρ⨟σ₁≈σ₂ x = refl
-
-  _⨟′_≈_ : Rename → Env → Env → Set ℓ
-  ρ ⨟′ σ₁ ≈ σ₂ = ∀ x → fold σ₁ (` (⦉ ρ ⦊ x)) ≡ ret (lookup σ₂ x)
-  ext-pres′ : ∀{ρ σ₁ σ₂ v} → ρ ⨟′ σ₁ ≈ σ₂ → ext ρ ⨟′ (σ₁ , v) ≈ (σ₂ , v)
-  ext-pres′ {ρ}{σ₁}{σ₂}{v} prem x =
-    let ep = ext-pres{ρ}{σ₁}{σ₂}{v} (λ x → ret-inj (prem x)) in
-    cong ret (ep x)
+  ext-pres {ρ} {σ₁} {σ₂} {v} prem (suc x) rewrite ext-suc ρ x
+      | lookup-suc σ₁ v (⦉ ρ ⦊ x) | lookup-suc σ₂ v x =
+      begin
+          ret (shift (lookup σ₁ (⦉ ρ ⦊ x)))
+      ≡⟨ sym (shift-ret _) ⟩
+          shiftᶜ (ret (lookup σ₁ (⦉ ρ ⦊ x)))
+      ≡⟨ cong shiftᶜ (prem x) ⟩
+          shiftᶜ (ret (lookup σ₂ x))
+      ≡⟨ shift-ret _ ⟩
+          ret (shift (lookup σ₂ x))
+      ∎
 
   MEPFE : MapEnvPreserveFoldEnv{Var}{V}{ℓ = ℓ}{Cᶠ = C} (Map.GSubstMapEnv RenameIsMap) F
-  MEPFE = record { op-cong = op-eq ; ext-pres = ext-pres′ }
+  MEPFE = record { op-cong = op-eq ; ext-pres = ext-pres }
   open MapEnvPreserveFoldEnv MEPFE using ()
     renaming (map-preserve-fold to rename-fold;
               mpf-arg to rf-arg; mpf-args to rf-args) public
@@ -396,12 +399,15 @@ record RenamePreserveFoldEnv {Env V : Set} {ℓ : Level}{C : Set ℓ}
 record RenamePreserveFold {V : Set} {ℓ : Level}{C : Set ℓ} (F : Fold V C) : Set (lsuc ℓ)
   where
   open Fold F
+  open Shiftable S
   open RelBind {ℓ}{V}{C}{V}{C} _≡_ _≡_
   field op-eq : ∀ op rs rs' → zip _⩳_ rs rs' → fold-op op rs ≡ fold-op op rs'
         ret-inj : ∀ {v v'} → ret v ≡ ret v' → v ≡ v'
+        shiftᶜ : C → C
+        shift-ret : ∀ v → shiftᶜ (ret v) ≡ ret (shift v)
 
   RPFE : RenamePreserveFoldEnv FE
-  RPFE = record { op-eq = op-eq ; ret-inj = ret-inj }
+  RPFE = record { op-eq = op-eq ; shiftᶜ = shiftᶜ ; shift-ret = shift-ret }
   open RenamePreserveFoldEnv RPFE public
 
 
@@ -450,7 +456,6 @@ record MapPreserveFoldEnv {Envᶠ Vᵐ Vᶠ : Set}{ℓ : Level}{Cᶠ : Set ℓ}
                 → fold-op op rs ≡ fold-op op rs'
         var→val-“” : ∀ x → “ var→valᵐ x ” ≡ ` x
         shift-“” : ∀ vᵐ → “ shiftᵐ vᵐ ” ≡ rename (↑ 1) “ vᵐ ”
-        ret-inj : ∀ {v v'} → ret v ≡ ret v' → v ≡ v'
         shift-ret : ∀ vᶠ → shiftᶜ (ret vᶠ) ≡ ret (shiftᶠ vᶠ)
         op-shift : ∀ op {rs↑ rs} → zip _⩳_ rs↑ rs
                  → fold-op op rs↑ ≡ shiftᶜ (fold-op op rs)
@@ -484,7 +489,7 @@ record MapPreserveFoldEnv {Envᶠ Vᵐ Vᶠ : Set}{ℓ : Level}{Cᶠ : Set ℓ}
 
 
   RPF : RenamePreserveFoldEnv F
-  RPF = record { op-eq = op-cong ; ret-inj = ret-inj }
+  RPF = record { op-eq = op-cong ; shiftᶜ = shiftᶜ ; shift-ret = shift-ret }
   open RenamePreserveFoldEnv RPF using (rename-fold)
 
   _⨟_≈_ : GSubst Vᵐ → Envᶠ → Envᶠ → Set ℓ
@@ -535,7 +540,6 @@ record SubstPreserveFoldEnv {Env V : Set} {ℓ : Level}{C : Set ℓ}
 
   field op-cong : ∀ op rs rs' → zip _⩳ᶠ_ rs rs'
                 → fold-op op rs ≡ fold-op op rs'
-        ret-inj : ∀ {v v'} → ret v ≡ ret v' → v ≡ v'
         shift-ret : ∀ vᶠ → shiftᶜ (ret vᶠ) ≡ ret (shift vᶠ)
         op-shift : ∀ op {rs↑ rs} → zip _⩳_ rs↑ rs
                  → fold-op op rs↑ ≡ shiftᶜ (fold-op op rs)
@@ -546,7 +550,6 @@ record SubstPreserveFoldEnv {Env V : Set} {ℓ : Level}{C : Set ℓ}
            ; op-cong = op-cong
            ; var→val-“” = λ x → refl
            ; shift-“” = λ vᵐ → refl
-           ; ret-inj = ret-inj
            ; shift-ret = shift-ret
            ; op-shift = op-shift
            }
@@ -573,10 +576,9 @@ record MapPreserveFold  {Vᵐ Vᶠ : Set} {ℓ : Level}{Cᶠ : Set ℓ}
   field op-shift : ∀ op {rs↑ rs} → zip _⩳_ rs↑ rs
                  → fold-op op rs↑ ≡ shiftᶜ (fold-op op rs)
         op-eq : ∀ op rs rs' → zip _⩳ᶠ_ rs rs' → fold-op op rs ≡ fold-op op rs'
-        ret-inj : ∀ {v v'} → ret v ≡ ret v' → v ≡ v'
 
   MPFE : MapPreserveFoldEnv M FE
   MPFE = record { shiftᶜ = shiftᶜ ; op-cong = op-eq ; var→val-“” = var→val-“”
-           ; shift-“” = shift-“” ; ret-inj = ret-inj ; shift-ret = shift-ret
+           ; shift-“” = shift-“” ; shift-ret = shift-ret
            ; op-shift = op-shift }
   open MapPreserveFoldEnv MPFE
