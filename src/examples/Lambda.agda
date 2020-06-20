@@ -24,13 +24,12 @@ sig : Op → List ℕ
 sig op-lam = 1 ∷ []
 sig op-app = 0 ∷ 0 ∷ []
 
-open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext; ext-0; ext-suc;
-    RenameIsShiftable)
+open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext; ext-0; ext-suc)
 
 open Syntax.OpSig Op sig
   using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; ⟦_⟧;
          rename; exts-0; exts-suc-rename;
-         RenameIsMap; SubstIsShiftable; SubstIsMap)
+         Rename-is-Map; ABT-is-Shiftable; Subst-is-Map)
   renaming (ABT to Term)
 
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
@@ -100,7 +99,7 @@ data Type : Set where
   Bot   : Type
   _⇒_   : Type → Type → Type
 
-open import Var using (Var)
+open import Var
 open import Preserve Op sig
 
 𝑉 : List Type → Var → Type → Set
@@ -149,16 +148,17 @@ progress (⊢· ⊢L ⊢M _)
 
 module _ where
   open FoldPred 𝑃 (λ Γ v A → ⊤) _∋_⦂_ _⊢_⦂_ 
-  RenPres : MapPreserveABTPred {I = Type} RenameIsMap
+  RenPres : MapPreserveABTPred {I = Type} Rename-is-Map
   RenPres = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _∋_⦂_ ; quote-⊢v = λ x → ⊢` x
             ; shift-⊢v = λ x → x ; ⊢v0 = refl }
   open MapPreserveABTPred RenPres using ()
       renaming (preserve-map to rename-pres) public
 
-open FoldPred 𝑃 (λ Γ v A → ⊤) _⊢_⦂_ _⊢_⦂_ 
-open GSubstPred SubstIsShiftable _⊢_⦂_
+open FoldPred 𝑃 (λ Γ v A → ⊤) _⊢_⦂_ _⊢_⦂_
+import GenericSubstitution
+open GenericSubstitution.GSubstPred ABT-is-Shiftable _⊢_⦂_
 
-SubstPres : MapPreserveABTPred SubstIsMap
+SubstPres : MapPreserveABTPred Subst-is-Map
 SubstPres = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _⊢_⦂_
               ; shift-⊢v = λ {M} ⊢M → rename-pres ⊢M (λ z → z)
               ; quote-⊢v = λ x → x ; ⊢v0 = λ {B}{Δ} → ⊢` refl }

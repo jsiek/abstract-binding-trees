@@ -54,13 +54,13 @@ drop-drop (suc k) (suc k') (v • σ)
 ... | IH rewrite +-comm k (suc k') | +-comm k k' = IH
 
 record Shiftable (V : Set) : Set where
-  field var→val : Var → V
-        shift : V → V
+  field shift : V → V
+        var→val : Var → V
         var→val-suc-shift : ∀{x} → var→val (suc x) ≡ shift (var→val x)
 
-module GenericSubst {V : Set} (S : Shiftable V) where
-  open Shiftable S
-
+record GSubstAux {V : Set} (V-is-Shiftable : Shiftable V) : Set where
+  open Shiftable V-is-Shiftable
+  
   ⧼_⧽ : GSubst V → Var → V
   ⧼ ↑ k ⧽ x = var→val (k + x)
   ⧼ y • σ ⧽ 0 = y
@@ -163,6 +163,18 @@ module GenericSubst {V : Set} (S : Shiftable V) where
   g-ShftAbv→Shift {k} {.0} (sha-0 σk) = σk
   g-ShftAbv→Shift {k} {suc c} {v • σ} (sha-suc σkc refl) =
       shift-• (g-ShftAbv→Shift{suc k}{c}{σ} σkc) refl
+
+module GenericSubst {V : Set} (S : Shiftable V) where
+
+  GS : GSubstAux S
+  GS = record { }
+  open GSubstAux GS public
+
+instance
+  Var-is-Shiftable : Shiftable Var
+  Var-is-Shiftable = record { var→val = λ x → x ; shift = suc
+                   ; var→val-suc-shift = λ {x} → refl }
+
 
 module Relate {V₁ : Set}{V₂ : Set}
     (S₁ : Shiftable V₁) (S₂ : Shiftable V₂)

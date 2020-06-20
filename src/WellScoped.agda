@@ -20,7 +20,7 @@ module WellScoped (Op : Set) (sig : Op → List ℕ) where
 open import Var
 open import Substitution using (Shiftable; Rename; ⦉_⦊; ↑; _•_)
 open Substitution.ABTOps Op sig
-    using (ABT; Arg; Args; RenameIsMap; rename; SubstIsMap; ⟪_⟫; Subst; ⟦_⟧)
+    using (ABT; Arg; Args; Rename-is-Map; rename; Subst-is-Map; ⟪_⟫; Subst; ⟦_⟧)
 open import Preserve Op sig
 open import Map Op sig
 open import Data.Vec using (Vec) renaming ([] to []̆; _∷_ to _∷̆_)
@@ -80,7 +80,7 @@ mk-vec-unique {ℓ}{suc n} {v ∷̆ vs} = cong₂ _∷̆_ refl mk-vec-unique
 
 module _ where
   private
-    RenPres : MapPreserveABTPred RenameIsMap
+    RenPres : MapPreserveABTPred Rename-is-Map
     RenPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ x A → Γ ∋ x ⦂ A
               ; 𝑉 = λ Γ x A → suc x ≤ length Γ
               ; shift-⊢v = λ ∋x → ∋x ; ⊢v0 = refl
@@ -107,7 +107,7 @@ module _ where
 
 module _ where
   private
-    SubstPres : MapPreserveABTPred SubstIsMap
+    SubstPres : MapPreserveABTPred Subst-is-Map
     SubstPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ M A → Γ ⊢ M ⦂ A
                   ; 𝑉 = λ Γ x A → suc x ≤ length Γ 
                   ; shift-⊢v = λ {A}{B}{Δ}{M} ⊢M → ren-preserve ⊢M λ x → x

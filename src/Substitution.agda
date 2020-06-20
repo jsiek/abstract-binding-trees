@@ -15,7 +15,8 @@ open import Var
 module Substitution where
 
 open GenericSubstitution
-    using (GSubst; ↑; _•_; Shiftable; id; drop; map-sub; map-sub-id; drop-0)
+    using (GSubst; ↑; _•_; Shiftable; Var-is-Shiftable; id; drop; map-sub;
+        map-sub-id; drop-0)
     public
     
 {----------------------------------------------------------------------------
@@ -25,13 +26,9 @@ open GenericSubstitution
 Rename : Set
 Rename = GSubst Var
 
-RenameIsShiftable : Shiftable Var
-RenameIsShiftable = record { var→val = λ x → x ; shift = suc
-    ; var→val-suc-shift = λ {x} → refl }
-
-open GenericSubstitution.GenericSubst RenameIsShiftable
+open GenericSubstitution.GenericSubst Var-is-Shiftable
     using () renaming (⧼_⧽ to ⦉_⦊; g-ext to ext; g-Z-shift to Z-shiftr) public
-open GenericSubstitution.GenericSubst RenameIsShiftable
+open GenericSubstitution.GenericSubst Var-is-Shiftable
     using ()
     renaming (g-inc to inc; g-ext-cong to ext-cong; g-inc-shift to inc-suc;
               g-drop-add to dropr-add; g-drop-inc to dropr-inc;
@@ -48,13 +45,29 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   open import AbstractBindingTree Op sig public
 
   open import Map Op sig
-  RenameIsMap : Map Var 
-  RenameIsMap = record { “_” = `_ ; S = RenameIsShiftable }
-  open Map RenameIsMap renaming (map-abt to rename; map-arg to ren-arg;
-     map-args to ren-args) public
+  open Map {{...}} public
+
+  instance
+    Rename-is-Map : Map Var 
+    Rename-is-Map = record { V-is-Quotable = Var-is-Quotable
+                           ; V-is-Shiftable = Var-is-Shiftable }
+
+  testing : (ρ : Rename) → ⟪ ρ ⟫ (` 0) ≡ ⟪ ρ ⟫ (` 0)
+  testing ρ = refl
+  
+  open Map Rename-is-Map using ()
+     renaming (map-abt to rename; map-arg to ren-arg;
+               map-args to ren-args) public
   open GenericSubstitution.ComposeGSubst ⦉_⦊ (λ x → x)
       using () renaming (_⨟_ to _⨟ᵣ_; up-seq to up-seqᵣ;
       cons-seq to cons-seqᵣ) public
+
+  instance
+    ABT-is-Shiftable : Shiftable ABT
+    ABT-is-Shiftable = record { var→val = `_ ; shift = rename (↑ 1)
+                       ; var→val-suc-shift = λ {x} → refl }
+    ABT-is-Quotable : Quotable ABT
+    ABT-is-Quotable = record { “_” = λ x → x }
 
   ren-up-seq : ∀ k ρ → ↑ k ⨟ᵣ ρ ≡ drop k ρ
   ren-up-seq k ρ rewrite up-seqᵣ k ρ | map-sub-id (drop k ρ) = refl
@@ -89,17 +102,17 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
          → rename ρ (o ⦅ args ⦆)  ≡ o ⦅ ren-args ρ args ⦆
   ren-op ρ o args = refl        
 
-  QRR : Quotable RenameIsMap RenameIsMap RenameIsMap
+  QRR : ComposableMaps Rename-is-Map Rename-is-Map Rename-is-Map
   QRR = record
           { ⌈_⌉ = ⦉_⦊ ; val₂₃ = λ x → x ; quote-map = λ σ₂ v₁ → refl
           ; var→val₂₃ = λ x → refl ; quote-val₂₃ = λ v₂ → refl
           ; quote-var→val₁ = λ x → refl ; val₂₃-shift = λ v₂ → refl }
-  open Quotable QRR using () renaming (g-drop-seq to dropr-seq)
+  open ComposableMaps QRR using () renaming (g-drop-seq to dropr-seq)
 
   {------ Composing renamings -------}
   
   seq-rename : ∀ ρ₁ ρ₂ x → ⦉ ρ₁ ⨟ᵣ ρ₂ ⦊ x ≡ ⦉ ρ₂ ⦊ (⦉ ρ₁ ⦊ x)
-  seq-rename ρ₁ ρ₂ x = var-injective (Quotable.compose-sub QRR ρ₁ ρ₂ x)
+  seq-rename ρ₁ ρ₂ x = var-injective (ComposableMaps.compose-sub QRR ρ₁ ρ₂ x)
 
   ren-assoc : ∀ σ τ θ → (σ ⨟ᵣ τ) ⨟ᵣ θ ≡ σ ⨟ᵣ τ ⨟ᵣ θ
   ren-assoc (↑ k) τ θ rewrite ren-up-seq k τ
@@ -136,8 +149,8 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
       0 • ((ρ₁ ⨟ᵣ ρ₂) ⨟ᵣ ↑ 1)      ≡⟨ sym (ext-cons-shift _) ⟩
       ext (ρ₁ ⨟ᵣ ρ₂)               ∎
 
-  FRR : FusableMap RenameIsMap RenameIsMap RenameIsMap
-  FRR = record { Q = QRR ; var = λ x ρ₁ ρ₂ → sym (seq-rename ρ₁ ρ₂ x)
+  FRR : FusableMap Rename-is-Map Rename-is-Map Rename-is-Map
+  FRR = record { CompMap = QRR ; var = λ x ρ₁ ρ₂ → sym (seq-rename ρ₁ ρ₂ x)
                ; compose-ext = compose-ext }
 
   compose-rename : ∀ ρ₁ ρ₂ M
@@ -159,7 +172,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
      → rename ρ₁ M ≡ rename ρ₂ M
   rename-ext ρ₁ ρ₂ M f = MapCong.map-cong-abt MC {ρ₁}{ρ₂} f M
     where
-    MC : MapCong RenameIsMap RenameIsMap
+    MC : MapCong Rename-is-Map Rename-is-Map
     MC = record { _≈_ = λ ρ₁ ρ₂ → ∀ x → ⦉ ρ₁ ⦊ x ≡ ⦉ ρ₂ ⦊ x
                 ; var = λ x f → cong `_ (f x) ; ext≈ = ext-cong }
 
@@ -170,24 +183,20 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   Subst : Set
   Subst = GSubst ABT
 
-  SubstIsShiftable : Shiftable ABT
-  SubstIsShiftable = record { var→val = `_ ; shift = rename (↑ 1)
-      ; var→val-suc-shift = λ {x} → refl }
-
-  open GenericSubstitution.GenericSubst SubstIsShiftable using ()
+  open GenericSubstitution.GenericSubst ABT-is-Shiftable using ()
       renaming (⧼_⧽ to ⟦_⟧; g-ext to exts; g-Z-shift to Z-shift) public
-  open GenericSubstitution.GenericSubst SubstIsShiftable
-      using (Shift; shift-up; shift-•)
+  open GenericSubstitution.GenericSubst ABT-is-Shiftable
       renaming (g-inc to incs; g-inc-shift to incs-rename;
       g-drop-inc to drop-incs; g-drop-add to drop-add; g-drop-ext to drop-exts;
       g-Shift-var to sub-shift-var; g-ext-def to exts-def;
-      g-inc-Shift to incs-Shift; g-ext-cong to exts-cong)
+      g-inc-Shift to incs-Shift; g-ext-cong to exts-cong;
+      Shift to s-Shift; shift-up to s-shift-up; shift-• to s-shift-•)
 
-  SubstIsMap : Map ABT
-  SubstIsMap = record { “_” = λ M → M ; S = SubstIsShiftable }
-  open Map SubstIsMap using ()
-      renaming (map-abt to ⟪_⟫; map-arg to ⟪_⟫ₐ; map-args to ⟪_⟫₊) public
-  
+  instance
+    Subst-is-Map : Map ABT
+    Subst-is-Map = record { V-is-Quotable = ABT-is-Quotable
+                          ; V-is-Shiftable = ABT-is-Shiftable }
+
   open GenericSubstitution.ComposeGSubst ⟪_⟫ (λ x → x)
       using (_⨟_; up-seq; cons-seq) public
 
@@ -203,10 +212,13 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   sub-tail : ∀ (M : ABT) σ → (↑ 1 ⨟ M • σ) ≡ σ
   sub-tail M σ rewrite sub-up-seq 1 (M • σ) | drop-0 σ = refl
 
-  sub-suc : ∀ M σ x → ⟪ M • σ ⟫ (` suc x) ≡ ⟪ σ ⟫ (` x)
+  sub-suc : ∀ (M : ABT) σ x → ⟪ M • σ ⟫ (` suc x) ≡ ⟪ σ ⟫ (` x)
   sub-suc M σ x = refl
 
-  shift-eq : ∀ x k → ⟪ ↑ k ⟫ (` x) ≡ ` (k + x)
+  ↑ˢ : ℕ → Subst
+  ↑ˢ k = ↑ k
+
+  shift-eq : ∀ x k → ⟪ ↑ˢ k ⟫ (` x) ≡ ` (k + x)
   shift-eq x k = refl
 
   sub-idL : (σ : Subst) → id ⨟ σ ≡ σ
@@ -215,13 +227,13 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   sub-dist :  ∀ σ τ M → ((M • σ) ⨟ τ) ≡ ((⟪ τ ⟫ M) • (σ ⨟ τ))
   sub-dist σ τ M rewrite sub-cons-seq M σ τ = refl
 
-  sub-op : ∀ σ op args → ⟪ σ ⟫ (op ⦅ args ⦆) ≡ op ⦅ ⟪ σ ⟫₊ args  ⦆
+  sub-op : ∀ (σ : Subst) op args → ⟪ σ ⟫ (op ⦅ args ⦆) ≡ op ⦅ ⟪ σ ⟫₊ args  ⦆
   sub-op σ op args = refl
 
-  sub-nil : ∀ σ → ⟪ σ ⟫₊ nil ≡ nil
+  sub-nil : ∀ (σ : Subst) → ⟪ σ ⟫₊ nil ≡ nil
   sub-nil σ = refl
 
-  sub-cons : ∀ σ b bs (arg : Arg b) (args : Args bs)
+  sub-cons : ∀ (σ : Subst) b bs (arg : Arg b) (args : Args bs)
     → ⟪ σ ⟫₊ (cons arg args) ≡ cons (⟪ σ ⟫ₐ arg) (⟪ σ ⟫₊ args)
   sub-cons σ b bs arg args = refl
 
@@ -263,22 +275,25 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
       | seq-subst σ τ x = refl
 
   private
-    sub-shift0 : ∀{σ} (M : ABT) → Shift 0 σ → ⟪ σ ⟫ M ≡ M
-    ss0-arg  : ∀{σ} → Shift 0 σ → (b : ℕ) → (arg : Arg b) 
+    sub-shift0 : ∀{σ : Subst} (M : ABT) → s-Shift 0 σ → ⟪ σ ⟫ M ≡ M
+    ss0-arg  : ∀{σ} → s-Shift 0 σ → (b : ℕ) → (arg : Arg b) 
        → ⟪ σ ⟫ₐ {b} arg ≡ arg
-    ss0-args  : ∀{σ} → Shift 0 σ → (bs : List ℕ) → (args : Args bs) 
+    ss0-args  : ∀{σ} → s-Shift 0 σ → (bs : List ℕ) → (args : Args bs) 
        → ⟪ σ ⟫₊ {bs} args ≡ args
     sub-shift0 {σ}(` x) σ0 rewrite sub-shift-var {σ}{0} x σ0 = cong `_ refl
     sub-shift0 {σ}(op ⦅ args ⦆) σ0 = cong (_⦅_⦆ op) (ss0-args σ0 (sig op) args)
     ss0-arg σ0 zero (ast arg) = cong ast (sub-shift0 arg σ0)
     ss0-arg {σ} σ0 (suc b) (bind arg) rewrite exts-def σ =
-        cong bind (ss0-arg (shift-• (incs-Shift σ0) refl) b arg)
+        cong bind (ss0-arg (s-shift-• (incs-Shift σ0) refl) b arg)
     ss0-args σ0 [] nil = refl
     ss0-args σ0 (b ∷ bs) (cons arg args) =
         cong₂ cons (ss0-arg σ0 b arg) (ss0-args σ0 bs args)
 
-  sub-id : ∀ {M : ABT} → ⟪ id ⟫ M ≡ M
-  sub-id {M} = (sub-shift0 M (shift-up {0}))
+  ids : Subst
+  ids = id
+
+  sub-id : ∀ {M : ABT} → ⟪ ids ⟫ M ≡ M
+  sub-id {M} = (sub-shift0 M (s-shift-up {0}))
 
   rename-id : {M : ABT} → rename (↑ 0) M ≡ M
   rename-id {M} rewrite rename-subst (↑ 0) M | sub-id {M} = refl
@@ -307,17 +322,17 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   sr-cons-seq : ∀ M σ ρ → (M • σ) ⨟ˢᵣ ρ ≡ (rename ρ M) • (σ ⨟ˢᵣ ρ)
   sr-cons-seq M σ ρ rewrite cons-seqˢᵣ M σ ρ = refl  
 
-  QSR : Quotable SubstIsMap RenameIsMap SubstIsMap
+  QSR : ComposableMaps Subst-is-Map Rename-is-Map Subst-is-Map
   QSR = record { ⌈_⌉ = rename ; val₂₃ = `_ ; quote-map = λ σ₂ v₁ → refl
           ; var→val₂₃ = λ x₁ → refl ; quote-val₂₃ = λ v₂ → refl
           ; quote-var→val₁ = λ x₁ → refl ; val₂₃-shift = λ v₂ → refl }
 
   seq-sub-ren : ∀ x σ ρ  →  rename ρ (⟦ σ ⟧ x) ≡ ⟦ σ ⨟ˢᵣ ρ ⟧ x
-  seq-sub-ren x σ ρ = sym (Quotable.compose-sub QSR σ ρ x)
+  seq-sub-ren x σ ρ = sym (ComposableMaps.compose-sub QSR σ ρ x)
 
   compose-incs-ext : ∀ σ ρ → (incs σ ⨟ˢᵣ ext ρ) ≡ incs (σ ⨟ˢᵣ ρ)
   compose-incs-ext (↑ k) ρ rewrite sr-up-seq (suc k) (ext ρ) | ext-def ρ | dropr-inc k ρ
-      | Quotable.g-map-sub-inc QSR (drop k ρ) | sr-up-seq k ρ = refl
+      | ComposableMaps.g-map-sub-inc QSR (drop k ρ) | sr-up-seq k ρ = refl
   compose-incs-ext (M • σ) ρ =
       begin
       incs (M • σ) ⨟ˢᵣ ext ρ                               ≡⟨ sr-cons-seq _ _ _ ⟩
@@ -336,8 +351,9 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
       exts (σ ⨟ˢᵣ ρ)
       ∎
 
-  FSR : FusableMap SubstIsMap RenameIsMap SubstIsMap
-  FSR = record { Q = QSR ; var = seq-sub-ren ; compose-ext = compose-exts-ext }
+  FSR : FusableMap Subst-is-Map Rename-is-Map Subst-is-Map
+  FSR = record { CompMap = QSR ; var = seq-sub-ren
+               ; compose-ext = compose-exts-ext }
 
   compose-ren-sub : ∀ ρ σ M → rename ρ (⟪ σ ⟫ M) ≡ ⟪ σ ⨟ˢᵣ ρ ⟫ M
   compose-ren-sub ρ σ M = FusableMap.fusion FSR {σ}{ρ} M
@@ -357,13 +373,13 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   rs-cons-seq : ∀ x ρ σ → (x • ρ) ⨟ᵣˢ σ ≡ (⟦ σ ⟧ x) • (ρ ⨟ᵣˢ σ)
   rs-cons-seq x ρ σ rewrite cons-seqᵣˢ x ρ σ = refl
 
-  QRS : Quotable RenameIsMap SubstIsMap SubstIsMap
+  QRS : ComposableMaps Rename-is-Map Subst-is-Map Subst-is-Map
   QRS = record { ⌈_⌉ = ⟦_⟧ ; val₂₃ = λ M → M ; quote-map = λ σ₂ v₁ → refl
           ; var→val₂₃ = λ x → refl ; quote-val₂₃ = λ v₂ → refl
           ; quote-var→val₁ = λ x → refl ; val₂₃-shift = λ v₂ → refl }
 
   seq-ren-sub : ∀ x ρ σ  →  ⟦ σ ⟧ (⦉ ρ ⦊ x) ≡ ⟦ ρ ⨟ᵣˢ σ ⟧ x
-  seq-ren-sub x ρ σ = sym (Quotable.compose-sub QRS ρ σ x)
+  seq-ren-sub x ρ σ = sym (ComposableMaps.compose-sub QRS ρ σ x)
 
   compose-inc-exts : ∀ ρ σ → (inc ρ ⨟ᵣˢ exts σ) ≡ incs (ρ ⨟ᵣˢ σ)
   compose-inc-exts (↑ k) σ rewrite rs-up-seq (suc k) (exts σ) | exts-def σ 
@@ -384,8 +400,9 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
     ` 0 • incs (ρ ⨟ᵣˢ σ) ≡⟨ sym (exts-def _) ⟩
     exts (ρ ⨟ᵣˢ σ)     ∎
 
-  FRS : FusableMap RenameIsMap SubstIsMap SubstIsMap
-  FRS = record { Q = QRS ; var = seq-ren-sub ; compose-ext = compose-ext-exts }
+  FRS : FusableMap Rename-is-Map Subst-is-Map Subst-is-Map
+  FRS = record { CompMap = QRS ; var = seq-ren-sub
+               ; compose-ext = compose-ext-exts }
 
   compose-sub-ren : ∀ σ ρ M → ⟪ σ ⟫ (rename ρ M) ≡ ⟪ ρ ⨟ᵣˢ σ ⟫ M
   compose-sub-ren σ ρ M = FusableMap.fusion FRS {ρ}{σ} M
@@ -403,11 +420,11 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
     ⟪ σ ⨟ˢᵣ ↑ 1 ⟫ M                ≡⟨ sym (compose-ren-sub (↑ 1) σ M)  ⟩
     rename (↑ 1) (⟪ σ ⟫ M)         ∎
     
-  QSS : Quotable SubstIsMap SubstIsMap SubstIsMap
+  QSS : ComposableMaps Subst-is-Map Subst-is-Map Subst-is-Map
   QSS = record { ⌈_⌉ = ⟪_⟫ ; val₂₃ = λ M → M ; quote-map = λ σ₂ v₁ → refl
           ; var→val₂₃ = λ x → refl ; quote-val₂₃ = λ v₂ → refl
           ; quote-var→val₁ = λ x → refl ; val₂₃-shift = λ v₂ → refl }
-  open Quotable QSS renaming (g-drop-seq to drop-seq)
+  open ComposableMaps QSS renaming (g-drop-seq to drop-seq)
 
   incs-seq : ∀ σ₁ σ₂ → (incs σ₁ ⨟ exts σ₂) ≡ incs (σ₁ ⨟ σ₂)
   incs-seq (↑ k) σ₂ = begin
@@ -452,8 +469,8 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
     exts (⟪ σ₂ ⟫ M • (σ₁ ⨟ σ₂))                           ≡⟨ cong exts (sym (sub-cons-seq _ _ _)) ⟩
     exts (M • σ₁ ⨟ σ₂)       ∎
 
-  FSS : FusableMap SubstIsMap SubstIsMap SubstIsMap
-  FSS = record { Q = QSS ; var = λ x σ₁ σ₂ → sym (seq-subst σ₁ σ₂ x)
+  FSS : FusableMap Subst-is-Map Subst-is-Map Subst-is-Map
+  FSS = record { CompMap = QSS ; var = λ x σ₁ σ₂ → sym (seq-subst σ₁ σ₂ x)
                ; compose-ext = exts-seq }
 
   sub-sub : ∀ {M σ₁ σ₂} → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
@@ -552,3 +569,4 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
     sub-args-ext {Ms = nil} eq = refl
     sub-args-ext {Ms = cons A Ms} eq =
         cong₂ cons (sub-arg-ext eq) (sub-args-ext eq)
+
