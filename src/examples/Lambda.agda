@@ -24,12 +24,11 @@ sig : Op → List ℕ
 sig op-lam = 1 ∷ []
 sig op-app = 0 ∷ 0 ∷ []
 
-open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; ext; ext-0; ext-suc)
+open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; inc)
 
 open Syntax.OpSig Op sig
-  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; exts; ⟦_⟧;
-         rename; exts-0; exts-suc-rename;
-         Rename-is-Map; ABT-is-Shiftable; Subst-is-Map)
+  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; incs; ⟦_⟧;
+         rename; Rename-is-Map; ABT-is-Shiftable; Subst-is-Map)
   renaming (ABT to Term)
 
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
@@ -40,11 +39,11 @@ pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
 sub-app : ∀ (L M : Term) (σ : Subst) → ⟪ σ ⟫ (L · M) ≡ (⟪ σ ⟫ L) · (⟪ σ ⟫ M)
 sub-app = λ L M σ → refl
 
-sub-lam : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ exts σ ⟫ N)
-sub-lam = λ N σ → refl 
+sub-lam : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ ` 0 • incs σ ⟫ N)
+sub-lam N σ = refl 
 
-ren-lam : ∀ (N : Term) (ρ : Rename) → rename ρ (ƛ N) ≡ ƛ (rename (ext ρ) N)
-ren-lam = λ N σ → refl 
+ren-lam : ∀ (N : Term) (ρ : Rename) → rename ρ (ƛ N) ≡ ƛ (rename (0 • inc ρ) N)
+ren-lam N σ = refl 
 
 _ : ∀ M L → ⟦ M • L • id ⟧ 0 ≡ M
 _ = λ M L → refl

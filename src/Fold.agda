@@ -17,6 +17,7 @@ open import Agda.Primitive using (Level; lzero; lsuc)
 module Fold (Op : Set) (sig : Op → List ℕ) where
 
 open import AbstractBindingTree Op sig
+open import Map Op sig
 
 Bind : {ℓᶜ : Level} → Set → Set ℓᶜ → ℕ → Set ℓᶜ
 Bind V C zero = C
@@ -26,14 +27,6 @@ module Reify {ℓ : Level} (V : Set) (C : Set ℓ) (var→val : Var → V) where
   reify : {b : ℕ} → Bind V C b → C
   reify {zero} M = M
   reify {suc b} f = reify {b} (f (var→val 0))
-
-  reify-arg : {b : ℕ} → Bind V ABT b → Arg b
-  reify-arg {zero} M = ast M
-  reify-arg {suc b} f = bind (reify-arg {b} (f (var→val 0)))
-
-  reify-args : {bs : List ℕ} → Tuple bs (Bind V ABT) → Args bs
-  reify-args {[]} tt = nil
-  reify-args {b ∷ bs} ⟨ r , rs ⟩ = cons (reify-arg r) (reify-args rs)
 
 {-------------------------------------------------------------------------------
  Folding over an abstract binding tree
@@ -69,11 +62,12 @@ record Fold {ℓᶜ : Level}(V : Set)(C : Set ℓᶜ) : Set (lsuc ℓᶜ) where
   open Foldable is-Foldable public
   field V-is-Shiftable : Shiftable V
 
+  open GenericSubst V-is-Shiftable using (GSubst-is-Env)
   GSubst-is-FoldEnv : FoldEnv (GSubst V) V C
   GSubst-is-FoldEnv = record { is-Foldable = is-Foldable
-                             ; is-Env = GSubst-is-Env {{V-is-Shiftable}} }
+                             ; is-Env = GSubst-is-Env }
   open FoldEnv GSubst-is-FoldEnv using (fold; fold-arg; fold-args) public
-  open Env (GSubst-is-Env {{V-is-Shiftable}}) hiding (V-is-Shiftable) public
+  open Env GSubst-is-Env hiding (V-is-Shiftable) public
 
 {-------------------------------------------------------------------------------
  Simulation between two folds
@@ -88,9 +82,6 @@ module RelBind {ℓ : Level}{V₁}{C₁ : Set ℓ}{V₂}{C₂ : Set ℓ}
 record Similar {V₁ C₁ V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C₂) : Set₁ where
   open Fold {{...}}
   instance _ : Fold V₁ C₁ ; _ = F₁ ; _ : Fold V₂ C₂ ; _ = F₂
-  open Shiftable {{...}}
-  instance _ : Shiftable V₁ ; _ = V-is-Shiftable
-           _ : Shiftable V₂ ; _ = V-is-Shiftable
 
   field _∼_ : V₁ → V₂ → Set
         _≈_ : C₁ → C₂ → Set

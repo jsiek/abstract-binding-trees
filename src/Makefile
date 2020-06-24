@@ -6,10 +6,13 @@ AGDA =	ScopedTuple.agda \
 	AbstractBindingTree.agda \
 	GenericSubstitution.agda \
 	Map.agda \
+	Map2.agda \
 	Fold.agda \
 	Substitution.agda \
 	ABTPredicate.agda \
 	MapPreserve.agda \
+	FoldMapFusion.agda \
+	FoldFoldFusion.agda \
 	Preserve.agda \
 	WellScoped.agda \
 	Syntax.agda \

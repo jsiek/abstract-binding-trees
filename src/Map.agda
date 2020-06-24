@@ -1,3 +1,5 @@
+{- OBSOLETE, superceeded by Map2 and additions to GenericSubstitution -}
+
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
 open import Data.Nat.Properties using (+-comm)
@@ -6,22 +8,17 @@ open import Data.Unit using (⊤; tt)
 open import Environment
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
+open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app; subst)
 open Eq.≡-Reasoning
 open import Var
+{-
 open import ScopedTuple using (map; map-cong; map-compose)
+-}
 open import GenericSubstitution
 
 module Map (Op : Set) (sig : Op → List ℕ) where
 
 open import AbstractBindingTree Op sig
-
-record Quotable (V : Set) : Set where
-  field “_” : V → ABT
-
-instance
-  Var-is-Quotable : Quotable Var
-  Var-is-Quotable = record { “_” = `_ }
 
 {-------------------------------------------------------------------------------
  Mapping a substitution over an abstract binding tree
@@ -34,7 +31,7 @@ record MapEnv (E : Set) (V : Set) : Set where
   field is-Env : Env E V
   open Env is-Env public
   field V-is-Quotable : Quotable V
-  open Quotable V-is-Quotable
+  open Quotable V-is-Quotable public
   
   map-abt : E → ABT → ABT
   map-arg : E → {b : ℕ} →  Arg b → Arg b
@@ -52,9 +49,10 @@ record MapEnv (E : Set) (V : Set) : Set where
 record Map (V : Set) : Set where
   field V-is-Quotable : Quotable V
         V-is-Shiftable : Shiftable V
-  
+
+  open GenericSubst V-is-Shiftable using (GSubst-is-Env)
   GSubst-is-MapEnv : MapEnv (GSubst V) V
-  GSubst-is-MapEnv = record { is-Env = GSubst-is-Env {{V-is-Shiftable}}
+  GSubst-is-MapEnv = record { is-Env = GSubst-is-Env
                             ;  V-is-Quotable = V-is-Quotable }
   open MapEnv GSubst-is-MapEnv using (map-abt; map-arg; map-args; is-Env) public
   open Env is-Env public {- Why needed? -Jeremy -}
@@ -75,18 +73,29 @@ record Map (V : Set) : Set where
      → map₂ σ₂ (map₁ σ₁ M) ≡ map₃ σ₃ M
  ------------------------------------------------------------------------------}
 
-record FusableMapEnv {V₁ Env₁ V₂ Env₂ V₃ Env₃}
+_∘_≈_ : ∀ {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}
+        {{M₁ : MapEnv E₁ V₁}} {{M₂ : MapEnv E₂ V₂}} {{M₃ : MapEnv E₃ V₃}}
+        (σ₂ : E₂)(σ₁ : E₁)(σ₃ : E₃) → Set
+_∘_≈_ {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}{{M₁}}{{M₂}}{{M₃}} σ₂ σ₁ σ₃ =
+  ∀ x → map-abt σ₂ “ lookup σ₁ x ” ≡ “ lookup σ₃ x ”
+  where 
+  open MapEnv {{...}} 
+  instance _ : MapEnv E₂ V₂ ; _ = M₂ ; _ : MapEnv E₁ V₁ ; _ = M₁
+           _ : MapEnv E₃ V₃ ; _ = M₃
+
+record FuseMapEnvMapEnv {V₁ Env₁ V₂ Env₂ V₃ Env₃}
   (M₁ : MapEnv Env₁ V₁ ) (M₂ : MapEnv Env₂ V₂) (M₃ : MapEnv Env₃ V₃) : Set
   where
   open MapEnv {{...}}
   instance _ : MapEnv Env₁ V₁ ; _ = M₁ ; _ : MapEnv Env₂ V₂ ; _ = M₂
            _ : MapEnv Env₃ V₃ ; _ = M₃
-  open Quotable {{...}}
-  instance _ : Quotable V₁ ; _ = V-is-Quotable
-           _ : Quotable V₃ ; _ = V-is-Quotable
 
-  _∘_≈_ : (σ₂ : Env₂)(σ₁ : Env₁)(σ₃ : Env₃) → Set
-  σ₂ ∘ σ₁ ≈ σ₃ = ∀ x → map-abt σ₂ “ lookup σ₁ x ” ≡ “ lookup σ₃ x ”
+  open Shiftable (MapEnv.V-is-Shiftable M₁)
+      using() renaming (var→val to var→val₁) 
+  open Shiftable (MapEnv.V-is-Shiftable M₂)
+      using() renaming (var→val to var→val₂) 
+  open Shiftable (MapEnv.V-is-Shiftable M₃)
+      using() renaming (var→val to var→val₃) 
 
   field compose-ext : ∀{σ₁ : Env₁}{σ₂ : Env₂}{σ₃ : Env₃}
                     → σ₂ ∘ σ₁ ≈ σ₃ → ext-env σ₂ ∘ ext-env σ₁ ≈ ext-env σ₃
@@ -110,15 +119,11 @@ record FusableMapEnv {V₁ Env₁ V₂ Env₂ V₃ Env₃}
   fusion-args {bs = b ∷ bs} (cons arg args) σ₂∘σ₁≈σ₃ =
       cong₂ cons (fusion-arg arg σ₂∘σ₁≈σ₃) (fusion-args args σ₂∘σ₁≈σ₃)
 
-
+  
 record ComposableMaps {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : Map V₃) : Set
   where
   open Map {{...}}
   instance _ : Map V₁ ; _ = M₁ ; _ : Map V₂ ; _ = M₂ ; _ : Map V₃ ; _ = M₃
-  open Shiftable {{...}}
-  instance _ : Shiftable V₁ ; _ = (Map.V-is-Shiftable M₁)
-           _ : Shiftable V₂ ; _ = (Map.V-is-Shiftable M₂)
-           _ : Shiftable V₃ ; _ = (Map.V-is-Shiftable M₃)
   open Quotable {{...}}
   instance _ : Quotable V₁ ; _ = V-is-Quotable
            _ : Quotable V₂ ; _ = V-is-Quotable
@@ -189,7 +194,7 @@ record ComposableMaps {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃
      → map₂ σ₂ (map₁ σ₁ M) ≡ map₂ (σ₁ ⨟ σ₂) M
  ------------------------------------------------------------------------------}
 
-record FusableMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : Map V₃) : Set
+record FuseMapMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : Map V₃) : Set
   where
   open Map {{...}}
   instance _ : Map V₁ ; _ = M₁ ; _ : Map V₂ ; _ = M₂ ; _ : Map V₃ ; _ = M₃
@@ -203,7 +208,7 @@ record FusableMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : M
            _ : GSubstAux (Map.V-is-Shiftable M₃) ; _ = record { }
   field var : ∀ x σ₁ σ₂ → ⌈ σ₂ ⌉ (⧼ σ₁ ⧽ x) ≡ ⧼ (σ₁ ⨟ σ₂) ⧽ x
         compose-ext : ∀ (σ₁ : GSubst V₁) (σ₂ : GSubst V₂)
-                    → ext-env σ₁ ⨟ ext-env σ₂ ≡ ext-env (σ₁ ⨟ σ₂)
+                    → g-ext σ₁ ⨟ g-ext σ₂ ≡ g-ext (σ₁ ⨟ σ₂)
 
   fusion : ∀{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} (M : ABT)
      → map-abt σ₂ (map-abt σ₁ M) ≡ map-abt (σ₁ ⨟ σ₂) M
@@ -221,11 +226,18 @@ record FusableMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : M
   fusion-arg {σ₁} {σ₂} {suc b} (bind arg) =
     cong bind H
     where
-    IH = fusion-arg {ext-env σ₁} {ext-env σ₂} {b} arg
+    IH = fusion-arg {g-ext σ₁} {g-ext σ₂} {b} arg
     H = begin
-        map-arg (ext-env σ₂) (map-arg (ext-env σ₁) arg)   ≡⟨ IH ⟩
-        map-arg (ext-env σ₁ ⨟ ext-env σ₂) arg
+        map-arg (ext-env σ₂) (map-arg (ext-env σ₁) arg)
+          ≡⟨ cong (λ □ → map-arg □ (map-arg (ext-env σ₁) arg))
+                  (ext-env-g-ext σ₂) ⟩
+        map-arg (g-ext σ₂) (map-arg (ext-env σ₁) arg)
+          ≡⟨ cong (λ □ → map-arg (g-ext σ₂) (map-arg □ arg)) (ext-env-g-ext σ₁)⟩
+        map-arg (g-ext σ₂) (map-arg (g-ext σ₁) arg)   ≡⟨ IH ⟩
+        map-arg (g-ext σ₁ ⨟ g-ext σ₂) arg
                             ≡⟨ cong (λ □ → map-arg □ arg) (compose-ext σ₁ σ₂) ⟩
+        map-arg (g-ext (σ₁ ⨟ σ₂)) arg
+            ≡⟨ cong (λ □ → map-arg □ arg) (sym (ext-env-g-ext _)) ⟩
         map-arg (ext-env (σ₁ ⨟ σ₂)) arg                 ∎
   fusion-args {σ₁} {σ₂} {[]} nil = refl
   fusion-args {σ₁} {σ₂} {b ∷ bs} (cons arg args) =
@@ -236,6 +248,8 @@ record FusableMap {V₁ V₂ V₃} (M₁ : Map V₁) (M₂ : Map V₂) (M₃ : M
 
   map-cong-abt : ∀{s}{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} 
       → σ₁ ≈ σ₂ → (M : Term s) → map₁ σ₁ M ≡ map₂ σ₂ M
+
+  todo: generalize to simulation of maps
  ------------------------------------------------------------------------------}
  
 record MapCong {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
@@ -250,7 +264,7 @@ record MapCong {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
 
   field _≈_ : GSubst V₁ → GSubst V₂ → Set
         var : ∀ {σ₁ σ₂} x → σ₁ ≈ σ₂ → “ ⧼ σ₁ ⧽ x ” ≡ “ ⧼ σ₂ ⧽ x ”
-        ext≈ : ∀ {σ₁ σ₂} → σ₁ ≈ σ₂ → ext-env σ₁ ≈ ext-env σ₂
+        ext≈ : ∀ {σ₁ σ₂} → σ₁ ≈ σ₂ → g-ext σ₁ ≈ g-ext σ₂
         
   map-cong-abt : ∀{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} 
       → σ₁ ≈ σ₂ → (M : ABT) → map-abt σ₁ M ≡ map-abt σ₂ M
@@ -265,8 +279,10 @@ record MapCong {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
       cong (_⦅_⦆ op) (map-cong-args σ₁≈σ₂ args)
   map-cong-arg {σ₁} {σ₂} {zero} σ₁≈σ₂ (ast arg) =
       cong ast (map-cong-abt σ₁≈σ₂ arg)
-  map-cong-arg {σ₁} {σ₂} {suc b} σ₁≈σ₂ (bind arg) =
-      cong  bind (map-cong-arg {ext-env σ₁} {ext-env σ₂} {b} (ext≈ σ₁≈σ₂) arg)
+  map-cong-arg {σ₁} {σ₂} {suc b} σ₁≈σ₂ (bind arg) 
+      with (map-cong-arg {g-ext σ₁} {g-ext σ₂} {b} (ext≈ σ₁≈σ₂) arg)
+  ... | IH rewrite sym (ext-env-g-ext σ₁) | sym (ext-env-g-ext σ₂) =
+      cong bind IH
   map-cong-args {σ₁} {σ₂} {[]} σ₁≈σ₂ nil = refl
   map-cong-args {σ₁} {σ₂} {b ∷ bs} σ₁≈σ₂ (cons arg args) =
       cong₂ cons (map-cong-arg σ₁≈σ₂ arg) (map-cong-args σ₁≈σ₂ args)
@@ -278,9 +294,6 @@ record MapCong≊ {V₁ V₂} (M₁ : Map V₁) (M₂ : Map V₂) : Set₁ where
   open Quotable {{...}}
   instance _ : Quotable V₁ ; _ = V-is-Quotable
            _ : Quotable V₂ ; _ = V-is-Quotable
-  open Shiftable {{...}}
-  instance _ : Shiftable V₁ ; _ = (Map.V-is-Shiftable M₁)
-           _ : Shiftable V₂ ; _ = (Map.V-is-Shiftable M₂)
 
   _∼_ = λ (v₁ : V₁) (v₂ : V₂) → “ v₁ ” ≡ “ v₂ ”
   field var→val-quote : (x : ℕ) → “ var→val x ” ≡ “ var→val x ”

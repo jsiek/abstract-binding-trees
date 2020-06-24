@@ -18,7 +18,8 @@ open import Agda.Primitive using (Level; lzero; lsuc)
 module WellScoped (Op : Set) (sig : Op → List ℕ) where
 
 open import Var
-open import Substitution using (Shiftable; Rename; ⦉_⦊; ↑; _•_)
+open import Environment using (Shiftable)
+open import Substitution using (Rename; ⦉_⦊; ↑; _•_)
 open Substitution.ABTOps Op sig
     using (ABT; Arg; Args; Rename-is-Map; rename; Subst-is-Map; ⟪_⟫; Subst; ⟦_⟧)
 open import Preserve Op sig
