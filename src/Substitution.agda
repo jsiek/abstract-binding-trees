@@ -111,14 +111,11 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
      | inc-shift ρ₃ x | inc-shift ρ₂ (⟅ ρ₁ ⟆ x) = 
      cong `_ (cong suc (var-injective (ρ₂∘ρ₁≈ρ₃ x)))
 
-  instance
-    RenRen-is-MMFExt : MapMapFusionExt Var Rename Var Rename Var Rename
-    RenRen-is-MMFExt = record { map-fusion-ext = ren-map-fusion-ext }
-    
   compose-rename : ∀ (ρ₁ : Rename) (ρ₂ : Rename) M
      → rename ρ₂ (rename ρ₁ M) ≡ rename (ρ₁ ⨟ ρ₂) M
   compose-rename ρ₁ ρ₂ M =
-      map-map-fusion M λ x → sym (cong `_ (seq-rename ρ₁ ρ₂ x))
+      map-map-fusion M (λ x → sym (cong `_ (seq-rename ρ₁ ρ₂ x)))
+          ren-map-fusion-ext
 
   commute-↑1 : ∀ ρ M
      → rename (ext ρ) (rename (↑ 1) M) ≡ rename (↑ 1) (rename ρ M)
@@ -298,13 +295,10 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
       rename (↑ 1) (rename ρ (lookup σ₁ x)) ≡⟨ cong (rename (↑ 1)) (ρ∘σ₁≈σ₃ x) ⟩
       rename (↑ 1) (lookup σ₃ x) ∎
 
-  instance
-    SubRen-is-MMFExt : MapMapFusionExt ABT Subst Var Rename ABT Subst
-    SubRen-is-MMFExt = record { map-fusion-ext = sub-ren-fusion-ext }
-
   compose-ren-sub : ∀ (ρ : Rename) (σ : Subst) M
      → rename ρ (⟪ σ ⟫ M) ≡ ⟪ σ ⨟ ρ ⟫ M
-  compose-ren-sub ρ σ M = map-map-fusion M (λ x → sym (compose-sub σ ρ x))
+  compose-ren-sub ρ σ M =
+      map-map-fusion M (λ x → sym (compose-sub σ ρ x)) sub-ren-fusion-ext
 
   {------ Composing renaming and substitution -------}
 
@@ -323,13 +317,10 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   ren-sub-fusion-ext {ρ} {σ₂} {σ₃} σ₂∘ρ≈σ₃ (suc x) rewrite inc-shift ρ x
       | inc-shift σ₃ x | inc-shift σ₂ (lookup ρ x) | σ₂∘ρ≈σ₃ x = refl
 
-  instance
-    RenSub-is-MMFExt : MapMapFusionExt Var Rename ABT Subst ABT Subst
-    RenSub-is-MMFExt = record { map-fusion-ext = ren-sub-fusion-ext }
-
   compose-sub-ren : ∀ (σ : Subst) (ρ : Rename) M
      → ⟪ σ ⟫ (rename ρ M) ≡ ⟪ ρ ⨟ σ ⟫ M
-  compose-sub-ren σ ρ M = map-map-fusion M λ x → sym (compose-sub ρ σ x)
+  compose-sub-ren σ ρ M =
+      map-map-fusion M (λ x → sym (compose-sub ρ σ x)) ren-sub-fusion-ext
 
   {------ Composing substitutions -------}
 
@@ -370,12 +361,9 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
       rename (↑ 1) (lookup σ₃ x)
       ∎
 
-  instance
-    SubSub-is-MMFExt : MapMapFusionExt ABT Subst ABT Subst ABT Subst
-    SubSub-is-MMFExt = record { map-fusion-ext = sub-sub-fusion-ext }
-
   sub-sub : ∀ {M σ₁ σ₂} → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
-  sub-sub {M}{σ₁}{σ₂} = map-map-fusion M λ x → sym (compose-sub σ₁ σ₂ x)
+  sub-sub {M}{σ₁}{σ₂} =
+      map-map-fusion M (λ x → sym (compose-sub σ₁ σ₂ x)) sub-sub-fusion-ext
 
   {--- Final stretch to the substitution lemma ---}
 

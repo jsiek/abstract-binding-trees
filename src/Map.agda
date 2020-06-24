@@ -36,41 +36,31 @@ _∘_≈_ : ∀ {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}
 _∘_≈_ {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}{{M₁}}{{M₂}}{{M₃}} σ₂ σ₁ σ₃ =
   ∀ x → map σ₂ “ ⟅ σ₁ ⟆ x ” ≡ “ ⟅ σ₃ ⟆ x ”
 
-record MapMapFusionExt (V₁ E₁ V₂ E₂ V₃ E₃ : Set)
+map-map-fusion : ∀{V₁ E₁ V₂ E₂ V₃ E₃}
   {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}{{S₃ : Shiftable V₃}}
-  {{M₁ : Env E₁ V₁}} {{M₂ : Env E₂ V₂}} {{M₃ : Env E₃ V₃}}
-  {{Q₁ : Quotable V₁}} {{Q₂ : Quotable V₂}} {{Q₃ : Quotable V₃}} : Set
+  {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}} {{_ : Env E₃ V₃}}
+  {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
+  {σ₁ : E₁}{σ₂ : E₂}{σ₃ : E₃}
+   → (M : ABT)
+   → σ₂ ∘ σ₁ ≈ σ₃
+   → (∀{σ₁ : E₁}{σ₂ : E₂}{σ₃ : E₃}
+      → σ₂ ∘ σ₁ ≈ σ₃ → ext σ₂ ∘ ext σ₁ ≈ ext σ₃)
+   → map σ₂ (map σ₁ M) ≡ map σ₃ M
+map-map-fusion (` x) σ₂∘σ₁≈σ₃ mf-ext = σ₂∘σ₁≈σ₃ x
+map-map-fusion  (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ mf-ext =
+  cong (_⦅_⦆ op) (mmf-args args σ₂∘σ₁≈σ₃)
   where
-  field map-fusion-ext : ∀{σ₁ : E₁}{σ₂ : E₂}{σ₃ : E₃}
-                    → σ₂ ∘ σ₁ ≈ σ₃ → ext σ₂ ∘ ext σ₁ ≈ ext σ₃
-
-module _ where
-  open MapMapFusionExt {{...}}
-
-  map-map-fusion : ∀{V₁ E₁ V₂ E₂ V₃ E₃}
-    {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}{{S₃ : Shiftable V₃}}
-    {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}} {{_ : Env E₃ V₃}}
-    {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
-    {{Ext : MapMapFusionExt V₁ E₁ V₂ E₂ V₃ E₃}}
-    {σ₁ : E₁}{σ₂ : E₂}{σ₃ : E₃}
-     → (M : ABT)
-     → σ₂ ∘ σ₁ ≈ σ₃
-     → map σ₂ (map σ₁ M) ≡ map σ₃ M
-  map-map-fusion (` x) σ₂∘σ₁≈σ₃ = σ₂∘σ₁≈σ₃ x
-  map-map-fusion  (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ =
-    cong (_⦅_⦆ op) (mmf-args args σ₂∘σ₁≈σ₃)
-    where
-    mmf-arg : ∀{σ₁ σ₂ σ₃ b} (arg : Arg b) → σ₂ ∘ σ₁ ≈ σ₃
-       → map-arg σ₂ (map-arg σ₁ arg) ≡ map-arg σ₃ arg
-    mmf-args : ∀{σ₁ σ₂ σ₃ bs} (args : Args bs) → σ₂ ∘ σ₁ ≈ σ₃
-       → map-args σ₂ (map-args σ₁ args) ≡ map-args σ₃ args
-    mmf-arg {b = zero} (ast M) σ₂∘σ₁≈σ₃ =
-        cong ast (map-map-fusion M σ₂∘σ₁≈σ₃)
-    mmf-arg {b = suc b} (bind arg) σ₂∘σ₁≈σ₃ =
-        cong bind (mmf-arg arg (map-fusion-ext σ₂∘σ₁≈σ₃))
-    mmf-args {bs = []} nil σ₂∘σ₁≈σ₃ = refl
-    mmf-args {bs = b ∷ bs} (cons arg args) σ₂∘σ₁≈σ₃ =
-        cong₂ cons (mmf-arg arg σ₂∘σ₁≈σ₃) (mmf-args args σ₂∘σ₁≈σ₃)
+  mmf-arg : ∀{σ₁ σ₂ σ₃ b} (arg : Arg b) → σ₂ ∘ σ₁ ≈ σ₃
+     → map-arg σ₂ (map-arg σ₁ arg) ≡ map-arg σ₃ arg
+  mmf-args : ∀{σ₁ σ₂ σ₃ bs} (args : Args bs) → σ₂ ∘ σ₁ ≈ σ₃
+     → map-args σ₂ (map-args σ₁ args) ≡ map-args σ₃ args
+  mmf-arg {b = zero} (ast M) σ₂∘σ₁≈σ₃ =
+      cong ast (map-map-fusion M σ₂∘σ₁≈σ₃ mf-ext)
+  mmf-arg {b = suc b} (bind arg) σ₂∘σ₁≈σ₃ =
+      cong bind (mmf-arg arg (mf-ext σ₂∘σ₁≈σ₃))
+  mmf-args {bs = []} nil σ₂∘σ₁≈σ₃ = refl
+  mmf-args {bs = b ∷ bs} (cons arg args) σ₂∘σ₁≈σ₃ =
+      cong₂ cons (mmf-arg arg σ₂∘σ₁≈σ₃) (mmf-args args σ₂∘σ₁≈σ₃)
 
 _≈_ : ∀ {V₁}{E₁}{V₂}{E₂}
         {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}
