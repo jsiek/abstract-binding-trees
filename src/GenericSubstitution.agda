@@ -192,7 +192,8 @@ module _ where
   inc-≊ {σ₁ = .(_ • _)} {.(_ • _)} (r-cons v₁~v₂ σ₁≊σ₂) =
       r-cons (shift∼ v₁~v₂ ) (inc-≊ σ₁≊σ₂)
 
-  ext-≊ : ∀{V₁ V₂}{{_ : Shiftable V₁}}{{_ : Shiftable V₂}}{{_ : Relatable V₁ V₂}}
+  ext-≊ : ∀{V₁ V₂}{{_ : Shiftable V₁}}{{_ : Shiftable V₂}}
+           {{_ : Relatable V₁ V₂}}
       {σ₁ σ₂} → σ₁ ≊ σ₂ → ext σ₁ ≊ ext σ₂
   ext-≊ {σ₁}{σ₂} σ₁≊σ₂ = r-cons (var→val∼ 0) (inc-≊ σ₁≊σ₂)
 
@@ -240,7 +241,7 @@ abstract
 
 module Composition (Op : Set) (sig : Op → List ℕ)   where
   open import AbstractBindingTree Op sig
-  open import Map2 Op sig
+  open import Map Op sig
   open Quotable {{...}}
 
   record ComposableProps (V₁ V₂ V₃ : Set)
