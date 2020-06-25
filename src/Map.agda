@@ -69,34 +69,25 @@ _≈_ : ∀ {V₁}{E₁}{V₂}{E₂}
         (σ₂ : E₂)(σ₁ : E₁) → Set
 _≈_ {V₁}{E₁}{V₂}{E₂}{{M₁}}{{M₂}} σ₁ σ₂ = ∀ x → “ ⟅ σ₁ ⟆ x ” ≡ “ ⟅ σ₂ ⟆ x ”
 
-record MapCongExt (V₁ E₁ V₂ E₂ : Set)
-  {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}
-  {{M₁ : Env E₁ V₁}} {{M₂ : Env E₂ V₂}}
-  {{Q₁ : Quotable V₁}} {{Q₂ : Quotable V₂}} : Set
+map-cong : ∀{V₁ E₁ V₂ E₂}
+   {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}  
+   {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}} {{_ : Quotable V₁}} {{_ : Quotable V₂}}
+   {σ₁ : E₁}{σ₂ : E₂}
+   → (M : ABT)
+   → σ₁ ≈ σ₂
+   → (∀{σ₁ : E₁}{σ₂ : E₂} → σ₁ ≈ σ₂ → ext σ₁ ≈ ext σ₂)
+   → map σ₁ M ≡ map σ₂ M
+map-cong (` x) σ₁≈σ₂ mc-ext = σ₁≈σ₂ x
+map-cong (op ⦅ args ⦆) σ₁≈σ₂ mc-ext = cong (_⦅_⦆ op) (mc-args args σ₁≈σ₂)
   where
-  field map-cong-ext : ∀{σ₁ : E₁}{σ₂ : E₂} → σ₁ ≈ σ₂ → ext σ₁ ≈ ext σ₂
-
-module _ where
-  open MapCongExt {{...}}
-
-  map-cong : ∀{V₁ E₁ V₂ E₂}
-    {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}  
-    {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}} {{_ : Quotable V₁}} {{_ : Quotable V₂}}
-    {{_ : MapCongExt V₁ E₁ V₂ E₂}} {σ₁ : E₁}{σ₂ : E₂}
-     → (M : ABT)
-     → σ₁ ≈ σ₂
-     → map σ₁ M ≡ map σ₂ M
-  map-cong (` x) σ₁≈σ₂ = σ₁≈σ₂ x
-  map-cong (op ⦅ args ⦆) σ₁≈σ₂ = cong (_⦅_⦆ op) (mc-args args σ₁≈σ₂)
-    where
-    mc-arg : ∀{σ₁ σ₂ b} (arg : Arg b) → σ₁ ≈ σ₂
-       → map-arg σ₁ arg ≡ map-arg σ₂ arg
-    mc-args : ∀{σ₁ σ₂ bs} (args : Args bs) → σ₁ ≈ σ₂
-       → map-args σ₁ args ≡ map-args σ₂ args
-    mc-arg {b = zero} (ast M) σ₁≈σ₂ =
-        cong ast (map-cong M σ₁≈σ₂)
-    mc-arg {b = suc b} (bind arg) σ₁≈σ₂ =
-        cong bind (mc-arg arg (map-cong-ext σ₁≈σ₂))
-    mc-args {bs = []} nil σ₁≈σ₂ = refl
-    mc-args {bs = b ∷ bs} (cons arg args) σ₁≈σ₂ =
-        cong₂ cons (mc-arg arg σ₁≈σ₂) (mc-args args σ₁≈σ₂)
+  mc-arg : ∀{σ₁ σ₂ b} (arg : Arg b) → σ₁ ≈ σ₂
+     → map-arg σ₁ arg ≡ map-arg σ₂ arg
+  mc-args : ∀{σ₁ σ₂ bs} (args : Args bs) → σ₁ ≈ σ₂
+     → map-args σ₁ args ≡ map-args σ₂ args
+  mc-arg {b = zero} (ast M) σ₁≈σ₂ =
+      cong ast (map-cong M σ₁≈σ₂ mc-ext)
+  mc-arg {b = suc b} (bind arg) σ₁≈σ₂ =
+      cong bind (mc-arg arg (mc-ext σ₁≈σ₂))
+  mc-args {bs = []} nil σ₁≈σ₂ = refl
+  mc-args {bs = b ∷ bs} (cons arg args) σ₁≈σ₂ =
+      cong₂ cons (mc-arg arg σ₁≈σ₂) (mc-args args σ₁≈σ₂)

@@ -23,10 +23,12 @@ Bind : {ℓᶜ : Level} → Set → Set ℓᶜ → ℕ → Set ℓᶜ
 Bind V C zero = C
 Bind V C (suc b) = V → Bind V C b
 
+{-
 module Reify {ℓ : Level} (V : Set) (C : Set ℓ) (var→val : Var → V) where
   reify : {b : ℕ} → Bind V C b → C
   reify {zero} M = M
   reify {suc b} f = reify {b} (f (var→val 0))
+-}
 
 {-------------------------------------------------------------------------------
  Folding over an abstract binding tree
@@ -36,7 +38,27 @@ record Foldable {ℓᶜ : Level}(V : Set)(C : Set ℓᶜ) : Set (lsuc ℓᶜ) wh
   field ret : V → C
         fold-op : (op : Op) → Tuple (sig op) (Bind V C) → C
 
+open Env {{...}}
+open Foldable {{...}}
 
+fold : ∀{ℓ E V}{C : Set ℓ}
+   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Foldable V C}}
+   → E → ABT → C
+fold-arg : ∀{ℓ E V}{C : Set ℓ}
+   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Foldable V C}}
+   → E → {b : ℕ} → Arg b → Bind V C b
+fold-args : ∀{ℓ E V}{C : Set ℓ}
+   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Foldable V C}}
+   → E → {bs : List ℕ} → Args bs → Tuple bs (Bind V C)
+
+fold σ (` x) = ret (⟅ σ ⟆ x)
+fold σ (op ⦅ args ⦆) = fold-op op (fold-args σ {sig op} args)
+fold-arg σ {zero} (ast M) = fold σ M
+fold-arg σ {suc b} (bind arg) v = fold-arg (σ , v) arg
+fold-args σ {[]} nil = tt
+fold-args σ {b ∷ bs} (cons arg args) = ⟨ fold-arg σ arg , fold-args σ args ⟩
+
+{-
 {- FoldEnv is abstract with respect to the environment -}
 record FoldEnv  {ℓᶜ : Level}(E V : Set)(C : Set ℓᶜ) : Set (lsuc ℓᶜ) where
   field is-Foldable : Foldable V C
@@ -44,16 +66,6 @@ record FoldEnv  {ℓᶜ : Level}(E V : Set)(C : Set ℓᶜ) : Set (lsuc ℓᶜ) 
   field is-Env : Env E V
   open Env is-Env public
 
-  fold : E → ABT → C
-  fold-arg : E → {b : ℕ} → Arg b → Bind V C b
-  fold-args : E → {bs : List ℕ} → Args bs → Tuple bs (Bind V C)
-
-  fold σ (` x) = ret (lookup σ x)
-  fold σ (op ⦅ args ⦆) = fold-op op (fold-args σ {sig op} args)
-  fold-arg σ {zero} (ast M) = fold σ M
-  fold-arg σ {suc b} (bind arg) v = fold-arg (σ , v) arg
-  fold-args σ {[]} nil = tt
-  fold-args σ {b ∷ bs} (cons arg args) = ⟨ fold-arg σ arg , fold-args σ args ⟩
 
 
 {- Fold instantiates FoldEnv using substitutions for the environment -}
@@ -68,11 +80,13 @@ record Fold {ℓᶜ : Level}(V : Set)(C : Set ℓᶜ) : Set (lsuc ℓᶜ) where
                              ; is-Env = GSubst-is-Env }
   open FoldEnv GSubst-is-FoldEnv using (fold; fold-arg; fold-args) public
   open Env GSubst-is-Env hiding (V-is-Shiftable) public
+-}
 
 {-------------------------------------------------------------------------------
  Simulation between two folds
  ------------------------------------------------------------------------------}
 
+{-
 module RelBind {ℓ : Level}{V₁}{C₁ : Set ℓ}{V₂}{C₂ : Set ℓ}
   (_∼_ : V₁ → V₂ → Set) (_≈_ : C₁ → C₂ → Set ℓ) where
   _⩳_  : (Bind V₁ C₁) ✖ (Bind V₂ C₂)
@@ -115,3 +129,4 @@ record Similar {V₁ C₁ V₂ C₂} (F₁ : Fold V₁ C₁) (F₂ : Fold V₂ C
   sim-args {bs = b ∷ bs} (cons arg args) σ₁≊σ₂ =
       ⟨ sim-arg arg σ₁≊σ₂ , sim-args args σ₁≊σ₂ ⟩
 
+-}

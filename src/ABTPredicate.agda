@@ -1,5 +1,5 @@
-open import Data.List using (List; []; _∷_; length; _++_)
-open import Data.Nat using (ℕ; zero; suc; _<_; z≤n; s≤s; _+_)
+open import Data.List using (List; []; _∷_; length)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)

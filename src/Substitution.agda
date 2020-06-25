@@ -128,14 +128,12 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
       rename (ρ ⨟ ↑ 1) M              ≡⟨ sym (compose-rename ρ (↑ 1) M) ⟩
       rename (↑ 1) (rename ρ M)        ∎
 
-  instance
-    _ : MapCongExt Var Rename Var Rename
-    _ = record { map-cong-ext = λ ρ₁≈ρ₂ x → cong `_ (ext-cong
-                                            (λ x → var-injective (ρ₁≈ρ₂ x)) x)} 
   rename-cong : ∀ ρ₁ ρ₂ M
      → (∀ x → ⟅ ρ₁ ⟆ x ≡ ⟅ ρ₂ ⟆ x)
      → rename ρ₁ M ≡ rename ρ₂ M
-  rename-cong ρ₁ ρ₂ M f = map-cong M λ x → cong `_ (f x)
+  rename-cong ρ₁ ρ₂ M f =
+      map-cong M (λ x → cong `_ (f x))
+              (λ ρ₁≈ρ₂ x → cong `_ (ext-cong (λ x → var-injective (ρ₁≈ρ₂ x)) x))
   
   {----------------------------------------------------------------------------
                              Substitution
@@ -199,22 +197,18 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   rename→subst (↑ k) = ↑ k 
   rename→subst (x • ρ) = ` x • rename→subst ρ
 
-  instance
-    _ : MapCongExt Var Rename ABT Subst
-    _ = record { map-cong-ext = MCE }    
-      where
-      MCE : ∀ {ρ : Rename} {σ : Subst} → ρ ≈ σ → ext ρ ≈ ext σ
-      MCE {ρ} {σ} ρ≈σ zero = refl
-      MCE {ρ} {σ} ρ≈σ (suc x) rewrite inc-shift ρ x | inc-shift σ x
-          | sym (ρ≈σ x) = refl
-
   rename→subst≈ : (ρ : Rename) → ρ ≈ rename→subst ρ
   rename→subst≈ (↑ k) = λ x → refl
   rename→subst≈ (x • ρ) zero = refl
   rename→subst≈ (x • ρ) (suc y) = rename→subst≈ ρ y
   
   rename-subst : ∀ ρ M → rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
-  rename-subst ρ M = map-cong M (rename→subst≈ ρ)
+  rename-subst ρ M = map-cong M (rename→subst≈ ρ) MCE
+      where
+      MCE : ∀ {ρ : Rename} {σ : Subst} → ρ ≈ σ → ext ρ ≈ ext σ
+      MCE {ρ} {σ} ρ≈σ zero = refl
+      MCE {ρ} {σ} ρ≈σ (suc x) rewrite inc-shift ρ x | inc-shift σ x
+          | sym (ρ≈σ x) = refl
     
   incs=⨟↑ : ∀ σ → ⟰ σ ≡ σ ⨟ ↑ 1
   incs=⨟↑ (↑ k) rewrite sub-up-seq k (↑ 1) | +-comm k 1 = refl
