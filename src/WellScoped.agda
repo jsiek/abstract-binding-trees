@@ -18,19 +18,28 @@ open import Agda.Primitive using (Level; lzero; lsuc)
 module WellScoped (Op : Set) (sig : Op → List ℕ) where
 
 open import Var
-open import Environment using (Shiftable)
-open import Substitution using (Rename; ⦉_⦊; ↑; _•_)
+open import Environment using (Shiftable; Env)
+open Shiftable {{...}}
+open Env {{...}}
+open import Substitution using (Rename; ↑; _•_; inc-shift)
 open Substitution.ABTOps Op sig
-    using (ABT; Arg; Args; Rename-is-Map; rename; Subst-is-Map; ⟪_⟫; Subst; ⟦_⟧)
-open import Preserve Op sig
+    using (ABT; Arg; Args; rename; ⟪_⟫; Subst;
+    ABT-is-Shiftable; ABT-is-Quotable)
+open import MapPreserve Op sig
 open import Map Op sig
 open import Data.Vec using (Vec) renaming ([] to []̆; _∷_ to _∷̆_)
-open ABTPred {I = ⊤} (λ Γ x A → x < length Γ) (λ op vs Bs A → ⊤)
+open import ABTPredicate {I = ⊤} Op sig
+  (λ Γ x A → x < length Γ) (λ op vs Bs A → ⊤)
   hiding (var-p; op-p; ast-p; bind-p; nil-p; cons-p)
-open ABTPred {I = ⊤} (λ Γ x A → x < length Γ) (λ op vs Bs A → ⊤)
+open import ABTPredicate {I = ⊤} Op sig
+  (λ Γ x A → x < length Γ) (λ op vs Bs A → ⊤)
   using ()
   renaming (var-p to WF-var; op-p to WF-op; ast-p to WF-ast; bind-p to WF-bind;
             nil-p to WF-nil; cons-p to WF-cons) public
+
+open import AbstractBindingTree Op sig
+  using (`_; _⦅_⦆; ast; bind; nil; cons; Quotable; Var-is-Quotable)
+open Quotable {{...}}
 
 mk-list : {ℓ : Level} → ℕ → List {ℓ} ⊤
 mk-list 0 = []
@@ -38,8 +47,6 @@ mk-list (suc n) = tt ∷ mk-list n
 
 WF : ℕ → ABT → Set
 WF n M = mk-list n ⊢ M ⦂ tt
-
-open import AbstractBindingTree Op sig using (`_; _⦅_⦆; ast; bind; nil; cons)
 
 mk-btype : (b : ℕ) → BType ⊤ b
 mk-btype zero = tt
@@ -78,21 +85,20 @@ mk-vec-unique : ∀{ℓ : Level}{n : ℕ}{vs : Vec {ℓ} ⊤ n} → vs ≡ mk-ve
 mk-vec-unique {ℓ}{zero} {[]̆} = refl
 mk-vec-unique {ℓ}{suc n} {v ∷̆ vs} = cong₂ _∷̆_ refl mk-vec-unique
 
-
 module _ where
-  private
-    RenPres : MapPreserveABTPred Rename-is-Map
+  instance
+    RenPres : MapPreservable Var ⊤ Rename
     RenPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ x A → Γ ∋ x ⦂ A
               ; 𝑉 = λ Γ x A → suc x ≤ length Γ
-              ; shift-⊢v = λ ∋x → ∋x ; ⊢v0 = refl
+              ; ⊢v0 = refl ; shift-⊢v = λ z → z
               ; quote-⊢v = λ {Γ}{x}{tt} ∋x → WF-var ∋x (∋x→< {⊤}{Γ} ∋x) }
-    open MapPreserveABTPred RenPres using (_⦂_⇒_)
 
-  open MapPreserveABTPred RenPres using ()
-      renaming (preserve-map to ren-preserve) public
+  ren-preserve : ∀ {Γ Δ : List ⊤}{σ : Rename}{A : ⊤}{M : ABT}
+   → Γ ⊢ M ⦂ A  →  σ ⦂ Γ ⇒ Δ  →  Δ ⊢ map σ M ⦂ A
+  ren-preserve {σ = σ}{M = M} ⊢M σ⦂ = preserve-map M ⊢M σ⦂
 
   WFRename : ℕ → Rename → ℕ → Set
-  WFRename Γ ρ Δ = ∀ {x} → x < Γ → (⦉ ρ ⦊ x) < Δ
+  WFRename Γ ρ Δ = ∀ {x} → x < Γ → (⟅ ρ ⟆ x) < Δ
 
   WFRename→ρ⦂ : ∀{Γ ρ Δ} → WFRename Γ ρ Δ  →  ρ ⦂ mk-list Γ ⇒ mk-list Δ
   WFRename→ρ⦂ {Γ}{ρ}{Δ} wfΓ {x}{A} ∋x 
@@ -107,19 +113,19 @@ module _ where
   WF-rename {Γ}{Δ}{ρ}{M} wfΓ wfM = ren-preserve wfM (WFRename→ρ⦂ {ρ = ρ} wfΓ)
 
 module _ where
-  private
-    SubstPres : MapPreserveABTPred Subst-is-Map
+  instance
+    SubstPres : MapPreservable ABT ⊤ Subst
     SubstPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ M A → Γ ⊢ M ⦂ A
-                  ; 𝑉 = λ Γ x A → suc x ≤ length Γ 
-                  ; shift-⊢v = λ {A}{B}{Δ}{M} ⊢M → ren-preserve ⊢M λ x → x
-                  ; quote-⊢v = λ x → x ; ⊢v0 = λ{ {tt} → WF-var refl (s≤s z≤n)}}
-    open MapPreserveABTPred SubstPres using (_⦂_⇒_)
+                ; 𝑉 = λ Γ x A → suc x ≤ length Γ 
+                ; ⊢v0 = WF-var refl (s≤s z≤n) ; quote-⊢v = λ x → x
+                ; shift-⊢v = λ {A}{B}{Δ}{v} ⊢v → ren-preserve ⊢v (λ z → z) }
 
-  open MapPreserveABTPred SubstPres using ()
-      renaming (preserve-map to sub-preserve) public
+  sub-preserve : ∀ {Γ Δ : List ⊤}{σ : Subst}{A : ⊤}{M : ABT}
+   → Γ ⊢ M ⦂ A  →  σ ⦂ Γ ⇒ Δ  →  Δ ⊢ map σ M ⦂ A
+  sub-preserve {M = M} ⊢M σ⦂ = preserve-map M ⊢M σ⦂ 
 
   WFSubst : ℕ → Subst → ℕ → Set
-  WFSubst Γ σ Δ = ∀ {x} → x < Γ → WF Δ (⟦ σ ⟧ x)
+  WFSubst Γ σ Δ = ∀ {x} → x < Γ → WF Δ (⟅ σ ⟆ x)
 
   WF-subst : ∀{Γ Δ σ M} → WFSubst Γ σ Δ → WF Γ M → WF Δ (⟪ σ ⟫ M)
   WF-subst {Γ}{Δ}{σ}{M} wfσ wfM = sub-preserve wfM σ⦂

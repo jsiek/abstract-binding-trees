@@ -10,7 +10,7 @@ open Eq.≡-Reasoning
 module Map (Op : Set) (sig : Op → List ℕ) where
 
 open import AbstractBindingTree Op sig
-
+open Shiftable {{...}}
 open Quotable {{...}}
 open Env  {{...}}
 
@@ -36,7 +36,7 @@ _∘_≈_ : ∀ {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}
 _∘_≈_ {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}{{M₁}}{{M₂}}{{M₃}} σ₂ σ₁ σ₃ =
   ∀ x → map σ₂ “ ⟅ σ₁ ⟆ x ” ≡ “ ⟅ σ₃ ⟆ x ”
 
-map-map-fusion : ∀{V₁ E₁ V₂ E₂ V₃ E₃}
+map-map-fusion-ext : ∀{V₁ E₁ V₂ E₂ V₃ E₃}
   {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}{{S₃ : Shiftable V₃}}
   {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}} {{_ : Env E₃ V₃}}
   {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
@@ -46,8 +46,8 @@ map-map-fusion : ∀{V₁ E₁ V₂ E₂ V₃ E₃}
    → (∀{σ₁ : E₁}{σ₂ : E₂}{σ₃ : E₃}
       → σ₂ ∘ σ₁ ≈ σ₃ → ext σ₂ ∘ ext σ₁ ≈ ext σ₃)
    → map σ₂ (map σ₁ M) ≡ map σ₃ M
-map-map-fusion (` x) σ₂∘σ₁≈σ₃ mf-ext = σ₂∘σ₁≈σ₃ x
-map-map-fusion  (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ mf-ext =
+map-map-fusion-ext (` x) σ₂∘σ₁≈σ₃ mf-ext = σ₂∘σ₁≈σ₃ x
+map-map-fusion-ext {V₁}{E₁}{V₂}{E₂}{V₃}{E₃} (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ mf-ext =
   cong (_⦅_⦆ op) (mmf-args args σ₂∘σ₁≈σ₃)
   where
   mmf-arg : ∀{σ₁ σ₂ σ₃ b} (arg : Arg b) → σ₂ ∘ σ₁ ≈ σ₃
@@ -55,7 +55,7 @@ map-map-fusion  (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ mf-ext =
   mmf-args : ∀{σ₁ σ₂ σ₃ bs} (args : Args bs) → σ₂ ∘ σ₁ ≈ σ₃
      → map-args σ₂ (map-args σ₁ args) ≡ map-args σ₃ args
   mmf-arg {b = zero} (ast M) σ₂∘σ₁≈σ₃ =
-      cong ast (map-map-fusion M σ₂∘σ₁≈σ₃ mf-ext)
+      cong ast (map-map-fusion-ext M σ₂∘σ₁≈σ₃ mf-ext)
   mmf-arg {b = suc b} (bind arg) σ₂∘σ₁≈σ₃ =
       cong bind (mmf-arg arg (mf-ext σ₂∘σ₁≈σ₃))
   mmf-args {bs = []} nil σ₂∘σ₁≈σ₃ = refl
