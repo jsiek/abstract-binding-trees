@@ -19,6 +19,7 @@ open Shiftable {{...}}
 open Quotable {{...}}
 open Env  {{...}}
 
+{- todo: simplify this -}
 record FusableMap (V₁ E₁ V₂ E₂ V₃ E₃ : Set)
   {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}{{S₃ : Shiftable V₃}}
   {{Q₁ : Quotable V₁}}{{Q₂ : Quotable V₂}}{{Q₃ : Quotable V₃}}
