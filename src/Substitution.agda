@@ -11,30 +11,17 @@ module Substitution where
 open import Environment using (Env)
 open Env {{...}}
 open import GenericSubstitution public
-    
-{----------------------------------------------------------------------------
-                             Renaming
- ---------------------------------------------------------------------------}
-
 open import Renaming public
 
 module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
   open import AbstractBindingTree Op sig public
   open import Environment
-  open WithOpSig Op sig public
+  open Renaming.WithOpSig Op sig public
   open import Map Op sig
-
-  instance
-    _ : Quotable Var
-    _ = Var-is-Quotable
-    
+  open import MapFusion Op sig
   open Composition Op sig using (ComposableProps; compose-sub; drop-seq)
   
-  {----------------------------------------------------------------------------
-                             Substitution
-   ---------------------------------------------------------------------------}
-
   Subst : Set
   Subst = GSubst ABT
 
@@ -164,56 +151,6 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   exts-suc-rename : ∀ σ x → ⟅ ext σ ⟆ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
   exts-suc-rename σ x rewrite inc-shift σ x = refl
 
-  {------ Composing substitution and renaming -------}
-  
-  instance
-    _ : Composable ABT Var ABT
-    _ = record { ⌈_⌉ = rename ; val₂₃ = `_ }
-
-    _ : ComposableProps ABT Var ABT
-    _ = record { var→val₂₃ = λ x → refl ; quote-val₂₃ = λ v₂ → refl
-          ; val₂₃-shift = λ v₂ → refl ; quote-var→val₁ = λ x → refl
-          ; quote-map = λ σ₂ v₁ → refl }
-
-  sub-ren-fusion-ext : {σ₁ : Subst} {ρ : Rename} {σ₃ : Subst}
-     → ρ ∘ σ₁ ≈ σ₃ → ext ρ ∘ ext σ₁ ≈ ext σ₃
-  sub-ren-fusion-ext {σ₁} {ρ} {σ₃} ρ∘σ₁≈σ₃ zero = refl
-  sub-ren-fusion-ext {σ₁} {ρ} {σ₃} ρ∘σ₁≈σ₃ (suc x) rewrite inc-shift σ₁ x
-      | inc-shift σ₃ x = begin 
-      rename (0 • inc ρ) (rename (↑ 1) (lookup σ₁ x))
-                                            ≡⟨ commute-↑1 ρ (lookup σ₁ x) ⟩
-      rename (↑ 1) (rename ρ (lookup σ₁ x)) ≡⟨ cong (rename (↑ 1)) (ρ∘σ₁≈σ₃ x) ⟩
-      rename (↑ 1) (lookup σ₃ x) ∎
-
-  compose-ren-sub : ∀ (ρ : Rename) (σ : Subst) M
-     → rename ρ (⟪ σ ⟫ M) ≡ ⟪ σ ⨟ ρ ⟫ M
-  compose-ren-sub ρ σ M =
-      map-map-fusion M (λ x → sym (compose-sub σ ρ x)) sub-ren-fusion-ext
-
-  {------ Composing renaming and substitution -------}
-
-  instance
-    _ : Composable Var ABT ABT
-    _ = record { ⌈_⌉ = ⟅_⟆ ; val₂₃ = λ M → M }
-
-    _ : ComposableProps Var ABT ABT
-    _ = record { var→val₂₃ = λ x → refl ; quote-val₂₃ = λ v₂ → refl
-          ; val₂₃-shift = λ v₂ → refl ; quote-var→val₁ = λ x → refl
-          ; quote-map = λ σ₂ v₁ → refl }
-
-  ren-sub-fusion-ext : {ρ : Rename} {σ₂ : Subst} {σ₃ : Subst}
-     → σ₂ ∘ ρ ≈ σ₃ → ext σ₂ ∘ ext ρ ≈ ext σ₃
-  ren-sub-fusion-ext {ρ} {σ₂} {σ₃} σ₂∘ρ≈σ₃ zero = refl
-  ren-sub-fusion-ext {ρ} {σ₂} {σ₃} σ₂∘ρ≈σ₃ (suc x) rewrite inc-shift ρ x
-      | inc-shift σ₃ x | inc-shift σ₂ (lookup ρ x) | σ₂∘ρ≈σ₃ x = refl
-
-  compose-sub-ren : ∀ (σ : Subst) (ρ : Rename) M
-     → ⟪ σ ⟫ (rename ρ M) ≡ ⟪ ρ ⨟ σ ⟫ M
-  compose-sub-ren σ ρ M =
-      map-map-fusion M (λ x → sym (compose-sub ρ σ x)) ren-sub-fusion-ext
-
-  {------ Composing substitutions -------}
-
   instance
     _ : Composable ABT ABT ABT
     _ = record { ⌈_⌉ = ⟪_⟫ ; val₂₃ = λ M → M }
@@ -223,39 +160,8 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
           ; val₂₃-shift = λ v₂ → refl ; quote-var→val₁ = λ x → refl
           ; quote-map = λ σ₂ v₁ → refl }
 
-  rs-up-seq : ∀ k (σ : Subst) → _⨟_{Var}{ABT} (↑ k) σ ≡ drop k σ
-  rs-up-seq k σ rewrite up-seq{Var}{ABT}{ABT} k σ | map-sub-id (drop k σ) = refl
-
-  incs=⨟ˢᵣ↑ : ∀ (σ : Subst) → ⟰ σ ≡ _⨟_{ABT}{Var} σ (↑ 1)
-  incs=⨟ˢᵣ↑ (↑ k) rewrite up-seq{ABT}{Var} k (↑ 1) |  +-comm k 1 = refl
-  incs=⨟ˢᵣ↑ (M • σ) rewrite cons-seq{ABT}{Var} M σ (↑ 1) | incs=⨟ˢᵣ↑ σ = refl
-
-  commute-subst-shift : ∀{σ : Subst} (M : ABT)
-     → ⟪ ext σ ⟫ (rename (↑ 1) M) ≡ rename (↑ 1) (⟪ σ ⟫ M)
-  commute-subst-shift {σ} M =  begin
-    ⟪ ext σ ⟫ (rename (↑ 1) M)              ≡⟨ compose-sub-ren (ext σ) (↑ 1) M ⟩
-    ⟪ ↑ 1 ⨟ ext σ ⟫ M           ≡⟨  cong (λ □ → ⟪ □ ⟫ M) (rs-up-seq 1 (ext σ)) ⟩
-    ⟪ drop 0 (⟰ σ) ⟫ M                ≡⟨ cong (λ □ → ⟪ □ ⟫ M) (drop-0 (⟰ σ)) ⟩
-    ⟪ ⟰ σ ⟫ M                           ≡⟨ cong (λ □ → ⟪ □ ⟫ M) (incs=⨟ˢᵣ↑ σ) ⟩
-    ⟪ σ ⨟ ↑ 1 ⟫ M                          ≡⟨ sym (compose-ren-sub (↑ 1) σ M)  ⟩
-    rename (↑ 1) (⟪ σ ⟫ M)                                                     ∎
-
-  sub-sub-fusion-ext : {σ₁ : Subst} {σ₂ : Subst} {σ₃ : Subst}
-     → σ₂ ∘ σ₁ ≈ σ₃ → ext σ₂ ∘ ext σ₁ ≈ ext σ₃
-  sub-sub-fusion-ext {σ₁} {σ₂} {σ₃} σ₂∘σ₁≈σ₃ zero = refl
-  sub-sub-fusion-ext {σ₁} {σ₂} {σ₃} σ₂∘σ₁≈σ₃ (suc x) rewrite inc-shift σ₁ x
-      | inc-shift σ₃ x = begin
-      ⟪ ext σ₂ ⟫ (rename (↑ 1) (lookup σ₁ x))
-                                          ≡⟨ commute-subst-shift (lookup σ₁ x) ⟩
-      rename (↑ 1) (⟪ σ₂ ⟫ (lookup σ₁ x)) ≡⟨ cong (rename (↑ 1)) (σ₂∘σ₁≈σ₃ x) ⟩
-      rename (↑ 1) (lookup σ₃ x)
-      ∎
-
   sub-sub : ∀ {M σ₁ σ₂} → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
-  sub-sub {M}{σ₁}{σ₂} =
-      map-map-fusion M (λ x → sym (compose-sub σ₁ σ₂ x)) sub-sub-fusion-ext
-
-  {--- Final stretch to the substitution lemma ---}
+  sub-sub {M}{σ₁}{σ₂} = map-map-fusion M (λ x → sym (compose-sub σ₁ σ₂ x))
 
   sub-assoc : ∀ {σ τ θ} → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
   sub-assoc {↑ k} {τ} {θ}= begin

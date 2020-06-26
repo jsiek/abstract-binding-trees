@@ -27,6 +27,11 @@ record QuoteShift (V : Set)
 
 open QuoteShift {{...}}
 
+instance
+  ABT-is-QuoteShift : QuoteShift ABT
+  ABT-is-QuoteShift = record { quote-var→val = λ x → refl
+                             ; quote-shift = λ v → refl }
+
 map-rename-fusion : ∀{V₂ E₂ V₃ E₃}
   {{S₂ : Shiftable V₂}}{{S₃ : Shiftable V₃}} {{_ : Env E₂ V₂}} {{_ : Env E₃ V₃}}
   {{_ : Quotable V₂}} {{_ : Quotable V₃}}
@@ -88,16 +93,13 @@ map-map-fusion : ∀{V₁ E₁ V₂ E₂ V₃ E₃}
   {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}} {{_ : Env E₃ V₃}}
   {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
   {{_ : QuoteShift V₁}}{{_ : QuoteShift V₂}}{{_ : QuoteShift V₃}}
-  {{_ : FusableMap Var Rename V₂ E₂ V₂ E₂}}
   {σ₁ : E₁}{σ₂ : E₂}{σ₃ : E₃}
    → (M : ABT)
    → σ₂ ∘ σ₁ ≈ σ₃
-   → (∀{σ₁ : E₁}{σ₂ : E₂}{σ₃ : E₃}
-      → σ₂ ∘ σ₁ ≈ σ₃ → ext σ₂ ∘ ext σ₁ ≈ ext σ₃)
    → map σ₂ (map σ₁ M) ≡ map σ₃ M
-map-map-fusion (` x) σ₂∘σ₁≈σ₃ mf-ext = σ₂∘σ₁≈σ₃ x
+map-map-fusion (` x) σ₂∘σ₁≈σ₃ = σ₂∘σ₁≈σ₃ x
 map-map-fusion {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}{{S₁}}{{S₂}}{{S₃}}
-  (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ mf-ext =
+  (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ =
   cong (_⦅_⦆ op) (mmf-args args σ₂∘σ₁≈σ₃)
   where
   G : ∀{σ₂ : E₂} → _∘_≈_{Var}{Rename} (σ₂ , (var→val 0)) (↑ 1) (⟰ σ₂)
@@ -135,9 +137,9 @@ map-map-fusion {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}{{S₁}}{{S₂}}{{S₃}}
   mmf-args : ∀{σ₁ σ₂ σ₃ bs} (args : Args bs) → σ₂ ∘ σ₁ ≈ σ₃
      → map-args σ₂ (map-args σ₁ args) ≡ map-args σ₃ args
   mmf-arg {b = zero} (ast M) σ₂∘σ₁≈σ₃ =
-      cong ast (map-map-fusion M σ₂∘σ₁≈σ₃ mf-ext)
+      cong ast (map-map-fusion M σ₂∘σ₁≈σ₃)
   mmf-arg {b = suc b} (bind arg) σ₂∘σ₁≈σ₃ =
-      cong bind (mmf-arg arg (mf-ext σ₂∘σ₁≈σ₃))
+      cong bind (mmf-arg arg (mm-fuse-ext σ₂∘σ₁≈σ₃))
   mmf-args {bs = []} nil σ₂∘σ₁≈σ₃ = refl
   mmf-args {bs = b ∷ bs} (cons arg args) σ₂∘σ₁≈σ₃ =
       cong₂ cons (mmf-arg arg σ₂∘σ₁≈σ₃) (mmf-args args σ₂∘σ₁≈σ₃)
