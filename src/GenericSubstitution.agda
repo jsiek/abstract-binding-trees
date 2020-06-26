@@ -57,25 +57,25 @@ drop-drop (suc k) (suc k') (v • σ)
     with drop-drop (suc k) k' σ
 ... | IH rewrite +-comm k (suc k') | +-comm k k' = IH
 
-lookup : ∀{V : Set} {{_ : Shiftable V}} → GSubst V → Var → V
-lookup (↑ k) x = var→val (k + x)
-lookup (y • σ) 0 = y
-lookup (y • σ) (suc x) = lookup σ x
+⟅_⟆ˢ : ∀{V : Set} {{_ : Shiftable V}} → GSubst V → Var → V
+⟅ ↑ k ⟆ˢ x = var→val (k + x)
+⟅ y • σ ⟆ˢ 0 = y
+⟅ y • σ ⟆ˢ (suc x) = ⟅ σ ⟆ˢ x
 
-inc : ∀ {V : Set} {{_ : Shiftable V}} → GSubst V → GSubst V
-inc (↑ k) = ↑ (suc k)
-inc (v • ρ) = ⇑ v • inc ρ
+⟰ˢ : ∀ {V : Set} {{_ : Shiftable V}} → GSubst V → GSubst V
+⟰ˢ (↑ k) = ↑ (suc k)
+⟰ˢ (v • ρ) = ⇑ v • ⟰ˢ ρ
 
 inc-shift : ∀{V : Set} {{S : Shiftable V}} (ρ : GSubst V) (x : Var)
-   → lookup (inc ρ) x ≡ ⇑ (lookup ρ x)
+   → ⟅_⟆ˢ (⟰ˢ ρ) x ≡ ⇑ (⟅_⟆ˢ ρ x)
 inc-shift (↑ k) x rewrite +-comm k x = var→val-suc-shift
 inc-shift (y • ρ) zero = refl
 inc-shift (y • ρ) (suc x) = inc-shift ρ x
 
 instance
   GSubst-is-Env : ∀{V} {{S : Shiftable V}} → Env (GSubst V) V
-  GSubst-is-Env {V}{{S}} = record { ⟅_⟆ = lookup
-      ; _,_ = λ ρ v → v • inc ρ ; ⟰ = inc ; lookup-0 = λ ρ v → refl
+  GSubst-is-Env {V}{{S}} = record { ⟅_⟆ = ⟅_⟆ˢ
+      ; _,_ = λ ρ v → v • ⟰ˢ ρ ; ⟰ = ⟰ˢ ; lookup-0 = λ ρ v → refl
       ; lookup-suc = λ ρ v x → inc-shift ρ x
       ; lookup-shift = λ ρ x → inc-shift ρ x }
 
@@ -90,7 +90,7 @@ shifts zero v = v
 shifts (suc k) v = ⇑ (shifts k v) 
 
 drop-inc : ∀{V} {{_ : Shiftable V}}
-   → (k : ℕ) (σ : GSubst V) → drop k (inc σ) ≡ inc (drop k σ)
+   → (k : ℕ) (σ : GSubst V) → drop k (⟰ σ) ≡ ⟰ (drop k σ)
 drop-inc k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
 drop-inc zero (v • σ) = refl
 drop-inc (suc k) (v • σ) = drop-inc k σ
@@ -109,7 +109,7 @@ ext-cong {σ₁ = σ₁} {σ₂} f (suc x)
 
 drop-ext : ∀{V} {{_ : Shiftable V}}
    → (k : Var) (ρ : GSubst V)
-   → drop (suc k) (ext ρ) ≡ inc (drop k ρ)
+   → drop (suc k) (ext ρ) ≡ ⟰ (drop k ρ)
 drop-ext k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
 drop-ext zero (x • ρ) = refl
 drop-ext (suc k) (x • ρ) = drop-inc k ρ
@@ -120,7 +120,7 @@ data Shift {V} {{_ : Shiftable V}} : ℕ → GSubst V → Set where
      → Shift k (v • σ)
 
 inc-Shift : ∀{V} {{_ : Shiftable V}} {k}{σ : GSubst V}
-   → Shift k σ → Shift (suc k) (inc σ)
+   → Shift k σ → Shift (suc k) (⟰ σ)
 inc-Shift shift-up = shift-up
 inc-Shift (shift-• kσ refl) = shift-• (inc-Shift kσ) refl
 
@@ -149,7 +149,7 @@ data ShftAbv {V} {{_ : Shiftable V}} : ℕ → ℕ → ℕ → GSubst V → Set 
 
 inc-ShftAbv : ∀{V} {{_ : Shiftable V}} {k c k′ σ}
   → ShftAbv k c k′ σ
-  → ShftAbv (suc k) c (suc k′) (inc σ)
+  → ShftAbv (suc k) c (suc k′) (⟰ σ)
 inc-ShftAbv {k = k} {.0} {k′} {σ} (sha-0 σk) = sha-0 (inc-Shift σk)
 inc-ShftAbv {k = k} {.(suc _)} {k′} {.(_ • _)} (sha-suc σkc refl) =
   sha-suc (inc-ShftAbv σkc) refl
@@ -187,7 +187,7 @@ module _ where
 
   inc-≊ : ∀{V₁ V₂}{{_ : Shiftable V₁}}{{_ : Shiftable V₂}}
             {{_ : Relatable V₁ V₂}} {σ₁ σ₂}
-     → σ₁ ≊ σ₂ → inc σ₁ ≊ inc σ₂
+     → σ₁ ≊ σ₂ → ⟰ σ₁ ≊ ⟰ σ₂
   inc-≊ {σ₁ = (↑ _)} {.(↑ _)} r-up = r-up
   inc-≊ {σ₁ = .(_ • _)} {.(_ • _)} (r-cons v₁~v₂ σ₁≊σ₂) =
       r-cons (shift∼ v₁~v₂ ) (inc-≊ σ₁≊σ₂)
@@ -298,7 +298,7 @@ module Composition (Op : Set) (sig : Op → List ℕ)   where
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
       {{_ : Composable V₁ V₂ V₃}} {{_ : ComposableProps V₁ V₂ V₃}}
       (σ₂ : GSubst V₂)
-      → map-sub val₂₃ (inc σ₂) ≡  inc (map-sub val₂₃ σ₂)
+      → map-sub val₂₃ (⟰ σ₂) ≡  ⟰ (map-sub val₂₃ σ₂)
   map-sub-inc (↑ k) = refl
   map-sub-inc (v₂ • σ₂) = cong₂ _•_ (val₂₃-shift v₂) (map-sub-inc σ₂)
 

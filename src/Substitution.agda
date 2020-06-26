@@ -35,8 +35,12 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   ⟪_⟫₊ = map-args
 
   instance
-    Subst-Composable : Composable ABT ABT ABT
-    Subst-Composable = record { ⌈_⌉ = ⟪_⟫ ; val₂₃ = λ M → M }
+    ABT³-Composable : Composable ABT ABT ABT
+    ABT³-Composable = record { ⌈_⌉ = ⟪_⟫ ; val₂₃ = λ M → M }
+    ABT³-ComposableProps : ComposableProps ABT ABT ABT
+    ABT³-ComposableProps = record { var→val₂₃ = λ x → refl
+          ; quote-val₂₃ = λ v₂ → refl ; val₂₃-shift = λ v₂ → refl
+          ; quote-var→val₁ = λ x → refl ; quote-map = λ σ₂ v₁ → refl }
 
   sub-up-seq : ∀ k (σ : Subst) → ↑ k ⨟ σ ≡ drop k σ
   sub-up-seq k σ rewrite up-seq k σ | map-sub-id (drop k σ) = refl
@@ -69,8 +73,16 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   sub-nil σ = refl
 
   sub-cons : ∀ (σ : Subst) b bs (arg : Arg b) (args : Args bs)
-    → ⟪ σ ⟫₊ (cons arg args) ≡ cons (⟪ σ ⟫ₐ arg) (⟪ σ ⟫₊ args)
+     → ⟪ σ ⟫₊ (cons arg args) ≡ cons (⟪ σ ⟫ₐ arg) (⟪ σ ⟫₊ args)
   sub-cons σ b bs arg args = refl
+
+  sub-ast : ∀ (σ : Subst) (M : ABT)
+     → ⟪ σ ⟫ₐ (ast M) ≡ ast (⟪ σ ⟫ M)
+  sub-ast σ M = refl
+
+  sub-bind : ∀ (σ : Subst) {b} (arg : Arg b)
+     → ⟪ σ ⟫ₐ (bind arg) ≡ bind (⟪ ext σ ⟫ₐ arg)
+  sub-bind σ M = refl
 
   sub-η : ∀ σ x → ⟅ ⟪ σ ⟫ (` 0) • (↑ 1 ⨟ σ) ⟆ x ≡ ⟅ σ ⟆ x
   sub-η σ 0 = refl
@@ -113,8 +125,9 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   seq-subst (M • σ) τ (suc x) rewrite sub-cons-seq M σ τ
       | seq-subst σ τ x = refl
 
-
-  private
+  sub-id : ∀ {M : ABT} → ⟪ id ⟫ M ≡ M
+  sub-id {M} = (sub-shift0 M (shift-up {k = 0}))
+    where
     sub-shift0 : ∀{σ : Subst} (M : ABT) → Shift 0 σ → ⟪ σ ⟫ M ≡ M
     ss0-arg  : ∀{σ} → Shift 0 σ → (b : ℕ) → (arg : Arg b) 
        → ⟪ σ ⟫ₐ {b} arg ≡ arg
@@ -128,12 +141,6 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
     ss0-args σ0 [] nil = refl
     ss0-args σ0 (b ∷ bs) (cons arg args) =
         cong₂ cons (ss0-arg σ0 b arg) (ss0-args σ0 bs args)
-        
-  ids : Subst
-  ids = id
-
-  sub-id : ∀ {M : ABT} → ⟪ ids ⟫ M ≡ M
-  sub-id {M} = (sub-shift0 M (shift-up {k = 0}))
 
   rename-id : {M : ABT} → rename (↑ 0) M ≡ M
   rename-id {M} rewrite rename-subst (↑ 0) M | sub-id {M} = refl
@@ -150,15 +157,6 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
   exts-suc-rename : ∀ σ x → ⟅ ext σ ⟆ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
   exts-suc-rename σ x rewrite inc-shift σ x = refl
-
-  instance
-    _ : Composable ABT ABT ABT
-    _ = record { ⌈_⌉ = ⟪_⟫ ; val₂₃ = λ M → M }
-
-    _ : ComposableProps ABT ABT ABT
-    _ = record { var→val₂₃ = λ x → refl ; quote-val₂₃ = λ v₂ → refl
-          ; val₂₃-shift = λ v₂ → refl ; quote-var→val₁ = λ x → refl
-          ; quote-map = λ σ₂ v₁ → refl }
 
   sub-sub : ∀ {M σ₁ σ₂} → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
   sub-sub {M}{σ₁}{σ₂} = map-map-fusion M (λ x → sym (compose-sub σ₁ σ₂ x))
@@ -209,6 +207,23 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   commute-subst : ∀{N M σ} → ⟪ σ ⟫ (N [ M ]) ≡ (⟪ ext σ ⟫ N) [ ⟪ σ ⟫ M ]
   commute-subst {N}{M}{σ} = sym (subst-commute {N}{M}{σ})
 
+  rename→subst-inc : ∀ ρ → rename→subst (⟰ ρ) ≡ ⟰ (rename→subst ρ)
+  rename→subst-inc (↑ k) = refl
+  rename→subst-inc (x • ρ) rewrite rename→subst-inc ρ = refl
+
+  rename-subst-commute : ∀{N M ρ}
+     → (rename (ext ρ) N) [ rename ρ M ] ≡ rename ρ (N [ M ])
+  rename-subst-commute {N}{M}{ρ}
+      rewrite rename-subst ρ M | rename-subst (ext ρ) N
+      | rename-subst ρ (N [ M ]) {- | subst-commute {N}{M}{rename→subst ρ}-}
+      = begin
+      ⟪ ⟪ rename→subst ρ ⟫ M • id ⟫ (⟪ (` 0) • rename→subst (⟰ ρ) ⟫ N)
+                 ≡⟨ cong (λ □ → ⟪ ⟪ rename→subst ρ ⟫ M • id ⟫ (⟪ (` 0) • □ ⟫ N))
+                         (rename→subst-inc ρ) ⟩
+      ⟪ ⟪ rename→subst ρ ⟫ M • id ⟫ (⟪ (` 0) • ⟰ (rename→subst ρ) ⟫ N)
+          ≡⟨ subst-commute {N}{M}{rename→subst ρ} ⟩
+      ⟪ rename→subst ρ ⟫ (⟪ M • id ⟫ N)   ∎
+
   _〔_〕 : ABT → ABT → ABT
   _〔_〕 N M = ⟪ ext (subst-zero M) ⟫ N
 
@@ -229,36 +244,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
      ⟪ V • (σ ⨟ id) ⟫ N           ≡⟨ cong (λ □ → ⟪ V • □ ⟫ N) (sub-idR _)  ⟩
      ⟪ V • σ ⟫ N             ∎
 
-  exts-ext : ∀ σ τ → ((x : ℕ) → ⟅ σ ⟆ x ≡ ⟅ τ ⟆ x)
-           → ((x : ℕ) → ⟅ ext σ ⟆ x ≡ ⟅ ext τ ⟆ x)
-  exts-ext σ τ eq 0
-      rewrite exts-cons-shift σ | exts-cons-shift τ = refl
-  exts-ext σ τ eq (suc x)
-      rewrite exts-cons-shift σ | exts-cons-shift τ
-            | seq-subst σ (↑ 1) x | seq-subst τ (↑ 1) x
-            | inc-shift σ x | inc-shift τ x | eq x = refl
-
-  subst-extensionality : ∀{M : ABT}{σ τ : Subst}
+  subst-cong : ∀{M : ABT}{σ τ : Subst}
       → (∀ x → ⟅ σ ⟆ x ≡ ⟅ τ ⟆ x)
       → ⟪ σ ⟫ M ≡ ⟪ τ ⟫ M
-  sub-arg-ext : ∀{n} {A : Arg n} {σ τ : Subst}
-           → (∀ x → ⟅ σ ⟆ x ≡ ⟅ τ ⟆ x)
-           → ⟪ σ ⟫ₐ A ≡ ⟪ τ ⟫ₐ A
-  sub-args-ext : ∀{S} {Ms : Args S} {σ τ : Subst}
-           → (∀ x → ⟅ σ ⟆ x ≡ ⟅ τ ⟆ x)
-           → ⟪ σ ⟫₊ Ms ≡ ⟪ τ ⟫₊ Ms
-
-  abstract 
-    subst-extensionality {` x} {σ} {τ} eq = eq x
-    subst-extensionality {op ⦅ As ⦆} {σ} {τ} eq =
-        cong (λ □ → op ⦅ □ ⦆) (sub-args-ext eq)
-
-    sub-arg-ext {A = ast M}{σ}{τ} eq =
-        cong ast (subst-extensionality {M}{σ}{τ} eq)
-    sub-arg-ext {A = bind A}{σ}{τ} eq
-        with exts-ext σ τ eq
-    ... | ee = cong bind (sub-arg-ext ee)
-
-    sub-args-ext {Ms = nil} eq = refl
-    sub-args-ext {Ms = cons A Ms} eq =
-        cong₂ cons (sub-arg-ext eq) (sub-args-ext eq)
+  subst-cong {M} {σ} {τ} eq = map-cong M eq ext-cong

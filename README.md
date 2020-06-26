@@ -120,25 +120,25 @@ mappings from de Bruijn indices to ABTs. The identity substitution is
 the substitution `M • σ` maps `0` to the ABT `M` and each number `n`
 greater than zero to `σ (n - 1)`.
 
-The library defines the notation `⟦ σ ⟧ x` for applying a substitution
+The library defines the notation `⟅ σ ⟆ x` for applying a substitution
 `σ` to a variable `x`.
 
 For example.
 
-    ⟦ M • L • id ⟧ 0 ≡ M
-    ⟦ M • L • id ⟧ 1 ≡ L
-    ⟦ M • L • id ⟧ 2 ≡ ` 0
-    ⟦ M • L • id ⟧ 3 ≡ ` 1
+    ⟅ M • L • id ⟆ 0 ≡ M
+    ⟅ M • L • id ⟆ 1 ≡ L
+    ⟅ M • L • id ⟆ 2 ≡ ` 0
+    ⟅ M • L • id ⟆ 3 ≡ ` 1
 
 In general, substitution replaces a variable `i` with
 the ith ABT in the substitution:
 
-    ⟦ M₀ • … • Mᵢ • … • Mⱼ • id ⟧ i ≡ Mᵢ
+    ⟅ M₀ • … • Mᵢ • … • Mⱼ • id ⟆ i ≡ Mᵢ
 
 unless `i > j` where Mⱼ is the last ABT before the terminating `id`,
 in which case the result is `i - (j + 1)`
 
-    ⟦ M₀ • … • Mᵢ • … • Mⱼ • id ⟧ i ≡ ` (i - (j + 1))
+    ⟅ M₀ • … • Mᵢ • … • Mⱼ • id ⟆ i ≡ ` (i - (j + 1))
 
 The reason that the substitution subtracts `j + 1` from variables
 greater than `j` is that we typically perform substition when removing
@@ -148,11 +148,11 @@ term become closer to their bindings.
 The library defines the notation `⟪ σ ⟫ M` for applying a substitution
 `σ` to an ABT `M`. When `M` is a variable, we have
 
-    ⟪ σ ⟫ x ≡ ` ⟦ σ ⟧ x
+    ⟪ σ ⟫ x ≡ ` ⟅ σ ⟆ x
 
 For example:
 
-    ⟪ M • L • id ⟫ (` 0) ≡ ` (⟦ M • L • id ⟧ 0) ≡ M
+    ⟪ M • L • id ⟫ (` 0) ≡ ` (⟅ M • L • id ⟆ 0) ≡ M
 
 Next suppose `M` is an application with variables in the operator and
 argument positions.
@@ -180,16 +180,21 @@ moves further away from the bindings of their free variables. Thus, to make
 sure the free variables in each `Mᵢ` still point to the appropriate bindings,
 they all need to be incremented by one.  The library defines a shift
 operator, written `↑ k`, that adds `k` to every free variable in an
-ABT.  Putting these two actions together, the library defines a
-function named `exts` that transports a substitution σ across one
+ABT. The operator `⟰ σ` applies shift by 1 to every term in the
+substitution.
+
+    ⟰ σ ≡ ⟪ ↑ 1 ⟫ M₀ • ⟪ ↑ 1 ⟫ M₁ • …
+
+Putting these two actions together, the library defines a
+function named `ext` that transports a substitution σ across one
 lambda abstraction.
 
-    exts σ ≡ ` 0 • ⟪ ↑ 1 ⟫ M₀ • ⟪ ↑ 1 ⟫ M₁ • …
+    ext σ ≡ ` 0 • ⟰ σ
 
 So we have the following two equations about `exts`:
 
-    (exts-0)     ⟦ exts σ ⟧ 0 ≡ 0
-    (exts-suc)‡  ⟦ exts σ ⟧ (suc x) ≡ ⟦ σ ⨟ ↑ 1 ⟧ x
+    (exts-0)     ⟅ ext σ ⟆ 0 ≡ 0
+    (exts-suc)†  ⟅ ext σ ⟆ (suc x) ≡ ⟅ σ ⨟ ↑ 1 ⟆ x
 
 where the operation `σ₁ ⨟ σ₂` composes two substitutions by applying
 `σ₁` and then `σ₂`.
@@ -197,7 +202,7 @@ where the operation `σ₁ ⨟ σ₂` composes two substitutions by applying
 In general, substitution acts on lambda abstractions according
 to the following equation.
 
-    ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ exts σ ⟫ N)
+    ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ ext σ ⟫ N)
 
 Even more generally, and recalling the way in which we defined lambda
 abstraction in terms of an ABT operator node, each occurrence of the
@@ -235,12 +240,12 @@ of the untyped lambda calculus.
 Converting the Substitution Lemma to our notation and to Bruijn
 indices (let `x` be index 0 and `y` be index 1), we obtain
 
-    M[ N ][ L ] ≡ (⟪ exts (L • id) ⟫ M) [ N [ L ] ]
+    M[ N ][ L ] ≡ (⟪ ext (L • id) ⟫ M) [ N [ L ] ]
 
 Generalizing the substitution by `L` to any simultaneous substitution
 `σ`, we have the following theorem which is provided by the library.
 
-    (commute-subst)‡    ⟪ σ ⟫ (N [ M ]) ≡ (⟪ exts σ ⟫ N) [ ⟪ σ ⟫ M ]
+    (commute-subst)†    ⟪ σ ⟫ (N [ M ]) ≡ (⟪ ext σ ⟫ N) [ ⟪ σ ⟫ M ]
 
 Setting up the infrastructure necessary to prove this theorem is a
 fair bit of work, so it is nice to reuse this theorem instead of
@@ -251,7 +256,7 @@ proofs based on logical relations. A simultaneous substitution
 followed by a single substitution can be combined into one
 simultaneous substitution as follows.
 
-    (exts-sub-cons)‡    (⟪ exts σ ⟫ N) [ M ] ≡ ⟪ M • σ ⟫ N
+    (exts-sub-cons)†    (⟪ ext σ ⟫ N) [ M ] ≡ ⟪ M • σ ⟫ N
 
 The proof of this property is also provided in the library, using the
 same infrastructure needed to prove `commute-subst`.
@@ -277,8 +282,8 @@ for substitutions, the library defines an `ext` function that
 transports a renaming across one binder, providing the following
 equations.
 
-    (ext-0)     ⦉ ext ρ ⦊ 0 ≡ 0
-    (ext-suc)   ⦉ ext ρ ⦊ (suc x) ≡ suc (⦉ ρ ⦊ x)
+    (ext-0)     ⟅ ext ρ ⟆ 0 ≡ 0
+    (ext-suc)   ⟅ ext ρ ⟆ (suc x) ≡ suc (⟅ ρ ⟆ x)
 
 To apply a renaming `ρ` to a term `M`, the library defines the
 `rename` function. This function is quite similar to the `⟪_⟫`
@@ -293,7 +298,7 @@ substitution, named `rename→subst`, and the following equation that
 relates the application of a renaming to the application of the
 corresponding substitution.
 
-    (rename-subst)‡     rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
+    (rename-subst)†     rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
 
 For example, from this equation we have
 
@@ -302,12 +307,12 @@ For example, from this equation we have
 Combining this with the `(exts-suc)` equation, we can express `exts`
 in terms of `rename`.
 
-    (exts-suc-rename)   ⟦ exts σ ⟧ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
+    (exts-suc-rename)†   ⟅ ext σ ⟆ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
 
 Analogous to the `commute-subst` theorem mentioned above,
 renaming also commutes with single substitution.
 
-    (rename-subst-commute)‡
+    (rename-subst-commute)†
         (rename (ext ρ) N) [ rename ρ M ] ≡ rename ρ (N [ M ])
 
 
@@ -327,27 +332,27 @@ These four operators form the σ algebra of Abadi, Cardelli, Curien,
 and Levy (1991). The `exts` function is not part of the σ algebra but
 it is equivalent to the following σ algebra expression.
 
-    (exts-cons-shift)‡     exts σ ≡ ` 0 • (σ ⨟ ↑ 1)
+    (exts-cons-shift)†     ext σ ≡ ` 0 • (σ ⨟ ↑ 1)
 
 The equations of the σ algebra, adapted to ABTs, are as follows.
 
-    (sub-head)  ⟦ M • σ ⟧ 0                   ≡ M
-    (sub-tail)  ↑ 1 ⨟ (M • σ)                 ≡ σ
-    (Z-shift)†  ⟦ ` 0 • ↑ 1 ⟧ x               ≡ ` x
-    (sub-η)†    ⟦ (⟪ σ ⟫ (` 0)) • (↑ ⨟ σ) ⟧ x ≡ ⟦ σ ⟧ x
+    (sub-head)   ⟅ M • σ ⟆ 0                   ≡ M
+    (sub-tail)†  ↑ 1 ⨟ (M • σ)                 ≡ σ
+    (Z-shift)†   ⟅ ` 0 • ↑ 1 ⟆ x               ≡ ` x
+    (sub-η)†     ⟅ (⟪ σ ⟫ (` 0)) • (↑ ⨟ σ) ⟆ x ≡ ⟅ σ ⟆ x
 
-    (sub-op)    ⟪ σ ⟫ (op ⦅ args ⦆)     ≡ op ⦅ ⟪ σ ⟫₊ args ⦆
-    (sub-nil)   ⟪ σ ⟫₊ nil             ≡ nil
-    (sub-cons)  ⟪ σ ⟫₊ (cons arg args) ≡ cons (⟪ σ ⟫ₐ arg) (⟪ σ ⟫₊ args)
-    (sub-ast)   ⟪ σ ⟫ₐ (ast M)         ≡ ast (⟪ σ ⟫ M)
-    (sub-bind)  ⟪ σ ⟫ₐ (bind arg)      ≡ bind (⟪ exts σ ⟫ₐ arg)
+    (sub-op)     ⟪ σ ⟫ (op ⦅ args ⦆)     ≡ op ⦅ ⟪ σ ⟫₊ args ⦆
+    (sub-nil)    ⟪ σ ⟫₊ nil             ≡ nil
+    (sub-cons)   ⟪ σ ⟫₊ (cons arg args) ≡ cons (⟪ σ ⟫ₐ arg) (⟪ σ ⟫₊ args)
+    (sub-ast)    ⟪ σ ⟫ₐ (ast M)         ≡ ast (⟪ σ ⟫ M)
+    (sub-bind)   ⟪ σ ⟫ₐ (bind arg)      ≡ bind (⟪ ext σ ⟫ₐ arg)
     
-    (sub-sub)†  ⟪ τ ⟫ ⟪ σ ⟫ M  ≡ ⟪ σ ⨟ τ ⟫ M
+    (sub-sub)†   ⟪ τ ⟫ ⟪ σ ⟫ M  ≡ ⟪ σ ⨟ τ ⟫ M
 
     (sub-idL)†   id ⨟ σ        ≡ σ
     (sub-idR)†   σ ⨟ id        ≡ σ
     (sub-assoc)† (σ ⨟ τ) ⨟ θ    ≡ σ ⨟ (τ ⨟ θ)
-    (sub-dist)   (M • σ) ⨟ τ    ≡ (⟪ τ ⟫ M) • (σ ⨟ τ)
+    (sub-dist)†  (M • σ) ⨟ τ    ≡ (⟪ τ ⟫ M) • (σ ⨟ τ)
 
 When the equations are applied from left to right, they form a rewrite
 system that decides whether any two substitutions are equal.  Many of
@@ -356,11 +361,8 @@ are automatically taken into account when you use `refl` to prove an
 equality in Agda.
 
 † The σ algebra equations that are not definitional equalities are
-  marked with a †. They have been added to Agda's rewrites using the
-  `--rewriting` option, so if you add the `--rewriting` option to the
-  top of your Agda files, then they will also automatically be taken
-  into account when you use `refl`. Otherwise, you will need to
+  marked with a †. We would have liked to add them to Agda's
+  automatic rewrites, but we have found that the rewriting extension
+  triggers internal errors in Agda. Thus, you will need to
   manually apply the equations marked with †.
 
-‡ These equations are neither definitional nor have they been added to
-  Agda's rewrites, so you will need to apply them manually.

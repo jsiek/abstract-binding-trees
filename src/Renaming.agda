@@ -69,7 +69,7 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
   ren-tail : ∀ (ρ : Rename) x → (↑ 1 ⨟ x • ρ) ≡ ρ
   ren-tail ρ x rewrite ren-up-seq 1 (x • ρ) | drop-0 ρ = refl
 
-  inc=⨟ᵣ↑ : ∀ (ρ : Rename) → inc ρ ≡ ρ ⨟ ↑ 1
+  inc=⨟ᵣ↑ : ∀ (ρ : Rename) → ⟰ ρ ≡ ρ ⨟ ↑ 1
   inc=⨟ᵣ↑ (↑ k) rewrite ren-up-seq k (↑ 1) | +-comm k 1 = refl
   inc=⨟ᵣ↑ (x • ρ) rewrite ren-cons-seq x ρ (↑ 1) | inc=⨟ᵣ↑ ρ = refl
 
