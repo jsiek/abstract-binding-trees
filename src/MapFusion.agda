@@ -103,7 +103,8 @@ map-map-fusion {ℓ}{V₁}{E₁}{V₂}{E₂}{V₃}{E₃}{{S₁}}{{S₂}}{{S₃}}
   (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ =
   cong (_⦅_⦆ op) (mmf-args args σ₂∘σ₁≈σ₃)
   where
-  G : ∀{σ₂ : E₂} → _∘_≈_{lzero}{ℓ}{ℓ}{Var}{Rename} (σ₂ , (var→val 0)) (↑ 1) (⟰ σ₂)
+  G : ∀{σ₂ : E₂} → _∘_≈_ {lzero}{ℓ}{ℓ}{Var}{Rename}
+                         (σ₂ , (var→val 0)) (↑ 1) (⟰ σ₂)
   G {σ₂} x rewrite lookup-suc σ₂ (var→val 0) x | lookup-shift σ₂ x = refl
   H : ∀{σ₂ : E₂} → ↑ 1 ∘ σ₂ ≈ ⟰ σ₂
   H {σ₂} x rewrite lookup-shift σ₂ x | quote-shift{ℓ}{V₂} (⟅ σ₂ ⟆ x) = refl
