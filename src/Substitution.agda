@@ -15,7 +15,7 @@ open import Renaming public
 
 module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
-  open import AbstractBindingTree Op sig public
+  open import AbstractBindingTree Op sig
   open import Environment
   open Renaming.WithOpSig Op sig public
   open import Map Op sig

@@ -80,7 +80,6 @@ record Similar {ℓ₁ ℓ₂} (V₁ : Set ℓ₁)(V₂ : Set ℓ₂) (C₁ : Se
   {{_ : Foldable V₁ C₁}} {{_ : Foldable V₂ C₂}}
   {{_ : RelFold V₁ V₂ C₁ C₂}} : Set (lsuc (ℓ₁ ⊔ ℓ₂)) where
   field ret≈ : ∀{v₁ : V₁}{v₂ : V₂} → v₁ ∼ v₂ → ret v₁ ≈ ret v₂
-        var→val∼ : ∀ x → var→val x ∼ var→val x
         shift∼ : ∀{v₁ : V₁}{v₂ : V₂} → v₁ ∼ v₂ → ⇑ v₁ ∼ ⇑ v₂
   field op⩳ : ∀{op}{rs₁ : Tuple (sig op) (Bind V₁ C₁)}
                    {rs₂ : Tuple (sig op) (Bind V₂ C₂)}
