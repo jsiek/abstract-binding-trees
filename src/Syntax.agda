@@ -19,6 +19,8 @@ open import Substitution public
 
 module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
+  open import Environment
+  open Env {{...}}
   open ABTOps Op sig public
 
   open import WellScoped Op sig public
@@ -49,22 +51,22 @@ module OpSig (Op : Set) (sig : Op → List ℕ)  where
     make-ren ρ x zero = ↑ 0
     make-ren ρ x (suc m) = ρ x • make-ren ρ (suc x) m
 
-    ⦉make-ren⦊ : ∀{m}{x}{i}{ρ}
+    ⟅make-ren⟆ : ∀{m}{x}{i}{ρ}
        → x < m
-       → ⦉ make-ren ρ i m ⦊ x ≡ ρ (x + i)
-    ⦉make-ren⦊ {suc m} {zero} {i} {ρ} x<m = refl
-    ⦉make-ren⦊ {suc m} {suc x} {i} {ρ} x<m
-        with ⦉make-ren⦊ {m} {x} {suc i} {ρ} (≤-pred x<m)
+       → ⟅ make-ren ρ i m ⟆ x ≡ ρ (x + i)
+    ⟅make-ren⟆ {suc m} {zero} {i} {ρ} x<m = refl
+    ⟅make-ren⟆ {suc m} {suc x} {i} {ρ} x<m
+        with ⟅make-ren⟆ {m} {x} {suc i} {ρ} (≤-pred x<m)
     ... | IH rewrite +-suc x i = 
         IH
      
   make-renaming : (Var → Var) → ℕ → Rename
   make-renaming ρ Γ = make-ren ρ 0 Γ
 
-  ⦉make-renaming⦊ : ∀{Γ}{x}{ρ}
+  ⟅make-renaming⟆ : ∀{Γ}{x}{ρ}
      → x < Γ
-     → ⦉ make-renaming ρ Γ ⦊ x ≡ ρ x
-  ⦉make-renaming⦊ {Γ}{x}{ρ} x<Γ
-      with ⦉make-ren⦊ {i = 0}{ρ} x<Γ
+     → ⟅ make-renaming ρ Γ ⟆ x ≡ ρ x
+  ⟅make-renaming⟆ {Γ}{x}{ρ} x<Γ
+      with ⟅make-ren⟆ {i = 0}{ρ} x<Γ
   ... | mr rewrite +-comm x 0 = mr
 

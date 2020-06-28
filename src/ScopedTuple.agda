@@ -1,10 +1,10 @@
 open import Data.List using (List; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit.Polymorphic using (⊤; tt)
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Agda.Primitive using (Level; lzero; lsuc)
+open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 
 module ScopedTuple where
 
@@ -18,8 +18,8 @@ A ⇨ B = (∀ {b : ℕ} → A b → B b)
 𝒫 : {ℓ : Level} → Scet {ℓ} → Set (lsuc ℓ)
 𝒫 {ℓ} A = (∀ {b : ℕ} → A b → Set ℓ)
 
-_✖_ : {ℓ : Level} → Scet {ℓ} → Scet {ℓ} → Set (lsuc ℓ)
-_✖_ {ℓ} A B = (∀ {b : ℕ} → A b → B b → Set ℓ)
+_✖_ : {ℓ₁ ℓ₂ : Level} → Scet {ℓ₁} → Scet {ℓ₂} → Set (lsuc (ℓ₁ ⊔ ℓ₂))
+_✖_ {ℓ₁}{ℓ₂} A B = (∀ {b : ℕ} → A b → B b → Set (ℓ₁ ⊔ ℓ₂))
 
 Sig : Set
 Sig = List ℕ
@@ -41,7 +41,8 @@ all : ∀{A} → 𝒫 A → {bs : Sig} → Tuple bs A → Set
 all {A} P {[]} tt = ⊤
 all {A} P {b ∷ bs} ⟨ x , xs ⟩ = P x × (all P xs)
 
-zip : ∀{ℓ}{A B} → _✖_ {ℓ} A B → {bs : Sig} → Tuple bs A → Tuple bs B → Set ℓ
+zip : ∀{ℓ₁}{ℓ₂}{A B} → _✖_ {ℓ₁}{ℓ₂} A B → {bs : Sig}
+   → Tuple bs A → Tuple bs B → Set (ℓ₁ ⊔ ℓ₂)
 zip R {[]} tt tt = ⊤
 zip R {b ∷ bs} ⟨ a₁ , as₁ ⟩ ⟨ a₂ , as₂ ⟩ = R a₁ a₂ × zip R as₁ as₂
 

@@ -14,12 +14,15 @@ open Shiftable {{...}}
 open Quotable {{...}}
 open Env  {{...}}
 
-map : ∀{E V} {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Quotable V}}
+map : ∀{ℓ}{E : Set ℓ}{V : Set ℓ}
+   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Quotable V}}
    → E → ABT → ABT
 
-map-arg : ∀{E V} {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Quotable V}}
+map-arg : ∀{ℓ}{E : Set ℓ}{V : Set ℓ}
+   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Quotable V}}
    → E → {b : ℕ} →  Arg b → Arg b
-map-args : ∀{E V} {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Quotable V}}
+map-args : ∀{ℓ}{E}{V : Set ℓ}
+   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Quotable V}}
    → E → {bs : List ℕ} →  Args bs → Args bs
 map σ (` x) = “ ⟅ σ ⟆ x ”
 map {E}{V} σ (op ⦅ args ⦆) = op ⦅ map-args σ args ⦆
@@ -28,7 +31,8 @@ map-arg σ {suc b} (bind M) = bind (map-arg (ext σ) M)
 map-args σ {[]} nil = nil
 map-args σ {b ∷ bs} (cons x args) = cons (map-arg σ x) (map-args σ args)
 
-_∘_≈_ : ∀ {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}
+_∘_≈_ : ∀{ℓ₁}{ℓ₂}{ℓ₃}{V₁ : Set ℓ₁}{E₁ : Set ℓ₁}{V₂ : Set ℓ₂}{E₂ : Set ℓ₂}
+        {V₃ : Set ℓ₃}{E₃ : Set ℓ₃}
         {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}{{S₃ : Shiftable V₃}}
         {{M₁ : Env E₁ V₁}} {{M₂ : Env E₂ V₂}} {{M₃ : Env E₃ V₃}}
         {{Q₁ : Quotable V₁}}{{Q₂ : Quotable V₂}}{{Q₃ : Quotable V₃}}
@@ -36,7 +40,8 @@ _∘_≈_ : ∀ {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}
 _∘_≈_ {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}{{M₁}}{{M₂}}{{M₃}} σ₂ σ₁ σ₃ =
   ∀ x → map σ₂ “ ⟅ σ₁ ⟆ x ” ≡ “ ⟅ σ₃ ⟆ x ”
 
-map-map-fusion-ext : ∀{V₁ E₁ V₂ E₂ V₃ E₃}
+map-map-fusion-ext : ∀{ℓ₁}{ℓ₂}{ℓ₃}  {V₁ : Set ℓ₁}{E₁ : Set ℓ₁}
+  {V₂ : Set ℓ₂}{E₂ : Set ℓ₂}  {V₃ : Set ℓ₃}{E₃ : Set ℓ₃}
   {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}{{S₃ : Shiftable V₃}}
   {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}} {{_ : Env E₃ V₃}}
   {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
@@ -47,7 +52,7 @@ map-map-fusion-ext : ∀{V₁ E₁ V₂ E₂ V₃ E₃}
       → σ₂ ∘ σ₁ ≈ σ₃ → ext σ₂ ∘ ext σ₁ ≈ ext σ₃)
    → map σ₂ (map σ₁ M) ≡ map σ₃ M
 map-map-fusion-ext (` x) σ₂∘σ₁≈σ₃ mf-ext = σ₂∘σ₁≈σ₃ x
-map-map-fusion-ext {V₁}{E₁}{V₂}{E₂}{V₃}{E₃} (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ mf-ext =
+map-map-fusion-ext (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ mf-ext =
   cong (_⦅_⦆ op) (mmf-args args σ₂∘σ₁≈σ₃)
   where
   mmf-arg : ∀{σ₁ σ₂ σ₃ b} (arg : Arg b) → σ₂ ∘ σ₁ ≈ σ₃
@@ -62,14 +67,15 @@ map-map-fusion-ext {V₁}{E₁}{V₂}{E₂}{V₃}{E₃} (op ⦅ args ⦆) σ₂�
   mmf-args {bs = b ∷ bs} (cons arg args) σ₂∘σ₁≈σ₃ =
       cong₂ cons (mmf-arg arg σ₂∘σ₁≈σ₃) (mmf-args args σ₂∘σ₁≈σ₃)
 
-_≈_ : ∀ {V₁}{E₁}{V₂}{E₂}
+_≈_ : ∀{ℓ}{V₁ : Set ℓ}{E₁}{V₂ : Set ℓ}{E₂}
         {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}
         {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}}
         {{_ : Quotable V₁}} {{_ : Quotable V₂}}
         (σ₂ : E₂)(σ₁ : E₁) → Set
-_≈_ {V₁}{E₁}{V₂}{E₂}{{M₁}}{{M₂}} σ₁ σ₂ = ∀ x → “ ⟅ σ₁ ⟆ x ” ≡ “ ⟅ σ₂ ⟆ x ”
+_≈_ σ₁ σ₂ = ∀ x → “ ⟅ σ₁ ⟆ x ” ≡ “ ⟅ σ₂ ⟆ x ”
 
-map-cong : ∀{V₁ E₁ V₂ E₂}
+{- todo: generalize to map-cong to simulation -}
+map-cong : ∀{ℓ}{V₁ : Set ℓ}{E₁ : Set ℓ}{V₂ : Set ℓ}{E₂ : Set ℓ}
    {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}  
    {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}} {{_ : Quotable V₁}} {{_ : Quotable V₂}}
    {σ₁ : E₁}{σ₂ : E₂}

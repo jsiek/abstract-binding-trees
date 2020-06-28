@@ -112,7 +112,7 @@ The complete Agda code for this lambda calculus example is
 in the file [`Lambda.agda`](./src/examples/Lambda.agda).
 
 
-## Substitution
+# Substitution
 
 The library defines a type `Subst`, for _substitution_, to represent
 mappings from de Bruijn indices to ABTs. The identity substitution is
@@ -316,7 +316,7 @@ renaming also commutes with single substitution.
         (rename (ext ρ) N) [ rename ρ M ] ≡ rename ρ (N [ M ])
 
 
-## Going Deeper
+## Going Deeper with Substitution
 
 You may very well have need of other equations involving
 substitutions. If those equations only involve the following

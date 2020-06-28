@@ -12,11 +12,6 @@
      → σ ⦂ Γ ⇒ Δ
      → Δ ⊢c M ↝ fold σ M ⦂ A
 
-  preserve-map : ∀{M σ Γ Δ A}
-     → Γ ⊢ M ⦂ A
-     → σ ⦂ Γ ⇒ Δ
-     → Δ ⊢ map-abt σ M ⦂ A
-
  ---------------------------}
 
 import ABTPredicate

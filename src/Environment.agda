@@ -5,7 +5,7 @@ open import Var
 
 module Environment where
 
-record Shiftable (V : Set) : Set where
+record Shiftable {ℓ} (V : Set ℓ) : Set ℓ where
   field ⇑ : V → V
         var→val : Var → V
         var→val-suc-shift : ∀{x} → var→val (suc x) ≡ ⇑ (var→val x)
@@ -17,7 +17,7 @@ instance
 
 open Shiftable {{...}}
 
-record Env (E : Set) (V : Set) {{_ : Shiftable V}}: Set where
+record Env {ℓ} (E : Set ℓ) (V : Set ℓ) {{_ : Shiftable V}} : Set ℓ where
   field ⟅_⟆  : E → Var → V
         _,_ : E → V → E
         ⟰ : E → E
@@ -27,12 +27,12 @@ record Env (E : Set) (V : Set) {{_ : Shiftable V}}: Set where
   ext : E → E
   ext ρ = ρ , (var→val 0)
 
-fun-extend : ∀{V}{{_ : Shiftable V}} → (Var → V) → V → (Var → V)
+fun-extend : ∀{ℓ}{V : Set ℓ}{{_ : Shiftable V}} → (Var → V) → V → (Var → V)
 fun-extend ρ v zero = v
 fun-extend ρ v (suc x) = ⇑ (ρ x)
 
 instance
-  Fun-is-Env : ∀{V}{{_ : Shiftable V}} → Env (Var → V) V
+  Fun-is-Env : ∀{ℓ}{V : Set ℓ}{{_ : Shiftable V}} → Env (Var → V) V
   Fun-is-Env = record { ⟅_⟆ = λ ρ x → ρ x ; _,_ = fun-extend
       ; ⟰ = λ ρ x → ⇑ (ρ x) ; lookup-0 = λ ρ v → refl
       ; lookup-suc = λ ρ v x → refl ; lookup-shift = λ ρ x → refl }

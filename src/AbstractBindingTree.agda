@@ -123,7 +123,7 @@ ctx-depth-arg (CBind arg) = suc (ctx-depth-arg arg)
 ctx-depth-args (tcons arg cargs _) = ctx-depth-args cargs
 ctx-depth-args (ccons carg args _) = ctx-depth-arg carg
 
-record Quotable (V : Set) : Set where
+record Quotable {ℓ} (V : Set ℓ) : Set ℓ where
   field “_” : V → ABT
 
 instance

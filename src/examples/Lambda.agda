@@ -145,6 +145,7 @@ progress (⊢· ⊢L ⊢M _)
 ... | done V-ƛ                              =  step β-ƛ
 
 
+{-
 module _ where
   open FoldPred 𝑃 (λ Γ v A → ⊤) _∋_⦂_ _⊢_⦂_ 
   RenPres : MapPreserveABTPred {I = Type} Rename-is-Map
@@ -185,3 +186,4 @@ preserve (⊢· ⊢L ⊢M refl) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L�
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₂ M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′) refl
 preserve (⊢ƛ ⊢M refl) (ξ-ƛ M—→N) = ⊢ƛ (preserve ⊢M M—→N) refl
 preserve (⊢· (⊢ƛ ⊢N refl) ⊢M refl) β-ƛ = substitution ⊢M ⊢N
+-}

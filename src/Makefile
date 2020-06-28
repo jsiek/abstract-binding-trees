@@ -6,12 +6,12 @@ AGDA =	ScopedTuple.agda \
 	AbstractBindingTree.agda \
 	GenericSubstitution.agda \
 	Map.agda \
-	Rename.agda \
-	Fold.agda \
+	Renaming.agda \
 	MapFusion.agda \
 	Substitution.agda \
 	ABTPredicate.agda \
 	MapPreserve.agda \
+	Fold.agda \
 	FoldMapFusion.agda \
 	FoldFoldFusion.agda \
 	Preserve.agda \

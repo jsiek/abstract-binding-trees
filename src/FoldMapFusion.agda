@@ -1,4 +1,4 @@
-open import Agda.Primitive using (Level; lzero; lsuc)
+open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; z≤n; s≤s)
@@ -8,7 +8,7 @@ open import Environment
 open import Function using (_∘_)
 import Substitution
 open import GenericSubstitution
-open import ScopedTuple
+open import ScopedTuple using (Tuple; zip)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
@@ -18,11 +18,89 @@ open import Var
 module FoldMapFusion (Op : Set) (sig : Op → List ℕ) where
 
 open import AbstractBindingTree Op sig
-open import Map Op sig
+open import Renaming
+open Renaming.WithOpSig Op sig
+open import Map Op sig using (map; map-arg; map-args)
 open import Fold Op sig
+open Shiftable {{...}}
+open Env {{...}}
+open Quotable {{...}}
+open Foldable {{...}}
 
-{-------------------- Fusion of  FoldEnv and MapEnv   ---------------------}
+{-------------------- Fusion of fold and map   ---------------------}
 
+_⨟_≈_ : ∀{ℓᶠ ℓᵐ} {Vᵐ Eᵐ : Set ℓᵐ}{Vᶠ Cᶠ Eᶠ : Set ℓᶠ}
+    {{_ : Shiftable Vᵐ}} {{_ : Env Eᵐ Vᵐ}} {{_ : Quotable Vᵐ}}
+    {{_ : Shiftable Vᶠ}} {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+    → Eᵐ → Eᶠ → Eᶠ → Set ℓᶠ
+σ ⨟ δ ≈ γ = ∀ x → fold δ (“ ⟅ σ ⟆ x ”) ≡ ret (⟅ γ ⟆ x)
+
+instance
+  ≡-RelFold : ∀{ℓ}{V : Set ℓ}{C : Set ℓ} → RelFold V V C C
+  ≡-RelFold {ℓ} = record { _∼_ = _≡_ ; _≈_ = _≡_ }
+
+fold-map-fusion-ext : ∀{ℓᵐ ℓᶠ}{Vᵐ Eᵐ : Set ℓᵐ}{ Vᶠ Cᶠ Eᶠ : Set ℓᶠ}
+     {{_ : Shiftable Vᵐ}} {{_ : Env Eᵐ Vᵐ}} {{_ : Quotable Vᵐ}}
+     {{_ : Shiftable Vᶠ}} {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+     {σ : Eᵐ}{δ γ : Eᶠ}
+     (M : ABT)
+   → σ ⨟ δ ≈ γ
+   → (∀{σ : Eᵐ}{δ γ : Eᶠ}{v : Vᶠ} → σ ⨟ δ ≈ γ → ext σ ⨟ (δ , v) ≈ (γ , v))
+   → (∀{op}{rs rs′ : Tuple (sig op) (Bind Vᶠ Cᶠ)}
+         → zip (_⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}) rs rs′
+         → fold-op op rs ≡ fold-op op rs′)
+   → fold δ (map σ M)  ≡ fold γ M
+fold-map-fusion-ext (` x) σ⨟δ≈γ env-ext op-cong = σ⨟δ≈γ x
+fold-map-fusion-ext {Vᵐ = Vᵐ}{Eᵐ}{Vᶠ}{Cᶠ}{Eᶠ}{σ = σ}{δ}{γ} (op ⦅ args ⦆) σ⨟δ≈γ
+    env-ext op-cong = op-cong (fuse-args args σ⨟δ≈γ)
+    where
+    fuse-arg : ∀{b}{σ : Eᵐ}{δ γ : Eᶠ} (arg : Arg b)
+       → σ ⨟ δ ≈ γ
+       → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ} (fold-arg δ (map-arg σ arg)) (fold-arg γ arg)
+    fuse-args : ∀{bs}{σ : Eᵐ}{δ γ : Eᶠ} (args : Args bs)
+       → σ ⨟ δ ≈ γ
+       → zip (_⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}) (fold-args δ (map-args σ args))
+             (fold-args γ args)
+    fuse-arg {zero} {σ} {δ} {γ} (ast M) σ⨟δ≈γ =
+        fold-map-fusion-ext M σ⨟δ≈γ env-ext op-cong
+    fuse-arg {suc b} {σ} {δ} {γ} (bind arg) σ⨟δ≈γ refl =
+        fuse-arg {b} arg (env-ext σ⨟δ≈γ)
+    fuse-args {[]} {σ} {δ} {γ} nil σ⨟δ≈γ = tt
+    fuse-args {b ∷ bs} {σ} {δ} {γ} (cons arg args) σ⨟δ≈γ =
+        ⟨ fuse-arg{b}{σ}{δ}{γ} arg σ⨟δ≈γ , fuse-args args σ⨟δ≈γ ⟩
+
+fold-rename-fusion : ∀ {ℓ : Level}{Vᶠ Eᶠ Cᶠ : Set ℓ}
+     {{_ : Shiftable Vᶠ}} {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+     {{_ : Shiftable Cᶠ}}
+     {ρ : Rename}{δ γ : Eᶠ}
+     (M : ABT)
+   → ρ ⨟ δ ≈ γ
+   → (∀{op}{rs rs′ : Tuple (sig op) (Bind Vᶠ Cᶠ)}
+         → zip (_⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}) rs rs′
+         → fold-op op rs ≡ fold-op op rs′)
+   → (∀ (v : Vᶠ) → ⇑ (ret v) ≡ ret (⇑ v))
+   → fold δ (rename ρ M)  ≡ fold γ M
+fold-rename-fusion {ℓ}{Vᶠ}{Eᶠ} M ρ⨟δ≈γ op-cong shift-ret =
+  fold-map-fusion-ext M ρ⨟δ≈γ ext-env op-cong
+  where
+  ext-env : ∀{ρ : Rename}{σ₁ σ₂ : Eᶠ}{v : Vᶠ} → ρ ⨟ σ₁ ≈ σ₂
+     → ext ρ ⨟ (σ₁ , v) ≈ (σ₂ , v)
+  ext-env {ρ} {σ₁} {σ₂} {v} prem zero rewrite lookup-0 σ₁ v | lookup-0 σ₂ v =
+      refl
+  ext-env {ρ} {σ₁} {σ₂} {v} prem (suc x) rewrite lookup-suc σ₂ v x
+      | inc-shift ρ x | lookup-suc σ₁ v (⟅ ρ ⟆ x) =
+      begin
+          ret (⇑ (⟅ σ₁ ⟆ (⟅ ρ ⟆ x)))
+      ≡⟨ sym (shift-ret _) ⟩
+          ⇑ (ret (⟅ σ₁ ⟆ (⟅ ρ ⟆ x)))
+      ≡⟨ cong ⇑ (prem x) ⟩
+          ⇑ (ret (⟅ σ₂ ⟆ x))
+      ≡⟨ shift-ret _ ⟩
+          ret (⇑ (⟅ σ₂ ⟆ x))
+      ∎
+
+
+{-
 record FuseFoldEnvMapEnv  {Vᵐ Vᶠ Envᵐ Envᶠ : Set} {ℓ : Level}{Cᶠ : Set ℓ}
   (M : MapEnv Envᵐ Vᵐ) (F : FoldEnv Envᶠ Vᶠ Cᶠ) : Set (lsuc ℓ)
   where
@@ -67,7 +145,7 @@ record FuseFoldEnvRename {Env V : Set} {ℓ : Level}{C : Set ℓ}
   (F : FoldEnv Env V C) : Set (lsuc ℓ) where
   open FoldEnv F
   open GenericSubst Var-is-Shiftable using (GSubst-is-Env; g-inc-shift)
-  open Substitution using (Rename; ⦉_⦊; ext; ext-0; ext-suc)
+  open Substitution using (Rename; ⟅_⟆; ext; ext-0; ext-suc)
   open Substitution.ABTOps Op sig
       using (rename; ren-arg; ren-args; Rename-is-Map)
 
@@ -77,17 +155,17 @@ record FuseFoldEnvRename {Env V : Set} {ℓ : Level}{C : Set ℓ}
         shift-ret : ∀ v → shiftᶜ (ret v) ≡ ret (shift v)
 
   _⨟_≈_ : Rename → Env → Env → Set ℓ
-  ρ ⨟ σ₁ ≈ σ₂ = ∀ x → fold σ₁ (` (⦉ ρ ⦊ x)) ≡ ret (lookup σ₂ x)
+  ρ ⨟ σ₁ ≈ σ₂ = ∀ x → fold σ₁ (` (⟅ ρ ⟆ x)) ≡ ret (lookup σ₂ x)
   
   ext-pres : ∀{ρ σ₁ σ₂ v} → ρ ⨟ σ₁ ≈ σ₂ → Env.ext-env GSubst-is-Env ρ ⨟ (σ₁ , v) ≈ (σ₂ , v)
   ext-pres {ρ} {σ₁} {σ₂} {v} prem zero rewrite ext-0 ρ
       | lookup-0 σ₁ v | lookup-0 σ₂ v = refl
   ext-pres {ρ} {σ₁} {σ₂} {v} prem (suc x) rewrite lookup-suc σ₂ v x
-      | g-inc-shift ρ x | lookup-suc σ₁ v (⦉ ρ ⦊ x) =
+      | g-inc-shift ρ x | lookup-suc σ₁ v (⟅ ρ ⟆ x) =
       begin
-          ret (shift (lookup σ₁ (⦉ ρ ⦊ x)))
+          ret (shift (lookup σ₁ (⟅ ρ ⟆ x)))
       ≡⟨ sym (shift-ret _) ⟩
-          shiftᶜ (ret (lookup σ₁ (⦉ ρ ⦊ x)))
+          shiftᶜ (ret (lookup σ₁ (⟅ ρ ⟆ x)))
       ≡⟨ cong shiftᶜ (prem x) ⟩
           shiftᶜ (ret (lookup σ₂ x))
       ≡⟨ shift-ret _ ⟩
@@ -313,4 +391,6 @@ record FuseFoldMap  {Vᵐ Vᶠ : Set} {ℓ : Level}{Cᶠ : Set ℓ}
            ; shift-“” = shift-“” ; shift-ret = shift-ret
            ; op-shift = op-shift }
   open FuseFoldEnvMap MPFE
+
+-}
 
