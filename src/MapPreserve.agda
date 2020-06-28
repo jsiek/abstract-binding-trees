@@ -42,8 +42,7 @@ open Shiftable {{...}}
 open Quotable {{...}}
 open Env {{...}}
 
-record MapPreservable (V I E : Set)
-   {{_ : Shiftable V}}{{_ : Quotable V}}{{_ : Env E V}} : Set₁ where
+record MapPreservable (V I E : Set){{_ : Quotable V}} {{_ : Env E V}} : Set₁ where
   field 𝑉 : List I → Var → I → Set
         𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set
         _⊢v_⦂_ : List I → V → I → Set
@@ -55,14 +54,12 @@ record MapPreservable (V I E : Set)
 open MapPreservable {{...}}
 
 _⦂_⇒_ : ∀{V I E : Set}
-   {{_ : Shiftable V}}{{_ : Quotable V}}{{_ : Env E V}}
-   {{_ : MapPreservable V I E}}
+   {{_ : Quotable V}} {{_ : Env E V}} {{_ : MapPreservable V I E}}
    → E → List I → List I → Set
 _⦂_⇒_ {V}{I}{E} σ Γ Δ = ∀{x : Var} {A : I} → Γ ∋ x ⦂ A  →  Δ ⊢v ⟅ σ ⟆ x ⦂ A
 
 preserve-map : ∀ {E V I : Set}{Γ Δ : List I}{σ : E}{A : I}
-   {{_ : Shiftable V}}{{_ : Quotable V}}{{_ : Env E V}}
-   {{_ : MapPreservable V I E}}
+   {{_ : Quotable V}} {{_ : Env E V}} {{_ : MapPreservable V I E}}
    (M : ABT)
    → Γ ⊢ M ⦂ A
    → σ ⦂ Γ ⇒ Δ

@@ -1,4 +1,4 @@
-open import Agda.Primitive using (Level; lzero; lsuc)
+open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
 open import Data.List using (List; []; _∷_)
@@ -262,7 +262,7 @@ module Composition (Op : Set) (sig : Op → List ℕ)   where
   open ComposableProps {{...}}
 
   map-sub-⟅·⟆ : ∀{ℓ}{V₁ V₂ V₃ : Set ℓ}
-      {{S₁ : Shiftable V₁}} {{S₂ : Shiftable V₂}} {{S₃ : Shiftable V₃}}
+      {{S₁ : Shiftable V₁}}
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
       {{E₂ : Env (GSubst V₂) V₂}} {{E₃ : Env (GSubst V₃) V₃}}
       {{_ : Composable V₁ V₂ V₃}}

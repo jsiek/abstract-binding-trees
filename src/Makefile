@@ -4,14 +4,14 @@ BUILD_DIR = $(ROOT)/_build/2.6.1/agda
 AGDA =	ScopedTuple.agda \
 	Var.agda \
 	AbstractBindingTree.agda \
-	GenericSubstitution.agda \
 	Map.agda \
+	GenericSubstitution.agda \
 	Renaming.agda \
 	MapFusion.agda \
 	Substitution.agda \
 	ABTPredicate.agda \
-	MapPreserve.agda \
 	Fold.agda \
+	MapPreserve.agda \
 	FoldMapFusion.agda \
 	FoldFoldFusion.agda \
 	Preserve.agda \

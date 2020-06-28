@@ -43,13 +43,13 @@ record Foldable {ℓ : Level}(V : Set ℓ)(C : Set ℓ) : Set (lsuc ℓ) where
 open Foldable {{...}}
 
 fold : ∀{ℓ}{E V C : Set ℓ}
-   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Foldable V C}}
+   {{_ : Env E V}} {{_ : Foldable V C}}
    → E → ABT → C
 fold-arg : ∀{ℓ}{E V C : Set ℓ}
-   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Foldable V C}}
+   {{_ : Env E V}} {{_ : Foldable V C}}
    → E → {b : ℕ} → Arg b → Bind V C b
 fold-args : ∀{ℓ}{E V C : Set ℓ}
-   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Foldable V C}}
+   {{_ : Env E V}} {{_ : Foldable V C}}
    → E → {bs : List ℕ} → Args bs → Tuple bs (Bind V C)
 
 fold σ (` x) = ret (⟅ σ ⟆ x)
@@ -89,7 +89,6 @@ open Similar {{...}}
 
 _≅_ : ∀ {ℓ₁ ℓ₂}{V₁ : Set ℓ₁}{E₁ : Set ℓ₁}{V₂ : Set ℓ₂}{E₂ : Set ℓ₂}
    {C₁ : Set ℓ₁}{C₂ : Set ℓ₂}
-   {{_ : Shiftable V₁}}{{_ : Shiftable V₂}}
    {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}}
    {{_ : Foldable V₁ C₁}} {{_ : Foldable V₂ C₂}}
    {{_ : RelFold V₁ V₂ C₁ C₂}}
@@ -99,7 +98,6 @@ _≅_ σ₁ σ₂ = ∀ x → ⟅ σ₁ ⟆ x ∼ ⟅ σ₂ ⟆ x
 
 sim : ∀{ℓ₁ ℓ₂}{V₁ E₁ : Set ℓ₁}{V₂ E₂ : Set ℓ₂}{C₁ : Set ℓ₁}{C₂ : Set ℓ₂}
    {σ₁ : E₁}{σ₂ : E₂}
-   {{_ : Shiftable V₁}} {{_ : Shiftable V₂}}
    {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}}
    {{_ : Foldable V₁ C₁}} {{_ : Foldable V₂ C₂}}
    {{_ : RelFold V₁ V₂ C₁ C₂}}

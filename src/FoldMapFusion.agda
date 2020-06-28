@@ -42,8 +42,8 @@ open Foldable {{...}}
 open QuoteShift {{...}}
 
 _⨟_≈_ : ∀{ℓᶠ ℓᵐ} {Vᵐ Eᵐ : Set ℓᵐ}{Vᶠ Cᶠ Eᶠ : Set ℓᶠ}
-    {{_ : Shiftable Vᵐ}} {{_ : Env Eᵐ Vᵐ}} {{_ : Quotable Vᵐ}}
-    {{_ : Shiftable Vᶠ}} {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+    {{_ : Env Eᵐ Vᵐ}} {{_ : Quotable Vᵐ}}
+    {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
     → Eᵐ → Eᶠ → Eᶠ → Set ℓᶠ
 σ ⨟ δ ≈ γ = ∀ x → fold δ (“ ⟅ σ ⟆ x ”) ≡ ret (⟅ γ ⟆ x)
 
@@ -56,8 +56,8 @@ module _ where
   instance _ : ∀{ℓ}{V C : Set ℓ} → RelFold V V C C ; _ = ≡-RelFold
 
   fold-map-fusion-ext : ∀{ℓᵐ ℓᶠ}{Vᵐ Eᵐ : Set ℓᵐ}{ Vᶠ Cᶠ Eᶠ : Set ℓᶠ}
-       {{_ : Shiftable Vᵐ}} {{_ : Env Eᵐ Vᵐ}} {{_ : Quotable Vᵐ}}
-       {{_ : Shiftable Vᶠ}} {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+       {{_ : Env Eᵐ Vᵐ}} {{_ : Quotable Vᵐ}}
+       {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
        {σ : Eᵐ}{δ γ : Eᶠ}
        (M : ABT)
      → σ ⨟ δ ≈ γ
@@ -87,8 +87,7 @@ module _ where
           ⟨ fuse-arg{b}{σ}{δ}{γ} arg σ⨟δ≈γ , fuse-args args σ⨟δ≈γ ⟩
 
   fold-rename-fusion : ∀ {ℓ : Level}{Vᶠ Eᶠ Cᶠ : Set ℓ}
-       {{_ : Shiftable Vᶠ}} {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
-       {{_ : Shiftable Cᶠ}}
+       {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}} {{_ : Shiftable Cᶠ}}
        {ρ : Rename}{δ γ : Eᶠ}
        (M : ABT)
      → ρ ⨟ δ ≈ γ
@@ -126,9 +125,10 @@ module _ where
                              ; _≈_ = (λ c c' → c ≡ ⇑ c') }
 
   record FoldShift {ℓ} (V : Set ℓ) (C : Set ℓ)
-    {{_ : Shiftable V}} {{_ : Shiftable C}} {{_ : Foldable V C}}
+    {{_ : Shiftable V}} {{_ : Foldable V C}}
     : Set ℓ
     where
+    field {{C-is-Shiftable}} : Shiftable C
     field shift-ret : ∀ (v : V) → ⇑ (ret v) ≡ ret (⇑ v)
           op-shift : ∀ {op} {rs↑ rs : Tuple (sig op) (Bind V C)}
             → zip (_⩳_{ℓ}{ℓ}{V}{V}{C}{C}) rs↑ rs
@@ -137,15 +137,15 @@ module _ where
   
 
   instance
-    _ : ∀{ℓ}{V : Set ℓ}{C : Set ℓ} {{_ : Shiftable V}} {{_ : Shiftable C}}
+    _ : ∀{ℓ}{V : Set ℓ}{C : Set ℓ} {{_ : Shiftable V}}
         {{_ : Foldable V C}} {{_ : FoldShift V C}}
       → Similar V V C C
     _ = record { ret≈ = λ { {_}{v} refl → sym (shift-ret v) }
                ; shift∼ = λ { refl → refl } ; op⩳ = op-shift }
    
   fold-shift : ∀ {ℓ : Level}{Vᶠ Eᶠ Cᶠ : Set ℓ}
-     {{_ : Shiftable Vᶠ}} {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
-     {{_ : Shiftable Cᶠ}} {{_ : FoldShift Vᶠ Cᶠ}}
+     {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+     {{_ : FoldShift Vᶠ Cᶠ}}
      (δ δ↑ : Eᶠ)
      (M : ABT)
      → (∀ x → ⟅ δ↑ ⟆ x ≡ ⇑ (⟅ δ ⟆ x))
@@ -158,10 +158,8 @@ instance _ : ∀{ℓ}{V C : Set ℓ} → RelFold V V C C ; _ = ≡-RelFold
 open FoldShift {{...}}
   
 fold-map-fusion : ∀{ℓᵐ ℓᶠ}{Vᵐ Eᵐ : Set ℓᵐ}{ Vᶠ Cᶠ Eᶠ : Set ℓᶠ}
-     {{_ : Shiftable Vᵐ}} {{_ : Env Eᵐ Vᵐ}} {{_ : Quotable Vᵐ}}
-     {{_ : Shiftable Vᶠ}} {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
-     {{_ : Shiftable Cᶠ}}
-     {{_ : FoldShift Vᶠ Cᶠ}}{{_ : QuoteShift Vᵐ}}
+     {{_ : Env Eᵐ Vᵐ}} {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+     {{_ : FoldShift Vᶠ Cᶠ}} {{_ : QuoteShift Vᵐ}}
      {σ : Eᵐ}{δ γ : Eᶠ}
      (M : ABT)
    → σ ⨟ δ ≈ γ
@@ -195,8 +193,7 @@ fold-map-fusion {ℓᵐ}{ℓᶠ}{Vᵐ}{Eᵐ}{Vᶠ}{Cᶠ}{Eᶠ} M σ⨟δ≈γ op
       G x rewrite lookup-shift δ x | lookup-suc δ v x = refl
 
 fold-subst-fusion : ∀ {ℓ : Level}{Vᶠ Eᶠ Cᶠ : Set ℓ}
-     {{_ : Shiftable Vᶠ}} {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
-     {{_ : Shiftable Cᶠ}} {{_ : FoldShift Vᶠ Cᶠ}}
+     {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}} {{_ : FoldShift Vᶠ Cᶠ}}
      {σ : Subst}{δ γ : Eᶠ}
      (M : ABT)
    → σ ⨟ δ ≈ γ

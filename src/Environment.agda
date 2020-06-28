@@ -17,7 +17,8 @@ instance
 
 open Shiftable {{...}}
 
-record Env {ℓ} (E : Set ℓ) (V : Set ℓ) {{_ : Shiftable V}} : Set ℓ where
+record Env {ℓ} (E : Set ℓ) (V : Set ℓ) : Set ℓ where
+  field {{V-is-Shiftable}} : Shiftable V
   field ⟅_⟆  : E → Var → V
         _,_ : E → V → E
         ⟰ : E → E

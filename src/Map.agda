@@ -15,14 +15,14 @@ open Quotable {{...}}
 open Env  {{...}}
 
 map : ∀{ℓ}{E : Set ℓ}{V : Set ℓ}
-   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Quotable V}}
+   {{_ : Env E V}} {{_ : Quotable V}}
    → E → ABT → ABT
 
 map-arg : ∀{ℓ}{E : Set ℓ}{V : Set ℓ}
-   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Quotable V}}
+   {{_ : Env E V}} {{_ : Quotable V}}
    → E → {b : ℕ} →  Arg b → Arg b
 map-args : ∀{ℓ}{E}{V : Set ℓ}
-   {{_ : Shiftable V}} {{_ : Env E V}} {{_ : Quotable V}}
+   {{_ : Env E V}} {{_ : Quotable V}}
    → E → {bs : List ℕ} →  Args bs → Args bs
 map σ (` x) = “ ⟅ σ ⟆ x ”
 map {E}{V} σ (op ⦅ args ⦆) = op ⦅ map-args σ args ⦆
@@ -33,7 +33,6 @@ map-args σ {b ∷ bs} (cons x args) = cons (map-arg σ x) (map-args σ args)
 
 _∘_≈_ : ∀{ℓ₁}{ℓ₂}{ℓ₃}{V₁ : Set ℓ₁}{E₁ : Set ℓ₁}{V₂ : Set ℓ₂}{E₂ : Set ℓ₂}
         {V₃ : Set ℓ₃}{E₃ : Set ℓ₃}
-        {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}{{S₃ : Shiftable V₃}}
         {{M₁ : Env E₁ V₁}} {{M₂ : Env E₂ V₂}} {{M₃ : Env E₃ V₃}}
         {{Q₁ : Quotable V₁}}{{Q₂ : Quotable V₂}}{{Q₃ : Quotable V₃}}
         (σ₂ : E₂)(σ₁ : E₁)(σ₃ : E₃) → Set
@@ -42,7 +41,6 @@ _∘_≈_ {V₁}{E₁}{V₂}{E₂}{V₃}{E₃}{{M₁}}{{M₂}}{{M₃}} σ₂ σ�
 
 map-map-fusion-ext : ∀{ℓ₁}{ℓ₂}{ℓ₃}  {V₁ : Set ℓ₁}{E₁ : Set ℓ₁}
   {V₂ : Set ℓ₂}{E₂ : Set ℓ₂}  {V₃ : Set ℓ₃}{E₃ : Set ℓ₃}
-  {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}{{S₃ : Shiftable V₃}}
   {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}} {{_ : Env E₃ V₃}}
   {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
   {σ₁ : E₁}{σ₂ : E₂}{σ₃ : E₃}
@@ -68,7 +66,6 @@ map-map-fusion-ext (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ mf-ext =
       cong₂ cons (mmf-arg arg σ₂∘σ₁≈σ₃) (mmf-args args σ₂∘σ₁≈σ₃)
 
 _≈_ : ∀{ℓ}{V₁ : Set ℓ}{E₁}{V₂ : Set ℓ}{E₂}
-        {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}
         {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}}
         {{_ : Quotable V₁}} {{_ : Quotable V₂}}
         (σ₂ : E₂)(σ₁ : E₁) → Set
@@ -76,7 +73,6 @@ _≈_ σ₁ σ₂ = ∀ x → “ ⟅ σ₁ ⟆ x ” ≡ “ ⟅ σ₂ ⟆ x �
 
 {- todo: generalize to map-cong to simulation -}
 map-cong : ∀{ℓ}{V₁ : Set ℓ}{E₁ : Set ℓ}{V₂ : Set ℓ}{E₂ : Set ℓ}
-   {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}  
    {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}} {{_ : Quotable V₁}} {{_ : Quotable V₂}}
    {σ₁ : E₁}{σ₂ : E₂}
    → (M : ABT)

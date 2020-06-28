@@ -20,8 +20,9 @@ open Shiftable {{...}}
 open Quotable {{...}}
 open Env  {{...}}
 
-record QuoteShift {ℓ}(V : Set ℓ) {{S : Shiftable V}}{{Q : Quotable V}} : Set ℓ
+record QuoteShift {ℓ}(V : Set ℓ) {{S : Shiftable V}} : Set ℓ
   where
+  field {{V-is-Quotable}} : Quotable V
   field quote-var→val : ∀ x → “ (var→val{ℓ}{V} x) ” ≡ ` x
         quote-shift : ∀ (v : V) → “ ⇑ v ” ≡ rename (↑ 1) “ v ”
 
@@ -33,8 +34,7 @@ instance
                              ; quote-shift = λ v → refl }
 
 map-rename-fusion : ∀{ℓ}{V₂ E₂ V₃ E₃ : Set ℓ}
-  {{S₂ : Shiftable V₂}}{{S₃ : Shiftable V₃}} {{_ : Env E₂ V₂}} {{_ : Env E₃ V₃}}
-  {{_ : Quotable V₂}} {{_ : Quotable V₃}}
+  {{_ : Env E₂ V₂}} {{_ : Env E₃ V₃}}
   {{_ : QuoteShift V₂}}{{_ : QuoteShift V₃}}
   {σ₁ : Rename}{σ₂ : E₂}{σ₃ : E₃}
    → (M : ABT)
@@ -57,8 +57,7 @@ map-rename-fusion {ℓ}{V₂}{E₂}{V₃}{E₃}{σ₁ = σ₁}{σ₂}{σ₃} M �
                             (cong (rename (↑ 1)) (sym (σ₂∘σ₁≈σ₃ x)))))
 
 rename-map-fusion : ∀{ℓ}{V₁ E₁ V₃ E₃ : Set ℓ}
-  {{S₁ : Shiftable V₁}}{{S₃ : Shiftable V₃}} {{_ : Env E₁ V₁}} {{_ : Env E₃ V₃}}
-  {{_ : Quotable V₁}} {{_ : Quotable V₃}}
+  {{_ : Env E₁ V₁}} {{_ : Env E₃ V₃}}
   {{_ : QuoteShift V₁}}{{_ : QuoteShift V₃}}
   {σ₁ : E₁}{ρ₂ : Rename}{σ₃ : E₃}
    → (M : ABT)
@@ -90,9 +89,7 @@ rename-map-fusion {ℓ}{V₁}{E₁}{V₃}{E₃}{σ₁ = σ₁}{ρ₂}{σ₃} M �
       ∎
 
 map-map-fusion : ∀{ℓ}{V₁ E₁ V₂ E₂ V₃ E₃ : Set ℓ}
-  {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}}{{S₃ : Shiftable V₃}}
   {{_ : Env E₁ V₁}} {{_ : Env E₂ V₂}} {{_ : Env E₃ V₃}}
-  {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
   {{_ : QuoteShift V₁}}{{_ : QuoteShift V₂}}{{_ : QuoteShift V₃}}
   {σ₁ : E₁}{σ₂ : E₂}{σ₃ : E₃}
    → (M : ABT)
