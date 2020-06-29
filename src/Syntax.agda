@@ -19,6 +19,7 @@ open import Substitution public
 
 module OpSig (Op : Set) (sig : Op → List ℕ)  where
 
+  open import AbstractBindingTree Op sig
   open import Environment
   open Env {{...}}
   open ABTOps Op sig public

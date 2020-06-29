@@ -105,7 +105,8 @@ ind-hyp : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ Cˢ Eˢ : Set ℓˢ}{Vᵗ Cᵗ Eᵗ : Set
    → (γ : Eᶠ) (τ : Eᵗ) (σ : Eˢ)
    → Set (ℓˢ ⊔ ℓᵗ)
 ind-hyp k op zero (ast M) rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} γ τ σ =
-    γ ⨟ τ ≈ σ → fold τ “ fold γ M ” ≈ fold σ M
+    γ ⨟ τ ≈ σ →
+    fold τ “ fold γ M ” ≈ fold σ M
 ind-hyp k op (suc b) (bind arg) rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} γ τ σ =
     ind-hyp k op b arg rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {≤-trans (≤-step ≤-refl) b≤}
        (γ , bindᶠ op k b {k<} {b≤} rsᶠ)
@@ -138,7 +139,6 @@ ind-hyps pbs op (b ∷ bs) (cons arg args) rsᶠ rsˢ bindˢ bindᶠ s→t {sig=
                  (≤-reflexive (nth-cong (pbs ++ b ∷ bs) (sig op) (length pbs)
                        {length-++-< pbs bs b}{pbs<} (sym (≡-rel {eq = sig=})))) 
 
-
 fold-fold-fusion : ∀ {ℓˢ ℓᵗ ℓᶠ}{Vˢ Cˢ Eˢ : Set ℓˢ}{Vᵗ Cᵗ Eᵗ : Set ℓᵗ}
    {Vᶠ Cᶠ Eᶠ : Set ℓᶠ}
    {{_ : Env Eˢ Vˢ}} {{_ : Env Eᵗ Vᵗ}} {{_ : Env Eᶠ Vᶠ}}
@@ -151,17 +151,18 @@ fold-fold-fusion : ∀ {ℓˢ ℓᵗ ℓᶠ}{Vˢ Cˢ Eˢ : Set ℓˢ}{Vᵗ Cᵗ 
    → (bindˢ : Binder Vˢ Cˢ) → (bindᶠ : Binder Vᶠ Cᶠ)
    → (s→t : Vˢ → Vᵗ)
    → (op≈ : ∀{op : Op}{args : Args (sig op)}{γ : Eᶠ}{σ : Eˢ}{τ : Eᵗ}
+          → γ ⨟ τ ≈ σ
           → ind-hyps [] op (sig op) args (fold-args γ args)
                    (fold-args σ args) bindˢ bindᶠ s→t {refl} γ τ σ
           → fold τ “ fold-op op (fold-args γ args) ”
              ≈ fold-op op (fold-args σ args))
    → fold τ “ fold γ M ” ≈ fold σ M
-fold-fold-fusion (` x) γ⨟τ≈σ bindˢ bindᶠ s→t op≈ = γ⨟τ≈σ x
+fold-fold-fusion (` x) γ⨟τ≈σ bindˢ bindᶠ s→t op≈ {- fuse-ext -} = γ⨟τ≈σ x
 fold-fold-fusion {ℓˢ}{ℓᵗ}{ℓᶠ}{Vˢ}{Cˢ}{Eˢ}{Vᵗ}{Cᵗ}{Eᵗ}{Vᶠ}{Cᶠ}{Eᶠ}{γ}{σ}{τ}
-  (op ⦅ args ⦆) γ⨟τ≈σ bindˢ bindᶠ s→t op≈ =
+  (op ⦅ args ⦆) γ⨟τ≈σ bindˢ bindᶠ s→t op≈ {- fuse-ext -} =
   let rsᶠ = fold-args γ args in
   let rsˢ = fold-args σ args in
-  op≈ (fuse-args{γ}{σ}{τ} [] op (sig op) args rsᶠ rsˢ {refl})
+  op≈ γ⨟τ≈σ (fuse-args{γ}{σ}{τ} [] op (sig op) args rsᶠ rsˢ {refl})
   where
   fuse-arg : ∀{γ : Eᶠ}{σ : Eˢ}{τ : Eᵗ}
      (k : ℕ) op (b : ℕ) (arg : Arg b) 
@@ -180,7 +181,6 @@ fold-fold-fusion {ℓˢ}{ℓᵗ}{ℓᶠ}{Vˢ}{Cˢ}{Eˢ}{Vᵗ}{Cᵗ}{Eᵗ}{Vᶠ}{
     where
     b≤′ : b ≤ nth (sig op) k
     b≤′ = ≤-trans (≤-step ≤-refl) b≤
-
   fuse-args : ∀{γ : Eᶠ}{σ : Eˢ}{τ : Eᵗ}
      (pbs : List ℕ) op (bs : List ℕ) (args : Args bs) 
      (rsᶠ : Tuple (sig op) (Bind Vᶠ Cᶠ))
@@ -201,7 +201,6 @@ fold-fold-fusion {ℓˢ}{ℓᵗ}{ℓᶠ}{Vˢ}{Cˢ}{Eˢ}{Vᵗ}{Cᵗ}{Eᵗ}{Vᶠ}{
     b≤ = ≤-trans (≤-reflexive (sym (nth-++ pbs bs b)))
                  (≤-reflexive (nth-cong (pbs ++ b ∷ bs) (sig op) (length pbs)
                                 {length-++-< pbs bs b}{pbs<sig} (sym sig=))) 
-
 
 
 {-

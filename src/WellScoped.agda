@@ -23,8 +23,7 @@ open Shiftable {{...}}
 open Env {{...}}
 open import Substitution using (Rename; ↑; _•_; inc-shift)
 open Substitution.ABTOps Op sig
-    using (ABT; Arg; Args; rename; ⟪_⟫; Subst;
-    ABT-is-Shiftable; ABT-is-Quotable)
+    using (rename; ⟪_⟫; Subst; ABT-is-Shiftable; ABT-is-Quotable)
 open import MapPreserve Op sig
 open import Map Op sig
 open import Data.Vec using (Vec) renaming ([] to []̆; _∷_ to _∷̆_)
@@ -38,7 +37,7 @@ open import ABTPredicate {I = ⊤} Op sig
             nil-p to WF-nil; cons-p to WF-cons) public
 
 open import AbstractBindingTree Op sig
-  using (`_; _⦅_⦆; ast; bind; nil; cons; Quotable; Var-is-Quotable)
+  using (ABT; Arg; Args; `_; _⦅_⦆; ast; bind; nil; cons; Quotable; Var-is-Quotable)
 open Quotable {{...}}
 
 mk-list : {ℓ : Level} → ℕ → List {ℓ} ⊤

@@ -25,7 +25,6 @@ open import Environment
 open import Function using (_∘_)
 import Substitution
 open import GenericSubstitution
-{- open import ScopedTuple -}
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
@@ -35,9 +34,7 @@ open import Var
 module MapPreserve (Op : Set) (sig : Op → List ℕ) where
 
 open import AbstractBindingTree Op sig
-open import Fold Op sig
 open import Map Op sig
-open import Environment
 open Shiftable {{...}}
 open Quotable {{...}}
 open Env {{...}}

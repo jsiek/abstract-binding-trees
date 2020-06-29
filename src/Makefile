@@ -12,9 +12,9 @@ AGDA =	ScopedTuple.agda \
 	ABTPredicate.agda \
 	Fold.agda \
 	MapPreserve.agda \
+	FoldPreserve.agda \
 	FoldMapFusion.agda \
 	FoldFoldFusion.agda \
-	Preserve.agda \
 	WellScoped.agda \
 	Syntax.agda \
 	examples/Lambda.agda \

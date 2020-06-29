@@ -1,7 +1,11 @@
+open import Agda.Primitive
 open import Data.Bool using (true; false; if_then_else_) renaming (Bool to 𝔹)
-open import Data.Empty using (⊥-elim)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
 open import Data.List using (List; []; _∷_; length)
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _⊔_; _∸_)
+open import Data.Maybe using (Maybe; nothing; just)
+open import Data.Nat
+    using (ℕ; zero; suc; _+_; _*_; _⊔_; _∸_; _≤_; _<_; z≤n; s≤s)
 open import Data.Product using (_×_; Σ; Σ-syntax) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
@@ -11,7 +15,7 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import Var
-open import Agda.Primitive
+
 
 module examples.Arith where
 
@@ -31,10 +35,14 @@ sig (op-bool b) = []
 sig op-if = 0 ∷ 0 ∷ 0 ∷ []
 sig op-error = []
 
-open import ScopedTuple
-open import Syntax using (↑; _•_; inc; id; Rename; ⦉_⦊; ext; ext-0; ext-suc)
-open Syntax.OpSig Op sig using (rename; Rename-is-MapEnv; Rename-is-Map;
-    rename-id)
+open import ScopedTuple using (Tuple; zip)
+open import Syntax using (↑; _•_; id; Rename)
+open Syntax.OpSig Op sig using (rename; rename-id)
+open import Fold Op sig 
+open import Map Op sig
+open import FoldPreserve Op sig
+open import FoldFoldFusion Op sig
+  renaming (_⨟_≈_ to _⨟′_≈_)
 
 open import AbstractBindingTree Op sig renaming (ABT to AST)
 pattern $ n  = op-num n ⦅ nil ⦆
@@ -45,15 +53,13 @@ pattern bind_｛_｝ L M = op-let ⦅ cons (ast L) (cons (bind (ast M)) nil) ⦆
 pattern cond_then_else_ L M N = op-if ⦅ cons (ast L) (cons (ast M) (cons (ast N) nil)) ⦆
 pattern error = op-error ⦅ nil ⦆
 
-open import Data.Maybe using (Maybe; nothing; just)
-
 data Val : Set where
   v-num : ℕ → Val
   v-bool : 𝔹 → Val
 
 instance
   MVal-is-Shiftable : Shiftable (Maybe Val)
-  MVal-is-Shiftable = record { var→val = λ x → nothing ; shift = λ r → r
+  MVal-is-Shiftable = record { var→val = λ x → nothing ; ⇑ = λ r → r
                       ; var→val-suc-shift = refl }
 open Shiftable MVal-is-Shiftable public
 
@@ -75,7 +81,6 @@ bool? mv f
 ... | v-bool b = f b
 ... | _ = nothing
 
-open import Fold Op sig public
 
 eval-op : (op : Op) → Tuple (sig op) (Bind (Maybe Val) (Maybe Val))
         → Maybe Val
@@ -90,15 +95,15 @@ eval-op op-if ⟨ cnd , ⟨ thn , ⟨ els , tt ⟩ ⟩ ⟩ = do
    vᶜ ← cnd
    bool? vᶜ (λ b → if b then thn else els)
 
-EvalFold : Fold (Maybe Val) (Maybe Val) 
-EvalFold = record { V-is-Shiftable = MVal-is-Shiftable
-              ; is-Foldable = record { ret = λ x → x ; fold-op = eval-op } }
-open Fold EvalFold using (fold; fold-op)
+instance
+  MVal-is-Foldable : Foldable (Maybe Val) (Maybe Val)
+  MVal-is-Foldable = record { ret = λ x → x ; fold-op = eval-op }
+
+eval : (Var → Maybe Val) → AST → Maybe Val
+eval = fold
 
 evaluate : AST → Maybe Val
-evaluate = fold (↑ 0)
-
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
+evaluate M = eval (λ x → nothing) M
 
 _ : evaluate ($ 2 ⊗ $ 21) ≡ just (v-num 42)
 _ = refl
@@ -111,8 +116,6 @@ _ = refl
 
 _ : evaluate (bind ` 0 ｛ $ 2 ⊗ $ 21 ｝) ≡ just (v-num 42)
 _ = refl {- call-by-name behavior wrt. errors because skipped check -}
-
-open import Preserve Op sig
 
 data Type : Set where
   t-nat : Type
@@ -128,6 +131,14 @@ data Type : Set where
 𝑃 op-if (Tᶜ ∷̌ Tᵗ ∷̌ Tₑ ∷̌ []̌) Bss Tᵣ = Tᶜ ≡ t-bool × Tᵗ ≡ Tₑ × Tₑ ≡ Tᵣ
 𝑃 op-error []̌ tt Tᵣ = ⊤
 
+𝐴 : List Type → Maybe Val → Type → Set
+𝐴 Γ mv T = ⊤
+
+𝑉 : List Type → Var → Type → Set
+𝑉 Γ x A = ⊤
+
+open import ABTPredicate Op sig 𝑉 𝑃
+
 data ⊢_⦂_ : Val → Type → Set where
   ⊢-nat :  ∀{n} → ⊢ (v-num n) ⦂ t-nat
   ⊢-bool :  ∀{b} → ⊢ (v-bool b) ⦂ t-bool
@@ -141,19 +152,22 @@ _⊢c_⦂_ : List Type → Maybe Val → Type → Set
 
 {--- Type Safety via preserve-fold ---}
 
-shift-⊢v : ∀{v A B Δ} → Δ ⊢v v ⦂ A → (B ∷ Δ) ⊢v shift v ⦂ A
+shift-⊢v : ∀{v A B Δ} → Δ ⊢v v ⦂ A → (B ∷ Δ) ⊢v ⇑ v ⦂ A
 shift-⊢v {nothing} ⊢vσx = ⊢v-none
 shift-⊢v {just x₁} (⊢v-just ⊢v⦂) = ⊢v-just ⊢v⦂
-
-open FoldPred 𝑃 (λ Γ mv T → ⊤) _⊢v_⦂_ _⊢v_⦂_ 
 
 compress-⊢v : ∀{v A B Δ} → (B ∷ Δ) ⊢v v ⦂ A → Δ ⊢v v ⦂ A
 compress-⊢v {.nothing} ⊢v-none = ⊢v-none
 compress-⊢v {.(just _)} (⊢v-just x) = ⊢v-just x
 
+instance
+  _ : FoldPreservable (Maybe Val) (Maybe Val) (Type) (Var → Maybe Val)
+  _ = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; 𝐴 = 𝐴 ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢c_⦂_
+             ; ret-pres = λ x → x ; shift-⊢v = shift-⊢v }
+
 op-pres : ∀ {op}{Rs}{Δ}{A : Type}{As : Vec Type (length (sig op))}{Bs}
           → sig op ∣ Δ ∣ Bs ⊢ᵣ₊ Rs ⦂ As
-          → 𝑃 op As Bs A → Δ ⊢c (fold-op op Rs) ⦂ A
+          → 𝑃 op As Bs A → Δ ⊢c (eval-op op Rs) ⦂ A
 op-pres {op-num n} nil-r refl = ⊢v-just ⊢-nat
 op-pres {op-mult} (cons-r (ast-r Px) (cons-r (ast-r Py) nil-r))
         ⟨ refl , ⟨ refl , refl ⟩ ⟩
@@ -180,47 +194,10 @@ op-pres {op-if} (cons-r (ast-r Pc) (cons-r (ast-r Pthn)
 ... | false = Pels
 op-pres {op-error} nil-r tt = ⊢v-none
 
-𝐴 : List Type → Maybe Val → Type → Set
-𝐴 = λ Γ mv T → ⊤
-
-module TypeSafetyViaPreserveFold where
-
-  EvalPres : FoldPreserveABTPred EvalFold
-  EvalPres = record { 𝑉 = λ Γ x A → ⊤ ; 𝑃 = 𝑃 ; 𝐴 = 𝐴
-             ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢v_⦂_
-             ; shift-⊢v = shift-⊢v ; ret-pres = λ x → x ; op-pres = op-pres }
-  open FoldPreserveABTPred EvalPres using (_⊢_⦂_; preserve-fold)
-
-  type-safety : ∀ M
-     → [] ⊢ M ⦂ t-nat
-     → [] ⊢c evaluate M ⦂ t-nat
-  type-safety M ⊢M = preserve-fold ⊢M (λ x → ⊢v-none)
-
-module TypeSafetyViaPreserveFoldEnv where
-
-  Eval2 : FoldEnv (Var → Maybe Val) (Maybe Val) (Maybe Val) 
-  Eval2 = record { is-Foldable = record {ret = λ x → x; fold-op = eval-op}
-                 ; is-Env = Fun-is-Env }
-  open FoldEnv Eval2 using () renaming (fold to fold₂)
-
-  eval2 : AST → Maybe Val
-  eval2 = fold₂ (λ x → nothing)
-
-  FEPE : FunEnvPredExt _⊢v_⦂_ 𝐴 MVal-is-Shiftable
-  FEPE = record { shift-⊢v = shift-⊢v }
-  open FunEnvPredExt FEPE 
-
-  EvalPres : FoldEnvPreserveABTPred Eval2
-  EvalPres = record { 𝑉 = λ Γ x A → ⊤ ; 𝑃 = 𝑃 ; 𝐴 = 𝐴
-             ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢v_⦂_
-             ; ext-pres = ext-pres ; ret-pres = λ x → x ; op-pres = op-pres }
-  open FoldEnvPreserveABTPred EvalPres using (_⊢_⦂_; preserve-fold) 
-
-  type-safety : ∀ M
-     → [] ⊢ M ⦂ t-nat
-     → [] ⊢c eval2 M ⦂ t-nat
-  type-safety M ⊢M = preserve-fold ⊢M (λ ())
-
+type-safety : ∀ M
+   → [] ⊢ M ⦂ t-nat
+   → [] ⊢c evaluate M ⦂ t-nat
+type-safety M ⊢M = fold-preserves ⊢M (λ x → ⊢v-none) op-pres
 
 {- Partial Evaluator -}
 
@@ -236,19 +213,13 @@ res→ast : Res → AST
 res→ast (val v) = val→term v
 res→ast (exp M) = M
 
-⇑ : Res → Res
-⇑ (val v) = val v
-⇑ (exp M) = exp (rename (↑ 1) M)
-
-open import Map Op sig
-
-Ren-is-MapEnv : MapEnv (Var → Var) Var
-Ren-is-MapEnv = record { is-Env = Fun-is-Env ; V-is-Quotable = Var-is-Quotable }
-open MapEnv Ren-is-MapEnv using () renaming (map-abt to ren)
+⇑ᵣ : Res → Res
+⇑ᵣ (val v) = val v
+⇑ᵣ (exp M) = exp (rename (↑ 1) M)
 
 ⇓ : Res → Res
 ⇓ (val v) = val v
-⇓ (exp M) = exp (ren (λ x → x ∸ 1) M)
+⇓ (exp M) = exp (map (λ x → x ∸ 1) M)
 
 to-num : (r : Res) → Maybe (Σ[ n ∈ ℕ ] r ≡ val (v-num n))
 to-num (val (v-num n)) = just ⟨ n , refl ⟩
@@ -279,7 +250,7 @@ pe-op op-mult ⟨ mr₁ , ⟨ mr₂ , tt ⟩ ⟩ = do
    if-num? mr₁ (λ n₁ → if-num? mr₂ (λ n₂ →  val (v-num (n₁ * n₂)))
                                  (λ N₂ → exp ($ n₁ ⊗ N₂)))
               (λ N₁ → exp (N₁ ⊗ res→ast mr₂))
-pe-op op-let ⟨ mr , ⟨ f , tt ⟩ ⟩ = ⇓ (f (⇑ mr))
+pe-op op-let ⟨ mr , ⟨ f , tt ⟩ ⟩ = ⇓ (f (⇑ᵣ mr))
 pe-op op-if ⟨ mrᶜ , ⟨ mrᵗ , ⟨ mrᵉ , tt ⟩ ⟩ ⟩ = do
    if-bool? mrᶜ (λ b → if b then mrᵗ else mrᵉ)
                 (λ Mᶜ → exp (cond Mᶜ then res→ast mrᵗ else res→ast mrᵉ))
@@ -287,29 +258,141 @@ pe-op op-error tt = exp error
 
 instance
   Res-is-Shiftable : Shiftable Res
-  Res-is-Shiftable = record { var→val = λ x → exp (` x) ; shift = ⇑
-                             ; var→val-suc-shift = refl }
+  Res-is-Shiftable = record { var→val = λ x → exp (` x) ; ⇑ = ⇑ᵣ
+                            ; var→val-suc-shift = refl }
 
-PEFold : FoldEnv (Var → Res) Res Res
-PEFold = record { is-Env = Fun-is-Env
-                ; is-Foldable = record { ret = λ r → r ; fold-op = pe-op } }
-open FoldEnv PEFold using (ret)
-    renaming (fold to p-eval; fold-arg to pe-arg; fold-args to pe-args) 
+instance
+  PE-is-Foldable : Foldable Res Res
+  PE-is-Foldable = record { ret = λ r → r ; fold-op = pe-op }
+
+pe : (Var → Res) → AST → Res
+pe = fold
+
+pe-arg : (Var → Res) → {b : ℕ} → Arg b → Bind Res Res b
+pe-arg = fold-arg
+
+pe-args : (Var → Res) → {bs : List ℕ} → Args bs → Tuple bs (Bind Res Res)
+pe-args = fold-args
 
 init-env : Var → Res
 init-env x = exp (` x)
 
-_ : p-eval init-env ($ 2 ⊗ $ 21) ≡ val (v-num 42)
+_ : pe init-env ($ 2 ⊗ $ 21) ≡ val (v-num 42)
 _ = refl
 
-_ : p-eval init-env (` 0) ≡ exp (` 0)
+_ : pe init-env (` 0) ≡ exp (` 0)
 _ = refl
 
-_ : p-eval init-env (bind $ 21 ｛ ` 1 ⊗ ` 0 ｝) ≡ exp (` 0 ⊗ $ 21)
+_ : pe init-env (bind $ 21 ｛ ` 1 ⊗ ` 0 ｝) ≡ exp (` 0 ⊗ $ 21)
 _ = refl
 
-_ : p-eval init-env (bind ` 1 ｛ ` 1 ⊗ ` 0 ｝) ≡ exp (` 0 ⊗ ` 1)
+_ : pe init-env (bind ` 1 ｛ ` 1 ⊗ ` 0 ｝) ≡ exp (` 0 ⊗ ` 1)
 _ = refl
+
+instance
+  _ : RelFold (Maybe Val) (Maybe Val) (Maybe Val) (Maybe Val) 
+  _ = record { _∼_ = _≡_ ; _≈_ = _≡_ }
+
+eval-op-cong : ∀{op : Op}{rs : Tuple(sig op)(Bind(Maybe Val)(Maybe Val))}{rs'}
+   → zip _⩳_ rs rs'
+   → eval-op  op rs ≡ eval-op op rs'
+eval-op-cong {op-num x} {rs} {rs'} z = refl
+eval-op-cong {op-mult} {⟨ .nothing , ⟨ .nothing , snd ⟩ ⟩}
+    {⟨ nothing , ⟨ nothing , tt ⟩ ⟩} ⟨ refl , ⟨ refl , tt ⟩ ⟩ = refl
+eval-op-cong {op-mult} {⟨ .nothing , ⟨ .(just x) , tt ⟩ ⟩}
+    {⟨ nothing , ⟨ just x , tt ⟩ ⟩} ⟨ refl , ⟨ refl , tt ⟩ ⟩ = refl
+eval-op-cong {op-mult} {⟨ .(just x) , ⟨ .nothing , tt ⟩ ⟩}
+    {⟨ just x , ⟨ nothing , tt ⟩ ⟩} ⟨ refl , ⟨ refl , tt ⟩ ⟩ = refl
+eval-op-cong {op-mult} {⟨ .(just x) , ⟨ .(just x₁) , tt ⟩ ⟩}
+    {⟨ just x , ⟨ just x₁ , tt ⟩ ⟩} ⟨ refl , ⟨ refl , tt ⟩ ⟩ = refl
+eval-op-cong {op-let} {⟨ mv , ⟨ fst₃ , tt ⟩ ⟩}
+    {⟨ .mv , ⟨ fst₅ , tt ⟩ ⟩} ⟨ refl , ⟨ fst₁ , tt ⟩ ⟩ = fst₁ refl
+eval-op-cong {op-bool x} {rs}{ rs'} z = refl
+eval-op-cong {op-if} {⟨ fst₃ , ⟨ fst₅ , ⟨ fst₆ , tt ⟩ ⟩ ⟩}
+    {⟨ .fst₃ , ⟨ .fst₅ , ⟨ .fst₆ , tt ⟩ ⟩ ⟩}
+    ⟨ refl , ⟨ refl , ⟨ refl , tt ⟩ ⟩ ⟩ = refl
+eval-op-cong {op-error} {rs}{rs'} z = refl
+
+instance
+  _ : Similar (Maybe Val) (Maybe Val) (Maybe Val) (Maybe Val) 
+  _ = record { ret≈ = λ x → x ; shift∼ = λ { refl → refl }
+             ; op⩳ = eval-op-cong }
+  _ : Quotable Res
+  _ = record { “_” = res→ast }
+
+bogus21 : ∀{i} → suc (suc i) ≤ 1 → ⊥
+bogus21 {i} (s≤s ())
+
+bogus32 : ∀{i} → suc (suc (suc i)) ≤ 2 → ⊥
+bogus32 {i} (s≤s (s≤s ()))
+
+bogus43 : ∀{i} → suc (suc (suc (suc i))) ≤ 3 → ⊥
+bogus43 {i} (s≤s (s≤s (s≤s ())))
+
+bind-eval : (op : Op) → (i j : ℕ)
+    .{i< : i < length (sig op)}
+    .{j< : j < nth (sig op) i {i<}}
+    → Tuple (sig op) (Bind (Maybe Val) (Maybe Val)) → (Maybe Val)
+bind-eval op-mult (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
+bind-eval op-if (suc (suc (suc i))) j {i<} {j<} rs = ⊥-elimi (bogus43 i<)
+bind-eval op-let (suc zero) zero {i<}{j<} ⟨ r , ⟨ f , tt ⟩ ⟩ = r
+bind-eval op-let (suc zero) (suc j) {i<} {j<} rs = ⊥-elimi (bogus21 j<)
+bind-eval op-let (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
+
+bind-pe : (op : Op) → (i j : ℕ)
+    .{i< : i < length (sig op)}
+    .{j< : j < nth (sig op) i {i<}}
+    → Tuple (sig op) (Bind Res Res) → Res
+bind-pe op-mult (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
+bind-pe op-if (suc (suc (suc i))) j {i<} {j<} rs = ⊥-elimi (bogus43 i<)
+bind-pe op-let (suc zero) zero {i<}{j<} ⟨ r , ⟨ f , tt ⟩ ⟩ = ⇑ᵣ r
+bind-pe op-let (suc zero) (suc j) {i<} {j<} rs = ⊥-elimi (bogus21 j<)
+bind-pe op-let (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
+
+pe-correct : ∀{τ σ : Var → Maybe Val}{γ : Var → Res} (M : AST)
+   → (∀ x → eval τ (res→ast (γ x)) ≡ σ x)
+   → eval τ (res→ast (pe γ M)) ≡ eval σ M
+pe-correct M τ∘γ=σ =
+   fold-fold-fusion{Vˢ = Maybe Val}{Vᵗ = Maybe Val}{Vᶠ = Res}
+       M τ∘γ=σ bind-eval bind-pe (λ mv → mv) op≈
+   where
+   op≈ : ∀ {op} {args : Args (sig op)} {τ σ : Var → Maybe Val}{γ : Var → Res}
+      → γ ⨟′ τ ≈ σ
+      → ind-hyps [] op (sig op) args (fold-args γ args)
+          (fold-args σ args) bind-eval bind-pe (λ mv → mv) {refl} γ τ σ
+      → fold τ (res→ast (pe-op op (fold-args γ args)))
+         ≡  eval-op op (fold-args σ args)
+   op≈ {op-num n} {nil} {τ} {σ} {γ} γ⨟τ≈σ tt = refl
+   op≈ {op-mult} {cons (ast L) (cons (ast M) nil)} {τ} {σ} {γ} γ⨟τ≈σ
+        ⟨ IH-L , ⟨ IH-M , tt ⟩ ⟩ = {!!}
+        where
+        IH-L′ : fold τ (res→ast (fold γ L)) ≡ fold σ L
+        IH-L′ = IH-L γ⨟τ≈σ
+        IH-M′ : fold τ (res→ast (fold γ M)) ≡ fold σ M
+        IH-M′ = IH-M γ⨟τ≈σ
+        
+   op≈ {op-let} {cons (ast M) (cons (bind (ast N)) nil)} {τ} {σ} {γ} γ⨟τ≈σ
+       ⟨ IH-M , ⟨ IH-N , tt ⟩ ⟩ =
+       {!!}
+       where
+       fuse-ext : (x : ℕ)
+                → fold (fun-extend τ (fold σ M))
+                    (res→ast (fun-extend γ (⇑ᵣ (fold γ M)) x))
+                  ≡ fun-extend σ (fold σ M) x
+       fuse-ext = {!!}
+       IH-M′ : fold τ (res→ast (fold γ M)) ≡ fold σ M
+       IH-M′ = IH-M γ⨟τ≈σ
+       IH-N′ : fold (fun-extend τ (fold σ M))
+                  (res→ast (fold (fun-extend γ (⇑ᵣ (fold γ M))) N))
+                ≡ fold (fun-extend σ (fold σ M)) N
+       IH-N′ = IH-N fuse-ext 
+       
+   op≈ {op-bool b} {nil} {τ} {σ} {γ} γ⨟τ≈σ tt = refl
+   op≈ {op-if} {args} {τ} {σ} {γ} γ⨟τ≈σ IHs  = {!!}
+   op≈ {op-error} {nil} {τ} {σ} {γ} γ⨟τ≈σ tt = refl
+
+{-
+
 
 EvalFoldEnv : FoldEnv (Var → Maybe Val) (Maybe Val) (Maybe Val)
 EvalFoldEnv = record { is-Foldable = record {ret = λ x → x; fold-op = eval-op}
@@ -359,7 +442,7 @@ module PECorrectDirect where
 
   pe-correct : ∀{γ}{τ}{σ} (M : AST)
      → (∀ x → eval γ (res→ast (τ x)) ≡ σ x)
-     → eval γ (res→ast (p-eval τ M)) ≡ eval σ M
+     → eval γ (res→ast (pe τ M)) ≡ eval σ M
   pe-correct {γ}{τ}{σ} (` x) lk-eq = lk-eq x
   pe-correct {γ}{τ}{σ} (op-num n ⦅ nil ⦆) lk-eq = refl
   pe-correct {γ}{τ}{σ} (op-bool b ⦅ nil ⦆) lk-eq = refl
@@ -368,29 +451,29 @@ module PECorrectDirect where
       with pe-correct {γ} {τ} {σ} M lk-eq
   ... | IH-M =
       let IH-N :   eval (fun-ext γ (eval σ M))
-                        (res→ast (p-eval (fun-ext τ (⇑ (p-eval τ M))) N))
+                        (res→ast (pe (fun-ext τ (⇑ (pe τ M))) N))
                  ≡ eval (fun-ext σ (eval σ M)) N
-          IH-N = pe-correct {fun-ext γ (eval σ M)} {fun-ext τ (⇑ (p-eval τ M))}
+          IH-N = pe-correct {fun-ext γ (eval σ M)} {fun-ext τ (⇑ (pe τ M))}
                        {fun-ext σ (eval σ M)} N G in
       begin
-      eval γ (res→ast (⇓ (p-eval (fun-ext τ (⇑ (p-eval τ M))) N)))
-         ≡⟨ cong(eval γ)(res-down-ren (p-eval (fun-ext τ (⇑ (p-eval τ M))) N)) ⟩
-      eval γ (ren(λ x → x ∸ 1)(res→ast (p-eval (fun-ext τ (⇑ (p-eval τ M))) N)))
-         ≡⟨ eval-down γ(res→ast(p-eval(fun-ext τ(⇑(p-eval τ M))) N))(eval σ M) ⟩
+      eval γ (res→ast (⇓ (pe (fun-ext τ (⇑ (pe τ M))) N)))
+         ≡⟨ cong(eval γ)(res-down-ren (pe (fun-ext τ (⇑ (pe τ M))) N)) ⟩
+      eval γ (ren(λ x → x ∸ 1)(res→ast (pe (fun-ext τ (⇑ (pe τ M))) N)))
+         ≡⟨ eval-down γ(res→ast(pe(fun-ext τ(⇑(pe τ M))) N))(eval σ M) ⟩
       eval (fun-ext γ (eval σ M))
-           (res→ast (p-eval (fun-ext τ (⇑ (p-eval τ M))) N))           ≡⟨ IH-N ⟩
+           (res→ast (pe (fun-ext τ (⇑ (pe τ M))) N))           ≡⟨ IH-N ⟩
       eval (fun-ext σ (eval σ M)) N      ∎
       where
       G : (x : Var) → eval (fun-ext γ (eval σ M))
-                           (res→ast (fun-ext τ (⇑ (p-eval τ M)) x))
+                           (res→ast (fun-ext τ (⇑ (pe τ M)) x))
                       ≡ fun-ext σ (eval σ M) x
       G zero = begin
-          eval (fun-ext γ (eval σ M)) (res→ast (⇑ (p-eval τ M)))
+          eval (fun-ext γ (eval σ M)) (res→ast (⇑ (pe τ M)))
                    ≡⟨ cong (λ □ → eval (fun-ext γ (eval σ M)) □)
-                           (res-shift-ren (p-eval τ M)) ⟩
-          eval (fun-ext γ (eval σ M)) (rename (↑ 1) (res→ast (p-eval τ M)))
-                     ≡⟨ eval-shift γ (res→ast (p-eval τ M)) (eval σ M) ⟩
-          eval γ (res→ast (p-eval τ M))
+                           (res-shift-ren (pe τ M)) ⟩
+          eval (fun-ext γ (eval σ M)) (rename (↑ 1) (res→ast (pe τ M)))
+                     ≡⟨ eval-shift γ (res→ast (pe τ M)) (eval σ M) ⟩
+          eval γ (res→ast (pe τ M))
                      ≡⟨ IH-M ⟩
           eval σ M         ∎
       G (suc x) = begin
@@ -404,7 +487,7 @@ module PECorrectDirect where
       with pe-correct {γ} {τ} {σ} L lk-eq | pe-correct {γ} {τ} {σ} M lk-eq
          | pe-correct {γ} {τ} {σ} N lk-eq
   ... | IH-L | IH-M | IH-N
-      with to-bool (p-eval τ L)
+      with to-bool (pe τ L)
   ... | nothing rewrite IH-L | IH-M | IH-N = refl
   ... | just ⟨ b , eq ⟩ rewrite eq | sym IH-L
       with b
@@ -413,7 +496,7 @@ module PECorrectDirect where
   pe-correct {γ}{τ}{σ} (op-mult ⦅ cons (ast L) (cons (ast M) nil)  ⦆) lk-eq
       with pe-correct {γ} {τ} {σ} L lk-eq | pe-correct {γ} {τ} {σ} M lk-eq
   ... | IH-L | IH-M
-      with to-num (p-eval τ L) | to-num (p-eval τ M)
+      with to-num (pe τ L) | to-num (pe τ M)
   ... | nothing | _ rewrite IH-L | IH-M = refl
   ... | just ⟨ n₁ , eq₁ ⟩ | nothing rewrite eq₁ | sym IH-L | IH-M = refl
   ... | just ⟨ n₁ , eq₁ ⟩ | just ⟨ n₂ , eq₂ ⟩
@@ -509,15 +592,15 @@ module PECorrectViaFoldFoldFusion where
   {- The following should be pushed inside FoldFoldFusion -}
   fuse-ext : ∀ γ τ σ M
      → γ ⨟ τ ≈ σ
-     → eval τ (res→ast (p-eval γ M)) ≡ eval σ M
-     → (fun-ext γ (⇑ (p-eval γ M))) ⨟ (fun-ext τ (eval σ M)) ≈ (fun-ext σ (eval σ M))
+     → eval τ (res→ast (pe γ M)) ≡ eval σ M
+     → (fun-ext γ (⇑ (pe γ M))) ⨟ (fun-ext τ (eval σ M)) ≈ (fun-ext σ (eval σ M))
   fuse-ext γ τ σ M γ⨟τ≈σ IH-M zero = begin
-          eval (fun-ext τ (eval σ M)) (res→ast (⇑ (p-eval γ M)))
+          eval (fun-ext τ (eval σ M)) (res→ast (⇑ (pe γ M)))
                    ≡⟨ cong (λ □ → eval (fun-ext τ (eval σ M)) □)
-                           (res-shift-ren (p-eval γ M)) ⟩
-          eval (fun-ext τ (eval σ M)) (rename (↑ 1) (res→ast (p-eval γ M)))
-                     ≡⟨ eval-shift τ (res→ast (p-eval γ M)) (eval σ M) ⟩
-          eval τ (res→ast (p-eval γ M))
+                           (res-shift-ren (pe γ M)) ⟩
+          eval (fun-ext τ (eval σ M)) (rename (↑ 1) (res→ast (pe γ M)))
+                     ≡⟨ eval-shift τ (res→ast (pe γ M)) (eval σ M) ⟩
+          eval τ (res→ast (pe γ M))
                      ≡⟨ IH-M ⟩
           eval σ M         ∎
   fuse-ext γ τ σ M γ⨟τ≈σ IH-M (suc x) = begin
@@ -532,25 +615,25 @@ module PECorrectViaFoldFoldFusion where
             (τ σ : Var → Maybe Val)
      → γ ⨟ τ ≈ σ
      → ind-hyps 0 op (sig op) args (pe-args γ args) (eval-args σ args) γ τ σ
-     → eval τ (res→ast (p-eval γ (op ⦅ args ⦆)))
+     → eval τ (res→ast (pe γ (op ⦅ args ⦆)))
        ≡ eval σ (op ⦅ args ⦆)
   op-cong (op-num x) args γ τ σ γ⨟τ≈σ IHs = refl
   op-cong op-mult args γ τ σ γ⨟τ≈σ IHs = {!!}
   op-cong op-let (cons (ast M) (cons (bind (ast N)) nil)) γ τ σ γ⨟τ≈σ
           ⟨ IH-M , ⟨ IH-N , tt ⟩ ⟩ =
-      let IH-M′ : eval τ (res→ast (p-eval γ M)) ≡ eval σ M
+      let IH-M′ : eval τ (res→ast (pe γ M)) ≡ eval σ M
           IH-M′ = IH-M γ⨟τ≈σ in
       let IH-N′ :  eval (fun-ext τ (eval σ M))
-                        (res→ast (p-eval (fun-ext γ (⇑ (p-eval γ M))) N))
+                        (res→ast (pe (fun-ext γ (⇑ (pe γ M))) N))
                  ≡ eval (fun-ext σ (eval σ M)) N
           IH-N′ = IH-N (fuse-ext γ τ σ M γ⨟τ≈σ IH-M′) in
       begin
-      eval τ (res→ast (⇓ (p-eval (fun-ext γ (⇑ (p-eval γ M))) N)))
-         ≡⟨ cong(eval τ)(res-down-ren (p-eval (fun-ext γ (⇑ (p-eval γ M))) N)) ⟩
-      eval τ (ren(λ x → x ∸ 1)(res→ast (p-eval (fun-ext γ (⇑ (p-eval γ M))) N)))
-         ≡⟨ eval-down τ(res→ast(p-eval(fun-ext γ(⇑(p-eval γ M))) N))(eval σ M) ⟩
+      eval τ (res→ast (⇓ (pe (fun-ext γ (⇑ (pe γ M))) N)))
+         ≡⟨ cong(eval τ)(res-down-ren (pe (fun-ext γ (⇑ (pe γ M))) N)) ⟩
+      eval τ (ren(λ x → x ∸ 1)(res→ast (pe (fun-ext γ (⇑ (pe γ M))) N)))
+         ≡⟨ eval-down τ(res→ast(pe(fun-ext γ(⇑(pe γ M))) N))(eval σ M) ⟩
       eval (fun-ext τ (eval σ M))
-           (res→ast (p-eval (fun-ext γ (⇑ (p-eval γ M))) N))          ≡⟨ IH-N′ ⟩
+           (res→ast (pe (fun-ext γ (⇑ (pe γ M))) N))          ≡⟨ IH-N′ ⟩
       eval (fun-ext σ (eval σ M)) N      ∎
   op-cong (op-bool x) args γ τ σ γ⨟τ≈σ IHs = refl
   op-cong op-if args γ τ σ γ⨟τ≈σ IHs = {!!}
@@ -573,3 +656,4 @@ module PECorrectViaFoldFoldFusion where
                   }
 
 
+-}
