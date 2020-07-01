@@ -7,6 +7,7 @@ open import Data.Maybe using (Maybe; nothing; just)
 open import Data.Nat
     using (ℕ; zero; suc; _+_; _*_; _⊔_; _∸_; _≤_; _<_; z≤n; s≤s)
 open import Data.Product using (_×_; Σ; Σ-syntax) renaming (_,_ to ⟨_,_⟩ )
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 open import Environment
@@ -44,7 +45,7 @@ sig op-error = []
 
 open import ScopedTuple using (Tuple; _✖_; zip)
 open import Syntax using (↑; _•_; id; Rename)
-open Syntax.OpSig Op sig using (rename; rename-id; FV-↑1-0)
+open Syntax.OpSig Op sig using (rename; rename-id; FV-map; FV-↑1-0)
 open import Fold Op sig 
 open import Map Op sig hiding (_⊢_≈_; _⊢ₐ_≈_; _⊢₊_≈_)
 open import FoldPreserve Op sig
@@ -414,8 +415,98 @@ eval-down γ M mv 0∉M =
   env-ext σ⨟δ≈γ zero x∈arg = refl
   env-ext σ⨟δ≈γ (suc x) x∈arg = σ⨟δ≈γ x x∈arg
 
-postulate
-  FV-0-pe : ∀ γ r M → FV (res→ast (pe (γ , (⇑ᵣ r)) M)) 0 → ⊥
+
+FV-res→ast : ∀ r → FV (res→ast r) ≡ FV-res r
+FV-res→ast (val (v-num n)) = refl
+FV-res→ast (val (v-bool b)) = refl
+FV-res→ast (exp M) = refl
+
+FV-⟱ : ∀ M x → FV (map ⟱ M) x → Σ[ y ∈ ℕ ] y ∸ 1 ≡ x × FV M y
+FV-⟱ M x fv = FV-map ⟱ M x fv (λ _ → refl) (λ _ → refl)
+
+FV-res-⇓ : ∀ r x → FV-res (⇓ r) x → Σ[ y ∈ ℕ ] y ∸ 1 ≡ x × FV-res r y
+FV-res-⇓ (val v) x ()
+FV-res-⇓ (exp M) x fvr = FV-⟱ M x fvr
+
+FV-⟰ : ∀ M y → FV (rename (↑ 1) M) y → Σ[ z ∈ ℕ ] y ≡ suc z × FV M z
+FV-⟰ M y y∈↑M
+    with FV-map (↑ 1) M y y∈↑M (λ _ → refl) (λ _ → refl)
+... | ⟨ z , ⟨ refl , fv ⟩ ⟩ = ⟨ z , ⟨ refl , fv ⟩ ⟩
+
+FV-res-⇑ : ∀ r y → FV-res (⇑ᵣ r) y → FV-res r (y ∸ 1)
+FV-res-⇑ (exp M) y y∋⇑r
+    with FV-⟰ M y y∋⇑r
+... | ⟨ z , ⟨ refl , fv ⟩ ⟩ = fv
+
+FV-res-⇑-2 : ∀ r y → FV-res (⇑ᵣ r) y → Σ[ z ∈ ℕ ] y ≡ suc z × FV-res r z
+FV-res-⇑-2 (exp M) y y∋⇑r = FV-⟰ M y y∋⇑r
+
+FV-env : (Var → Res) → Var → Set
+FV-env γ x = Σ[ y ∈ Var ] FV-res (⟅ γ ⟆ y) x
+
+FV-pe : ∀ γ M x → FV-res (pe γ M) x → FV-env γ x
+FV-pe γ (` y) x fvr = ⟨ y , fvr ⟩
+FV-pe γ (op-num n ⦅ nil ⦆) x ()
+FV-pe γ (op-bool b ⦅ nil ⦆) x ()
+FV-pe γ (op-error ⦅ nil ⦆) x ()
+FV-pe γ (op-mult ⦅ cons (ast L) (cons (ast M) nil) ⦆) x fvr
+    with to-num (pe γ L) | to-num (pe γ M)
+... | nothing | _
+    with fvr
+... | inj₁ fvrL rewrite FV-res→ast (pe γ L) = FV-pe γ L x fvrL
+... | inj₂ fvr′
+    with fvr′
+... | inj₁ fvrM rewrite FV-res→ast (pe γ M) = FV-pe γ M x fvrM
+... | inj₂ ()
+FV-pe γ (op-mult ⦅ cons (ast L) (cons (ast M) nil) ⦆) x fvr
+    | just ⟨ n₁ , eq₁ ⟩ | nothing rewrite eq₁
+    with fvr
+... | inj₁ ()
+... | inj₂ fvr′
+    with fvr′
+... | inj₁ fvrM rewrite FV-res→ast (pe γ M) = FV-pe γ M x fvrM
+... | inj₂ ()
+FV-pe γ (op-mult ⦅ cons (ast L) (cons (ast M) nil) ⦆) x fvr
+    | just ⟨ n₁ , eq₁ ⟩ | just ⟨ n₂ , eq₂ ⟩ rewrite eq₁ | eq₂
+    with fvr
+... | ()
+FV-pe γ (op-if ⦅ cons (ast L) (cons (ast M) (cons (ast N) nil)) ⦆) x fvr
+    with to-bool (pe γ L)
+... | nothing
+    with fvr
+... | inj₁ fvrL rewrite FV-res→ast (pe γ L) = FV-pe γ L x fvrL
+... | inj₂ fvr′
+    with fvr′
+... | inj₁ fvrM rewrite FV-res→ast (pe γ M) = FV-pe γ M x fvrM
+... | inj₂ fvr′′
+    with fvr′′
+... | inj₁ fvrN rewrite FV-res→ast (pe γ N) = FV-pe γ N x fvrN
+... | inj₂ ()    
+FV-pe γ (op-if ⦅ cons (ast L) (cons (ast M) (cons (ast N) nil)) ⦆) x fvr
+    | just ⟨ b , eq ⟩ rewrite eq 
+    with b
+... | true = FV-pe γ M x fvr
+... | false = FV-pe γ N x fvr
+FV-pe γ (op-let ⦅ cons (ast M) (cons (bind (ast N)) nil) ⦆) x fvr
+    with FV-res-⇓ (pe (γ , (⇑ᵣ (pe γ M))) N) x fvr
+... | ⟨ y , ⟨ y-1=x , y∈pe[N] ⟩ ⟩ rewrite sym y-1=x
+    with FV-pe (γ , (⇑ᵣ (pe γ M))) N y y∈pe[N]
+... | ⟨ 0 , y∈peM ⟩ = FV-pe γ M (y ∸ 1) (FV-res-⇑ (pe γ M) y y∈peM)
+... | ⟨ suc z , y∈γz ⟩ =
+      let y-1∈γz = FV-res-⇑ (γ z) y y∈γz in
+      ⟨ z , y-1∈γz ⟩
+
+FV-0-pe : ∀ γ r M → FV (res→ast (pe (γ , (⇑ᵣ r)) M)) 0 → ⊥
+FV-0-pe γ r M 0∈peM
+    rewrite FV-res→ast (pe (γ , (⇑ᵣ r)) M)
+    with FV-pe (γ , ⇑ᵣ r) M 0 0∈peM
+... | ⟨ 0 , 0∈γ⇑r ⟩
+    with FV-res-⇑-2 r 0 0∈γ⇑r
+... | ⟨ z , ⟨ () , fv ⟩ ⟩
+FV-0-pe γ r M 0∈peM
+    | ⟨ suc y , 0∈γ⇑r ⟩ 
+    with FV-res-⇑-2 (γ y) 0 0∈γ⇑r
+... | ⟨ z , ⟨ () , fv ⟩ ⟩
 
 pe-correct : ∀{τ σ : Var → Maybe Val}{γ : Var → Res} (M : AST)
    → (∀ x → eval τ (res→ast (γ x)) ≡ σ x)

@@ -2,6 +2,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (+-comm; suc-injective)
+open import Data.Product using (_×_; Σ; Σ-syntax) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; sym; cong; cong₂)
@@ -10,7 +11,8 @@ open import Var
 
 module Renaming where
 
-open import Environment using (Env)
+open import Environment using (Shiftable; Env)
+open Shiftable {{...}}
 open Env {{...}}
 open import GenericSubstitution 
     
@@ -143,26 +145,41 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
       map-cong M (λ x → cong `_ (f x))
               (λ ρ₁≈ρ₂ x → cong `_ (ext-cong (λ x → var-injective (ρ₁≈ρ₂ x)) x))
 
-  rename-FV : ∀ x (ρ : Rename) M → (∀ y → ⟅ ρ ⟆ y ≢ x) → FV (rename ρ M) x → ⊥
-  rename-FV x ρ (` y) ρy≢x refl = ⊥-elim (ρy≢x y refl)
-  rename-FV x ρ (op ⦅ args ⦆) ρy≢x x∈M = rfv-args x ρ (sig op) args ρy≢x x∈M
+  FV-map : ∀ {E} {{E-Env : Env E Var}} (ρ : E) M x → FV (map ρ M) x
+     → (vv : ∀ x → var→val {{Env.V-is-Shiftable E-Env}} x ≡ x)
+     → (ss : ∀ x → ⇑ {{Env.V-is-Shiftable E-Env}} x ≡ suc x)
+     → Σ[ y ∈ Var ] ⟅ ρ ⟆ y ≡ x × FV M y
+  FV-map ρ (` y) x refl vv ss = ⟨ y , ⟨ refl , refl ⟩ ⟩
+  FV-map {E}{{E-Env}} ρ (op ⦅ args ⦆) x fv vv ss = fvr-args ρ (sig op) args x fv
     where
-    rfv-arg : ∀ x ρ b (arg : Arg b)
-       → (∀ y → ⟅ ρ ⟆ y ≢ x) → FV-arg (ren-arg ρ arg) x → ⊥
-    rfv-args : ∀ x ρ bs (args : Args bs)
-       → (∀ y → ⟅ ρ ⟆ y ≢ x) → FV-args (ren-args ρ args) x → ⊥
-    rfv-arg x ρ zero (ast M) ρy≢x x∈arg = rename-FV x ρ M ρy≢x x∈arg
-    rfv-arg x ρ (suc b) (bind arg) ρy≢x x∈arg =
-        rfv-arg (suc x) (ext ρ) b arg G x∈arg
-        where
-        G : (y : Var) → ⟅ ext ρ ⟆ˢ y ≢ suc x
-        G zero = λ ()
-        G (suc y) ρy≡sx rewrite lookup-shift ρ y = ρy≢x y (suc-injective ρy≡sx)
-    rfv-args x ρ [] nil ρy≢x ()
-    rfv-args x ρ (b ∷ bs) (cons arg args) ρy≢x (inj₁ x∈arg) =
-        rfv-arg x ρ b arg ρy≢x x∈arg
-    rfv-args x ρ (b ∷ bs) (cons arg args) ρy≢x (inj₂ x∈args) =
-        rfv-args x ρ bs args ρy≢x x∈args
+    fvr-arg : ∀ (ρ : E) b (arg : Arg b) x
+        → FV-arg (map-arg ρ arg) x → Σ[ y ∈ Var ] ⟅ ρ ⟆ y ≡ x × FV-arg arg y
+    fvr-args : ∀ (ρ : E) bs (args : Args bs) x
+        → FV-args (map-args ρ args) x → Σ[ y ∈ Var ] ⟅ ρ ⟆ y ≡ x × FV-args args y
+    fvr-arg ρ 0 (ast M) x fv = FV-map ρ M x fv vv ss
+    fvr-arg ρ (suc b) (bind arg) x fv 
+        with fvr-arg (ext ρ) b arg (suc x) fv
+    ... | ⟨ 0 , eq ⟩ rewrite lookup-0 ρ (var→val {{Env.V-is-Shiftable E-Env}} 0) | vv 0
+        with eq
+    ... | ()
+    fvr-arg ρ (suc b) (bind arg) x fv 
+        | ⟨ suc y , ⟨ eq , sy∈arg ⟩ ⟩ rewrite lookup-shift ρ y
+        | lookup-suc ρ (var→val {{Env.V-is-Shiftable E-Env}} 0) y | ss (⟅ ρ ⟆ y) =
+          ⟨ y , ⟨ suc-injective eq , sy∈arg ⟩ ⟩
+    fvr-args ρ [] nil x ()
+    fvr-args ρ (b ∷ bs) (cons arg args) x (inj₁ fv)
+        with fvr-arg ρ b arg x fv
+    ... | ⟨ y , ⟨ ρy , y∈arg ⟩ ⟩ = 
+          ⟨ y , ⟨ ρy , (inj₁ y∈arg) ⟩ ⟩
+    fvr-args ρ (b ∷ bs) (cons arg args) x (inj₂ fv)
+        with fvr-args ρ bs args x fv
+    ... | ⟨ y , ⟨ ρy , y∈args ⟩ ⟩ = 
+          ⟨ y , ⟨ ρy , (inj₂ y∈args) ⟩ ⟩
 
+  rename-FV-⊥ : ∀ x (ρ : Rename) M → (∀ y → ⟅ ρ ⟆ y ≢ x) → FV (rename ρ M) x → ⊥
+  rename-FV-⊥ x ρ M ρy≢x fvρM 
+      with FV-map ρ M x fvρM (λ y → refl) (λ y → refl)
+  ... | ⟨ y , ⟨ ρyx , y∈M ⟩ ⟩ = ⊥-elim (ρy≢x y ρyx)
+  
   FV-↑1-0 : ∀ M → FV (rename (↑ 1) M) 0 → ⊥
-  FV-↑1-0 M = rename-FV 0 (↑ 1) M (λ { y () })
+  FV-↑1-0 M = rename-FV-⊥ 0 (↑ 1) M (λ { y () })
