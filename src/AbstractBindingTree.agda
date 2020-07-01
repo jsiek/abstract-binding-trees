@@ -1,7 +1,10 @@
+open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_; _≟_)
 open import Data.Nat.Properties using (+-suc; +-identityʳ)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit.Polymorphic using (⊤; tt)
 open import ScopedTuple
 import Relation.Binary.PropositionalEquality as Eq
@@ -129,4 +132,34 @@ record Quotable {ℓ} (V : Set ℓ) : Set ℓ where
 instance
   Var-is-Quotable : Quotable Var
   Var-is-Quotable = record { “_” = `_ }
+
+{----------------------------------------------------------------------------
+ Free variables
+----------------------------------------------------------------------------}
+
+FV? : ABT → Var → Bool
+FV-arg? : ∀{b} → Arg b → Var → Bool
+FV-args? : ∀{bs} → Args bs → Var → Bool
+FV? (` x) y
+    with x ≟ y
+... | yes xy = true
+... | no xy = false
+FV? (op ⦅ As ⦆) y = FV-args? As y
+FV-arg? (ast M) y = FV? M y
+FV-arg? (bind A) y = FV-arg? A (suc y)
+FV-args? nil y = false
+FV-args? (cons A As) y = FV-arg? A y ∨ FV-args? As y
+
+{- Predicate Version -}
+
+FV : ABT → Var → Set
+FV-arg : ∀{b} → Arg b → Var → Set
+FV-args : ∀{bs} → Args bs → Var → Set
+FV (` x) y = x ≡ y
+FV (op ⦅ As ⦆) y = FV-args As y
+FV-arg (ast M) y = FV M y
+FV-arg (bind A) y = FV-arg A (suc y)
+FV-args nil y = ⊥
+FV-args (cons A As) y = FV-arg A y ⊎ FV-args As y
+
 

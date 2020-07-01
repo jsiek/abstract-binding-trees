@@ -15,6 +15,8 @@ open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; z≤n; s≤s)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+
 open import Data.Unit.Polymorphic using (⊤; tt)
 open import Environment
 open import Function using (_∘_)
@@ -46,6 +48,25 @@ _⨟_≈_ : ∀{ℓᶠ ℓᵐ} {Vᵐ Eᵐ : Set ℓᵐ}{Vᶠ Cᶠ Eᶠ : Set ℓ
     {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
     → Eᵐ → Eᶠ → Eᶠ → Set ℓᶠ
 σ ⨟ δ ≈ γ = ∀ x → fold δ (“ ⟅ σ ⟆ x ”) ≡ ret (⟅ γ ⟆ x)
+
+_⊢_⨟_≈_ : ∀{ℓᶠ ℓᵐ} {Vᵐ Eᵐ : Set ℓᵐ}{Vᶠ Cᶠ Eᶠ : Set ℓᶠ}
+    {{_ : Env Eᵐ Vᵐ}} {{_ : Quotable Vᵐ}}
+    {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+    → ABT → Eᵐ → Eᶠ → Eᶠ → Set ℓᶠ
+M ⊢ σ ⨟ δ ≈ γ = ∀ x → FV M x → fold δ (“ ⟅ σ ⟆ x ”) ≡ ret (⟅ γ ⟆ x)
+
+_⊢ₐ_⨟_≈_ : ∀{ℓᶠ ℓᵐ} {Vᵐ Eᵐ : Set ℓᵐ}{Vᶠ Cᶠ Eᶠ : Set ℓᶠ}
+    {{_ : Env Eᵐ Vᵐ}} {{_ : Quotable Vᵐ}}
+    {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+    → {b : ℕ} → Arg b → Eᵐ → Eᶠ → Eᶠ → Set ℓᶠ
+arg ⊢ₐ σ ⨟ δ ≈ γ = ∀ x → FV-arg arg x → fold δ (“ ⟅ σ ⟆ x ”) ≡ ret (⟅ γ ⟆ x)
+
+_⊢₊_⨟_≈_ : ∀{ℓᶠ ℓᵐ} {Vᵐ Eᵐ : Set ℓᵐ}{Vᶠ Cᶠ Eᶠ : Set ℓᶠ}
+    {{_ : Env Eᵐ Vᵐ}} {{_ : Quotable Vᵐ}}
+    {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+    → {bs : List ℕ} → Args bs → Eᵐ → Eᶠ → Eᶠ → Set ℓᶠ
+args ⊢₊ σ ⨟ δ ≈ γ = ∀ x → FV-args args x → fold δ (“ ⟅ σ ⟆ x ”) ≡ ret (⟅ γ ⟆ x)
+
 
 module RelFold≡ where
   ≡-RelFold : ∀{ℓ}{V : Set ℓ}{C : Set ℓ} → RelFold V V C C
@@ -85,6 +106,44 @@ module _ where
       fuse-args {[]} {σ} {δ} {γ} nil σ⨟δ≈γ = tt
       fuse-args {b ∷ bs} {σ} {δ} {γ} (cons arg args) σ⨟δ≈γ =
           ⟨ fuse-arg{b}{σ}{δ}{γ} arg σ⨟δ≈γ , fuse-args args σ⨟δ≈γ ⟩
+
+  fold-map-fusion-ext-FV : ∀{ℓᵐ ℓᶠ}{Vᵐ Eᵐ : Set ℓᵐ}{ Vᶠ Cᶠ Eᶠ : Set ℓᶠ}
+       {{_ : Env Eᵐ Vᵐ}} {{_ : Quotable Vᵐ}}
+       {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+       {σ : Eᵐ}{δ γ : Eᶠ}
+       (M : ABT)
+     → M ⊢ σ ⨟ δ ≈ γ
+     → (∀{b}{arg : Arg b}{σ : Eᵐ}{δ γ : Eᶠ}{v : Vᶠ} → bind arg ⊢ₐ σ ⨟ δ ≈ γ
+         → arg ⊢ₐ ext σ ⨟ (δ , v) ≈ (γ , v))
+     → (∀{op}{rs rs′ : Tuple (sig op) (Bind Vᶠ Cᶠ)}
+           → zip (_⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}) rs rs′
+           → fold-op op rs ≡ fold-op op rs′)
+     → fold δ (map σ M)  ≡ fold γ M
+  fold-map-fusion-ext-FV (` x) σ⨟δ≈γ env-ext op-cong = σ⨟δ≈γ x refl
+  fold-map-fusion-ext-FV {Vᵐ = Vᵐ}{Eᵐ}{Vᶠ}{Cᶠ}{Eᶠ}{σ = σ}{δ}{γ} (op ⦅ args ⦆)
+      σ⨟δ≈γ env-ext op-cong = op-cong (fuse-args args σ⨟δ≈γ)
+      where
+      fuse-arg : ∀{b}{σ : Eᵐ}{δ γ : Eᶠ} (arg : Arg b)
+         → arg ⊢ₐ σ ⨟ δ ≈ γ
+         → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ} (fold-arg δ (map-arg σ arg))
+                                    (fold-arg γ arg)
+      fuse-args : ∀{bs}{σ : Eᵐ}{δ γ : Eᶠ} (args : Args bs)
+         → args ⊢₊ σ ⨟ δ ≈ γ
+         → zip (_⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}) (fold-args δ (map-args σ args))
+               (fold-args γ args)
+      fuse-arg {zero} {σ} {δ} {γ} (ast M) σ⨟δ≈γ =
+          fold-map-fusion-ext-FV M σ⨟δ≈γ (λ{b}{arg} → env-ext{b}{arg}) op-cong
+      fuse-arg {suc b} {σ} {δ} {γ} (bind arg) σ⨟δ≈γ refl =
+          fuse-arg {b} arg (env-ext{b}{arg} σ⨟δ≈γ)
+      fuse-args {[]} {σ} {δ} {γ} nil σ⨟δ≈γ = tt
+      fuse-args {b ∷ bs} {σ} {δ} {γ} (cons arg args) σ⨟δ≈γ =
+          ⟨ fuse-arg{b}{σ}{δ}{γ} arg G , fuse-args args H ⟩
+          where
+          G : arg ⊢ₐ σ ⨟ δ ≈ γ
+          G x x∈arg = σ⨟δ≈γ x (inj₁ x∈arg)
+          H : args ⊢₊ σ ⨟ δ ≈ γ
+          H x x∈args = σ⨟δ≈γ x (inj₂ x∈args)
+
 
   fold-rename-fusion : ∀ {ℓ : Level}{Vᶠ Eᶠ Cᶠ : Set ℓ}
        {{_ : Env Eᶠ Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}} {{_ : Shiftable Cᶠ}}

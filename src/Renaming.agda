@@ -1,8 +1,10 @@
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Data.Nat.Properties using (+-comm)
+open import Data.Nat.Properties using (+-comm; suc-injective)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; sym; cong; cong₂)
+open Eq using (_≡_; _≢_; refl; sym; cong; cong₂)
 open Eq.≡-Reasoning
 open import Var 
 
@@ -38,6 +40,12 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
     
   rename : Rename → ABT → ABT
   rename = map
+
+  ren-arg : Rename → {b : ℕ} → Arg b → Arg b
+  ren-arg = map-arg
+
+  ren-args : Rename → {bs : List ℕ} → Args bs → Args bs
+  ren-args = map-args
 
   open Composition Op sig using (ComposableProps)
   
@@ -135,3 +143,26 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
       map-cong M (λ x → cong `_ (f x))
               (λ ρ₁≈ρ₂ x → cong `_ (ext-cong (λ x → var-injective (ρ₁≈ρ₂ x)) x))
 
+  rename-FV : ∀ x (ρ : Rename) M → (∀ y → ⟅ ρ ⟆ y ≢ x) → FV (rename ρ M) x → ⊥
+  rename-FV x ρ (` y) ρy≢x refl = ⊥-elim (ρy≢x y refl)
+  rename-FV x ρ (op ⦅ args ⦆) ρy≢x x∈M = rfv-args x ρ (sig op) args ρy≢x x∈M
+    where
+    rfv-arg : ∀ x ρ b (arg : Arg b)
+       → (∀ y → ⟅ ρ ⟆ y ≢ x) → FV-arg (ren-arg ρ arg) x → ⊥
+    rfv-args : ∀ x ρ bs (args : Args bs)
+       → (∀ y → ⟅ ρ ⟆ y ≢ x) → FV-args (ren-args ρ args) x → ⊥
+    rfv-arg x ρ zero (ast M) ρy≢x x∈arg = rename-FV x ρ M ρy≢x x∈arg
+    rfv-arg x ρ (suc b) (bind arg) ρy≢x x∈arg =
+        rfv-arg (suc x) (ext ρ) b arg G x∈arg
+        where
+        G : (y : Var) → ⟅ ext ρ ⟆ˢ y ≢ suc x
+        G zero = λ ()
+        G (suc y) ρy≡sx rewrite lookup-shift ρ y = ρy≢x y (suc-injective ρy≡sx)
+    rfv-args x ρ [] nil ρy≢x ()
+    rfv-args x ρ (b ∷ bs) (cons arg args) ρy≢x (inj₁ x∈arg) =
+        rfv-arg x ρ b arg ρy≢x x∈arg
+    rfv-args x ρ (b ∷ bs) (cons arg args) ρy≢x (inj₂ x∈args) =
+        rfv-args x ρ bs args ρy≢x x∈args
+
+  FV-↑1-0 : ∀ M → FV (rename (↑ 1) M) 0 → ⊥
+  FV-↑1-0 M = rename-FV 0 (↑ 1) M (λ { y () })
