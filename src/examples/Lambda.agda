@@ -27,7 +27,7 @@ sig op-app = 0 ∷ 0 ∷ []
 open Syntax using (Rename; _•_; id; ↑; Env; Shiftable; GSubst-is-Env; GSubst)
 open Syntax.OpSig Op sig
   using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫;
-         rename; ABT-is-Shiftable)
+         rename; ABT-is-Shiftable; Var-is-Quotable; ABT-is-Quotable)
   renaming (ABT to Term)
   
 open Shiftable {{...}}
@@ -68,6 +68,8 @@ _ = λ M → refl
 _ : ∀ (N L : Term) → ((` 1 · ` 0) [ N ] ) [ L ] ≡ (L · N [ L ])
 _ = λ N L → refl
 
+{-------------      Reduction Semantics    -------------}
+
 infix 2 _—→_
 
 data _—→_ : Term → Term → Set where
@@ -96,6 +98,9 @@ _ : ∀ L M → (ƛ ((ƛ (` 0 · ` 1)) · M)) · L
 _ = λ L M → ξ-·₁ (ξ-ƛ β-ƛ)
 
 
+{-------------      Type System    -------------}
+
+
 data Type : Set where
   Bot   : Type
   _⇒_   : Type → Type → Type
@@ -116,6 +121,9 @@ pattern ⊢` ∋x = var-p ∋x tt
 pattern ⊢ƛ ⊢N eq = op-p {op = op-lam} (cons-p (bind-p (ast-p ⊢N)) nil-p) eq
 pattern ⊢· ⊢L ⊢M eq = op-p {op = op-app}
                            (cons-p (ast-p ⊢L) (cons-p (ast-p ⊢M) nil-p)) eq
+
+
+{-------------      Proof of Progress    -------------}
 
 data Value : Term → Set where
 
@@ -146,26 +154,26 @@ progress (⊢· ⊢L ⊢M _)
 ... | step L—→L′                            =  step (ξ-·₁ L—→L′)
 ... | done V-ƛ                              =  step β-ƛ
 
+{-------------      Proof of Preservation    -------------}
 
-{-
-module _ where
-  open FoldPred 𝑃 (λ Γ v A → ⊤) _∋_⦂_ _⊢_⦂_ 
-  RenPres : MapPreserveABTPred {I = Type} Rename-is-Map
-  RenPres = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _∋_⦂_ ; quote-⊢v = λ x → ⊢` x
-            ; shift-⊢v = λ x → x ; ⊢v0 = refl }
-  open MapPreserveABTPred RenPres using ()
-      renaming (preserve-map to rename-pres) public
+instance
+  _ : MapPreservable Var Type Rename
+  _ = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _∋_⦂_ ; ⊢v0 = refl ; shift-⊢v = λ x → x
+             ; quote-⊢v = λ x → ⊢` x }
 
-open FoldPred 𝑃 (λ Γ v A → ⊤) _⊢_⦂_ _⊢_⦂_
-import GenericSubstitution
-open GenericSubstitution.GSubstPred ABT-is-Shiftable _⊢_⦂_
+rename-pres : ∀{Γ Δ : List Type}{σ : Rename}{A : Type}
+   → (M : Term) → Γ ⊢ M ⦂ A → σ ⦂ Γ ⇒ Δ → Δ ⊢ rename σ M ⦂ A
+rename-pres = preserve-map
 
-SubstPres : MapPreserveABTPred Subst-is-Map
-SubstPres = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _⊢_⦂_
-              ; shift-⊢v = λ {M} ⊢M → rename-pres ⊢M (λ z → z)
-              ; quote-⊢v = λ x → x ; ⊢v0 = λ {B}{Δ} → ⊢` refl }
-open MapPreserveABTPred SubstPres using ()
-    renaming (preserve-map to subst-pres) public
+instance
+  _ : MapPreservable Term Type Subst
+  _ = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _⊢_⦂_ ; ⊢v0 = λ {B}{Δ} → ⊢` refl
+        ; shift-⊢v = λ {A}{B}{Γ}{M} ⊢M → rename-pres M ⊢M (λ z → z)
+        ; quote-⊢v = λ x → x }
+
+subst-pres : ∀{Γ Δ : List Type}{σ : Subst}{A : Type}
+   → (M : Term) → Γ ⊢ M ⦂ A → σ ⦂ Γ ⇒ Δ → Δ ⊢ ⟪ σ ⟫ M ⦂ A
+subst-pres = preserve-map
 
 substitution : ∀{Γ A B M N}
    → Γ ⊢ M ⦂ A
@@ -173,7 +181,7 @@ substitution : ∀{Γ A B M N}
      ---------------
    → Γ ⊢ N [ M ] ⦂ B
 substitution {Γ}{A}{B}{M}{N} ⊢M ⊢N =
-    subst-pres {σ = M • ↑ 0} ⊢N (λ {x} → subM {x})
+    subst-pres {σ = M • ↑ 0} N ⊢N (λ {x} → subM {x})
     where
     subM : (M • id) ⦂ A ∷ Γ ⇒ Γ
     subM {zero} {B} refl = ⊢M
@@ -188,4 +196,3 @@ preserve (⊢· ⊢L ⊢M refl) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L�
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₂ M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′) refl
 preserve (⊢ƛ ⊢M refl) (ξ-ƛ M—→N) = ⊢ƛ (preserve ⊢M M—→N) refl
 preserve (⊢· (⊢ƛ ⊢N refl) ⊢M refl) β-ƛ = substitution ⊢M ⊢N
--}
