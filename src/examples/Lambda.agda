@@ -24,12 +24,14 @@ sig : Op → List ℕ
 sig op-lam = 1 ∷ []
 sig op-app = 0 ∷ 0 ∷ []
 
-open Syntax using (Rename; _•_; id; ↑; ⦉_⦊; inc)
-
+open Syntax using (Rename; _•_; id; ↑; Env; Shiftable; GSubst-is-Env; GSubst)
 open Syntax.OpSig Op sig
-  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫; incs; ⟦_⟧;
-         rename; Rename-is-Map; ABT-is-Shiftable; Subst-is-Map)
+  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫;
+         rename; ABT-is-Shiftable)
   renaming (ABT to Term)
+  
+open Shiftable {{...}}
+open Env {{...}}
 
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
 
@@ -39,31 +41,31 @@ pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
 sub-app : ∀ (L M : Term) (σ : Subst) → ⟪ σ ⟫ (L · M) ≡ (⟪ σ ⟫ L) · (⟪ σ ⟫ M)
 sub-app = λ L M σ → refl
 
-sub-lam : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ ` 0 • incs σ ⟫ N)
+sub-lam : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ ` 0 • ⟰ σ ⟫ N)
 sub-lam N σ = refl 
 
-ren-lam : ∀ (N : Term) (ρ : Rename) → rename ρ (ƛ N) ≡ ƛ (rename (0 • inc ρ) N)
+ren-lam : ∀ (N : Term) (ρ : Rename) → rename ρ (ƛ N) ≡ ƛ (rename (0 • ⟰ ρ) N)
 ren-lam N σ = refl 
 
-_ : ∀ M L → ⟦ M • L • id ⟧ 0 ≡ M
+_ : ∀ (M L : Term) → ⟅ M • L • id ⟆ 0 ≡ M
 _ = λ M L → refl
 
-_ : ∀ M L → ⟦ M • L • id ⟧ 1 ≡ L
+_ : ∀ (M L : Term) → ⟅ M • L • id ⟆ 1 ≡ L
 _ = λ M L → refl
 
-_ : ∀ M L → ⟦ M • L • id ⟧ 2 ≡ ` 0
+_ : ∀ (M L : Term) → ⟅ M • L • id ⟆ 2 ≡ ` 0
 _ = λ M L → refl
 
-_ : ∀ M L → ⟦ M • L • id ⟧ 3 ≡ ` 1
+_ : ∀ (M L : Term) → ⟅ M • L • id ⟆ 3 ≡ ` 1
 _ = λ M L → refl
 
-_ : ∀ M L → ⟪ M • L • id ⟫ (` 1 · ` 0) ≡ L · M
+_ : ∀ (M L : Term) → ⟪ M • L • id ⟫ (` 1 · ` 0) ≡ L · M
 _ = λ M L → refl
 
-_ : ∀ M → ⟪ M • id ⟫ (` 1 · ` 0) ≡ ` 0 · M
+_ : ∀ (M : Term) → ⟪ M • id ⟫ (` 1 · ` 0) ≡ ` 0 · M
 _ = λ M → refl
 
-_ : ∀ N L → ((` 1 · ` 0) [ N ] ) [ L ] ≡ (L · N [ L ])
+_ : ∀ (N L : Term) → ((` 1 · ` 0) [ N ] ) [ L ] ≡ (L · N [ L ])
 _ = λ N L → refl
 
 infix 2 _—→_
@@ -99,7 +101,7 @@ data Type : Set where
   _⇒_   : Type → Type → Type
 
 open import Var
-open import Preserve Op sig
+open import MapPreserve Op sig
 
 𝑉 : List Type → Var → Type → Set
 𝑉 Γ x A = ⊤
@@ -108,7 +110,7 @@ open import Preserve Op sig
 𝑃 op-lam (B ∷̌ []̌) ⟨ ⟨ A , tt ⟩ , tt ⟩ A→B = A→B ≡ A ⇒ B
 𝑃 op-app (A→B ∷̌ A ∷̌ []̌) ⟨ tt , ⟨ tt , tt ⟩ ⟩ B = A→B ≡ A ⇒ B
 
-open ABTPred 𝑉 𝑃
+open import ABTPredicate Op sig 𝑉 𝑃
 
 pattern ⊢` ∋x = var-p ∋x tt
 pattern ⊢ƛ ⊢N eq = op-p {op = op-lam} (cons-p (bind-p (ast-p ⊢N)) nil-p) eq

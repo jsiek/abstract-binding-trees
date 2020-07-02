@@ -8,7 +8,7 @@ open import Var
 
 module Substitution where
 
-open import Environment using (Env)
+open import Environment public
 open Env {{...}}
 open import GenericSubstitution public
 open import Renaming public
@@ -16,7 +16,6 @@ open import Renaming public
 module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
   open import AbstractBindingTree Op sig
-  open import Environment
   open Renaming.WithOpSig Op sig public
   open import Map Op sig
   open import MapFusion Op sig
