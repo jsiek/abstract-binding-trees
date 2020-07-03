@@ -12,90 +12,61 @@ open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Var
 
-module GenericSubstitution where
+module experimental.GenericSubstitution where
+
+postulate
+  extensionality : ∀{ℓ₁ ℓ₂} {A : Set ℓ₁ }{B : Set ℓ₂} {f g : A → B}
+    → (∀ (x : A) → f x ≡ g x)
+      -----------------------
+    → f ≡ g
 
 open Shiftable {{...}}
-open Env {{...}}
 
 infixr 6 _•_
 
+{-
 data GSubst {ℓ : Level} : (V : Set ℓ) → Set ℓ where
   ↑ : (k : ℕ) → ∀{V : Set ℓ} → GSubst {ℓ} V
   _•_ : ∀{V} → V → GSubst V → GSubst V
+-}
 
-id : ∀ {ℓ}{V : Set ℓ} → GSubst V
+GSubst : {ℓ : Level} (V : Set ℓ) → Set ℓ
+GSubst V = Var → V
+
+↑ : (k : ℕ) → ∀{ℓ}{V : Set ℓ}{{_ : Shiftable V}} → GSubst {ℓ} V
+↑ k x = var→val (k + x)
+
+_•_ : ∀{ℓ}{V : Set ℓ}{{_ : Shiftable V}} → V → GSubst V → GSubst V
+(v • σ) 0 = v
+(v • σ) (suc x) = σ x
+
+id : ∀ {ℓ}{V : Set ℓ}{{_ : Shiftable V}} → GSubst V
 id = ↑ 0
 
 map-sub : ∀{ℓ}{V W : Set ℓ} → (V → W) → GSubst V → GSubst W
-map-sub f (↑ k) = ↑ k
-map-sub f (v • σ) = f v • map-sub f σ
+map-sub f σ x = f (σ x)
 
 map-sub-id : ∀{ℓ}{V : Set ℓ} (σ : GSubst V) → map-sub (λ x → x) σ ≡ σ
-map-sub-id (↑ k) = refl
-map-sub-id (v • σ) = cong₂ _•_ refl (map-sub-id σ)
+map-sub-id σ = refl
 
 drop : ∀{ℓ}{V : Set ℓ} → (k : ℕ) → GSubst V → GSubst V
-drop k (↑ k') = ↑ (k + k')
-drop zero (v • σ) = v • σ
-drop (suc k) (v • σ) = drop k σ
+drop k σ x = σ (k + x)
 
 map-sub-drop : ∀{ℓ} {V W : Set ℓ} σ f k
    → map-sub {ℓ}{V}{W} f (drop k σ) ≡ drop k (map-sub f σ)
-map-sub-drop (↑ k₁) f k = refl
-map-sub-drop (v • σ) f zero = refl
-map-sub-drop (v • σ) f (suc k) = map-sub-drop σ f k
+map-sub-drop σ f k = refl
 
 drop-0 : ∀ {ℓ}{V : Set ℓ} σ → drop {ℓ}{V} 0 σ ≡ σ
-drop-0 (↑ k) = refl
-drop-0 (v • σ) = refl
-  
+drop-0 σ = refl
+
 drop-drop : ∀ {ℓ}{V} k k' σ → drop {ℓ} {V} (k + k') σ ≡ drop k (drop k' σ)
-drop-drop k k' (↑ k₁) rewrite +-assoc k k' k₁ = refl
-drop-drop zero k' (v • σ) rewrite drop-0 (drop k' (v • σ)) = refl
-drop-drop (suc k) zero (v • σ) rewrite +-comm k 0 = refl
-drop-drop (suc k) (suc k') (v • σ)
-    with drop-drop (suc k) k' σ
-... | IH rewrite +-comm k (suc k') | +-comm k k' = IH
-
-⟅_⟆ˢ : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} → GSubst V → Var → V
-⟅ ↑ k ⟆ˢ x = var→val (k + x)
-⟅ y • σ ⟆ˢ 0 = y
-⟅ y • σ ⟆ˢ (suc x) = ⟅ σ ⟆ˢ x
-
-⟰ˢ : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} → GSubst V → GSubst V
-⟰ˢ (↑ k) = ↑ (suc k)
-⟰ˢ (v • ρ) = ⇑ v • ⟰ˢ ρ
-
-inc-shift : ∀{ℓ}{V : Set ℓ} {{S : Shiftable V}} (ρ : GSubst V) (x : Var)
-   → ⟅_⟆ˢ (⟰ˢ ρ) x ≡ ⇑ (⟅_⟆ˢ ρ x)
-inc-shift (↑ k) x rewrite +-comm k x = var→val-suc-shift
-inc-shift (y • ρ) zero = refl
-inc-shift (y • ρ) (suc x) = inc-shift ρ x
-
-perm : ∀{ℓ}{V : Set ℓ} {{S : Shiftable V}} → List Var → GSubst V → GSubst V
-perm [] σ = σ
-perm (x ∷ ls) σ = ⟅ σ ⟆ˢ x • perm ls σ
-
-lookup-permute : ∀{ℓ}{V : Set ℓ}{{S : Shiftable V}} (ρ : GSubst V) xs x
-   → ⟅ perm xs ρ ⟆ˢ x ≡ ⟅ ρ ⟆ˢ (l→f xs x)
-lookup-permute ρ [] x = refl
-lookup-permute ρ (y ∷ ys) zero = refl
-lookup-permute ρ (y ∷ ys) (suc x) = lookup-permute ρ ys x
-
-instance
-  GSubst-is-Env : ∀{ℓ}{V : Set ℓ} {{S : Shiftable V}} → Env (GSubst V) V
-  GSubst-is-Env {ℓ}{V}{{S}} = record { ⟅_⟆ = ⟅_⟆ˢ
-      ; _,_ = λ ρ v → v • ⟰ˢ ρ ; ⟰ = ⟰ˢ ; lookup-0 = λ ρ v → refl
-      ; lookup-suc = λ ρ v x → inc-shift ρ x
-      ; lookup-shift = λ ρ x → inc-shift ρ x
-      ; π = λ xs ρ → perm xs ρ
-      ; lookup-perm = lookup-permute }
-
-drop-add : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} k (σ : GSubst V) (x : Var)
-   → ⟅ drop k σ ⟆ x ≡ ⟅ σ ⟆ (k + x)
-drop-add k (↑ k') x rewrite +-comm k k' | +-assoc k' k x = refl
-drop-add zero (v • σ) x = refl
-drop-add (suc k) (v • σ) x = drop-add k σ x
+drop-drop k k' σ = extensionality G
+  where
+  G : (x : Var) → drop (k + k') σ x ≡ drop k (drop k' σ) x
+  G x rewrite +-comm k k' | +-assoc k' k x = refl
+  
+⟰ : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} → GSubst V → GSubst V
+⟰ σ x = ⇑ (σ x)
 
 shifts : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} → ℕ → V → V
 shifts zero v = v
@@ -103,28 +74,33 @@ shifts (suc k) v = ⇑ (shifts k v)
 
 drop-inc : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}}
    → (k : ℕ) (σ : GSubst V) → drop k (⟰ σ) ≡ ⟰ (drop k σ)
-drop-inc k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
-drop-inc zero (v • σ) = refl
-drop-inc (suc k) (v • σ) = drop-inc k σ
+drop-inc k σ = refl
 
 Z-shift : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}}
-   → (x : Var) → ⟅ var→val{ℓ}{V} 0 • ↑ 1 ⟆ x ≡ var→val{ℓ}{V} x
+   → (x : Var) → (var→val{ℓ}{V} 0 • ↑ 1) x ≡ var→val{ℓ}{V} x
 Z-shift 0 = refl
 Z-shift (suc x) = refl
 
+{- obsolete, use • instead -}
+_,_ : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} → GSubst V → V → GSubst V
+(σ , v) = v • ⟰ σ
+
+ext : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} → GSubst V → GSubst V
+ext σ = (var→val 0) • ⟰ σ
+
 ext-cong : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} {σ₁ σ₂ : GSubst V}
-  → ((x : ℕ) → ⟅ σ₁ ⟆ x ≡ ⟅ σ₂ ⟆ x)
-  → (x : ℕ) → ⟅ ext σ₁ ⟆ x ≡ ⟅ ext σ₂ ⟆ x
-ext-cong f zero = refl
-ext-cong {σ₁ = σ₁} {σ₂} f (suc x)
-    rewrite inc-shift σ₁ x | inc-shift σ₂ x | f x = refl
+  → ((x : ℕ) → σ₁ x ≡ σ₂ x)
+  → (x : ℕ) → ext σ₁ x ≡ ext σ₂ x
+ext-cong {σ₁ = σ₁} {σ₂} f zero = refl
+ext-cong {σ₁ = σ₁} {σ₂} f (suc x) rewrite f x = refl
 
 drop-ext : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}}
-   → (k : Var) (ρ : GSubst V)
-   → drop (suc k) (ext ρ) ≡ ⟰ (drop k ρ)
-drop-ext k (↑ k₁) rewrite +-comm k (suc k₁) | +-comm k₁ k = refl
-drop-ext zero (x • ρ) = refl
-drop-ext (suc k) (x • ρ) = drop-inc k ρ
+   → (k : Var) (σ : GSubst V)
+   → drop (suc k) (ext σ) ≡ ⟰ (drop k σ)
+drop-ext k σ = refl
+
+
+{-
 
 data Shift {ℓ}{V : Set ℓ} {{_ : Shiftable V}} : ℕ → GSubst V → Set ℓ where
   shift-up : ∀{k} → Shift k (↑ k)
@@ -339,3 +315,4 @@ module Composition (Op : Set) (sig : Op → List ℕ)   where
       | cons-seq v₁ σ₁ σ₂ = refl
   compose-sub (v₁ • σ₁) σ₂ (suc x) rewrite cons-seq v₁ σ₁ σ₂
       | compose-sub σ₁ σ₂ x = refl
+-}

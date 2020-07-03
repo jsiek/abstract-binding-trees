@@ -6,7 +6,7 @@ open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open import Relation.Nullary using (Dec; yes; no)
 open import Var
 
-module Environment where
+module experimental.Environment where
 
 record Shiftable {ℓ} (V : Set ℓ) : Set ℓ where
   field ⇑ : V → V
