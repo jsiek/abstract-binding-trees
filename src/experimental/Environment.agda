@@ -20,6 +20,7 @@ instance
 
 open Shiftable {{...}}
 
+{-
 l→f : List Var → Var → Var
 l→f [] y = y
 l→f (x ∷ xs) zero = x
@@ -49,3 +50,6 @@ instance
       ; lookup-0 = λ ρ v → refl
       ; lookup-suc = λ ρ v x → refl ; lookup-shift = λ ρ x → refl
       ; lookup-perm = λ ρ xs x → refl }
+-}
+
+
