@@ -4,6 +4,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (+-comm; suc-injective)
 open import Data.Product using (_×_; Σ; Σ-syntax) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; sym; cong; cong₂)
 open Eq.≡-Reasoning
@@ -14,8 +15,10 @@ module experimental.Renaming where
 open import experimental.Environment using (Shiftable)
 open import experimental.GSubst
 open Shiftable {{...}}
+{-
 open import experimental.GenericSubstitution 
-    
+-}
+
 {----------------------------------------------------------------------------
                              Renaming
  ---------------------------------------------------------------------------}
@@ -31,9 +34,58 @@ ext-suc ρ x = refl
 
 module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
 
-  open import AbstractBindingTree Op sig
+  open import experimental.AbstractBindingTree Op sig
   open import experimental.Environment
 
+  rename : Rename → ABT → ABT
+
+  ren-arg : Rename → {b : ℕ} →  Arg b → Arg b
+  ren-args : Rename → {bs : List ℕ} →  Args bs → Args bs
+  rename ρ (` x) = ` (ρ x)
+  rename ρ (op ⦅ args ⦆) = op ⦅ ren-args ρ args ⦆
+  ren-arg ρ (ast M) = ast (rename ρ M)
+  ren-arg ρ (bind M) = bind (ren-arg (ext ρ) M)
+  ren-arg ρ (perm f f⁻¹ inv M) = perm f f⁻¹ inv (ren-arg (f ∘ ρ ∘ f⁻¹) M)
+  ren-args ρ {[]} nil = nil
+  ren-args ρ {b ∷ bs} (cons x args) = cons (ren-arg ρ x) (ren-args ρ args)
+
+  compose-rename : ∀ (ρ₁ : Rename) (ρ₂ : Rename) (M : ABT)
+     → rename ρ₂ (rename ρ₁ M) ≡ rename (ρ₂ ∘ ρ₁) M
+  compose-rename ρ₁ ρ₂ (` x) = refl
+  compose-rename ρ₁ ρ₂ (op ⦅ args ⦆) = cong (_⦅_⦆ op) (cr-args ρ₁ ρ₂ args)
+    where
+    ren-ext : ∀{ρ₁}{ρ₂} x → ext ρ₂ (ext ρ₁ x) ≡ ext (λ x₁ → ρ₂ (ρ₁ x₁)) x
+    ren-ext {ρ₁} {ρ₂} zero = refl
+    ren-ext {ρ₁} {ρ₂} (suc x) = refl
+
+    cr-arg : ∀ (ρ₁ : Rename) (ρ₂ : Rename) {b} (arg : Arg b)
+     → ren-arg ρ₂ (ren-arg ρ₁ arg) ≡ ren-arg (ρ₂ ∘ ρ₁) arg
+    cr-arg ρ₁ ρ₂ {.0} (ast M) = cong ast (compose-rename ρ₁ ρ₂ M)
+    cr-arg ρ₁ ρ₂ {.(suc _)} (bind arg) =
+      let IH = cr-arg (ext ρ₁) (ext ρ₂) arg in
+      cong bind (begin
+        ren-arg (ext ρ₂) (ren-arg (ext ρ₁) arg) ≡⟨ IH ⟩
+        ren-arg (ext ρ₂ ∘ ext ρ₁) arg
+                        ≡⟨ cong (λ □ → ren-arg □ arg) (extensionality ren-ext) ⟩
+        ren-arg (ext (ρ₂ ∘ ρ₁)) arg      ∎)
+    cr-arg ρ₁ ρ₂ {b} (perm f f⁻¹ inv arg) =
+      let IH = cr-arg (f ∘ ρ₁ ∘ f⁻¹) (f ∘ ρ₂ ∘ f⁻¹) arg in
+      cong (perm f f⁻¹ inv) (begin
+        ren-arg (f ∘ ρ₂ ∘ f⁻¹) (ren-arg (f ∘ ρ₁ ∘ f⁻¹) arg)        ≡⟨ IH ⟩
+        ren-arg ((f ∘ ρ₂ ∘ f⁻¹) ∘ (f ∘ ρ₁ ∘ f⁻¹)) arg              ≡⟨⟩
+        ren-arg (f ∘ ρ₂ ∘ (f⁻¹ ∘ f) ∘ ρ₁ ∘ f⁻¹) arg
+                            ≡⟨ cong (λ □ → ren-arg (f ∘ ρ₂ ∘ □ ∘ ρ₁ ∘ f⁻¹) arg)
+                                    (extensionality inv ) ⟩
+        ren-arg (f ∘ ρ₂ ∘ (λ x → x) ∘ ρ₁ ∘ f⁻¹) arg                ≡⟨⟩
+        ren-arg (f ∘ ρ₂ ∘ ρ₁ ∘ f⁻¹) arg                            ∎)
+
+    cr-args : ∀ (ρ₁ : Rename) (ρ₂ : Rename) {bs} (args : Args bs)
+     → ren-args ρ₂ (ren-args ρ₁ args) ≡ ren-args (ρ₂ ∘ ρ₁) args
+    cr-args ρ₁ ρ₂ {.[]} nil = refl
+    cr-args ρ₁ ρ₂ {.(_ ∷ _)} (cons arg args) =
+        cong₂ cons (cr-arg ρ₁ ρ₂ arg) (cr-args ρ₁ ρ₂ args)
+
+{-
   open import experimental.Map Op sig
 
   instance
@@ -206,3 +258,4 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
   
   FV-↑1-0 : ∀ M → FV (rename (↑ 1) M) 0 → ⊥
   FV-↑1-0 M = rename-FV-⊥ 0 (↑ 1) M (λ { y () })
+-}

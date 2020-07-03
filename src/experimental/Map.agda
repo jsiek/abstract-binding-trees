@@ -30,7 +30,8 @@ map {V} σ (op ⦅ args ⦆) = op ⦅ map-args σ args ⦆
 map-arg σ (ast M) = ast (map σ M)
 map-arg σ (bind M) = bind (map-arg (ext σ) M)
 {-
-map-arg σ (perm xs M) = perm xs (map-arg (π xs σ) M)
+map-arg σ (perm f f⁻¹ inv M) =
+    perm f f⁻¹ inv (map-arg (f ∘ σ ∘ f⁻¹) M)
 -}
 map-args σ {[]} nil = nil
 map-args σ {b ∷ bs} (cons x args) = cons (map-arg σ x) (map-args σ args)

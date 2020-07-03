@@ -12,7 +12,7 @@ open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Var
 
-module AbstractBindingTree (Op : Set) (sig : Op → List ℕ) where
+module experimental.AbstractBindingTree (Op : Set) (sig : Op → List ℕ) where
 
 data Args : List ℕ → Set
 
@@ -23,9 +23,8 @@ data ABT : Set where
 data Arg : ℕ → Set where
   ast : ABT → Arg 0
   bind : ∀{b} → Arg b → Arg (suc b)
-{-
-  perm : List Var → {b : ℕ} → Arg b → Arg b
--}
+  perm : (f : Var → Var) → (f⁻¹ : Var → Var) → (inv : ∀ x → f⁻¹ (f x) ≡ x)
+     → {b : ℕ} → Arg b → Arg b
 
 data Args where
   nil : Args []
@@ -54,7 +53,7 @@ max-var (op ⦅ args ⦆) = max-var-args args
 
 max-var-arg (ast M) = max-var M
 max-var-arg (bind arg) = (max-var-arg arg) ∸ 1
-max-var-arg (perm xs arg) = max-var-arg arg
+max-var-arg (perm f f⁻¹ inv arg) = max-var-arg arg {- ???? -}
 
 max-var-args nil = 0
 max-var-args (cons arg args) = (max-var-arg arg) ⊔ (max-var-args args)
@@ -72,7 +71,7 @@ map₊ {b ∷ bs} f (cons arg args) = cons (f arg) (map₊ f args)
 
 ⌊_⌋ₐ {zero} (ast M) = M
 ⌊_⌋ₐ {suc b} (bind arg) = ⌊ arg ⌋ₐ
-⌊_⌋ₐ {b} (perm xs arg) = ⌊ arg ⌋ₐ
+⌊_⌋ₐ {b} (perm f f⁻¹ inv arg) = ⌊ arg ⌋ₐ   {- ???? -}
 
 ⌊_⌋ {[]} args = tt
 ⌊_⌋ {b ∷ bs} (cons arg args) = ⟨ ⌊ arg ⌋ₐ , ⌊ args ⌋ ⟩
@@ -149,12 +148,12 @@ FV? (` x) y
     with x ≟ y
 ... | yes xy = true
 ... | no xy = false
-FV? (op ⦅ As ⦆) y = FV-args? As y
+FV? (op ⦅ args ⦆) y = FV-args? args y
 FV-arg? (ast M) y = FV? M y
-FV-arg? (bind A) y = FV-arg? A (suc y)
-FV-arg? (perm xs A) y = FV-arg? A y
+FV-arg? (bind arg) y = FV-arg? arg (suc y)
+FV-arg? (perm f f⁻¹ inv arg) y = FV-arg? arg y   {- ???? -}
 FV-args? nil y = false
-FV-args? (cons A As) y = FV-arg? A y ∨ FV-args? As y
+FV-args? (cons arg args) y = FV-arg? arg y ∨ FV-args? args y
 
 {- Predicate Version -}
 
@@ -162,11 +161,11 @@ FV : ABT → Var → Set
 FV-arg : ∀{b} → Arg b → Var → Set
 FV-args : ∀{bs} → Args bs → Var → Set
 FV (` x) y = x ≡ y
-FV (op ⦅ As ⦆) y = FV-args As y
+FV (op ⦅ args ⦆) y = FV-args args y
 FV-arg (ast M) y = FV M y
-FV-arg (bind A) y = FV-arg A (suc y)
-FV-arg (perm xs A) y = FV-arg A y
+FV-arg (bind arg) y = FV-arg arg (suc y)
+FV-arg (perm f f⁻¹ inv arg) y = FV-arg arg y   {- ???? -}
 FV-args nil y = ⊥
-FV-args (cons A As) y = FV-arg A y ⊎ FV-args As y
+FV-args (cons arg args) y = FV-arg arg y ⊎ FV-args args y
 
 

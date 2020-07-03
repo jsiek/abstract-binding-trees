@@ -15,12 +15,6 @@ open import Var
 
 module experimental.GenericSubstitution where
 
-postulate
-  extensionality : ∀{ℓ₁ ℓ₂} {A : Set ℓ₁ }{B : Set ℓ₂} {f g : A → B}
-    → (∀ (x : A) → f x ≡ g x)
-      -----------------------
-    → f ≡ g
-
 open Shiftable {{...}}
 
 map-sub : ∀{ℓ}{V W : Set ℓ} → (V → W) → GSubst V → GSubst W
