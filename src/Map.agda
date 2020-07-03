@@ -1,3 +1,5 @@
+{-# OPTIONS --allow-unsolved-metas #-}
+
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
@@ -6,7 +8,7 @@ open import Environment
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app; subst)
 open Eq.≡-Reasoning
-
+open import Var
 
 module Map (Op : Set) (sig : Op → List ℕ) where
 
@@ -27,8 +29,8 @@ map-args : ∀{ℓ}{E}{V : Set ℓ}
    → E → {bs : List ℕ} →  Args bs → Args bs
 map σ (` x) = “ ⟅ σ ⟆ x ”
 map {E}{V} σ (op ⦅ args ⦆) = op ⦅ map-args σ args ⦆
-map-arg σ {zero} (ast M) = ast (map σ M)
-map-arg σ {suc b} (bind M) = bind (map-arg (ext σ) M)
+map-arg σ (ast M) = ast (map σ M)
+map-arg σ (bind M) = bind (map-arg (ext σ) M)
 map-args σ {[]} nil = nil
 map-args σ {b ∷ bs} (cons x args) = cons (map-arg σ x) (map-args σ args)
 
@@ -54,13 +56,13 @@ map-map-fusion-ext (` x) σ₂∘σ₁≈σ₃ mf-ext = σ₂∘σ₁≈σ₃ x
 map-map-fusion-ext (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ mf-ext =
   cong (_⦅_⦆ op) (mmf-args args σ₂∘σ₁≈σ₃)
   where
-  mmf-arg : ∀{σ₁ σ₂ σ₃ b} (arg : Arg b) → σ₂ ∘ σ₁ ≈ σ₃
+  mmf-arg : ∀{σ₁}{σ₂}{σ₃}{b} (arg : Arg b) → σ₂ ∘ σ₁ ≈ σ₃
      → map-arg σ₂ (map-arg σ₁ arg) ≡ map-arg σ₃ arg
   mmf-args : ∀{σ₁ σ₂ σ₃ bs} (args : Args bs) → σ₂ ∘ σ₁ ≈ σ₃
      → map-args σ₂ (map-args σ₁ args) ≡ map-args σ₃ args
-  mmf-arg {b = zero} (ast M) σ₂∘σ₁≈σ₃ =
+  mmf-arg (ast M) σ₂∘σ₁≈σ₃ =
       cong ast (map-map-fusion-ext M σ₂∘σ₁≈σ₃ mf-ext)
-  mmf-arg {b = suc b} (bind arg) σ₂∘σ₁≈σ₃ =
+  mmf-arg (bind arg) σ₂∘σ₁≈σ₃ =
       cong bind (mmf-arg arg (mf-ext σ₂∘σ₁≈σ₃))
   mmf-args {bs = []} nil σ₂∘σ₁≈σ₃ = refl
   mmf-args {bs = b ∷ bs} (cons arg args) σ₂∘σ₁≈σ₃ =
@@ -87,9 +89,9 @@ map-cong (op ⦅ args ⦆) σ₁≈σ₂ mc-ext = cong (_⦅_⦆ op) (mc-args ar
      → map-arg σ₁ arg ≡ map-arg σ₂ arg
   mc-args : ∀{σ₁ σ₂ bs} (args : Args bs) → σ₁ ≈ σ₂
      → map-args σ₁ args ≡ map-args σ₂ args
-  mc-arg {b = zero} (ast M) σ₁≈σ₂ =
+  mc-arg (ast M) σ₁≈σ₂ =
       cong ast (map-cong M σ₁≈σ₂ mc-ext)
-  mc-arg {b = suc b} (bind arg) σ₁≈σ₂ =
+  mc-arg (bind arg) σ₁≈σ₂ =
       cong bind (mc-arg arg (mc-ext σ₁≈σ₂))
   mc-args {bs = []} nil σ₁≈σ₂ = refl
   mc-args {bs = b ∷ bs} (cons arg args) σ₁≈σ₂ =
@@ -123,21 +125,22 @@ map-cong-FV : ∀{ℓ}{V₁ : Set ℓ}{E₁ : Set ℓ}{V₂ : Set ℓ}{E₂ : Se
         → bind arg ⊢ₐ σ₁ ≈ σ₂ → arg ⊢ₐ ext σ₁ ≈ ext σ₂)
    → map σ₁ M ≡ map σ₂ M
 map-cong-FV (` x) σ₁≈σ₂ mc-ext = σ₁≈σ₂ x refl
-map-cong-FV (op ⦅ args ⦆) σ₁≈σ₂ mc-ext = cong (_⦅_⦆ op) (mc-args args σ₁≈σ₂)
-  where
-  mc-arg : ∀{σ₁ σ₂ b} (arg : Arg b) → arg ⊢ₐ σ₁ ≈ σ₂
-     → map-arg σ₁ arg ≡ map-arg σ₂ arg
-  mc-args : ∀{σ₁ σ₂ bs} (args : Args bs) → args ⊢₊ σ₁ ≈ σ₂
-     → map-args σ₁ args ≡ map-args σ₂ args
-  mc-arg {b = zero} (ast M) σ₁≈σ₂ =
-      cong ast (map-cong-FV M σ₁≈σ₂ (λ{b}{arg} → mc-ext{b}{arg}))
-  mc-arg {σ₁}{σ₂}{b = suc b} (bind arg) σ₁≈σ₂ =
-      cong bind (mc-arg arg (mc-ext{b}{arg} σ₁≈σ₂))
-  mc-args {bs = []} nil σ₁≈σ₂ = refl
-  mc-args {σ₁}{σ₂}{bs = b ∷ bs} (cons arg args) σ₁≈σ₂ =
-      cong₂ cons (mc-arg arg G) (mc-args args H)
-      where
-      G : arg ⊢ₐ σ₁ ≈ σ₂
-      G x x∈arg = σ₁≈σ₂ x (inj₁ x∈arg)
-      H : args ⊢₊ σ₁ ≈ σ₂
-      H x x∈args = σ₁≈σ₂ x (inj₂ x∈args)
+map-cong-FV (op ⦅ args ⦆) σ₁≈σ₂ mc-ext =
+    cong (_⦅_⦆ op) (mc-args args σ₁≈σ₂)
+    where
+    mc-arg : ∀{σ₁ σ₂ b} (arg : Arg b) → arg ⊢ₐ σ₁ ≈ σ₂
+       → map-arg σ₁ arg ≡ map-arg σ₂ arg
+    mc-args : ∀{σ₁ σ₂ bs} (args : Args bs) → args ⊢₊ σ₁ ≈ σ₂
+       → map-args σ₁ args ≡ map-args σ₂ args
+    mc-arg (ast M) σ₁≈σ₂ =
+        cong ast (map-cong-FV M σ₁≈σ₂ (λ{b}{arg} → mc-ext {b}{arg}))
+    mc-arg {σ₁}{σ₂}{b = suc b} (bind arg) σ₁≈σ₂ =
+        cong bind (mc-arg arg (mc-ext {b}{arg} σ₁≈σ₂))
+    mc-args {bs = []} nil σ₁≈σ₂ = refl
+    mc-args {σ₁}{σ₂}{bs = b ∷ bs} (cons arg args) σ₁≈σ₂ =
+        cong₂ cons (mc-arg arg G) (mc-args args H)
+        where
+        G : arg ⊢ₐ σ₁ ≈ σ₂
+        G x x∈arg = σ₁≈σ₂ x (inj₁ x∈arg)
+        H : args ⊢₊ σ₁ ≈ σ₂
+        H x x∈args = σ₁≈σ₂ x (inj₂ x∈args)

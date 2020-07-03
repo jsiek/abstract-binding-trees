@@ -30,9 +30,11 @@ record Env {ℓ} (E : Set ℓ) (V : Set ℓ) : Set ℓ where
   field ⟅_⟆  : E → Var → V   {- lookup variable in environment -}
         _,_ : E → V → E      {- update environment, mapping 0 to value -}
         ⟰ : E → E            {- shift up by one everything in environment -}
+        π : List Var → E → E {- permute the environment -}
         lookup-0 : ∀ ρ v → ⟅ ρ , v ⟆ 0 ≡ v
         lookup-suc : ∀ ρ v x → ⟅ ρ , v ⟆ (suc x) ≡ ⇑ (⟅ ρ ⟆ x)
         lookup-shift : ∀ ρ x → ⟅ ⟰ ρ ⟆ x ≡ ⇑ (⟅ ρ ⟆ x)
+        lookup-perm : ∀ ρ xs x → ⟅ π xs ρ ⟆ x ≡ ⟅ ρ ⟆ ((l→f xs) x)
   ext : E → E
   ext ρ = ρ , (var→val 0)
 
@@ -43,5 +45,7 @@ fun-extend ρ v (suc x) = ⇑ (ρ x)
 instance
   Fun-is-Env : ∀{ℓ}{V : Set ℓ}{{_ : Shiftable V}} → Env (Var → V) V
   Fun-is-Env = record { ⟅_⟆ = λ ρ x → ρ x ; _,_ = fun-extend
-      ; ⟰ = λ ρ x → ⇑ (ρ x) ; lookup-0 = λ ρ v → refl
-      ; lookup-suc = λ ρ v x → refl ; lookup-shift = λ ρ x → refl }
+      ; ⟰ = λ ρ x → ⇑ (ρ x) ; π = λ xs ρ → ρ ∘ (l→f xs)
+      ; lookup-0 = λ ρ v → refl
+      ; lookup-suc = λ ρ v x → refl ; lookup-shift = λ ρ x → refl
+      ; lookup-perm = λ ρ xs x → refl }

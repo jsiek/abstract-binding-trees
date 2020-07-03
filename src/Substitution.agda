@@ -214,7 +214,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
      → (rename (ext ρ) N) [ rename ρ M ] ≡ rename ρ (N [ M ])
   rename-subst-commute {N}{M}{ρ}
       rewrite rename-subst ρ M | rename-subst (ext ρ) N
-      | rename-subst ρ (N [ M ]) {- | subst-commute {N}{M}{rename→subst ρ}-}
+      | rename-subst ρ (N [ M ])
       = begin
       ⟪ ⟪ rename→subst ρ ⟫ M • id ⟫ (⟪ (` 0) • rename→subst (⟰ ρ) ⟫ N)
                  ≡⟨ cong (λ □ → ⟪ ⟪ rename→subst ρ ⟫ M • id ⟫ (⟪ (` 0) • □ ⟫ N))

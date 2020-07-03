@@ -121,11 +121,41 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
      | inc-shift ρ₃ x | inc-shift ρ₂ (⟅ ρ₁ ⟆ x) = 
      cong `_ (cong suc (var-injective (ρ₂∘ρ₁≈ρ₃ x)))
 
+{-
+  With the addition of the permutation Arg,
+  it becomes difficult to prove that renamings compose:
+
+     rename ρ₂ (rename ρ₁ M) ≡ rename (ρ₁ ⨟ ρ₂) M
+
+  For that, one needs to prove
+
+     ρ₂ ∘ ρ₁ ≈ ρ₃ → π xs ρ₂ ∘ π xs ρ₁ ≈ π xs ρ₃
+
+  The premise means:
+
+     ∀ x → (` ⟅ ρ₂ ⟆ (⟅ ρ₁ ⟆ x)) ≡ (` ⟅ ρ₃ ⟆ x)
+
+  and we need to show 
+     
+     (` ⟅ ρ₂ ⟆ (f (⟅ ρ₁ ⟆ (f x)))) ≡ (` ⟅ ρ₃ ⟆ (f x))
+
+  but that doesn't follow in general, AFAIK.
+
+-}
+
+  ren-map-fusion-perm : ∀{ρ₁ : Rename}{ρ₂ : Rename}{ρ₃ : Rename}{xs : List Var}
+                → ρ₂ ∘ ρ₁ ≈ ρ₃ → π xs ρ₂ ∘ π xs ρ₁ ≈ π xs ρ₃
+  ren-map-fusion-perm {ρ₁}{ρ₂}{ρ₃}{xs} ρ₂∘ρ₁≈ρ₃ x
+      rewrite lookup-permute ρ₁ xs x | lookup-permute ρ₃ xs x
+      | lookup-permute ρ₂ xs (⟅ ρ₁ ⟆ˢ (l→f xs x)) =
+      {!!}
+                
   compose-rename : ∀ (ρ₁ : Rename) (ρ₂ : Rename) M
      → rename ρ₂ (rename ρ₁ M) ≡ rename (ρ₁ ⨟ ρ₂) M
   compose-rename ρ₁ ρ₂ M =
       map-map-fusion-ext M (λ x → sym (cong `_ (seq-rename ρ₁ ρ₂ x)))
-          ren-map-fusion-ext
+          ren-map-fusion-ext (λ {σ₁}{σ₂}{σ₃}{xs} σ₂∘σ₁≈σ₃ x →
+                                ren-map-fusion-perm{σ₁}{σ₂}{σ₃}{xs} σ₂∘σ₁≈σ₃ x)
 
   commute-↑1 : ∀ ρ M
      → rename (ext ρ) (rename (↑ 1) M) ≡ rename (↑ 1) (rename ρ M)
@@ -144,6 +174,7 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
   rename-cong ρ₁ ρ₂ M f =
       map-cong M (λ x → cong `_ (f x))
               (λ ρ₁≈ρ₂ x → cong `_ (ext-cong (λ x → var-injective (ρ₁≈ρ₂ x)) x))
+              {!!}
 
   FV-map : ∀ {E} {{E-Env : Env E Var}} (ρ : E) M x → FV (map ρ M) x
      → (vv : ∀ x → var→val {{Env.V-is-Shiftable E-Env}} x ≡ x)
@@ -168,6 +199,7 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
         | lookup-suc ρ (var→val {{Env.V-is-Shiftable E-Env}} 0) y
         | ss (⟅ ρ ⟆ y) =
           ⟨ y , ⟨ suc-injective eq , sy∈arg ⟩ ⟩
+    fvr-arg ρ b (perm xs arg) x fv = {!!}
     fvr-args ρ [] nil x ()
     fvr-args ρ (b ∷ bs) (cons arg args) x (inj₁ fv)
         with fvr-arg ρ b arg x fv
