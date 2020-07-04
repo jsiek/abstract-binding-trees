@@ -38,7 +38,8 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
   rename ρ (op ⦅ args ⦆) = op ⦅ ren-args ρ args ⦆
   ren-arg ρ (ast M) = ast (rename ρ M)
   ren-arg ρ (bind M) = bind (ren-arg (ext ρ) M)
-  ren-arg ρ (perm f f⁻¹ inv M) = perm f f⁻¹ inv (ren-arg (f ∘ ρ ∘ f⁻¹) M)
+  ren-arg ρ (perm f f⁻¹ inv inv' M) =
+      perm f f⁻¹ inv inv' (ren-arg (f ∘ ρ ∘ f⁻¹) M)
   ren-args ρ {[]} nil = nil
   ren-args ρ {b ∷ bs} (cons x args) = cons (ren-arg ρ x) (ren-args ρ args)
 
@@ -100,9 +101,9 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
         ren-arg (ext ρ₂ ∘ ext ρ₁) arg
                         ≡⟨ cong (λ □ → ren-arg □ arg) (extensionality ren-ext) ⟩
         ren-arg (ext (ρ₂ ∘ ρ₁)) arg      ∎)
-    cr-arg ρ₁ ρ₂ {b} (perm f f⁻¹ inv arg) =
+    cr-arg ρ₁ ρ₂ {b} (perm f f⁻¹ inv inv' arg) =
       let IH = cr-arg (f ∘ ρ₁ ∘ f⁻¹) (f ∘ ρ₂ ∘ f⁻¹) arg in
-      cong (perm f f⁻¹ inv) (begin
+      cong (perm f f⁻¹ inv inv') (begin
         ren-arg (f ∘ ρ₂ ∘ f⁻¹) (ren-arg (f ∘ ρ₁ ∘ f⁻¹) arg)        ≡⟨ IH ⟩
         ren-arg ((f ∘ ρ₂ ∘ f⁻¹) ∘ (f ∘ ρ₁ ∘ f⁻¹)) arg              ≡⟨⟩
         ren-arg (f ∘ ρ₂ ∘ (f⁻¹ ∘ f) ∘ ρ₁ ∘ f⁻¹) arg
@@ -116,6 +117,68 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
     cr-args ρ₁ ρ₂ {.[]} nil = refl
     cr-args ρ₁ ρ₂ {.(_ ∷ _)} (cons arg args) =
         cong₂ cons (cr-arg ρ₁ ρ₂ arg) (cr-args ρ₁ ρ₂ args)
+
+  commute-↑1 : ∀ ρ M
+     → rename (ext ρ) (rename (↑ 1) M) ≡ rename (↑ 1) (rename ρ M)
+  commute-↑1 ρ M = begin
+      rename (ext ρ) (rename (↑ 1) M)  ≡⟨ compose-rename (↑ 1) (ext ρ) M ⟩
+      rename (↑ 1 ⨟ (ext ρ)) M
+                        ≡⟨ cong (λ □ → rename (↑ 1 ⨟ □) M) (ext-cons-shift _) ⟩
+      rename (↑ 1 ⨟ (0 • (ρ ⨟ ↑ 1))) M
+                                  ≡⟨ cong (λ □ → rename □ M) (ren-tail _ zero) ⟩
+      rename (ρ ⨟ ↑ 1) M           ≡⟨ sym (compose-rename ρ (↑ 1) M) ⟩
+      rename (↑ 1) (rename ρ M)    ∎
+
+  FV-rename : ∀ (ρ : Rename) M y → FV (rename ρ M) y
+     → Σ[ x ∈ Var ] ρ x ≡ y × FV M x
+  FV-rename ρ (` x) y refl = ⟨ x , ⟨ refl , refl ⟩ ⟩
+  FV-rename ρ (op ⦅ args ⦆) y fv = fvr-args ρ (sig op) args y fv
+    where
+    fvr-arg : ∀ (ρ : Rename) b (arg : Arg b) y
+        → FV-arg (ren-arg ρ arg) y → Σ[ x ∈ Var ] (ρ) x ≡ y × FV-arg arg x
+    fvr-args : ∀ (ρ : Rename) bs (args : Args bs) y
+        → FV-args (ren-args ρ args) y → Σ[ x ∈ Var ] (ρ) x ≡ y × FV-args args x
+    fvr-arg ρ b (ast M) y fv = FV-rename ρ M y fv 
+    fvr-arg ρ (suc b) (bind arg) y fv 
+        with fvr-arg (ext ρ) b arg (suc y) fv
+    ... | ⟨ 0 , eq ⟩  
+        with eq
+    ... | ()
+    fvr-arg ρ (suc b) (bind arg) y fv 
+        | ⟨ suc x , ⟨ eq , sx∈arg ⟩ ⟩ =
+          ⟨ x , ⟨ suc-injective eq , sx∈arg ⟩ ⟩
+          
+    fvr-arg ρ b (perm f f⁻¹ inv inv' arg) y fy∈arg
+        with fvr-arg (f ∘ ρ ∘ f⁻¹) b arg (f y) fy∈arg
+    ... | ⟨ x' , ⟨ fρf⁻¹x=fy , x∈arg ⟩  ⟩ = 
+        ⟨ f⁻¹ x' , ⟨ ρf⁻¹x=y , FVff⁻¹x ⟩ ⟩
+        where
+        ρf⁻¹x=y : ρ (f⁻¹ x') ≡ y
+        ρf⁻¹x=y = begin
+            ρ (f⁻¹ x') ≡⟨ sym (inv (ρ (f⁻¹ x'))) ⟩
+            f⁻¹ (f (ρ (f⁻¹ x'))) ≡⟨ cong f⁻¹ fρf⁻¹x=fy ⟩
+            f⁻¹ (f y) ≡⟨ inv y ⟩
+            y   ∎
+        FVff⁻¹x : FV-arg arg (f (f⁻¹ x'))
+        FVff⁻¹x rewrite inv' x' = x∈arg
+
+    fvr-args ρ [] nil y ()
+    fvr-args ρ (b ∷ bs) (cons arg args) y (inj₁ fv)
+        with fvr-arg ρ b arg y fv
+    ... | ⟨ x , ⟨ ρx , x∈arg ⟩ ⟩ = 
+          ⟨ x , ⟨ ρx , (inj₁ x∈arg) ⟩ ⟩
+    fvr-args ρ (b ∷ bs) (cons arg args) y (inj₂ fv)
+        with fvr-args ρ bs args y fv
+    ... | ⟨ x , ⟨ ρx , x∈args ⟩ ⟩ = 
+          ⟨ x , ⟨ ρx , (inj₂ x∈args) ⟩ ⟩
+
+  rename-FV-⊥ : ∀ y (ρ : Rename) M → (∀ x → (ρ) x ≢ y) → FV (rename ρ M) y → ⊥
+  rename-FV-⊥ y ρ M ρx≢y fvρM 
+      with FV-rename ρ M y fvρM
+  ... | ⟨ x , ⟨ ρxy , x∈M ⟩ ⟩ = ⊥-elim (ρx≢y x ρxy)
+  
+  FV-↑1-0 : ∀ M → FV (rename (↑ 1) M) 0 → ⊥
+  FV-↑1-0 M = rename-FV-⊥ 0 (↑ 1) M (λ { x () })
 
 {-
   open import experimental.Map Op sig
@@ -200,17 +263,6 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
           ren-map-fusion-ext {-(λ {σ₁}{σ₂}{σ₃}{xs} σ₂∘σ₁≈σ₃ x →
                                ren-map-fusion-perm{σ₁}{σ₂}{σ₃}{xs} σ₂∘σ₁≈σ₃ x)-}
 
-  commute-↑1 : ∀ ρ M
-     → rename (ext ρ) (rename (↑ 1) M) ≡ rename (↑ 1) (rename ρ M)
-  commute-↑1 ρ M = begin
-      rename (ext ρ) (rename (↑ 1) M)  ≡⟨ compose-rename (↑ 1) (ext ρ) M ⟩
-      rename (↑ 1 ⨟ (ext ρ)) M
-                        ≡⟨ cong (λ □ → rename (↑ 1 ⨟ □) M) (ext-cons-shift _) ⟩
-      rename (↑ 1 ⨟ (0 • (ρ ⨟ ↑ 1))) M
-                                  ≡⟨ cong (λ □ → rename □ M) (ren-tail _ zero) ⟩
-      rename (ρ ⨟ ↑ 1) M           ≡⟨ sym (compose-rename ρ (↑ 1) M) ⟩
-      rename (↑ 1) (rename ρ M)    ∎
-
   rename-cong : ∀ ρ₁ ρ₂ M
      → (∀ x → (ρ₁) x ≡ (ρ₂) x)
      → rename ρ₁ M ≡ rename ρ₂ M
@@ -218,42 +270,4 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
       map-cong M (λ x → cong `_ (f x))
               (λ ρ₁≈ρ₂ x → cong `_ (ext-cong (λ x → var-injective (ρ₁≈ρ₂ x)) x))
 
-  FV-rename : ∀ (ρ : Rename) M x → FV (map ρ M) x
-     → Σ[ y ∈ Var ] (ρ) y ≡ x × FV M y
-  FV-rename ρ (` y) x refl = ⟨ y , ⟨ refl , refl ⟩ ⟩
-  FV-rename ρ (op ⦅ args ⦆) x fv = fvr-args ρ (sig op) args x fv
-    where
-    fvr-arg : ∀ (ρ : Rename) b (arg : Arg b) x
-        → FV-arg (map-arg ρ arg) x → Σ[ y ∈ Var ] (ρ) y ≡ x × FV-arg arg y
-    fvr-args : ∀ (ρ : Rename) bs (args : Args bs) x
-        → FV-args (map-args ρ args) x → Σ[ y ∈ Var ] (ρ) y ≡ x × FV-args args y
-    fvr-arg ρ b (ast M) x fv = FV-rename ρ M x fv 
-    fvr-arg ρ (suc b) (bind arg) x fv 
-        with fvr-arg (ext ρ) b arg (suc x) fv
-    ... | ⟨ 0 , eq ⟩  
-        with eq
-    ... | ()
-    fvr-arg ρ (suc b) (bind arg) x fv 
-        | ⟨ suc y , ⟨ eq , sy∈arg ⟩ ⟩ =
-          ⟨ y , ⟨ suc-injective eq , sy∈arg ⟩ ⟩
-{-
-    fvr-arg ρ b (perm xs arg) x fv = {!!}
--}
-    fvr-args ρ [] nil x ()
-    fvr-args ρ (b ∷ bs) (cons arg args) x (inj₁ fv)
-        with fvr-arg ρ b arg x fv
-    ... | ⟨ y , ⟨ ρy , y∈arg ⟩ ⟩ = 
-          ⟨ y , ⟨ ρy , (inj₁ y∈arg) ⟩ ⟩
-    fvr-args ρ (b ∷ bs) (cons arg args) x (inj₂ fv)
-        with fvr-args ρ bs args x fv
-    ... | ⟨ y , ⟨ ρy , y∈args ⟩ ⟩ = 
-          ⟨ y , ⟨ ρy , (inj₂ y∈args) ⟩ ⟩
-
-  rename-FV-⊥ : ∀ x (ρ : Rename) M → (∀ y → (ρ) y ≢ x) → FV (rename ρ M) x → ⊥
-  rename-FV-⊥ x ρ M ρy≢x fvρM 
-      with FV-rename ρ M x fvρM
-  ... | ⟨ y , ⟨ ρyx , y∈M ⟩ ⟩ = ⊥-elim (ρy≢x y ρyx)
-  
-  FV-↑1-0 : ∀ M → FV (rename (↑ 1) M) 0 → ⊥
-  FV-↑1-0 M = rename-FV-⊥ 0 (↑ 1) M (λ { y () })
 -}
