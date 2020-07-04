@@ -2,7 +2,9 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import experimental.Environment
+open import experimental.Structures
+open import Function using (_∘_)
+open import experimental.GSubst
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app; subst)
 open Eq.≡-Reasoning
@@ -10,35 +12,33 @@ open import Var
 
 module experimental.Map (Op : Set) (sig : Op → List ℕ) where
 
-open import AbstractBindingTree Op sig
-open import experimental.GSubst
-open Shiftable {{...}}
-open Quotable {{...}}
+open import experimental.AbstractBindingTree Op sig
+open import experimental.Renaming
+open experimental.Renaming.WithOpSig Op sig
 
 map : ∀{ℓ}{V : Set ℓ}
-   {{_ : Shiftable V}} {{_ : Quotable V}}
+   {{_ : Shiftable V}} {{_ : Quotable V}} {{_ : Renameable V}}
    → GSubst V → ABT → ABT
 
 map-arg : ∀{ℓ}{V : Set ℓ}
-   {{_ : Shiftable V}} {{_ : Quotable V}}
+   {{_ : Shiftable V}} {{_ : Quotable V}} {{_ : Renameable V}}
    → GSubst V → {b : ℕ} →  Arg b → Arg b
 map-args : ∀{ℓ}{V : Set ℓ}
-   {{_ : Shiftable V}} {{_ : Quotable V}}
+   {{_ : Shiftable V}} {{_ : Quotable V}} {{_ : Renameable V}}
    → GSubst V → {bs : List ℕ} →  Args bs → Args bs
 map σ (` x) = “ σ x ”
 map {V} σ (op ⦅ args ⦆) = op ⦅ map-args σ args ⦆
 map-arg σ (ast M) = ast (map σ M)
 map-arg σ (bind M) = bind (map-arg (ext σ) M)
-{-
-map-arg σ (perm f f⁻¹ inv M) =
-    perm f f⁻¹ inv (map-arg (f ∘ σ ∘ f⁻¹) M)
--}
+map-arg σ (perm f f⁻¹ inv inv' M) =
+    perm f f⁻¹ inv inv' (map-arg ((ren f) ∘ σ ∘ f⁻¹) M)
 map-args σ {[]} nil = nil
 map-args σ {b ∷ bs} (cons x args) = cons (map-arg σ x) (map-args σ args)
 
 _∘_≈_ : ∀{ℓ₁}{ℓ₂}{ℓ₃}{V₁ : Set ℓ₁}{V₂ : Set ℓ₂}{V₃ : Set ℓ₃}
         {{M₁ : Shiftable V₁}} {{M₂ : Shiftable V₂}} {{M₃ : Shiftable V₃}}
         {{Q₁ : Quotable V₁}}{{Q₂ : Quotable V₂}}{{Q₃ : Quotable V₃}}
+        {{_ : Renameable V₂}}
         (σ₂ : GSubst V₂)(σ₁ : GSubst V₁)(σ₃ : GSubst V₃) → Set
 _∘_≈_ {V₁}{V₂}{V₃}{{M₁}}{{M₂}}{{M₃}} σ₂ σ₁ σ₃ =
   ∀ x → map σ₂ “ σ₁ x ” ≡ “ σ₃ x ”
@@ -47,6 +47,7 @@ map-map-fusion-ext : ∀{ℓ₁}{ℓ₂}{ℓ₃}  {V₁ : Set ℓ₁}
   {V₂ : Set ℓ₂}  {V₃ : Set ℓ₃}
   {{_ : Shiftable V₁}} {{_ : Shiftable V₂}} {{_ : Shiftable V₃}}
   {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
+  {{_ : Renameable V₁}} {{_ : Renameable V₂}} {{_ : Renameable V₃}}
   {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{σ₃ : GSubst V₃}
    → (M : ABT)
    → σ₂ ∘ σ₁ ≈ σ₃
@@ -69,8 +70,14 @@ map-map-fusion-ext (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ mf-ext {-mf-perm-} =
       cong ast (map-map-fusion-ext M σ₂∘σ₁≈σ₃ mf-ext {-mf-perm-})
   mmf-arg (bind arg) σ₂∘σ₁≈σ₃ =
       cong bind (mmf-arg arg (mf-ext σ₂∘σ₁≈σ₃))
+  mmf-arg {σ₁}{σ₂}{σ₃} (perm f f⁻¹ inv inv' arg) σ₂∘σ₁≈σ₃ =
+      cong (perm f f⁻¹ inv inv') (mmf-arg arg perm-env)
+      where
+      perm-env : (ren f ∘ σ₂ ∘ f⁻¹) ∘ (ren f ∘ σ₁ ∘ f⁻¹) ≈ (ren f ∘ σ₃ ∘ f⁻¹)
+      perm-env = {!!}
 {-
-  mmf-arg {σ₁}{σ₂}{σ₃} (perm xs arg) σ₂∘σ₁≈σ₃ =
+Goal: ((ren f) ∘ σ₂ ∘ f⁻¹) ∘ ((ren f) ∘ σ₁ ∘  f⁻¹) ≈ ((ren f) ∘ σ₃ ∘ f⁻¹)
+  
       {!!} {- cong (perm xs) (mmf-arg arg (mf-perm σ₂∘σ₁≈σ₃)) -}
 -}
   mmf-args {bs = []} nil σ₂∘σ₁≈σ₃ = refl
@@ -87,6 +94,7 @@ _≈_ σ₁ σ₂ = ∀ x → “ σ₁ x ” ≡ “ σ₂ x ”
 map-cong : ∀{ℓ}{V₁ : Set ℓ}{V₂ : Set ℓ}
    {{_ : Shiftable V₁}} {{_ : Shiftable V₂}}
    {{_ : Quotable V₁}} {{_ : Quotable V₂}}
+   {{_ : Renameable V₁}} {{_ : Renameable V₂}}
    {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}
    → (M : ABT)
    → σ₁ ≈ σ₂
@@ -107,8 +115,8 @@ map-cong (op ⦅ args ⦆) σ₁≈σ₂ mc-ext {-mc-perm-} =
       cong ast (map-cong M σ₁≈σ₂ mc-ext {-mc-perm-})
   mc-arg (bind arg) σ₁≈σ₂ =
       cong bind (mc-arg arg (mc-ext σ₁≈σ₂))
+  mc-arg (perm f f⁻¹ inv inv' arg) σ₁≈σ₂ = {!!}
 {-
-  mc-arg (perm xs arg) σ₁≈σ₂ =
       cong (perm xs) (mc-arg arg (mc-perm σ₁≈σ₂))
 -}
   mc-args {bs = []} nil σ₁≈σ₂ = refl
@@ -137,6 +145,7 @@ _⊢₊_≈_ {bs} args σ₁ σ₂ = ∀ x → FV-args args x → “ σ₁ x �
 map-cong-FV : ∀{ℓ}{V₁ : Set ℓ}{V₂ : Set ℓ}
    {{_ : Shiftable V₁}} {{_ : Shiftable V₂}}
    {{_ : Quotable V₁}} {{_ : Quotable V₂}}
+   {{_ : Renameable V₁}} {{_ : Renameable V₂}}
    {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}
    → (M : ABT)
    → M ⊢ σ₁ ≈ σ₂
@@ -160,8 +169,8 @@ map-cong-FV (op ⦅ args ⦆) σ₁≈σ₂ mc-ext {-mc-perm-} =
                                       {-(λ{b}{arg} → mc-perm {b}{arg})-})
     mc-arg {σ₁}{σ₂}{b = suc b} (bind arg) σ₁≈σ₂ =
         cong bind (mc-arg arg (mc-ext {b}{arg} σ₁≈σ₂))
+    mc-arg {σ₁}{σ₂}{b} (perm f f⁻¹ inv inv' arg) σ₁≈σ₂ = {!!}
 {-
-    mc-arg {σ₁}{σ₂}{b} (perm xs arg) σ₁≈σ₂ =
         cong (perm xs) (mc-arg arg (mc-perm {b}{arg} σ₁≈σ₂))
 -}
     mc-args {bs = []} nil σ₁≈σ₂ = refl

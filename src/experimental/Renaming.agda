@@ -48,6 +48,9 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
     ABT-is-Shiftable = record { var→val = `_ ; ⇑ = rename (↑ 1)
                        ; var→val-suc-shift = λ {x} → refl }
 
+    ABT-is-Renameable : Renameable ABT
+    ABT-is-Renameable = record { ren = rename }
+
   ren-up-seq : ∀ (k : ℕ) (ρ : Rename) → ↑ k ⨟ ρ ≡ drop k ρ
   ren-up-seq k ρ rewrite up-seq k ρ | map-sub-id (drop k ρ) = refl
 
