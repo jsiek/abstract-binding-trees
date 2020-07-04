@@ -1,3 +1,6 @@
+{----------------------------------------------------------------------------
+                             Renaming
+ ---------------------------------------------------------------------------}
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
@@ -5,23 +8,14 @@ open import Data.Nat.Properties using (+-comm; suc-injective)
 open import Data.Product using (_×_; Σ; Σ-syntax) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (_∘_)
+open import experimental.Structures
+open import experimental.GSubst
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; sym; cong; cong₂)
 open Eq.≡-Reasoning
 open import Var 
 
 module experimental.Renaming where
-
-open import experimental.Environment using (Shiftable)
-open import experimental.GSubst
-open Shiftable {{...}}
-{-
-open import experimental.GenericSubstitution 
--}
-
-{----------------------------------------------------------------------------
-                             Renaming
- ---------------------------------------------------------------------------}
 
 Rename : Set
 Rename = GSubst Var
@@ -35,7 +29,6 @@ ext-suc ρ x = refl
 module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
 
   open import experimental.AbstractBindingTree Op sig
-  open import experimental.Environment
 
   rename : Rename → ABT → ABT
 
@@ -48,6 +41,45 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
   ren-arg ρ (perm f f⁻¹ inv M) = perm f f⁻¹ inv (ren-arg (f ∘ ρ ∘ f⁻¹) M)
   ren-args ρ {[]} nil = nil
   ren-args ρ {b ∷ bs} (cons x args) = cons (ren-arg ρ x) (ren-args ρ args)
+
+  instance
+    ABT-is-Shiftable : Shiftable ABT
+    ABT-is-Shiftable = record { var→val = `_ ; ⇑ = rename (↑ 1)
+                       ; var→val-suc-shift = λ {x} → refl }
+
+  ren-up-seq : ∀ (k : ℕ) (ρ : Rename) → ↑ k ⨟ ρ ≡ drop k ρ
+  ren-up-seq k ρ rewrite up-seq k ρ | map-sub-id (drop k ρ) = refl
+
+  ren-cons-seq : ∀ x (ρ₁ ρ₂ : Rename) → (x • ρ₁) ⨟ ρ₂ ≡ (ρ₂) x • (ρ₁ ⨟ ρ₂)
+  ren-cons-seq x ρ₁ ρ₂ rewrite cons-seq x ρ₁ ρ₂ = refl
+
+  ren-head : ∀ (ρ : Rename) x → rename (x • ρ) (` 0) ≡ ` x
+  ren-head ρ x = refl
+
+  ren-tail : ∀ (ρ : Rename) x → (↑ 1 ⨟ x • ρ) ≡ ρ
+  ren-tail ρ x = refl
+
+  inc=⨟ᵣ↑ : ∀ (ρ : Rename) → ⟰ ρ ≡ ρ ⨟ ↑ 1
+  inc=⨟ᵣ↑ ρ = refl
+
+  ext-cons-shift : ∀ (ρ : Rename) → ext ρ ≡ (0 • (ρ ⨟ ↑ 1))
+  ext-cons-shift ρ = refl
+
+  ren-η : ∀ (ρ : Rename) x → ((ρ) 0 • (↑ 1 ⨟ ρ)) x ≡ (ρ) x
+  ren-η ρ 0 = refl
+  ren-η ρ (suc x) = refl
+
+  ren-idL : ∀ (ρ : Rename) → id ⨟ ρ ≡ ρ
+  ren-idL ρ = refl
+
+  ren-dist :  ∀ x (ρ : Rename) τ → ((x • ρ) ⨟ τ) ≡ (((τ) x) • (ρ ⨟ τ))
+  ren-dist x ρ τ rewrite ren-cons-seq x ρ τ = refl
+
+  ren-assoc : ∀ (σ τ θ : Rename) → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
+  ren-assoc σ τ θ = refl
+
+  seq-rename : ∀ (ρ₁ ρ₂ : Rename) x → (ρ₁ ⨟ ρ₂) x ≡ ρ₂ (ρ₁ x)
+  seq-rename ρ₁ ρ₂ x = refl
 
   compose-rename : ∀ (ρ₁ : Rename) (ρ₂ : Rename) (M : ABT)
      → rename ρ₂ (rename ρ₁ M) ≡ rename (ρ₂ ∘ ρ₁) M
@@ -120,41 +152,7 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
     ABT-is-Quotable : Quotable ABT
     ABT-is-Quotable = record { “_” = λ x → x }
 
-  ren-up-seq : ∀ k (ρ : Rename) → ↑ k ⨟ ρ ≡ drop k ρ
-  ren-up-seq k ρ rewrite up-seq k ρ | map-sub-id (drop k ρ) = refl
-
-  ren-cons-seq : ∀ x (ρ₁ ρ₂ : Rename) → (x • ρ₁) ⨟ ρ₂ ≡ (ρ₂) x • (ρ₁ ⨟ ρ₂)
-  ren-cons-seq x ρ₁ ρ₂ rewrite cons-seq x ρ₁ ρ₂ = refl
-
-  ren-head : ∀ (ρ : Rename) x → rename (x • ρ) (` 0) ≡ ` x
-  ren-head ρ x = refl
-
-  ren-tail : ∀ (ρ : Rename) x → (↑ 1 ⨟ x • ρ) ≡ ρ
-  ren-tail ρ x rewrite ren-up-seq 1 (x • ρ) | drop-0 ρ = refl
-
-  inc=⨟ᵣ↑ : ∀ (ρ : Rename) → ⟰ ρ ≡ ρ ⨟ ↑ 1
-  inc=⨟ᵣ↑ ρ = refl
-
-  ext-cons-shift : ∀ (ρ : Rename) → ext ρ ≡ (0 • (ρ ⨟ ↑ 1))
-  ext-cons-shift ρ = refl
-
-  ren-η : ∀ (ρ : Rename) x → ((ρ) 0 • (↑ 1 ⨟ ρ)) x ≡ (ρ) x
-  ren-η ρ 0 = refl
-  ren-η ρ (suc x) = refl
-
-  ren-idL : ∀ (ρ : Rename) → id ⨟ ρ ≡ ρ
-  ren-idL ρ = refl
-
-  ren-dist :  ∀ x (ρ : Rename) τ → ((x • ρ) ⨟ τ) ≡ (((τ) x) • (ρ ⨟ τ))
-  ren-dist x ρ τ rewrite ren-cons-seq x ρ τ = refl
-
   open Composition Op sig using (compose-sub; drop-seq)
-
-  seq-rename : ∀ (ρ₁ ρ₂ : Rename) x → (ρ₁ ⨟ ρ₂) x ≡ ρ₂ (ρ₁ x)
-  seq-rename ρ₁ ρ₂ x = var-injective (compose-sub ρ₁ ρ₂ x)
-
-  ren-assoc : ∀ (σ τ θ : Rename) → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
-  ren-assoc σ τ θ = refl
 
   {------ Composing renamings -------}
 

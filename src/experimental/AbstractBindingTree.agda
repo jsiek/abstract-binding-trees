@@ -133,9 +133,14 @@ ctx-depth-args (ccons carg args _) = ctx-depth-arg carg
 record Quotable {ℓ} (V : Set ℓ) : Set ℓ where
   field “_” : V → ABT
 
+open Quotable {{...}} public
+
 instance
   Var-is-Quotable : Quotable Var
   Var-is-Quotable = record { “_” = `_ }
+
+  ABT-is-Quotable : Quotable ABT
+  ABT-is-Quotable = record { “_” = λ x → x }
 
 {----------------------------------------------------------------------------
  Free variables
