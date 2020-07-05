@@ -29,20 +29,15 @@ ext-suc ρ x = refl
 module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
 
   open import experimental.AbstractBindingTree Op sig
+  open import experimental.Map Op sig renaming (_∘_≈_ to _○_≈_)
 
   rename : Rename → ABT → ABT
-
+  rename = map
   ren-arg : Rename → {b : ℕ} →  Arg b → Arg b
+  ren-arg = map-arg
   ren-args : Rename → {bs : List ℕ} →  Args bs → Args bs
-  rename ρ (` x) = ` (ρ x)
-  rename ρ (op ⦅ args ⦆) = op ⦅ ren-args ρ args ⦆
-  ren-arg ρ (ast M) = ast (rename ρ M)
-  ren-arg ρ (bind M) = bind (ren-arg (ext ρ) M)
-  ren-arg ρ (perm f f⁻¹ inv inv' M) =
-      perm f f⁻¹ inv inv' (ren-arg (f ∘ ρ ∘ f⁻¹) M)
-  ren-args ρ {[]} nil = nil
-  ren-args ρ {b ∷ bs} (cons x args) = cons (ren-arg ρ x) (ren-args ρ args)
-
+  ren-args = map-args
+  
   instance
     ABT-is-Shiftable : Shiftable ABT
     ABT-is-Shiftable = record { var→val = `_ ; ⇑ = rename (↑ 1)
@@ -87,39 +82,20 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
 
   compose-rename : ∀ (ρ₁ : Rename) (ρ₂ : Rename) (M : ABT)
      → rename ρ₂ (rename ρ₁ M) ≡ rename (ρ₂ ∘ ρ₁) M
-  compose-rename ρ₁ ρ₂ (` x) = refl
-  compose-rename ρ₁ ρ₂ (op ⦅ args ⦆) = cong (_⦅_⦆ op) (cr-args ρ₁ ρ₂ args)
+  compose-rename ρ₁ ρ₂ M =
+    map-map-fusion-ext M (λ x → refl) ren-ext
+        (λ{ρ₁}{ρ₂}{ρ₃}{f}{f⁻¹} → ren-perm{ρ₁}{ρ₂}{ρ₃}{f}{f⁻¹})
     where
-    ren-ext : ∀{ρ₁}{ρ₂} x → ext ρ₂ (ext ρ₁ x) ≡ ext (λ x₁ → ρ₂ (ρ₁ x₁)) x
-    ren-ext {ρ₁} {ρ₂} zero = refl
-    ren-ext {ρ₁} {ρ₂} (suc x) = refl
+    ren-ext : ∀{ρ₁ ρ₂ ρ₃ : Rename} → ρ₂ ○ ρ₁ ≈ ρ₃ → (ext ρ₂) ○ (ext ρ₁) ≈ ext ρ₃
+    ren-ext ρ₂○ρ₁≈ρ₃ zero = refl
+    ren-ext {ρ₁}{ρ₂}{ρ₃} ρ₂○ρ₁≈ρ₃ (suc x) rewrite var-injective (ρ₂○ρ₁≈ρ₃ x) =
+       refl
 
-    cr-arg : ∀ (ρ₁ : Rename) (ρ₂ : Rename) {b} (arg : Arg b)
-     → ren-arg ρ₂ (ren-arg ρ₁ arg) ≡ ren-arg (ρ₂ ∘ ρ₁) arg
-    cr-arg ρ₁ ρ₂ {.0} (ast M) = cong ast (compose-rename ρ₁ ρ₂ M)
-    cr-arg ρ₁ ρ₂ {.(suc _)} (bind arg) =
-      let IH = cr-arg (ext ρ₁) (ext ρ₂) arg in
-      cong bind (begin
-        ren-arg (ext ρ₂) (ren-arg (ext ρ₁) arg) ≡⟨ IH ⟩
-        ren-arg (ext ρ₂ ∘ ext ρ₁) arg
-                        ≡⟨ cong (λ □ → ren-arg □ arg) (extensionality ren-ext) ⟩
-        ren-arg (ext (ρ₂ ∘ ρ₁)) arg      ∎)
-    cr-arg ρ₁ ρ₂ {b} (perm f f⁻¹ inv inv' arg) =
-      let IH = cr-arg (f ∘ ρ₁ ∘ f⁻¹) (f ∘ ρ₂ ∘ f⁻¹) arg in
-      cong (perm f f⁻¹ inv inv') (begin
-        ren-arg (f ∘ ρ₂ ∘ f⁻¹) (ren-arg (f ∘ ρ₁ ∘ f⁻¹) arg)        ≡⟨ IH ⟩
-        ren-arg ((f ∘ ρ₂ ∘ f⁻¹) ∘ (f ∘ ρ₁ ∘ f⁻¹)) arg              ≡⟨⟩
-        ren-arg (f ∘ ρ₂ ∘ (f⁻¹ ∘ f) ∘ ρ₁ ∘ f⁻¹) arg
-                            ≡⟨ cong (λ □ → ren-arg (f ∘ ρ₂ ∘ □ ∘ ρ₁ ∘ f⁻¹) arg)
-                                    (extensionality inv ) ⟩
-        ren-arg (f ∘ ρ₂ ∘ (λ x → x) ∘ ρ₁ ∘ f⁻¹) arg                ≡⟨⟩
-        ren-arg (f ∘ ρ₂ ∘ ρ₁ ∘ f⁻¹) arg                            ∎)
-
-    cr-args : ∀ (ρ₁ : Rename) (ρ₂ : Rename) {bs} (args : Args bs)
-     → ren-args ρ₂ (ren-args ρ₁ args) ≡ ren-args (ρ₂ ∘ ρ₁) args
-    cr-args ρ₁ ρ₂ {.[]} nil = refl
-    cr-args ρ₁ ρ₂ {.(_ ∷ _)} (cons arg args) =
-        cong₂ cons (cr-arg ρ₁ ρ₂ arg) (cr-args ρ₁ ρ₂ args)
+    ren-perm : {ρ₁ ρ₂ ρ₃ : Rename} {f f⁻¹ : Var → Var} →
+      (∀ x → f⁻¹ (f x) ≡ x) → (∀ y → f (f⁻¹ y) ≡ y) →
+      ρ₂ ○ ρ₁ ≈ ρ₃ → (f ∘ ρ₂ ∘ f⁻¹) ○ f ∘ ρ₁ ∘ f⁻¹ ≈ (f ∘ ρ₃ ∘ f⁻¹)
+    ren-perm {ρ₁}{ρ₂}{ρ₃}{f}{f⁻¹} inv inv' ρ₂○ρ₁≈ρ₃ x
+        rewrite inv (ρ₁ (f⁻¹ x)) | var-injective (ρ₂○ρ₁≈ρ₃ (f⁻¹ x)) = refl
 
   commute-↑1 : ∀ ρ M
      → rename (ext ρ) (rename (↑ 1) M) ≡ rename (↑ 1) (rename ρ M)
