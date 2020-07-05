@@ -33,12 +33,12 @@ map-arg σ (perm f f⁻¹ inv inv' M) =
 map-args σ {[]} nil = nil
 map-args σ {b ∷ bs} (cons x args) = cons (map-arg σ x) (map-args σ args)
 
-_∘_≈_ : ∀{ℓ₁}{ℓ₂}{ℓ₃}{V₁ : Set ℓ₁}{V₂ : Set ℓ₂}{V₃ : Set ℓ₃}
+_○_≈_ : ∀{ℓ₁}{ℓ₂}{ℓ₃}{V₁ : Set ℓ₁}{V₂ : Set ℓ₂}{V₃ : Set ℓ₃}
         {{M₁ : Shiftable V₁}} {{M₂ : Shiftable V₂}} {{M₃ : Shiftable V₃}}
         {{Q₁ : Quotable V₁}}{{Q₂ : Quotable V₂}}{{Q₃ : Quotable V₃}}
         {{_ : Renameable V₂}}
         (σ₂ : GSubst V₂)(σ₁ : GSubst V₁)(σ₃ : GSubst V₃) → Set
-_∘_≈_ {V₁}{V₂}{V₃}{{M₁}}{{M₂}}{{M₃}} σ₂ σ₁ σ₃ =
+_○_≈_ {V₁}{V₂}{V₃}{{M₁}}{{M₂}}{{M₃}} σ₂ σ₁ σ₃ =
   ∀ x → map σ₂ “ σ₁ x ” ≡ “ σ₃ x ”
 
 map-map-fusion-ext : ∀{ℓ₁}{ℓ₂}{ℓ₃}  {V₁ : Set ℓ₁}
@@ -48,32 +48,32 @@ map-map-fusion-ext : ∀{ℓ₁}{ℓ₂}{ℓ₃}  {V₁ : Set ℓ₁}
   {{R₁ : Renameable V₁}} {{R₂ : Renameable V₂}} {{R₃ : Renameable V₃}}
   {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{σ₃ : GSubst V₃}
    → (M : ABT)
-   → σ₂ ∘ σ₁ ≈ σ₃
+   → σ₂ ○ σ₁ ≈ σ₃
    → (∀{σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{σ₃ : GSubst V₃}
-      → σ₂ ∘ σ₁ ≈ σ₃ → ext σ₂ ∘ ext σ₁ ≈ ext σ₃)
+      → σ₂ ○ σ₁ ≈ σ₃ → ext σ₂ ○ ext σ₁ ≈ ext σ₃)
    → (∀{σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{σ₃ : GSubst V₃}{f f⁻¹ : Var → Var}
       → (inv : ∀ x → f⁻¹ (f x) ≡ x)
       → (inv' : ∀ y → f (f⁻¹ y) ≡ y)
-      → σ₂ ∘ σ₁ ≈ σ₃
-      → (ren f ∘ σ₂ ∘ f⁻¹) ∘ (ren f ∘ σ₁ ∘ f⁻¹) ≈ (ren f ∘ σ₃ ∘ f⁻¹))
+      → σ₂ ○ σ₁ ≈ σ₃
+      → (ren f ∘ σ₂ ∘ f⁻¹) ○ (ren f ∘ σ₁ ∘ f⁻¹) ≈ (ren f ∘ σ₃ ∘ f⁻¹))
    → map σ₂ (map σ₁ M) ≡ map σ₃ M
-map-map-fusion-ext (` x) σ₂∘σ₁≈σ₃ mf-ext mf-perm = σ₂∘σ₁≈σ₃ x
-map-map-fusion-ext {V₁ = V₁}{V₂}{V₃} (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ mf-ext mf-perm =
-  cong (_⦅_⦆ op) (mmf-args args σ₂∘σ₁≈σ₃)
+map-map-fusion-ext (` x) σ₂○σ₁≈σ₃ mf-ext mf-perm = σ₂○σ₁≈σ₃ x
+map-map-fusion-ext {V₁ = V₁}{V₂}{V₃} (op ⦅ args ⦆) σ₂○σ₁≈σ₃ mf-ext mf-perm =
+  cong (_⦅_⦆ op) (mmf-args args σ₂○σ₁≈σ₃)
   where
   mmf-arg : ∀{σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{σ₃ : GSubst V₃}{b} (arg : Arg b)
-     → σ₂ ∘ σ₁ ≈ σ₃
+     → σ₂ ○ σ₁ ≈ σ₃
      → map-arg σ₂ (map-arg σ₁ arg) ≡ map-arg σ₃ arg
   mmf-args : ∀{σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{σ₃ : GSubst V₃}{bs}
      (args : Args bs)
-     → σ₂ ∘ σ₁ ≈ σ₃
+     → σ₂ ○ σ₁ ≈ σ₃
      → map-args σ₂ (map-args σ₁ args) ≡ map-args σ₃ args
-  mmf-arg (ast M) σ₂∘σ₁≈σ₃ =
-      cong ast (map-map-fusion-ext M σ₂∘σ₁≈σ₃ mf-ext mf-perm)
-  mmf-arg (bind arg) σ₂∘σ₁≈σ₃ =
-      cong bind (mmf-arg arg (mf-ext σ₂∘σ₁≈σ₃))
-  mmf-arg {σ₁}{σ₂}{σ₃} (perm f f⁻¹ inv inv' arg) σ₂∘σ₁≈σ₃ =
-      cong (perm f f⁻¹ inv inv') (mmf-arg arg (mf-perm inv inv' σ₂∘σ₁≈σ₃))
+  mmf-arg (ast M) σ₂○σ₁≈σ₃ =
+      cong ast (map-map-fusion-ext M σ₂○σ₁≈σ₃ mf-ext mf-perm)
+  mmf-arg (bind arg) σ₂○σ₁≈σ₃ =
+      cong bind (mmf-arg arg (mf-ext σ₂○σ₁≈σ₃))
+  mmf-arg {σ₁}{σ₂}{σ₃} (perm f f⁻¹ inv inv' arg) σ₂○σ₁≈σ₃ =
+      cong (perm f f⁻¹ inv inv') (mmf-arg arg (mf-perm inv inv' σ₂○σ₁≈σ₃))
 {-
       where
       perm-env : (ren f ∘ σ₂ ∘ f⁻¹) ∘ (ren f ∘ σ₁ ∘ f⁻¹) ≈ (ren f ∘ σ₃ ∘ f⁻¹)
@@ -94,9 +94,9 @@ map-map-fusion-ext {V₁ = V₁}{V₂}{V₃} (op ⦅ args ⦆) σ₂∘σ₁≈�
             ≡⟨ {!!} ⟩ {- quote-ren -}
         “ ren f (σ₃ (f⁻¹ x)) ”      ∎
 -}
-  mmf-args {bs = []} nil σ₂∘σ₁≈σ₃ = refl
-  mmf-args {bs = b ∷ bs} (cons arg args) σ₂∘σ₁≈σ₃ =
-      cong₂ cons (mmf-arg arg σ₂∘σ₁≈σ₃) (mmf-args args σ₂∘σ₁≈σ₃)
+  mmf-args {bs = []} nil σ₂○σ₁≈σ₃ = refl
+  mmf-args {bs = b ∷ bs} (cons arg args) σ₂○σ₁≈σ₃ =
+      cong₂ cons (mmf-arg arg σ₂○σ₁≈σ₃) (mmf-args args σ₂○σ₁≈σ₃)
   
 _≈_ : ∀{ℓ}{V₁ : Set ℓ}{V₂ : Set ℓ}
         {{_ : Shiftable V₁}} {{_ : Shiftable V₂}}

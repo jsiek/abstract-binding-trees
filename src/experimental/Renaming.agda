@@ -29,7 +29,7 @@ ext-suc ρ x = refl
 module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
 
   open import experimental.AbstractBindingTree Op sig
-  open import experimental.Map Op sig renaming (_∘_≈_ to _○_≈_)
+  open import experimental.Map Op sig
 
   rename : Rename → ABT → ABT
   rename = map
