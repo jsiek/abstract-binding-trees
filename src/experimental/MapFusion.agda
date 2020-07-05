@@ -2,8 +2,8 @@ open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
-open import Environment
-open import GenericSubstitution
+open import experimental.Structures
+open import experimental.GenericSubstitution
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app; subst)
 open Eq.≡-Reasoning
@@ -12,13 +12,9 @@ open import Var
 module MapFusion (Op : Set) (sig : Op → List ℕ) where
 
 open import AbstractBindingTree Op sig
-open import Map Op sig
-open import Renaming
-open WithOpSig Op sig
-
-open Shiftable {{...}}
-open Quotable {{...}}
-open Env  {{...}}
+open import experimental.Map Op sig
+open import experimental.Renaming
+open experimental.Renaming.WithOpSig Op sig
 
 record QuoteShift {ℓ}(V : Set ℓ) {{S : Shiftable V}} : Set ℓ
   where
@@ -42,7 +38,7 @@ map-rename-fusion : ∀{ℓ}{V₂ E₂ V₃ E₃ : Set ℓ}
    → map σ₂ (rename σ₁ M) ≡ map σ₃ M
 map-rename-fusion {ℓ}{V₂}{E₂}{V₃}{E₃}{σ₁ = σ₁}{σ₂}{σ₃} M σ₂∘σ₁≈σ₃ =
   map-map-fusion-ext{lzero}{ℓ}{ℓ}{Var}{Rename}{V₂}{E₂}{V₃}{E₃}{σ₁ = σ₁}{σ₂}{σ₃}
-            M σ₂∘σ₁≈σ₃ map-ext
+            M σ₂∘σ₁≈σ₃ map-ext ?
   where
   map-ext : ∀{σ₁ : Rename}{σ₂ : E₂}{σ₃ : E₃}
           → σ₂ ∘ σ₁ ≈ σ₃ → ext σ₂ ∘ ext σ₁ ≈ ext σ₃
@@ -65,7 +61,7 @@ rename-map-fusion : ∀{ℓ}{V₁ E₁ V₃ E₃ : Set ℓ}
    → rename ρ₂ (map σ₁ M) ≡ map σ₃ M
 rename-map-fusion {ℓ}{V₁}{E₁}{V₃}{E₃}{σ₁ = σ₁}{ρ₂}{σ₃} M ρ₂∘σ₁≈σ₃ =
   map-map-fusion-ext{ℓ}{lzero}{ℓ}{V₁}{E₁}{Var}{Rename}{V₃}{E₃}{σ₁ = σ₁}{ρ₂}{σ₃}
-            M ρ₂∘σ₁≈σ₃ map-ext
+            M ρ₂∘σ₁≈σ₃ map-ext ?
   where
   map-ext : ∀{σ₁ : E₁}{ρ₂ : Rename}{σ₃ : E₃}
           → ρ₂ ∘ σ₁ ≈ σ₃ → ext ρ₂ ∘ ext σ₁ ≈ ext σ₃
@@ -95,8 +91,10 @@ map-map-fusion : ∀{ℓ}{V₁ E₁ V₂ E₂ V₃ E₃ : Set ℓ}
    → (M : ABT)
    → σ₂ ∘ σ₁ ≈ σ₃
    → map σ₂ (map σ₁ M) ≡ map σ₃ M
-map-map-fusion {ℓ}{V₁}{E₁}{V₂}{E₂}{V₃}{E₃} M σ₂∘σ₁≈σ₃ =
-  map-map-fusion-ext M σ₂∘σ₁≈σ₃ mm-fuse-ext 
+map-map-fusion (` x) σ₂∘σ₁≈σ₃ = σ₂∘σ₁≈σ₃ x
+map-map-fusion {ℓ}{V₁}{E₁}{V₂}{E₂}{V₃}{E₃}{{S₁}}{{S₂}}{{S₃}}
+  (op ⦅ args ⦆) σ₂∘σ₁≈σ₃ =
+  cong (_⦅_⦆ op) (mmf-args args σ₂∘σ₁≈σ₃)
   where
   G : ∀{σ₂ : E₂} → _∘_≈_ {lzero}{ℓ}{ℓ}{Var}{Rename}
                          (σ₂ , (var→val 0)) (↑ 1) (⟰ σ₂)
@@ -128,3 +126,16 @@ map-map-fusion {ℓ}{V₁}{E₁}{V₂}{E₂}{V₃}{E₃} M σ₂∘σ₁≈σ₃
       rename (↑ 1) (map σ₂ “ ⟅ σ₁ ⟆ x ”) ≡⟨ cong (rename (↑ 1)) (σ₂∘σ₁≈σ₃ x) ⟩
       rename (↑ 1) “ ⟅ σ₃ ⟆ x ” ≡⟨ sym (quote-shift{ℓ}{V₃} (⟅ σ₃ ⟆ x)) ⟩
       “ ⇑ (⟅ σ₃ ⟆ x) ” ∎
+
+  mmf-arg : ∀{σ₁ σ₂ σ₃ b} (arg : Arg b) → σ₂ ∘ σ₁ ≈ σ₃
+     → map-arg σ₂ (map-arg σ₁ arg) ≡ map-arg σ₃ arg
+  mmf-args : ∀{σ₁ σ₂ σ₃ bs} (args : Args bs) → σ₂ ∘ σ₁ ≈ σ₃
+     → map-args σ₂ (map-args σ₁ args) ≡ map-args σ₃ args
+  mmf-arg {b = zero} (ast M) σ₂∘σ₁≈σ₃ =
+      cong ast (map-map-fusion M σ₂∘σ₁≈σ₃)
+  mmf-arg {b = suc b} (bind arg) σ₂∘σ₁≈σ₃ =
+      cong bind (mmf-arg arg (mm-fuse-ext σ₂∘σ₁≈σ₃))
+  mmf-args {bs = []} nil σ₂∘σ₁≈σ₃ = refl
+  mmf-args {bs = b ∷ bs} (cons arg args) σ₂∘σ₁≈σ₃ =
+      cong₂ cons (mmf-arg arg σ₂∘σ₁≈σ₃) (mmf-args args σ₂∘σ₁≈σ₃)
+

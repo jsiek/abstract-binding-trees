@@ -45,13 +45,13 @@ module GSubstPred {ℓ}{V : Set ℓ}{I : Set} (S : Shiftable V)
   σ ⦂ Γ ⇒ Δ = ∀{x A} → Γ ∋ x ⦂ A  →  Δ ⊢v σ x ⦂ A
   
 module Composition (Op : Set) (sig : Op → List ℕ)   where
-  open import AbstractBindingTree Op sig
+  open import experimental.AbstractBindingTree Op sig
   open import experimental.Map Op sig
-  open Quotable {{...}}
 
   record ComposableProps {ℓ}(V₁ V₂ V₃ : Set ℓ)
       {{S₁ : Shiftable V₁}} {{S₂ : Shiftable V₂}} {{S₃ : Shiftable V₃}}
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
+      {{_ : Renameable V₂}}
       {{_ : Composable V₁ V₂ V₃}}
        : Set ℓ
     where
@@ -72,6 +72,7 @@ module Composition (Op : Set) (sig : Op → List ℕ)   where
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
       {{E₂ : Shiftable V₂}} {{E₃ : Shiftable V₃}}
       {{_ : Composable V₁ V₂ V₃}}
+      {{_ : Renameable V₂}}
       {{_ : ComposableProps V₁ V₂ V₃}}
      {x : Var} (σ : GSubst V₂)
      → (map-sub val₂₃ σ) x ≡ val₂₃ (σ x)
@@ -81,15 +82,18 @@ module Composition (Op : Set) (sig : Op → List ℕ)   where
       {{S₁ : Shiftable V₁}} {{S₂ : Shiftable V₂}} {{S₃ : Shiftable V₃}}
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
       {{_ : Composable V₁ V₂ V₃}}
+      {{_ : Renameable V₂}}
       {{_ : ComposableProps V₁ V₂ V₃}}
-      k σ₁ σ₂
+      k (σ₁ : GSubst V₁) (σ₂ : GSubst V₂)
       → drop k (σ₁ ⨟ σ₂) ≡ (drop k σ₁ ⨟ σ₂)
   drop-seq k σ₁ σ₂ = extensionality λ x → refl
 
   map-sub-inc : ∀{ℓ} {V₁ V₂ V₃ : Set ℓ}
       {{S₁ : Shiftable V₁}} {{S₂ : Shiftable V₂}} {{S₃ : Shiftable V₃}}
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
-      {{C : Composable V₁ V₂ V₃}} {{CP : ComposableProps V₁ V₂ V₃}}
+      {{C : Composable V₁ V₂ V₃}}
+      {{_ : Renameable V₂}}
+      {{CP : ComposableProps V₁ V₂ V₃}}
       (σ₂ : GSubst V₂)
       → map-sub val₂₃ (⟰ σ₂) ≡  ⟰ (map-sub val₂₃ σ₂)
   map-sub-inc {{C = C}} σ = extensionality G
@@ -102,6 +106,7 @@ module Composition (Op : Set) (sig : Op → List ℕ)   where
       {{S₁ : Shiftable V₁}} {{S₂ : Shiftable V₂}} {{S₃ : Shiftable V₃}}
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
       {{_ : Composable V₁ V₂ V₃}}
+      {{_ : Renameable V₂}}
       {{_ : ComposableProps V₁ V₂ V₃}}
       → (σ₁ : GSubst V₁) (σ₂ : GSubst V₂) (x : Var)
       → “ (σ₁ ⨟ σ₂) x ” ≡ map σ₂ “ σ₁ x ”
