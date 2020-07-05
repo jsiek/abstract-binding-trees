@@ -14,7 +14,7 @@ open import experimental.Renaming public
 
 module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
-  open import AbstractBindingTree Op sig
+  open import experimental.AbstractBindingTree Op sig
   open experimental.Renaming.WithOpSig Op sig public
   open import experimental.Map Op sig
   open import MapFusion Op sig
