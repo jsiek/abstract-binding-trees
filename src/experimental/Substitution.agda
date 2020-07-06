@@ -1,6 +1,7 @@
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (+-comm)
+open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂)
 open Eq.≡-Reasoning
@@ -8,7 +9,8 @@ open import Var
 
 module experimental.Substitution where
 
-open import experimental.Environment public
+open import experimental.Structures public
+open import experimental.GSubst public
 open import experimental.GenericSubstitution public
 open import experimental.Renaming public
 
@@ -17,7 +19,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   open import experimental.AbstractBindingTree Op sig
   open experimental.Renaming.WithOpSig Op sig public
   open import experimental.Map Op sig
-  open import MapFusion Op sig
+  open import experimental.MapFusion Op sig
   open Composition Op sig using (ComposableProps; compose-sub; drop-seq)
   
   Subst : Set
@@ -34,7 +36,8 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
   instance
     ABT³-Composable : Composable ABT ABT ABT
-    ABT³-Composable = record { ⌈_⌉ = ⟪_⟫ ; val₂₃ = λ M → M }
+    ABT³-Composable = record { ⌈_⌉ = ⟪_⟫ ; val₂₃ = λ M → M
+                      ; ⌈⌉-var→val = λ σ x → refl }
     ABT³-ComposableProps : ComposableProps ABT ABT ABT
     ABT³-ComposableProps = record { var→val₂₃ = λ x → refl
           ; quote-val₂₃ = λ v₂ → refl ; val₂₃-shift = λ v₂ → refl
@@ -46,7 +49,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   sub-cons-seq : ∀ x σ₁ σ₂ → (x • σ₁) ⨟ σ₂ ≡ ⟪ σ₂ ⟫ x • (σ₁ ⨟ σ₂)
   sub-cons-seq x σ₁ σ₂ rewrite cons-seq x σ₁ σ₂ = refl
 
-  sub-head : ∀ M (σ : Subst) → ⟅ M • σ ⟆ 0 ≡ M
+  sub-head : ∀ M (σ : Subst) → (M • σ) 0 ≡ M
   sub-head M σ = refl
 
   sub-tail : ∀ (M : ABT) (σ : Subst) → (↑ 1 ⨟ M • σ) ≡ σ
@@ -82,49 +85,45 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
      → ⟪ σ ⟫ₐ (bind arg) ≡ bind (⟪ ext σ ⟫ₐ arg)
   sub-bind σ M = refl
 
-  sub-η : ∀ σ x → ⟅ ⟪ σ ⟫ (` 0) • (↑ 1 ⨟ σ) ⟆ x ≡ ⟅ σ ⟆ x
+  sub-η : ∀ σ x → (⟪ σ ⟫ (` 0) • (↑ 1 ⨟ σ)) x ≡ (σ) x
   sub-η σ 0 = refl
-  sub-η σ (suc x) rewrite sub-up-seq 1 σ | drop-add 1 σ x = refl
+  sub-η σ (suc x) = refl
 
   rename→subst : Rename → Subst
-  rename→subst (↑ k) = ↑ k 
-  rename→subst (x • ρ) = ` x • rename→subst ρ
+  rename→subst ρ x = ` (ρ x)
 
   rename→subst≈ : (ρ : Rename) → ρ ≈ rename→subst ρ
-  rename→subst≈ (↑ k) = λ x → refl
-  rename→subst≈ (x • ρ) zero = refl
-  rename→subst≈ (x • ρ) (suc y) = rename→subst≈ ρ y
+  rename→subst≈ ρ x = refl
   
   rename-subst : ∀ ρ M → rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
-  rename-subst ρ M = map-cong M (rename→subst≈ ρ) MCE
+  rename-subst ρ M = map-cong M (rename→subst≈ ρ) MCE MCP
       where
       MCE : ∀ {ρ : Rename} {σ : Subst} → ρ ≈ σ → ext ρ ≈ ext σ
       MCE {ρ} {σ} ρ≈σ zero = refl
-      MCE {ρ} {σ} ρ≈σ (suc x) rewrite inc-shift ρ x | inc-shift σ x
-          | sym (ρ≈σ x) = refl
-    
-  incs=⨟↑ : ∀ σ → ⟰ σ ≡ σ ⨟ ↑ 1
-  incs=⨟↑ (↑ k) rewrite sub-up-seq k (↑ 1) | +-comm k 1 = refl
-  incs=⨟↑ (M • σ) = begin
-      ⟰ (M • σ)              ≡⟨⟩
-      (rename (↑ 1) M • ⟰ σ) ≡⟨ cong₂ _•_ (rename-subst (↑ 1) M)(incs=⨟↑ σ) ⟩
-      ⟪ ↑ 1 ⟫ M • (σ ⨟ ↑ 1)     ≡⟨ sym (sub-cons-seq M σ (↑ 1)) ⟩
-      M • σ ⨟ ↑ 1  ∎
+      MCE {ρ} {σ} ρ≈σ (suc x) rewrite sym (ρ≈σ x) = refl
+
+      MCP : ∀ {σ₁ : Rename}{σ₂ : GSubst ABT} {f f⁻¹ : Var → Var}
+         → σ₁ ≈ σ₂ → ((x : Var) → f⁻¹ (f x) ≡ x) → ((y : Var) → f (f⁻¹ y) ≡ y)
+         → (f ∘ σ₁ ∘ f⁻¹) ≈ (rename f ∘ σ₂ ∘ f⁻¹)
+      MCP {σ₁}{σ₂}{f}{f⁻¹} σ₁≈σ₂ inv inv' x rewrite sym (σ₁≈σ₂ (f⁻¹ x)) = refl
+
+  incs=⨟↑ : ∀ (σ : Subst) → ⟰ σ ≡ σ ⨟ ↑ 1
+  incs=⨟↑ σ = extensionality G
+      where
+      G : (x : Var) → ⟰ σ x ≡ (σ ⨟ ↑ 1) x
+      G x = rename-subst suc (σ x)
 
   exts-cons-shift : ∀ (σ : Subst) → ext σ ≡ (` 0 • (σ ⨟ ↑ 1))
   exts-cons-shift σ rewrite incs=⨟↑ σ = refl 
 
-  exts-suc : ∀ (σ : Subst) x → ⟅ ext σ ⟆ (suc x) ≡ ⟅ σ ⨟ ↑ 1 ⟆ x
-  exts-suc σ x rewrite incs=⨟↑ σ = refl
-
-  seq-subst : ∀ σ τ x → ⟅ σ ⨟ τ ⟆ x ≡ ⟪ τ ⟫ (⟅ σ ⟆ x)
-  seq-subst (↑ k) τ x rewrite sub-up-seq k τ | drop-add k τ x = refl
-  seq-subst (M • σ) τ zero rewrite sub-cons-seq M σ τ = refl
-  seq-subst (M • σ) τ (suc x) rewrite sub-cons-seq M σ τ
-      | seq-subst σ τ x = refl
-
+  exts-suc : ∀ (σ : Subst) x → (ext σ) (suc x) ≡ (σ ⨟ ↑ 1) x
+  exts-suc σ x = rename-subst suc (σ x)
+  
+  seq-subst : ∀ σ τ x → (σ ⨟ τ) x ≡ ⟪ τ ⟫ ((σ) x)
+  seq-subst σ τ x = refl
+  
   sub-id : ∀ {M : ABT} → ⟪ id ⟫ M ≡ M
-  sub-id {M} = (sub-shift0 M (shift-up {k = 0}))
+  sub-id {M} = (sub-shift0 M λ x → refl)
     where
     sub-shift0 : ∀{σ : Subst} (M : ABT) → Shift 0 σ → ⟪ σ ⟫ M ≡ M
     ss0-arg  : ∀{σ} → Shift 0 σ → (b : ℕ) → (arg : Arg b) 
@@ -133,9 +132,18 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
        → ⟪ σ ⟫₊ {bs} args ≡ args
     sub-shift0 {σ}(` x) σ0 rewrite Shift-var σ 0 x σ0 = cong `_ refl
     sub-shift0 {σ}(op ⦅ args ⦆) σ0 = cong (_⦅_⦆ op) (ss0-args σ0 (sig op) args)
-    ss0-arg σ0 zero (ast arg) = cong ast (sub-shift0 arg σ0)
-    ss0-arg {σ} σ0 (suc b) (bind arg) =
-        cong bind (ss0-arg (shift-• (inc-Shift σ0) refl) b arg)
+    ss0-arg σ0 b (ast arg) = cong ast (sub-shift0 arg σ0)
+    ss0-arg {σ} σ0 (suc b) (bind arg) = {- (shift-• (inc-Shift σ0) refl) -}
+        cong bind (ss0-arg S0 b arg)
+        where
+        S0 : Shift 0 (ext σ)
+        S0 zero = refl
+        S0 (suc x) rewrite σ0 x = refl
+    ss0-arg {σ} σ0 b (perm f f⁻¹ inv inv' arg) =
+        cong (perm f f⁻¹ inv inv') (ss0-arg S0 b arg)
+        where
+        S0 : Shift 0 (λ x → rename f (σ (f⁻¹ x)))
+        S0 x rewrite σ0 (f⁻¹ x) | inv' x = refl
     ss0-args σ0 [] nil = refl
     ss0-args σ0 (b ∷ bs) (cons arg args) =
         cong₂ cons (ss0-arg σ0 b arg) (ss0-args σ0 bs args)
@@ -143,53 +151,39 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   rename-id : {M : ABT} → rename (↑ 0) M ≡ M
   rename-id {M} rewrite rename-subst (↑ 0) M | sub-id {M} = refl
 
-  sub-idR : ∀ σ → σ ⨟ id ≡ σ 
-  sub-idR (↑ k) rewrite sub-up-seq k id | +-comm k 0 = refl
-  sub-idR (M • σ) rewrite sub-cons-seq M σ id | sub-idR σ | sub-id {M} = refl
+  sub-idR : ∀ (σ : Subst) → σ ⨟ id ≡ σ 
+  sub-idR σ = extensionality (λ _ → sub-id)
 
-  exts-0 : ∀ (σ : Subst) → ⟅ ext σ ⟆ 0 ≡ ` 0
+  exts-0 : ∀ (σ : Subst) → (ext σ) 0 ≡ ` 0
   exts-0 σ = refl
 
-  exts-suc' : ∀ (σ : Subst) x → ⟅ ext σ ⟆ (suc x) ≡ rename (↑ 1) (⟅ σ ⟆ x)
-  exts-suc' σ x rewrite inc-shift σ x = refl
+  exts-suc' : ∀ (σ : Subst) x → (ext σ) (suc x) ≡ rename (↑ 1) ((σ) x)
+  exts-suc' σ x = refl
 
-  exts-suc-rename : ∀ σ x → ⟅ ext σ ⟆ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
-  exts-suc-rename σ x rewrite inc-shift σ x = refl
+  exts-suc-rename : ∀(σ : Subst) x → (ext σ)(suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
+  exts-suc-rename σ x = refl
 
-  sub-sub : ∀ {M σ₁ σ₂} → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
+  sub-sub : ∀ {M : ABT}{σ₁ σ₂ : Subst} → ⟪ σ₂ ⟫ (⟪ σ₁ ⟫ M) ≡ ⟪ σ₁ ⨟ σ₂ ⟫ M
   sub-sub {M}{σ₁}{σ₂} = map-map-fusion M (λ x → sym (compose-sub σ₁ σ₂ x))
 
-  sub-assoc : ∀ {σ τ θ} → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
-  sub-assoc {↑ k} {τ} {θ}= begin
-    (↑ k ⨟ τ) ⨟ θ     ≡⟨ cong (λ □ → □ ⨟ θ) (sub-up-seq _ _) ⟩
-    (drop k τ) ⨟ θ    ≡⟨ sym (drop-seq _ _ _) ⟩
-    drop k (τ ⨟ θ)    ≡⟨ sym (sub-up-seq _ _) ⟩
-    ↑ k ⨟ (τ ⨟ θ)      ∎
-  sub-assoc {M • σ} {τ} {θ} {- rewrite sub-assoc {σ}{τ}{θ}-} = begin
-    (M • σ ⨟ τ) ⨟ θ                  ≡⟨ cong (λ □ → □ ⨟ θ) (sub-cons-seq _ _ _) ⟩
-    (⟪ τ ⟫ M • (σ ⨟ τ)) ⨟ θ           ≡⟨ sub-cons-seq _ _ _ ⟩
-    ⟪ θ ⟫ (⟪ τ ⟫ M) • ((σ ⨟ τ) ⨟ θ)
-                                 ≡⟨ cong (λ □ → ⟪ θ ⟫ (⟪ τ ⟫ M) • □) sub-assoc ⟩
-    ⟪ θ ⟫ (⟪ τ ⟫ M) • (σ ⨟ (τ ⨟ θ))
-                         ≡⟨ cong (λ □ → □ • (σ ⨟ (τ ⨟ θ))) (sub-sub {M}{τ}{θ}) ⟩
-    ⟪ τ ⨟ θ ⟫ M • (σ ⨟ (τ ⨟ θ))       ≡⟨ sym (sub-cons-seq _ _ _) ⟩ 
-    (M • σ) ⨟ (τ ⨟ θ)                 ∎
+  sub-assoc : ∀ {σ τ θ : Subst} → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
+  sub-assoc {σ}{τ}{θ} = extensionality (λ x → sub-sub {σ x}{τ}{θ})
 
   subst-zero : ABT → Subst
   subst-zero M = M • id
 
   _[_] : ABT → ABT → ABT
   N [ M ] =  ⟪ subst-zero M ⟫ N
-
-  subst-zero-exts-cons : ∀{σ M} → ext σ ⨟ subst-zero M ≡ M • σ
+  
+  subst-zero-exts-cons : ∀{σ : Subst}{M : ABT} → ext σ ⨟ subst-zero M ≡ M • σ
   subst-zero-exts-cons {σ}{M} = begin
-     ext σ ⨟ subst-zero M  ≡⟨ cong(λ □ → □  ⨟ subst-zero M)(exts-cons-shift _) ⟩
+     ext σ ⨟ subst-zero M  ≡⟨ cong(λ □ → □  ⨟ subst-zero M)(exts-cons-shift σ) ⟩
      (` 0 • (σ ⨟ ↑ 1)) ⨟ (M • id) ≡⟨ sub-cons-seq _ _ _ ⟩
-     M • ((σ ⨟ ↑ 1) ⨟ (M • id))   ≡⟨ cong (_•_ M) sub-assoc ⟩
-     M • (σ ⨟ (↑ 1 ⨟ (M • id)))   ≡⟨ cong (λ □ → M • (σ ⨟ □)) (sub-tail _ _) ⟩
+     M • ((σ ⨟ ↑ 1) ⨟ (M • id))   ≡⟨ cong (_•_ M) (sub-assoc{σ}{↑ 1}{M • id}) ⟩
+     M • (σ ⨟ (↑ 1 ⨟ (M • id)))   ≡⟨ cong (λ □ → M • (σ ⨟ □)) (sub-tail M _) ⟩
      M • (σ ⨟ id)                 ≡⟨ cong (_•_ M) (sub-idR _) ⟩
      M • σ                        ∎
-
+  
   subst-commute : ∀{N M σ} → (⟪ ext σ ⟫ N) [ ⟪ σ ⟫ M ] ≡ ⟪ σ ⟫ (N [ M ])
   subst-commute {N}{M}{σ} =  begin
     (⟪ ext σ ⟫ N) [ ⟪ σ ⟫ M ]           ≡⟨ sub-sub {N}{ext σ} ⟩
@@ -204,6 +198,8 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
   commute-subst : ∀{N M σ} → ⟪ σ ⟫ (N [ M ]) ≡ (⟪ ext σ ⟫ N) [ ⟪ σ ⟫ M ]
   commute-subst {N}{M}{σ} = sym (subst-commute {N}{M}{σ})
+
+{-    
 
   rename→subst-inc : ∀ ρ → rename→subst (⟰ ρ) ≡ ⟰ (rename→subst ρ)
   rename→subst-inc (↑ k) = refl
@@ -243,6 +239,7 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
      ⟪ V • σ ⟫ N             ∎
 
   subst-cong : ∀{M : ABT}{σ τ : Subst}
-      → (∀ x → ⟅ σ ⟆ x ≡ ⟅ τ ⟆ x)
+      → (∀ x → σ x ≡ τ x)
       → ⟪ σ ⟫ M ≡ ⟪ τ ⟫ M
   subst-cong {M} {σ} {τ} eq = map-cong M eq ext-cong
+-}
