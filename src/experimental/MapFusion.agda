@@ -124,7 +124,7 @@ map-map-fusion : ∀{ℓ}{V₁ V₂ V₃ : Set ℓ}
    → σ₂ ○ σ₁ ≈ σ₃
    → map σ₂ (map σ₁ M) ≡ map σ₃ M
 map-map-fusion {ℓ}{V₁}{V₂}{V₃} M σ₂○σ₁≈σ₃ =
-  map-map-fusion-ext M σ₂○σ₁≈σ₃ mm-fuse-ext  {!!}
+  map-map-fusion-ext M σ₂○σ₁≈σ₃ mm-fuse-ext perm-env
   where
   G : ∀{σ₂ : GSubst V₂} → _○_≈_ {lzero}{ℓ}{ℓ}{Var}
                          (σ₂ , (var→val 0)) (↑ 1) (⟰ σ₂)
@@ -154,3 +154,24 @@ map-map-fusion {ℓ}{V₁}{V₂}{V₃} M σ₂○σ₁≈σ₃ =
       rename (↑ 1) (map σ₂ “ σ₁ x ”) ≡⟨ cong (rename (↑ 1)) (σ₂○σ₁≈σ₃ x) ⟩
       rename (↑ 1) “ σ₃ x ” ≡⟨ sym (quote-shift{ℓ}{V₃} (σ₃ x)) ⟩
       “ ⇑ (σ₃ x) ” ∎
+
+  perm-env : {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{σ₃ : GSubst V₃}{f f⁻¹ : Var → Var}
+     → ((x : Var) → f⁻¹ (f x) ≡ x)
+     → ((y : Var) → f (f⁻¹ y) ≡ y)
+     → σ₂ ○ σ₁ ≈ σ₃
+     → (ren f ∘ σ₂ ∘ f⁻¹) ○ ren f ∘ σ₁ ∘ f⁻¹ ≈ (ren f ∘ σ₃ ∘ f⁻¹)
+  perm-env {σ₁}{σ₂}{σ₃}{f}{f⁻¹} inv inv' σ₂○σ≈σ₃ x = begin
+      map (ren f ∘ σ₂ ∘ f⁻¹) “ ren f (σ₁ (f⁻¹ x)) ”
+                   ≡⟨ cong (map (ren f ∘ σ₂ ∘ f⁻¹)) (quote-ren f (σ₁ (f⁻¹ x))) ⟩
+      map (ren f ∘ σ₂ ∘ f⁻¹) (rename f “ σ₁ (f⁻¹ x) ”)
+            ≡⟨ map-rename-fusion “ σ₁ (f⁻¹ x) ” (λ _ → refl) ⟩ 
+      map (ren f ∘ σ₂ ∘ (f⁻¹ ∘ f)) “ σ₁ (f⁻¹ x) ”
+       ≡⟨ cong (λ □ → map(ren f ∘ σ₂ ∘ □) “ σ₁ (f⁻¹ x) ”)(extensionality inv) ⟩ 
+      map (ren f ∘ σ₂) “ σ₁ (f⁻¹ x) ”
+               ≡⟨ sym (rename-map-fusion “ σ₁ (f⁻¹ x) ”
+                                         (λ x₁ → sym (quote-ren f (σ₂ x₁))) ) ⟩ 
+      rename f (map σ₂ “ σ₁ (f⁻¹ x) ”)
+            ≡⟨ cong (rename f) (σ₂○σ≈σ₃ (f⁻¹ x)) ⟩
+      rename f “ σ₃ (f⁻¹ x) ”
+            ≡⟨ sym (quote-ren f (σ₃ (f⁻¹ x))) ⟩
+      “ ren f (σ₃ (f⁻¹ x)) ”      ∎
