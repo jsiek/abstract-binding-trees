@@ -7,19 +7,19 @@ open Eq using (_≡_; refl; sym; cong; cong₂)
 open Eq.≡-Reasoning
 open import Var 
 
-module experimental.Substitution where
+module Substitution where
 
-open import experimental.Structures public
-open import experimental.GSubst public
-open import experimental.GenericSubstitution public
-open import experimental.Renaming public
+open import Structures public
+open import GSubst public
+open import GenericSubstitution public
+open import Renaming public
 
 module ABTOps (Op : Set) (sig : Op → List ℕ)  where
 
-  open import experimental.AbstractBindingTree Op sig
-  open experimental.Renaming.WithOpSig Op sig public
-  open import experimental.Map Op sig
-  open import experimental.MapFusion Op sig
+  open import AbstractBindingTree Op sig
+  open Renaming.WithOpSig Op sig public
+  open import Map Op sig
+  open import MapFusion Op sig
   open Composition Op sig using (ComposableProps; compose-sub; drop-seq)
   
   Subst : Set

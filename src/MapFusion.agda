@@ -2,21 +2,21 @@ open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
-open import experimental.Structures
-open import experimental.GenericSubstitution
+open import Structures
+open import GenericSubstitution
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app; subst)
 open Eq.≡-Reasoning
 open import Var
 
-module experimental.MapFusion (Op : Set) (sig : Op → List ℕ) where
+module MapFusion (Op : Set) (sig : Op → List ℕ) where
 
-open import experimental.AbstractBindingTree Op sig
-open import experimental.Map Op sig
-open import experimental.GSubst
-open import experimental.Renaming 
-open experimental.Renaming.WithOpSig Op sig
+open import AbstractBindingTree Op sig
+open import Map Op sig
+open import GSubst
+open import Renaming 
+open Renaming.WithOpSig Op sig
 
 record QuoteShift {ℓ}(V : Set ℓ) {{S : Shiftable V}} {{_ : Renameable V}}
   : Set ℓ where

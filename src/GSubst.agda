@@ -1,11 +1,11 @@
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (+-comm; +-assoc)
-open import experimental.Structures
+open import Structures
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open import Var
 
-module experimental.GSubst where
+module GSubst where
 
 GSubst : ∀{ℓ} (V : Set ℓ) → Set ℓ
 GSubst V = Var → V

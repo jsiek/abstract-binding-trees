@@ -8,14 +8,14 @@ open import Data.Nat.Properties using (+-comm; suc-injective)
 open import Data.Product using (_×_; Σ; Σ-syntax) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (_∘_)
-open import experimental.Structures
-open import experimental.GSubst
+open import Structures
+open import GSubst
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; sym; cong; cong₂)
 open Eq.≡-Reasoning
 open import Var 
 
-module experimental.Renaming where
+module Renaming where
 
 Rename : Set
 Rename = GSubst Var
@@ -28,8 +28,8 @@ ext-suc ρ x = refl
 
 module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
 
-  open import experimental.AbstractBindingTree Op sig
-  open import experimental.Map Op sig
+  open import AbstractBindingTree Op sig
+  open import Map Op sig
 
   rename : Rename → ABT → ABT
   rename = map
@@ -160,7 +160,7 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
   FV-↑1-0 M = rename-FV-⊥ 0 (↑ 1) M (λ { x () })
 
 {-
-  open import experimental.Map Op sig
+  open import Map Op sig
 
   instance
     _ : Quotable Var

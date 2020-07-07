@@ -4,7 +4,7 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open import Var
 
-module experimental.Structures where
+module Structures where
 
 record Shiftable {ℓ} (V : Set ℓ) : Set ℓ where
   field ⇑ : V → V

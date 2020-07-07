@@ -12,7 +12,7 @@ open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Var
 
-module experimental.AbstractBindingTree (Op : Set) (sig : Op → List ℕ) where
+module AbstractBindingTree (Op : Set) (sig : Op → List ℕ) where
 
 data Args : List ℕ → Set
 

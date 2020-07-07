@@ -4,8 +4,8 @@ open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; pred; _≤_; _<_; _≟_; s≤s; z≤n)
 open import Data.Nat.Properties
-open import experimental.Structures
-open import experimental.GSubst
+open import Structures
+open import GSubst
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
@@ -13,7 +13,7 @@ open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Var
 
-module experimental.GenericSubstitution where
+module GenericSubstitution where
 
 module _ where
 
@@ -45,8 +45,8 @@ module GSubstPred {ℓ}{V : Set ℓ}{I : Set} (S : Shiftable V)
   σ ⦂ Γ ⇒ Δ = ∀{x A} → Γ ∋ x ⦂ A  →  Δ ⊢v σ x ⦂ A
   
 module Composition (Op : Set) (sig : Op → List ℕ)   where
-  open import experimental.AbstractBindingTree Op sig
-  open import experimental.Map Op sig
+  open import AbstractBindingTree Op sig
+  open import Map Op sig
 
   record ComposableProps {ℓ}(V₁ V₂ V₃ : Set ℓ)
       {{S₁ : Shiftable V₁}} {{S₂ : Shiftable V₂}} {{S₃ : Shiftable V₃}}

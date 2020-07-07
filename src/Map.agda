@@ -2,17 +2,17 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import experimental.Structures
+open import Structures
 open import Function using (_∘_)
-open import experimental.GSubst using (GSubst; ext)
+open import GSubst using (GSubst; ext)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app; subst)
 open Eq.≡-Reasoning
 open import Var
 
-module experimental.Map (Op : Set) (sig : Op → List ℕ) where
+module Map (Op : Set) (sig : Op → List ℕ) where
 
-open import experimental.AbstractBindingTree Op sig
+open import AbstractBindingTree Op sig
 
 map : ∀{ℓ}{V : Set ℓ}
    {{_ : Shiftable V}} {{_ : Quotable V}} {{_ : Renameable V}}

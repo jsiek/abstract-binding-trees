@@ -5,6 +5,7 @@ AGDA =	ScopedTuple.agda \
 	Var.agda \
 	AbstractBindingTree.agda \
 	Map.agda \
+	GSubst.agda \
 	GenericSubstitution.agda \
 	Renaming.agda \
 	MapFusion.agda \
