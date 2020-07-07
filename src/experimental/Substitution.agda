@@ -199,24 +199,32 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   commute-subst : ∀{N M σ} → ⟪ σ ⟫ (N [ M ]) ≡ (⟪ ext σ ⟫ N) [ ⟪ σ ⟫ M ]
   commute-subst {N}{M}{σ} = sym (subst-commute {N}{M}{σ})
 
-{-    
-
   rename→subst-inc : ∀ ρ → rename→subst (⟰ ρ) ≡ ⟰ (rename→subst ρ)
-  rename→subst-inc (↑ k) = refl
-  rename→subst-inc (x • ρ) rewrite rename→subst-inc ρ = refl
+  rename→subst-inc ρ = refl
 
   rename-subst-commute : ∀{N M ρ}
      → (rename (ext ρ) N) [ rename ρ M ] ≡ rename ρ (N [ M ])
-  rename-subst-commute {N}{M}{ρ}
-      rewrite rename-subst ρ M | rename-subst (ext ρ) N
-      | rename-subst ρ (N [ M ])
-      = begin
+  rename-subst-commute {N}{M}{ρ} = begin
+      (rename (ext ρ) N) [ rename ρ M ]
+          ≡⟨ cong₂ _[_] (rename-subst (ext ρ) N) (rename-subst ρ M) ⟩
+      (⟪ rename→subst ((var→val 0) • ⟰ ρ) ⟫ N) [ ⟪ rename→subst ρ ⟫ M ]
+          ≡⟨ cong (λ □ → ⟪ ⟪ rename→subst ρ ⟫ M • id ⟫ (⟪ □ ⟫ N))
+                  (extensionality EQ1) ⟩
       ⟪ ⟪ rename→subst ρ ⟫ M • id ⟫ (⟪ (` 0) • rename→subst (⟰ ρ) ⟫ N)
                  ≡⟨ cong (λ □ → ⟪ ⟪ rename→subst ρ ⟫ M • id ⟫ (⟪ (` 0) • □ ⟫ N))
                          (rename→subst-inc ρ) ⟩
       ⟪ ⟪ rename→subst ρ ⟫ M • id ⟫ (⟪ (` 0) • ⟰ (rename→subst ρ) ⟫ N)
-          ≡⟨ subst-commute {N}{M}{rename→subst ρ} ⟩
-      ⟪ rename→subst ρ ⟫ (⟪ M • id ⟫ N)   ∎
+          ≡⟨⟩
+      (⟪ ext (rename→subst ρ) ⟫ N) [ ⟪ rename→subst ρ ⟫ M ]
+          ≡⟨ subst-commute {N}{M}{rename→subst ρ}  ⟩
+      ⟪ rename→subst ρ ⟫ (N [ M ])
+          ≡⟨ sym (rename-subst ρ (N [ M ])) ⟩
+      rename ρ (N [ M ])          ∎
+      where
+      EQ1 : (x : Var) → rename→subst ((var→val 0) • ⟰ ρ) x
+                        ≡ ((` 0) • rename→subst (⟰ ρ)) x
+      EQ1 zero = refl
+      EQ1 (suc x) = refl
 
   _〔_〕 : ABT → ABT → ABT
   _〔_〕 N M = ⟪ ext (subst-zero M) ⟫ N
@@ -225,21 +233,26 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   substitution {M}{N}{L} = commute-subst{N = M}{M = N}{σ = subst-zero L}
 
   exts-sub-cons : ∀ σ N V → (⟪ ext σ ⟫ N) [ V ] ≡ ⟪ V • σ ⟫ N
-  exts-sub-cons σ N V {-rewrite exts-cons-shift σ -} = begin
+  exts-sub-cons σ N V  = begin
      (⟪ ext σ ⟫ N) [ V ]                 ≡⟨⟩
      ⟪ subst-zero V ⟫ (⟪ ext σ ⟫ N)      ≡⟨ sub-sub {N}{ext σ}{subst-zero V} ⟩
      ⟪ ext σ ⨟ subst-zero V ⟫ N
                   ≡⟨ cong (λ □ → ⟪ □ ⨟ subst-zero V ⟫ N) (exts-cons-shift σ) ⟩
      ⟪ (` 0 • (σ ⨟ ↑ 1)) ⨟ (V • id) ⟫ N
                                ≡⟨ cong (λ □ → ⟪ □ ⟫ N) (sub-cons-seq _ _ _) ⟩
-     ⟪ V • ((σ ⨟ ↑ 1) ⨟ (V • id)) ⟫ N    ≡⟨ cong (λ □ → ⟪ V • □ ⟫ N) sub-assoc ⟩
+     ⟪ V • ((σ ⨟ ↑ 1) ⨟ (V • id)) ⟫ N
+         ≡⟨ cong (λ □ → ⟪ V • □ ⟫ N) (sub-assoc{σ}{↑ 1}{V • id}) ⟩
      ⟪ V • (σ ⨟ (↑ 1 ⨟ (V • id))) ⟫ N
-                            ≡⟨ cong (λ □ → ⟪ V • (σ ⨟ □) ⟫ N) (sub-tail _ _) ⟩
+            ≡⟨ cong (λ □ → ⟪ V • (σ ⨟ □) ⟫ N) (sub-tail N _) ⟩
      ⟪ V • (σ ⨟ id) ⟫ N           ≡⟨ cong (λ □ → ⟪ V • □ ⟫ N) (sub-idR _)  ⟩
      ⟪ V • σ ⟫ N             ∎
 
+{-    
   subst-cong : ∀{M : ABT}{σ τ : Subst}
       → (∀ x → σ x ≡ τ x)
       → ⟪ σ ⟫ M ≡ ⟪ τ ⟫ M
-  subst-cong {M} {σ} {τ} eq = map-cong M eq ext-cong
+  subst-cong {M} {σ} {τ} eq = map-cong M eq ext-cong {!!}
+
+
+
 -}
