@@ -247,12 +247,15 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
      ⟪ V • (σ ⨟ id) ⟫ N           ≡⟨ cong (λ □ → ⟪ V • □ ⟫ N) (sub-idR _)  ⟩
      ⟪ V • σ ⟫ N             ∎
 
-{-    
   subst-cong : ∀{M : ABT}{σ τ : Subst}
       → (∀ x → σ x ≡ τ x)
       → ⟪ σ ⟫ M ≡ ⟪ τ ⟫ M
-  subst-cong {M} {σ} {τ} eq = map-cong M eq ext-cong {!!}
+  subst-cong {M} {σ} {τ} eq = map-cong M eq ext-cong P
+    where
+    P : {σ₁ σ₂ : GSubst ABT} {f f⁻¹ : Var → Var}
+       → σ₁ ≈ σ₂
+       → ((x : Var) → f⁻¹ (f x) ≡ x) → ((y : Var) → f (f⁻¹ y) ≡ y)
+       → (rename f ∘ σ₁ ∘ f⁻¹) ≈ (rename f ∘ σ₂ ∘ f⁻¹)
+    P {σ₁}{σ₂}{f}{f⁻¹} σ₁≈σ₂ inv inv' x rewrite σ₁≈σ₂ (f⁻¹ x) = refl
 
-
-
--}
+  
