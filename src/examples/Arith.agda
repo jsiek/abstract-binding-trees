@@ -15,6 +15,7 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import Var
+open import ListAux
 
 module examples.Arith where
 
@@ -41,18 +42,18 @@ sig op-if = 0 ∷ 0 ∷ 0 ∷ []
 sig op-error = []
 
 open import ScopedTuple using (Tuple; _✖_; zip)
-open import Syntax using (↑; _•_; id; Rename)
-open Syntax.OpSig Op sig using (rename; rename-id; FV-map; FV-↑1-0)
+open import Syntax using (↑; _•_; _,_; ext; id; Rename; Shiftable)
+open Syntax.OpSig Op sig using (rename; rename-id; FV-rename; FV-↑1-0)
 open import Fold Op sig 
 open import Map Op sig hiding (_⊢_≈_; _⊢ₐ_≈_; _⊢₊_≈_)
 open import FoldPreserve Op sig
 open import FoldFoldFusion Op sig
-  renaming (_⨟_≈_ to _⨟′_≈_)
+  renaming (_⨟ᶠ_≈_ to _⨟′_≈_)
 open import MapFusion Op sig using (QuoteShift; ABT-is-QuoteShift)
 open import FoldMapFusion Op sig
   using (fold-rename-fusion; fold-map-fusion-ext-FV; FoldShift; _⊢_⨟_≈_;
   _⊢ₐ_⨟_≈_; _⊢₊_⨟_≈_)
-  renaming (_⨟_≈_ to _′⨟_≈_)
+  renaming (_⨟_⩰_ to _′⨟_≈_)
 
 open import AbstractBindingTree Op sig renaming (ABT to AST)
 pattern $ n  = op-num n ⦅ nil ⦆
@@ -171,7 +172,7 @@ compress-⊢v {.nothing} ⊢v-none = ⊢v-none
 compress-⊢v {.(just _)} (⊢v-just x) = ⊢v-just x
 
 instance
-  _ : FoldPreservable (Maybe Val) (Maybe Val) (Type) (Var → Maybe Val)
+  _ : FoldPreservable (Maybe Val) (Maybe Val) (Type)
   _ = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; 𝐴 = 𝐴 ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢c_⦂_
              ; ret-pres = λ x → x ; shift-⊢v = shift-⊢v }
 
@@ -312,8 +313,8 @@ _ = refl
 {---------            Correctness of Partial Evaluator                ---------}
 
 instance
-  ≡-is-RelFold : ∀{ℓ}{V : Set ℓ} → RelFold V V V V 
-  ≡-is-RelFold = record { _∼_ = _≡_ ; _≈_ = _≡_ }
+  ≡-is-Equiv : ∀{ℓ}{V : Set ℓ} → Equiv V V 
+  ≡-is-Equiv = record { _≈_ = _≡_ }
 
 _≡ᵇ_  : ∀ {ℓ : Level}{V : Set ℓ} → (Bind V V) ✖ (Bind V V)
 _≡ᵇ_ {ℓ}{V} = _⩳_{V₁ = V}{V}{V}{V}
@@ -335,7 +336,7 @@ eval-op-cong z rewrite zip-≡ᵇ→≡ z = refl
 
 instance
   _ : Similar (Maybe Val) (Maybe Val) (Maybe Val) (Maybe Val) 
-  _ = record { ret≈ = λ x → x ; shift∼ = λ { refl → refl }
+  _ = record { ret≈ = λ x → x ; shift≈ = λ { refl → refl }
              ; op⩳ = eval-op-cong }
   _ : Quotable Res
   _ = record { “_” = res→ast }
@@ -398,8 +399,8 @@ eval-down : ∀ (γ : Var → Maybe Val) (M : AST) (mv : Maybe Val)
   → (FV M 0 → ⊥)
   → eval γ (map ⟱ M) ≡  eval (γ , mv) M
 eval-down γ M mv 0∉M =
-  fold-map-fusion-ext-FV{Eᵐ = Var → Var}{Eᶠ = Var → Maybe Val}
-     {σ = ⟱}{δ = γ}{γ = γ , mv} M G (λ{b}{arg} → env-ext{b}{arg}) eval-op-cong 
+  fold-map-fusion-ext-FV {σ = ⟱}{δ = γ}{γ = γ , mv} M G
+      (λ{b}{arg} → env-ext{b}{arg}) eval-op-cong 
   where
   G : M ⊢ ⟱ ⨟ γ ≈ (γ , mv)
   G zero 0∈M = ⊥-elim (0∉M 0∈M)
@@ -419,7 +420,7 @@ FV-res→ast (val (v-bool b)) = refl
 FV-res→ast (exp M) = refl
 
 FV-⟱ : ∀ M x → FV (map ⟱ M) x → Σ[ y ∈ ℕ ] y ∸ 1 ≡ x × FV M y
-FV-⟱ M x fv = FV-map ⟱ M x fv (λ _ → refl) (λ _ → refl)
+FV-⟱ M x fv = FV-rename ⟱ M x fv
 
 FV-res-⇓ : ∀ r x → FV-res (⇓ r) x → Σ[ y ∈ ℕ ] y ∸ 1 ≡ x × FV-res r y
 FV-res-⇓ (val v) x ()
@@ -427,7 +428,7 @@ FV-res-⇓ (exp M) x fvr = FV-⟱ M x fvr
 
 FV-⟰ : ∀ M y → FV (rename (↑ 1) M) y → Σ[ z ∈ ℕ ] y ≡ suc z × FV M z
 FV-⟰ M y y∈↑M
-    with FV-map (↑ 1) M y y∈↑M (λ _ → refl) (λ _ → refl)
+    with FV-rename (↑ 1) M y y∈↑M
 ... | ⟨ z , ⟨ refl , fv ⟩ ⟩ = ⟨ z , ⟨ refl , fv ⟩ ⟩
 
 FV-res-⇑ : ∀ r y → FV-res (⇑ᵣ r) y → FV-res r (y ∸ 1)
@@ -439,7 +440,7 @@ FV-res-⇑-2 : ∀ r y → FV-res (⇑ᵣ r) y → Σ[ z ∈ ℕ ] y ≡ suc z �
 FV-res-⇑-2 (exp M) y y∋⇑r = FV-⟰ M y y∋⇑r
 
 FV-env : (Var → Res) → Var → Set
-FV-env γ x = Σ[ y ∈ Var ] FV-res (⟅ γ ⟆ y) x
+FV-env γ x = Σ[ y ∈ Var ] FV-res (γ y) x
 
 FV-pe : ∀ γ M x → FV-res (pe γ M) x → FV-env γ x
 FV-pe γ (` y) x fvr = ⟨ y , fvr ⟩

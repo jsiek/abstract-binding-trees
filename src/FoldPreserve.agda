@@ -50,7 +50,7 @@ record FoldPreservable (V C I : Set) {{_ : Shiftable V}}
         shift-⊢v : ∀{A B Δ v} → Δ ⊢v v ⦂ A → (B ∷ Δ) ⊢v ⇑ v ⦂ A
   open ABTPredicate Op sig 𝑉 𝑃 public
   
-open FoldPreservable {{...}} public
+open FoldPreservable {{...}}
 
 data _∣_∣_⊢ᵣ_⦂_ {V C I : Set}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
