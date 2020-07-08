@@ -24,15 +24,12 @@ sig : Op → List ℕ
 sig op-lam = 1 ∷ []
 sig op-app = 0 ∷ 0 ∷ []
 
-open Syntax using (Rename; _•_; id; ↑; Env; Shiftable; GSubst-is-Env; GSubst)
+open Syntax using (Rename; _•_; id; ↑; Shiftable; GSubst; ⟰)
 open Syntax.OpSig Op sig
   using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫;
          rename; ABT-is-Shiftable; Var-is-Quotable; ABT-is-Quotable)
   renaming (ABT to Term)
   
-open Shiftable {{...}}
-open Env {{...}}
-
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
 
 infixl 7  _·_
@@ -47,16 +44,16 @@ sub-lam N σ = refl
 ren-lam : ∀ (N : Term) (ρ : Rename) → rename ρ (ƛ N) ≡ ƛ (rename (0 • ⟰ ρ) N)
 ren-lam N σ = refl 
 
-_ : ∀ (M L : Term) → ⟅ M • L • id ⟆ 0 ≡ M
+_ : ∀ (M L : Term) → (M • L • id) 0 ≡ M
 _ = λ M L → refl
 
-_ : ∀ (M L : Term) → ⟅ M • L • id ⟆ 1 ≡ L
+_ : ∀ (M L : Term) → (M • L • id) 1 ≡ L
 _ = λ M L → refl
 
-_ : ∀ (M L : Term) → ⟅ M • L • id ⟆ 2 ≡ ` 0
+_ : ∀ (M L : Term) → (M • L • id) 2 ≡ ` 0
 _ = λ M L → refl
 
-_ : ∀ (M L : Term) → ⟅ M • L • id ⟆ 3 ≡ ` 1
+_ : ∀ (M L : Term) → (M • L • id) 3 ≡ ` 1
 _ = λ M L → refl
 
 _ : ∀ (M L : Term) → ⟪ M • L • id ⟫ (` 1 · ` 0) ≡ L · M
@@ -157,7 +154,7 @@ progress (⊢· ⊢L ⊢M _)
 {-------------      Proof of Preservation    -------------}
 
 instance
-  _ : MapPreservable Var Type Rename
+  _ : MapPreservable Var Type 
   _ = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _∋_⦂_ ; ⊢v0 = refl ; shift-⊢v = λ x → x
              ; quote-⊢v = λ x → ⊢` x }
 
@@ -166,7 +163,7 @@ rename-pres : ∀{Γ Δ : List Type}{σ : Rename}{A : Type}
 rename-pres = preserve-map
 
 instance
-  _ : MapPreservable Term Type Subst
+  _ : MapPreservable Term Type 
   _ = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _⊢_⦂_ ; ⊢v0 = λ {B}{Δ} → ⊢` refl
         ; shift-⊢v = λ {A}{B}{Γ}{M} ⊢M → rename-pres M ⊢M (λ z → z)
         ; quote-⊢v = λ x → x }
