@@ -120,25 +120,22 @@ mappings from de Bruijn indices to ABTs. The identity substitution is
 the substitution `M • σ` maps `0` to the ABT `M` and each number `n`
 greater than zero to `σ (n - 1)`.
 
-The library defines the notation `⟅ σ ⟆ x` for applying a substitution
-`σ` to a variable `x`.
+For example:
 
-For example.
-
-    ⟅ M • L • id ⟆ 0 ≡ M
-    ⟅ M • L • id ⟆ 1 ≡ L
-    ⟅ M • L • id ⟆ 2 ≡ ` 0
-    ⟅ M • L • id ⟆ 3 ≡ ` 1
+    (M • L • id) 0 ≡ M
+    (M • L • id) 1 ≡ L
+    (M • L • id) 2 ≡ ` 0
+    (M • L • id) 3 ≡ ` 1
 
 In general, substitution replaces a variable `i` with
 the ith ABT in the substitution:
 
-    ⟅ M₀ • … • Mᵢ • … • Mⱼ • id ⟆ i ≡ Mᵢ
+    (M₀ • … • Mᵢ • … • Mⱼ • id) i ≡ Mᵢ
 
 unless `i > j` where Mⱼ is the last ABT before the terminating `id`,
 in which case the result is `i - (j + 1)`
 
-    ⟅ M₀ • … • Mᵢ • … • Mⱼ • id ⟆ i ≡ ` (i - (j + 1))
+    (M₀ • … • Mᵢ • … • Mⱼ • id) i ≡ ` (i - (j + 1))
 
 The reason that the substitution subtracts `j + 1` from variables
 greater than `j` is that we typically perform substition when removing
@@ -148,11 +145,11 @@ term become closer to their bindings.
 The library defines the notation `⟪ σ ⟫ M` for applying a substitution
 `σ` to an ABT `M`. When `M` is a variable, we have
 
-    ⟪ σ ⟫ x ≡ ` ⟅ σ ⟆ x
+    ⟪ σ ⟫ x ≡ ` (σ x)
 
 For example:
 
-    ⟪ M • L • id ⟫ (` 0) ≡ ` (⟅ M • L • id ⟆ 0) ≡ M
+    ⟪ M • L • id ⟫ (` 0) ≡ ` ((M • L • id) 0) ≡ M
 
 Next suppose `M` is an application with variables in the operator and
 argument positions.
@@ -193,8 +190,8 @@ lambda abstraction.
 
 So we have the following two equations about `exts`:
 
-    (exts-0)     ⟅ ext σ ⟆ 0 ≡ 0
-    (exts-suc)†  ⟅ ext σ ⟆ (suc x) ≡ ⟅ σ ⨟ ↑ 1 ⟆ x
+    (exts-0)     (ext σ) 0 ≡ 0
+    (exts-suc)†  (ext σ) (suc x) ≡ (σ ⨟ ↑ 1) x
 
 where the operation `σ₁ ⨟ σ₂` composes two substitutions by applying
 `σ₁` and then `σ₂`.
@@ -282,8 +279,8 @@ for substitutions, the library defines an `ext` function that
 transports a renaming across one binder, providing the following
 equations.
 
-    (ext-0)     ⟅ ext ρ ⟆ 0 ≡ 0
-    (ext-suc)   ⟅ ext ρ ⟆ (suc x) ≡ suc (⟅ ρ ⟆ x)
+    (ext-0)     (ext ρ) 0 ≡ 0
+    (ext-suc)   (ext ρ) (suc x) ≡ suc (⟅ ρ ⟆ x)
 
 To apply a renaming `ρ` to a term `M`, the library defines the
 `rename` function. This function is quite similar to the `⟪_⟫`
@@ -307,7 +304,7 @@ For example, from this equation we have
 Combining this with the `(exts-suc)` equation, we can express `exts`
 in terms of `rename`.
 
-    (exts-suc-rename)†   ⟅ ext σ ⟆ (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
+    (exts-suc-rename)†   (ext σ) (suc x) ≡ rename (↑ 1) (⟪ σ ⟫ (` x))
 
 Analogous to the `commute-subst` theorem mentioned above,
 renaming also commutes with single substitution.
@@ -336,10 +333,10 @@ it is equivalent to the following σ algebra expression.
 
 The equations of the σ algebra, adapted to ABTs, are as follows.
 
-    (sub-head)   ⟅ M • σ ⟆ 0                   ≡ M
-    (sub-tail)†  ↑ 1 ⨟ (M • σ)                 ≡ σ
-    (Z-shift)†   ⟅ ` 0 • ↑ 1 ⟆ x               ≡ ` x
-    (sub-η)†     ⟅ (⟪ σ ⟫ (` 0)) • (↑ ⨟ σ) ⟆ x ≡ ⟅ σ ⟆ x
+    (sub-head)   (M • σ) 0                   ≡ M
+    (sub-tail)†  ↑ 1 ⨟ (M • σ)               ≡ σ
+    (Z-shift)†   (` 0 • ↑ 1) x               ≡ ` x
+    (sub-η)†     ((⟪ σ ⟫ (` 0)) • (↑ ⨟ σ)) x  ≡ σ x
 
     (sub-op)     ⟪ σ ⟫ (op ⦅ args ⦆)     ≡ op ⦅ ⟪ σ ⟫₊ args ⦆
     (sub-nil)    ⟪ σ ⟫₊ nil             ≡ nil
