@@ -51,6 +51,7 @@ module Composition (Op : Set) (sig : Op → List ℕ)   where
   record ComposableProps {ℓ}(V₁ V₂ V₃ : Set ℓ)
       {{S₁ : Shiftable V₁}} {{S₂ : Shiftable V₂}} {{S₃ : Shiftable V₃}}
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
+      {{_ : Renameable V₂}}
       {{_ : Composable V₁ V₂ V₃}}
        : Set ℓ
     where
@@ -70,7 +71,9 @@ module Composition (Op : Set) (sig : Op → List ℕ)   where
       {{S₁ : Shiftable V₁}}
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
       {{E₂ : Shiftable V₂}} {{E₃ : Shiftable V₃}}
-      {{_ : Composable V₁ V₂ V₃}} {{_ : ComposableProps V₁ V₂ V₃}}
+      {{_ : Composable V₁ V₂ V₃}}
+      {{_ : Renameable V₂}}
+      {{_ : ComposableProps V₁ V₂ V₃}}
      {x : Var} (σ : GSubst V₂)
      → (map-sub val₂₃ σ) x ≡ val₂₃ (σ x)
   map-sub-⟅·⟆ {x = x} σ = refl
@@ -78,7 +81,9 @@ module Composition (Op : Set) (sig : Op → List ℕ)   where
   drop-seq : ∀{ℓ}{V₁ V₂ V₃ : Set ℓ}
       {{S₁ : Shiftable V₁}} {{S₂ : Shiftable V₂}} {{S₃ : Shiftable V₃}}
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
-      {{_ : Composable V₁ V₂ V₃}} {{_ : ComposableProps V₁ V₂ V₃}}
+      {{_ : Composable V₁ V₂ V₃}}
+      {{_ : Renameable V₂}}
+      {{_ : ComposableProps V₁ V₂ V₃}}
       k (σ₁ : GSubst V₁) (σ₂ : GSubst V₂)
       → drop k (σ₁ ⨟ σ₂) ≡ (drop k σ₁ ⨟ σ₂)
   drop-seq k σ₁ σ₂ = extensionality λ x → refl
@@ -86,7 +91,9 @@ module Composition (Op : Set) (sig : Op → List ℕ)   where
   map-sub-inc : ∀{ℓ} {V₁ V₂ V₃ : Set ℓ}
       {{S₁ : Shiftable V₁}} {{S₂ : Shiftable V₂}} {{S₃ : Shiftable V₃}}
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
-      {{C : Composable V₁ V₂ V₃}} {{CP : ComposableProps V₁ V₂ V₃}}
+      {{C : Composable V₁ V₂ V₃}}
+      {{_ : Renameable V₂}}
+      {{CP : ComposableProps V₁ V₂ V₃}}
       (σ₂ : GSubst V₂)
       → map-sub val₂₃ (⟰ σ₂) ≡  ⟰ (map-sub val₂₃ σ₂)
   map-sub-inc {{C = C}} σ = extensionality G
@@ -98,7 +105,9 @@ module Composition (Op : Set) (sig : Op → List ℕ)   where
   compose-sub : ∀{ℓ} {V₁ V₂ V₃ : Set ℓ}
       {{S₁ : Shiftable V₁}} {{S₂ : Shiftable V₂}} {{S₃ : Shiftable V₃}}
       {{_ : Quotable V₁}} {{_ : Quotable V₂}} {{_ : Quotable V₃}}
-      {{_ : Composable V₁ V₂ V₃}} {{_ : ComposableProps V₁ V₂ V₃}}
+      {{_ : Composable V₁ V₂ V₃}}
+      {{_ : Renameable V₂}}
+      {{_ : ComposableProps V₁ V₂ V₃}}
       → (σ₁ : GSubst V₁) (σ₂ : GSubst V₂) (x : Var)
       → “ (σ₁ ⨟ σ₂) x ” ≡ map σ₂ “ σ₁ x ”
   compose-sub σ₁ σ₂ x rewrite quote-map σ₂ (σ₁ x) = refl

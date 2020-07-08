@@ -18,12 +18,10 @@ open import Agda.Primitive using (Level; lzero; lsuc)
 module WellScoped (Op : Set) (sig : Op → List ℕ) where
 
 open import Var
-open import Environment using (Shiftable; Env)
-open Shiftable {{...}}
-open Env {{...}}
-open import Substitution using (Rename; ↑; _•_; inc-shift)
+open import Structures
+open import Substitution using (Rename; ↑; _•_)
 open Substitution.ABTOps Op sig
-    using (rename; ⟪_⟫; Subst; ABT-is-Shiftable; ABT-is-Quotable)
+    using (rename; ⟪_⟫; Subst; ABT-is-Shiftable)
 open import MapPreserve Op sig
 open import Map Op sig
 open import Data.Vec using (Vec) renaming ([] to []̆; _∷_ to _∷̆_)
@@ -37,8 +35,8 @@ open import ABTPredicate {I = ⊤} Op sig
             nil-p to WF-nil; cons-p to WF-cons) public
 
 open import AbstractBindingTree Op sig
-  using (ABT; Arg; Args; `_; _⦅_⦆; ast; bind; nil; cons; Quotable; Var-is-Quotable)
-open Quotable {{...}}
+  using (ABT; Arg; Args; `_; _⦅_⦆; ast; bind; nil; cons; Quotable;
+  Var-is-Quotable; ABT-is-Quotable)
 
 mk-list : {ℓ : Level} → ℕ → List {ℓ} ⊤
 mk-list 0 = []
@@ -86,7 +84,7 @@ mk-vec-unique {ℓ}{suc n} {v ∷̆ vs} = cong₂ _∷̆_ refl mk-vec-unique
 
 module _ where
   instance
-    RenPres : MapPreservable Var ⊤ Rename
+    RenPres : MapPreservable Var ⊤ 
     RenPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ x A → Γ ∋ x ⦂ A
               ; 𝑉 = λ Γ x A → suc x ≤ length Γ
               ; ⊢v0 = refl ; shift-⊢v = λ z → z
@@ -97,7 +95,7 @@ module _ where
   ren-preserve {σ = σ}{M = M} ⊢M σ⦂ = preserve-map M ⊢M σ⦂
 
   WFRename : ℕ → Rename → ℕ → Set
-  WFRename Γ ρ Δ = ∀ {x} → x < Γ → (⟅ ρ ⟆ x) < Δ
+  WFRename Γ ρ Δ = ∀ {x} → x < Γ → (ρ x) < Δ
 
   WFRename→ρ⦂ : ∀{Γ ρ Δ} → WFRename Γ ρ Δ  →  ρ ⦂ mk-list Γ ⇒ mk-list Δ
   WFRename→ρ⦂ {Γ}{ρ}{Δ} wfΓ {x}{A} ∋x 
@@ -113,7 +111,7 @@ module _ where
 
 module _ where
   instance
-    SubstPres : MapPreservable ABT ⊤ Subst
+    SubstPres : MapPreservable ABT ⊤ 
     SubstPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ M A → Γ ⊢ M ⦂ A
                 ; 𝑉 = λ Γ x A → suc x ≤ length Γ 
                 ; ⊢v0 = WF-var refl (s≤s z≤n) ; quote-⊢v = λ x → x
@@ -124,7 +122,7 @@ module _ where
   sub-preserve {M = M} ⊢M σ⦂ = preserve-map M ⊢M σ⦂ 
 
   WFSubst : ℕ → Subst → ℕ → Set
-  WFSubst Γ σ Δ = ∀ {x} → x < Γ → WF Δ (⟅ σ ⟆ x)
+  WFSubst Γ σ Δ = ∀ {x} → x < Γ → WF Δ (σ x)
 
   WF-subst : ∀{Γ Δ σ M} → WFSubst Γ σ Δ → WF Γ M → WF Δ (⟪ σ ⟫ M)
   WF-subst {Γ}{Δ}{σ}{M} wfσ wfM = sub-preserve wfM σ⦂

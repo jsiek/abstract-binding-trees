@@ -37,11 +37,50 @@ module ABTPredicate {I : Set}
        → 𝑃 op As Bs A
        → Γ ⊢ op ⦅ args ⦆ ⦂ A
 
+  {-
+   Γ -- f --> Δ
+
+   But is f surjective? If not, then for a variable x in Δ that
+   is not in the image of f, we don't know that f⁻¹ x is in Γ.
+
+   -}
+  image-max : (Γ : List I) → (f : Var → Var)
+      → Σ[ m ∈ ℕ ] (∀ x → x < length Γ → f x ≤ m)
+  image-max [] f = ⟨ 0 , (λ _ ()) ⟩
+  image-max (A ∷ Γ) f
+      with image-max Γ f
+  ... | ⟨ m , x<Γ→fx≤m ⟩ =
+        ⟨ f (length Γ) ⊔ m , G ⟩
+      where
+      G : (x : ℕ) → suc x ≤ suc (length Γ)
+                  → f x ≤ f (length Γ) ⊔ m
+      G x (s≤s lt)
+          with m≤n⇒m<n∨m≡n lt
+      ... | inj₁ x<Γ = m≤n⇒m≤o⊔n (f (length Γ)) (x<Γ→fx≤m x x<Γ)
+      ... | inj₂ refl = m≤m⊔n (f (length Γ)) m
+
+  ren-ctx : (f⁻¹ : Var → Var) → (Γ : List I) → (n : ℕ)
+      → (n≤ : n ≤ length Γ)
+      → (f⁻¹< : ∀ k → k < length Γ → f⁻¹ k < length Γ)
+      → List I
+  ren-ctx f⁻¹ Γ zero n≤ f< = []
+  ren-ctx f⁻¹ Γ (suc n) n≤ f< =
+      nth Γ (f⁻¹ n) {f< n n≤}
+          ∷ ren-ctx f⁻¹ Γ n (≤-trans (≤-step ≤-refl) n≤) f<
+
   data _∣_∣_⊢ₐ_⦂_ where
     ast-p : ∀{Γ}{M}{A}  →  Γ ⊢ M ⦂ A  →  0 ∣ Γ ∣ tt ⊢ₐ ast M ⦂ A
        
     bind-p : ∀{b}{B Bs Γ arg A} → b ∣ (B ∷ Γ) ∣ Bs ⊢ₐ arg ⦂ A
        → (suc b) ∣ Γ ∣ ⟨ B , Bs ⟩ ⊢ₐ bind arg ⦂ A
+
+    perm-p : ∀{b : ℕ}{f f⁻¹ : Var → Var}{Bs Γ Δ arg A}
+       → (inv : ∀ x → f⁻¹ (f x) ≡ x)
+       → (inv' : ∀ y → f (f⁻¹ y) ≡ y)
+       → (f-bnd : (k : ℕ) → k < length Γ → f⁻¹ k < length Γ)
+       → Δ ≡ ren-ctx f⁻¹ Γ (length Γ) ≤-refl f-bnd
+       → b ∣ Δ ∣ Bs ⊢ₐ arg ⦂ A
+       → b ∣ Γ ∣ Bs ⊢ₐ perm f f⁻¹ inv inv' arg ⦂ A
 
   data _∣_∣_⊢₊_⦂_ where
     nil-p : ∀{Γ} → [] ∣ Γ ∣ tt ⊢₊ nil ⦂ []̌ 

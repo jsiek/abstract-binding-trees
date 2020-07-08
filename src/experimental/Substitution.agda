@@ -96,11 +96,16 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   rename→subst≈ ρ x = refl
   
   rename-subst : ∀ ρ M → rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
-  rename-subst ρ M = map-cong M (rename→subst≈ ρ) MCE 
+  rename-subst ρ M = map-cong M (rename→subst≈ ρ) MCE MCP
       where
       MCE : ∀ {ρ : Rename} {σ : Subst} → ρ ≈ σ → ext ρ ≈ ext σ
       MCE {ρ} {σ} ρ≈σ zero = refl
       MCE {ρ} {σ} ρ≈σ (suc x) rewrite sym (ρ≈σ x) = refl
+
+      MCP : ∀ {σ₁ : Rename}{σ₂ : GSubst ABT} {f f⁻¹ : Var → Var}
+         → σ₁ ≈ σ₂ → ((x : Var) → f⁻¹ (f x) ≡ x) → ((y : Var) → f (f⁻¹ y) ≡ y)
+         → (f ∘ σ₁ ∘ f⁻¹) ≈ (rename f ∘ σ₂ ∘ f⁻¹)
+      MCP {σ₁}{σ₂}{f}{f⁻¹} σ₁≈σ₂ inv inv' x rewrite sym (σ₁≈σ₂ (f⁻¹ x)) = refl
 
   incs=⨟↑ : ∀ (σ : Subst) → ⟰ σ ≡ σ ⨟ ↑ 1
   incs=⨟↑ σ = extensionality G
@@ -134,6 +139,11 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
         S0 : Shift 0 (ext σ)
         S0 zero = refl
         S0 (suc x) rewrite σ0 x = refl
+    ss0-arg {σ} σ0 b (perm f f⁻¹ inv inv' arg) =
+        cong (perm f f⁻¹ inv inv') (ss0-arg S0 b arg)
+        where
+        S0 : Shift 0 (λ x → rename f (σ (f⁻¹ x)))
+        S0 x rewrite σ0 (f⁻¹ x) | inv' x = refl
     ss0-args σ0 [] nil = refl
     ss0-args σ0 (b ∷ bs) (cons arg args) =
         cong₂ cons (ss0-arg σ0 b arg) (ss0-args σ0 bs args)
@@ -240,4 +250,12 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   subst-cong : ∀{M : ABT}{σ τ : Subst}
       → (∀ x → σ x ≡ τ x)
       → ⟪ σ ⟫ M ≡ ⟪ τ ⟫ M
-  subst-cong {M} {σ} {τ} eq = map-cong M eq ext-cong
+  subst-cong {M} {σ} {τ} eq = map-cong M eq ext-cong P
+    where
+    P : {σ₁ σ₂ : GSubst ABT} {f f⁻¹ : Var → Var}
+       → σ₁ ≈ σ₂
+       → ((x : Var) → f⁻¹ (f x) ≡ x) → ((y : Var) → f (f⁻¹ y) ≡ y)
+       → (rename f ∘ σ₁ ∘ f⁻¹) ≈ (rename f ∘ σ₂ ∘ f⁻¹)
+    P {σ₁}{σ₂}{f}{f⁻¹} σ₁≈σ₂ inv inv' x rewrite σ₁≈σ₂ (f⁻¹ x) = refl
+
+  

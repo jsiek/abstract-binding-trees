@@ -45,6 +45,15 @@ record Relatable {ℓ} (V₁ V₂ : Set ℓ)
 
 open Relatable {{...}} public
 
+record Renameable {ℓ} (V : Set ℓ) : Set ℓ where
+  field ren : (Var → Var) → V → V
+
+open Renameable {{...}} public
+
+instance
+  Var-Renameable : Renameable Var
+  Var-Renameable = record { ren = λ f x → f x }
+
 postulate
   extensionality : ∀{ℓ₁ ℓ₂} {A : Set ℓ₁ }{B : Set ℓ₂} {f g : A → B}
     → (∀ (x : A) → f x ≡ g x)
