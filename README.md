@@ -25,28 +25,40 @@ constructor for each kind. Using the lambda calculus as an example,
 one would define two kinds: one for lambda abstraction and another for
 application.
 
-	data Op : Set where
-	  op-lam : Op
-	  op-app : Op
+    data Op : Set where
+      op-lam : Op
+      op-app : Op
 
 To specify the signatures, write a function that maps your operators
-to a list of natural numbers. The length of the list says the number
-of children and the numbers in the list say how many variable bindings
-come into scope for that child. For the lambda calculus, the signature
-function would be as follows.
+to a list of the `Sig` data type. The length of the list says the number
+of children nodes and the `Sig` in the list controls changes
+in variable scoping that child. The `Sig` data type is defined
+recursively as follows:
 
-	sig : Op → List ℕ
-	sig op-lam = 1 ∷ []
-	sig op-app = 0 ∷ 0 ∷ []
+    data Sig : Set where
+      ■ : Sig
+      ν : Sig → Sig
+      ∁ : Sig → Sig
+
+The `ν` brings one variable into scope. The `∁` clears the scope of
+the child, so that the child does not have access to the surrounding
+lexical scope. The `■` terminates the changes in scope.
+
+For the lambda calculus, the signature function would be as follows.
+
+    sig : Op → List Sig
+    sig op-lam = (ν ■) ∷ []
+    sig op-app = ■ ∷ ■ ∷ []
 
 A lambda abstraction has one child expression, its body, and one
-variable binding comes into scope for the parameter.  Application has
-two child expressions, the function and the argument. Application does
-not bind any variables. Suppose we also wanted the language to include
-`let` expressions. We could add another constructor to `Op`, perhaps
+variable binding comes into scope for the parameter, indicated by
+the `ν` followed by a terminating `■`.  Application has two child expressions,
+the function and the argument. Application does not bind any variables,
+indicated by the `■`. Suppose we also wanted the language
+to include `let` expressions. We could add another constructor to `Op`, perhaps
 named `op-let`, and add the following line to the `sig` function.
 
-	sig op-let = 0 ∷ 1 ∷ []
+    sig op-let = ■ ∷ (ν ■) ∷ []
 
 This says that a `let` has two child, the right-hand side and the
 body.  The `let` does not bring any variable bindings into scope for
@@ -67,8 +79,8 @@ below.
     Var : Set
     Var = ℕ
 
-    data Arg : ℕ → Set 
-    data Args : List ℕ → Set
+    data Arg : Sig → Set 
+    data Args : List Sig → Set
 
     data ABT : Set where
       `_ : Var → ABT
@@ -81,18 +93,20 @@ list, there is one element in the `Args`.
 
     data Args where
       nil : Args []
-      cons : ∀{n ls} → Arg n → Args ls → Args (n ∷ ls)
+      cons : ∀{b ls} → Arg b → Args ls → Args (b ∷ ls)
 
 Each element of `Args` is an argument, defined by the `Arg` data type.
-It is parameterized by a number that says how many variable bindings
-come into scope. The `bind` constructor represents a variable binding
-and decrements the number. The `ast` constructor is allowed when the
-count reaches `0` and contains the abstract binding tree for the
-child.
+It is parameterized by a `Sig` that controls the variable scoping. The
+`bind` constructor represents a variable binding and corresponds to
+the `ν` signature. The `clear` constructor corresponds to `∁` and
+empties the environment for the child.  The `ast` constructor
+corresponds to the terminating `■` and contains the abstract binding
+tree for the child.
 
     data Arg where
-      ast : ABT → Arg 0
-      bind : ∀{n} → Arg n → Arg (suc n)
+      ast : ABT → Arg ■
+      bind : ∀{b} → Arg b → Arg (ν b)
+      clear : ∀{b} → Arg b → Arg (∁ b)
 
 This use of `Args` and `Arg` makes for rather verbose notation for
 abstract binding trees. Therefore we recommend that you use Agda's
