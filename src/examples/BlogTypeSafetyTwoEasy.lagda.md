@@ -5,20 +5,20 @@ in Three Easy
 Lemmas](http://siek.blogspot.com/2013/05/type-safety-in-three-easy-lemmas.html). Time
 flies! In that blog post I showed how to prove type safety of a simple
 language whose semantics was specified by a definitional interpreter.
-I still quite like that approach, and it has proved useful on much
-larger projects by other researchers, such as the verified
+I still like that approach, and it has proved useful to other
+researchers on much larger projects such as the verified
 [CakeML](https://cakeml.org/) compiler.
 
 In the meantime, I've learned about the
 [Agda](https://agda.readthedocs.io/en/v2.6.1/index.html) proof
 assistant thanks to the book [Programming Language Foundations in
-Agda](https://plfa.github.io/) (PLFA) and I've become excited by its
+Agda](https://plfa.github.io/) (PLFA) and I've become excited by Agda's
 abstraction mechanisms that enable proof reuse.  I'm working on an
 Agda library for reusable programming language metatheory, called
 [abstract-binding-trees](https://github.com/jsiek/abstract-binding-trees).
 As the name suggests, it represents abstract syntax trees using Robert
 Harper's notion of abstract *binding* trees (ABT), that is, trees that
-are enhanced to know about variable bindings and variable occurences
+are enhanced to know about variable bindings and variable occurrences
 (See the book [Practical Foundations for Programming Languages](https://www.cs.cmu.edu/~rwh/pfpl/)). My library provides a
 suite of useful functions on abstract binding trees, such as
 substitution, and theorems about those functions. The neat thing about
@@ -114,13 +114,13 @@ data type `ABT` from the `Syntax` library. We choose to rename it to
 open Syntax.OpSig Op sig renaming (ABT to Term)
 ```
 
-The raw abstract binding trees are rather verbose to deal with, so we
-use Agda [pattern
+The raw abstract binding trees are verbose to deal with, so we use
+Agda [pattern
 synonyms](https://agda.readthedocs.io/en/v2.6.1/language/pattern-synonyms.html)
-to obtain syntax that is closer to the pen-and-paper STLC.
-We write `ƛ N` for a lambda abstraction with body `N`
-and we write `L · M` for the application of the function produces by
-`L` to the argument produced by `M`.
+to obtain syntax that is closer to the pen-and-paper STLC.  We write
+`ƛ N` for a lambda abstraction with body `N` and we write `L · M` for
+the application of the function produces by `L` to the argument
+produced by `M`.
 
 ```
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
@@ -135,8 +135,8 @@ We define the reduction semantics for the STLC in the usual way,
 with several congruence rules (the `ξ`'s) and the `β` rule for
 function application. In the `β` rule, we use the substitution
 function defined in the `abstract-binding-trees` library,
-writing `N [ M ]` for replacing the de Bruijn index `0`s in
-`N` with the term `M`.
+writing `N [ M ]` for replacing all the occurrences of de Bruijn index `0`
+inside `N` with the term `M`.
 
 ```
 infix 2 _—→_
@@ -166,10 +166,10 @@ data _—→_ : Term → Term → Set where
 ## Type System
 
 To make use of the theorems in the `abstract-binding-trees` library,
-we will need to use it's framework for defining type systems.  Instead
-of defining the whole type system ourselves using a data type, we
-instead just specify the set of types and the side-conditions that
-must hold in each typing rule.
+we need to use its approach to defining type systems.  Instead of
+defining the whole type system ourselves using an Agda data type, we
+instead specify 1) the types and 2) the side-conditions for each
+typing rule.
 
 For STLC, we have function types, written `A ⇒ B`, and the bottom
 type `Bot`.
@@ -180,7 +180,7 @@ data Type : Set where
   _⇒_   : Type → Type → Type
 ```
 
-The library requires that we specify a extra side condition for the
+The library requires that we specify an extra side condition for the
 variable rule, for which we define the following predicate `𝑉`.  We
 don't really need an extra side condition, so we simply choose "true",
 written `⊤` in Agda.
@@ -196,8 +196,8 @@ line for each operator. The `Vec` parameter contains the types of the
 child nodes. The `BTypes` parameter contains the types of bound
 variables. The last `Type` parameter is the type assigned to the
 current node. So for lambda abstractions (`op-lam`),
-the lambda's bound variable has type `A`, the body has type `B`,
-and we require that the return type `C` is a function
+the body has type `B`, the lambda's bound variable has type `A`, 
+and we require that the type `C` of the lambda is a function
 type from `A` to `B`, that is, `C ≡ A ⇒ B`. For application (`op-app`),
 the function has type `C`, the argument has type `A`, and the
 result type is `B` provided that `C` is a function type from `A` to `B`,
@@ -216,9 +216,8 @@ We import the `ABTPredicate` module, using our definitions of `𝑉` and
 open import ABTPredicate Op sig 𝑉 𝑃
 ```
 
-The raw typing rules are rather verbose, so we again use Agda's
-pattern synonyms to create abbreviations to match the rule names in
-PLFA.
+The raw typing rules are verbose, so we again use Agda's pattern
+synonyms to create abbreviations to match the rule names in PLFA.
 
 ```
 pattern ⊢` ∋x = var-p ∋x tt
@@ -234,9 +233,8 @@ We prove type safety with two lemmas: progress and preservation.
 
 ### Proof of Progress
 
-The progress lemma states that every well-typed, closed term is either
-already a value (so it's finished computing) or it can be reduced
-according to the above-defined reduction semantics.
+The progress lemma states that every closed, well-typed term is either
+a value (so it's finished computing) or it can reduce.
 
 In the STLC, lambda abstractions are values.
 
@@ -248,7 +246,7 @@ data Value : Term → Set where
     → Value (ƛ N)
 ```
 
-Following PLFA, we define an auxilliary data type to express the
+Following PLFA, we define an auxiliary data type to express the
 conclusion of the progress lemma.
 
 ```
@@ -286,8 +284,8 @@ progress (⊢· ⊢L ⊢M _)
 ... | done V-ƛ                              =  step β-ƛ
 ```
 
-As you can see, the proof of progress was straightforward and we
-didn't need further support from the `abstract-binding-trees` library.
+As you can see, to prove progress we didn't need help from the
+`abstract-binding-trees` library.
 
 
 ### Proof of Preservation
@@ -304,9 +302,13 @@ We know that
     (A ∷ Γ) ⊢ N ⦂ B
     Γ ⊢ M ⦂ A
 
-and we need prove that `Γ ⊢ N [ M ] ⦂ B`. This requires a lemma that
-substitution preserves typing, which is provided in the
-`SubstPreserve` module of the `abstract-binding-trees` library.
+and we need prove that
+
+    Γ ⊢ N [ M ] ⦂ B
+
+This requires the lemma that substitution preserves typing, which is
+provided in the `SubstPreserve` module of the `abstract-binding-trees`
+library.
 
 ```
 open import SubstPreserve Op sig Type 𝑃 using (preserve-substitution)
@@ -323,7 +325,7 @@ preserve : ∀ {Γ M N A}
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L—→L′) ⊢M refl
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₂ M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′) refl
 preserve (⊢ƛ ⊢M refl) (ξ-ƛ M—→N) = ⊢ƛ (preserve ⊢M M—→N) refl
-preserve {Γ}{(ƛ N) · M}{_}{B} (⊢· (⊢ƛ ⊢N refl) ⊢M refl) β-ƛ =
+preserve {M = (ƛ N) · M} (⊢· (⊢ƛ ⊢N refl) ⊢M refl) β-ƛ =
     preserve-substitution N M ⊢N ⊢M
 ```
 
@@ -333,3 +335,8 @@ two lemmas, progress and preservation. Thanks to the
 substitution preserves types nor any of the many technical lemmas that
 it depends on.
 
+
+--  LocalWords:  definitional CakeML Agda PLFA Agda's metatheory ABT
+--  LocalWords:  STLC BlogTypeSafetyTwoEasy suc proj tt Vec refl sym
+--  LocalWords:  de Bruijn parameterized Sig sig OpSig ast infixl eq
+--  LocalWords:  BTypes ABTPredicate SubstPreserve
