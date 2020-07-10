@@ -36,6 +36,8 @@ pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
 infixl 7  _·_
 pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
 
+{-------------      Examples regarding substitution   -------------}
+
 sub-app : ∀ (L M : Term) (σ : Subst) → ⟪ σ ⟫ (L · M) ≡ (⟪ σ ⟫ L) · (⟪ σ ⟫ M)
 sub-app = λ L M σ → refl
 
@@ -146,7 +148,7 @@ progress : ∀ {M A}
     ----------
   → Progress M
 progress (⊢` ())
-progress (⊢ƛ ⊢N _)                            =  done V-ƛ
+progress (⊢ƛ ⊢N _)                          =  done V-ƛ
 progress (⊢· ⊢L ⊢M _)
     with progress ⊢L
 ... | step L—→L′                            =  step (ξ-·₁ L—→L′)
@@ -159,31 +161,11 @@ instance
   _ = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _∋_⦂_ ; ⊢v0 = refl ; shift-⊢v = λ x → x
              ; quote-⊢v = λ x → ⊢` x }
 
-rename-pres : ∀{Γ Δ : List Type}{σ : Rename}{A : Type}
-   → (M : Term) → Γ ⊢ M ⦂ A → σ ⦂ Γ ⇒ Δ → Δ ⊢ rename σ M ⦂ A
-rename-pres = preserve-map
-
 instance
   _ : MapPreservable Term Type 
   _ = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _⊢_⦂_ ; ⊢v0 = λ {B}{Δ} → ⊢` refl
-        ; shift-⊢v = λ {A}{B}{Γ}{M} ⊢M → rename-pres M ⊢M (λ z → z)
+        ; shift-⊢v = λ {A}{B}{Γ}{M} ⊢M → preserve-map M ⊢M (λ z → z)
         ; quote-⊢v = λ x → x }
-
-subst-pres : ∀{Γ Δ : List Type}{σ : Subst}{A : Type}
-   → (M : Term) → Γ ⊢ M ⦂ A → σ ⦂ Γ ⇒ Δ → Δ ⊢ ⟪ σ ⟫ M ⦂ A
-subst-pres = preserve-map
-
-substitution : ∀{Γ A B M N}
-   → Γ ⊢ M ⦂ A
-   → (A ∷ Γ) ⊢ N ⦂ B
-     ---------------
-   → Γ ⊢ N [ M ] ⦂ B
-substitution {Γ}{A}{B}{M}{N} ⊢M ⊢N =
-    subst-pres {σ = M • ↑ 0} N ⊢N (λ {x} → subM {x})
-    where
-    subM : (M • id) ⦂ A ∷ Γ ⇒ Γ
-    subM {zero} {B} refl = ⊢M
-    subM {suc x} {B} ∋x = ⊢` ∋x
 
 preserve : ∀ {Γ M N A}
   → Γ ⊢ M ⦂ A
@@ -193,4 +175,5 @@ preserve : ∀ {Γ M N A}
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L—→L′) ⊢M refl
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₂ M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′) refl
 preserve (⊢ƛ ⊢M refl) (ξ-ƛ M—→N) = ⊢ƛ (preserve ⊢M M—→N) refl
-preserve (⊢· (⊢ƛ ⊢N refl) ⊢M refl) β-ƛ = substitution ⊢M ⊢N
+preserve {Γ}{(ƛ N) · M}{_}{B} (⊢· (⊢ƛ ⊢N refl) ⊢M refl) β-ƛ =
+   preserve-map {σ = M • ↑ 0} N ⊢N (λ { {zero} refl → ⊢M ; {suc x} ∋x → ⊢` ∋x })
