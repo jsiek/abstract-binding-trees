@@ -4,6 +4,7 @@ open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Product using (_×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Sig
 
 module Var where
 
@@ -29,11 +30,12 @@ _∋_⦂_ {I} (B ∷ Γ) (suc x) A = Γ ∋ x ⦂ A
 
 {--- types for bound variables ---}
 
-BType : Set → ℕ → Set
-BType I zero = ⊤
-BType I (suc b) = I × BType I b
+BType : Set → Sig → Set
+BType I ■ = ⊤
+BType I (ν b) = I × BType I b
+BType I (∁ b) = BType I b
 
-BTypes : Set → List ℕ → Set
+BTypes : Set → List Sig → Set
 BTypes I [] = ⊤
 BTypes I (b ∷ bs) = BType I b × BTypes I bs
 

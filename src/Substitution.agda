@@ -5,6 +5,7 @@ open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂)
 open Eq.≡-Reasoning
+open import Sig
 open import Var 
 
 module Substitution where
@@ -14,7 +15,7 @@ open import GSubst public
 open import GenericSubstitution public
 open import Renaming public
 
-module ABTOps (Op : Set) (sig : Op → List ℕ)  where
+module ABTOps (Op : Set) (sig : Op → List Sig)  where
 
   open import AbstractBindingTree Op sig
   open Renaming.WithOpSig Op sig public
@@ -28,10 +29,10 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   ⟪_⟫ : Subst → ABT → ABT
   ⟪_⟫ = map
 
-  ⟪_⟫ₐ : Subst → {b : ℕ} → Arg b → Arg b
+  ⟪_⟫ₐ : Subst → {b : Sig} → Arg b → Arg b
   ⟪_⟫ₐ = map-arg
 
-  ⟪_⟫₊ : Subst → {bs : List ℕ} → Args bs → Args bs
+  ⟪_⟫₊ : Subst → {bs : List Sig} → Args bs → Args bs
   ⟪_⟫₊ = map-args
 
   instance
@@ -92,15 +93,15 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   rename→subst : Rename → Subst
   rename→subst ρ x = ` (ρ x)
 
-  rename→subst≈ : (ρ : Rename) → ρ ≈ rename→subst ρ
-  rename→subst≈ ρ x = refl
+  rename→subst≃ : (ρ : Rename) → ρ ≃ rename→subst ρ
+  rename→subst≃ ρ x = refl
   
   rename-subst : ∀ ρ M → rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
-  rename-subst ρ M = map-cong M (rename→subst≈ ρ) MCE 
+  rename-subst ρ M = map-cong M (rename→subst≃ ρ) MCE 
       where
-      MCE : ∀ {ρ : Rename} {σ : Subst} → ρ ≈ σ → ext ρ ≈ ext σ
-      MCE {ρ} {σ} ρ≈σ zero = refl
-      MCE {ρ} {σ} ρ≈σ (suc x) rewrite sym (ρ≈σ x) = refl
+      MCE : ∀ {ρ : Rename} {σ : Subst} → ρ ≃ σ → ext ρ ≃ ext σ
+      MCE {ρ} {σ} ρ≃σ zero = refl
+      MCE {ρ} {σ} ρ≃σ (suc x) rewrite sym (ρ≃σ x) = refl
 
   incs=⨟↑ : ∀ (σ : Subst) → ⟰ σ ≡ σ ⨟ ↑ 1
   incs=⨟↑ σ = extensionality G
@@ -121,19 +122,20 @@ module ABTOps (Op : Set) (sig : Op → List ℕ)  where
   sub-id {M} = (sub-shift0 M λ x → refl)
     where
     sub-shift0 : ∀{σ : Subst} (M : ABT) → Shift 0 σ → ⟪ σ ⟫ M ≡ M
-    ss0-arg  : ∀{σ} → Shift 0 σ → (b : ℕ) → (arg : Arg b) 
+    ss0-arg  : ∀{σ} → Shift 0 σ → (b : Sig) → (arg : Arg b) 
        → ⟪ σ ⟫ₐ {b} arg ≡ arg
-    ss0-args  : ∀{σ} → Shift 0 σ → (bs : List ℕ) → (args : Args bs) 
+    ss0-args  : ∀{σ} → Shift 0 σ → (bs : List Sig) → (args : Args bs) 
        → ⟪ σ ⟫₊ {bs} args ≡ args
     sub-shift0 {σ}(` x) σ0 rewrite Shift-var σ 0 x σ0 = cong `_ refl
     sub-shift0 {σ}(op ⦅ args ⦆) σ0 = cong (_⦅_⦆ op) (ss0-args σ0 (sig op) args)
     ss0-arg σ0 b (ast arg) = cong ast (sub-shift0 arg σ0)
-    ss0-arg {σ} σ0 (suc b) (bind arg) = {- (shift-• (inc-Shift σ0) refl) -}
+    ss0-arg {σ} σ0 (ν b) (bind arg) = {- (shift-• (inc-Shift σ0) refl) -}
         cong bind (ss0-arg S0 b arg)
         where
         S0 : Shift 0 (ext σ)
         S0 zero = refl
         S0 (suc x) rewrite σ0 x = refl
+    ss0-arg σ0 b (clear arg) = refl
     ss0-args σ0 [] nil = refl
     ss0-args σ0 (b ∷ bs) (cons arg args) =
         cong₂ cons (ss0-arg σ0 b arg) (ss0-args σ0 bs args)

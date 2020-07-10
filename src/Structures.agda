@@ -1,4 +1,4 @@
-open import Agda.Primitive using (Level; lzero; lsuc)
+open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Data.Nat using (ℕ; zero; suc)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
@@ -37,13 +37,20 @@ _⨟_ : ∀{ℓ}{V₁ V₂ V₃ : Set ℓ} {{_ : Shiftable V₁}} {{_ : Composab
      → (Var → V₁) → (Var → V₂) → (Var → V₃)
 (σ₁ ⨟ σ₂) x = ⌈ σ₂ ⌉ (σ₁ x)
 
-record Relatable {ℓ} (V₁ V₂ : Set ℓ)
-    {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}} : Set (lsuc ℓ) where
-    field _∼_ : V₁ → V₂ → Set
-          var→val∼ : ∀ x → var→val{ℓ}{V₁} x ∼ var→val{ℓ}{V₂} x
-          shift∼ : ∀{v₁ v₂}→ v₁ ∼ v₂ → ⇑ v₁ ∼ ⇑ v₂
+record Equiv {ℓ₁ ℓ₂} (V₁ : Set ℓ₁)(V₂ : Set ℓ₂) : Set (lsuc (ℓ₁ ⊔ ℓ₂)) where
+  field _≈_ : V₁ → V₂ → Set (ℓ₁ ⊔ ℓ₂)
+open Equiv {{...}} public
 
+record Relatable {ℓ₁ ℓ₂} (V₁ : Set ℓ₁) (V₂ : Set ℓ₂)
+    {{S₁ : Shiftable V₁}}{{S₂ : Shiftable V₂}} : Set (lsuc (ℓ₁ ⊔ ℓ₂)) where
+    field {{eq}} : Equiv V₁ V₂
+          var→val≈ : ∀ x → var→val{V = V₁} x ≈ var→val{V = V₂} x
+          shift≈ : ∀{v₁ : V₁}{v₂ : V₂}→ v₁ ≈ v₂ → ⇑ v₁ ≈ ⇑ v₂
 open Relatable {{...}} public
+
+record ShiftId {ℓ} (V : Set ℓ) {{S : Shiftable V}} : Set ℓ where
+    field shift-id : ∀ x → ⇑ (var→val{V = V} x) ≡ var→val x
+open ShiftId {{...}} public
 
 postulate
   extensionality : ∀{ℓ₁ ℓ₂} {A : Set ℓ₁ }{B : Set ℓ₂} {f g : A → B}

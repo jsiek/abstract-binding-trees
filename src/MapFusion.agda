@@ -8,9 +8,10 @@ open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app; subst)
 open Eq.≡-Reasoning
+open import Sig
 open import Var
 
-module MapFusion (Op : Set) (sig : Op → List ℕ) where
+module MapFusion (Op : Set) (sig : Op → List Sig) where
 
 open import AbstractBindingTree Op sig
 open import Map Op sig

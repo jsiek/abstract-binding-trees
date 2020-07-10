@@ -5,6 +5,7 @@ open import Data.Unit.Polymorphic using (⊤; tt)
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
+open import Sig
 
 module ScopedTuple where
 
@@ -21,27 +22,27 @@ A ⇨ B = (∀ {b : ℕ} → A b → B b)
 _✖_ : {ℓ₁ ℓ₂ : Level} → Scet {ℓ₁} → Scet {ℓ₂} → Set (lsuc (ℓ₁ ⊔ ℓ₂))
 _✖_ {ℓ₁}{ℓ₂} A B = (∀ {b : ℕ} → A b → B b → Set (ℓ₁ ⊔ ℓ₂))
 
-Sig : Set
-Sig = List ℕ
+Sigs : Set
+Sigs = List ℕ
 
-Tuple : {ℓ : Level} → Sig → Scet {ℓ} → Set ℓ
+Tuple : {ℓ : Level} → Sigs → Scet {ℓ} → Set ℓ
 Tuple [] A = ⊤
 Tuple (b ∷ bs) A = A b × Tuple bs A
 
-map : ∀{A B} → (A ⇨ B) → {bs : Sig} → Tuple bs A → Tuple bs B
+map : ∀{A B} → (A ⇨ B) → {bs : Sigs} → Tuple bs A → Tuple bs B
 map f {[]} ⊤ = tt
 map f {b ∷ bs} ⟨ x , xs ⟩ = ⟨ f x , map f xs ⟩
 
 foldr : ∀{ℓ : Level}{A}{B : Set} → (∀ {b} → A b → B → B)
-   → B → {bs : Sig} → Tuple {ℓ} bs A → B
+   → B → {bs : Sigs} → Tuple {ℓ} bs A → B
 foldr c n {[]} tt = n
 foldr c n {b ∷ bs} ⟨ x , xs ⟩ = c x (foldr c n xs)
 
-all : ∀{A} → 𝒫 A → {bs : Sig} → Tuple bs A → Set
+all : ∀{A} → 𝒫 A → {bs : Sigs} → Tuple bs A → Set
 all {A} P {[]} tt = ⊤
 all {A} P {b ∷ bs} ⟨ x , xs ⟩ = P x × (all P xs)
 
-zip : ∀{ℓ₁}{ℓ₂}{A B} → _✖_ {ℓ₁}{ℓ₂} A B → {bs : Sig}
+zip : ∀{ℓ₁}{ℓ₂}{A B} → _✖_ {ℓ₁}{ℓ₂} A B → {bs : Sigs}
    → Tuple bs A → Tuple bs B → Set (ℓ₁ ⊔ ℓ₂)
 zip R {[]} tt tt = ⊤
 zip R {b ∷ bs} ⟨ a₁ , as₁ ⟩ ⟨ a₂ , as₂ ⟩ = R a₁ a₂ × zip R as₁ as₂
@@ -52,7 +53,7 @@ map-cong : ∀{A B}{f g : A ⇨ B} {bs} {xs : Tuple bs A}
 map-cong {bs = []} {tt} eq = refl
 map-cong {bs = b ∷ bs} {⟨ x , xs ⟩} eq = cong₂ ⟨_,_⟩ (eq x) (map-cong eq)
 
-map-compose : ∀{A B C} {g : B ⇨ C} {f : A ⇨ B} {bs : Sig} {xs : Tuple bs A}
+map-compose : ∀{A B C} {g : B ⇨ C} {f : A ⇨ B} {bs : Sigs} {xs : Tuple bs A}
    → (map g (map f xs)) ≡ (map (g ∘ f) xs)
 map-compose {A}{B}{C} {g} {f} {[]} {tt} = refl
 map-compose {A}{B}{C} {g} {f} {b ∷ bs} {⟨ x , xs ⟩} =
@@ -61,9 +62,9 @@ map-compose {A}{B}{C} {g} {f} {b ∷ bs} {⟨ x , xs ⟩} =
 tuple-pred : ∀{ℓ}{A : Scet {ℓ}}{P : 𝒫 A}
   → (P× : ∀ bs → Tuple bs A → Set)
   → (∀ (b : ℕ) → (a : A b) → P {b} a)
-  → {bs : Sig} → (xs : Tuple bs A)
+  → {bs : Sigs} → (xs : Tuple bs A)
   → (P× [] tt)
-  → (∀{b : ℕ}{bs : Sig}{x xs}
+  → (∀{b : ℕ}{bs : Sigs}{x xs}
        → P {b} x  →  P× bs xs  →  P× (b ∷ bs) ⟨ x , xs ⟩)
   →  P× bs xs
 tuple-pred {A} {P} P× f {[]} tt base step = base
@@ -75,7 +76,7 @@ tuple-pred {A} {P} P× f {x ∷ bs} ⟨ fst , snd ⟩ base step =
 
 all-intro : ∀{A : Scet} → (P : 𝒫 A)
   → (∀ {b} (a : A b) → P {b} a)
-  → {bs : Sig} → (xs : Tuple bs A)
+  → {bs : Sigs} → (xs : Tuple bs A)
   → all P xs
 all-intro {A} P f {[]} tt = tt
 all-intro {A} P f {b ∷ bs} ⟨ x , xs ⟩  = ⟨ (f x) , (all-intro P f xs) ⟩
@@ -86,7 +87,7 @@ zip-refl {ℓ}{b ∷ bs} {A} ⟨ x , xs ⟩ = ⟨ refl , zip-refl xs ⟩
 
 zip-intro : ∀{ℓ}{A B : Scet {ℓ}} → (R : A ✖ B)
   → (∀ {c} (a : A c) (b : B c) → R {c} a b)
-  → {bs : Sig} → (xs : Tuple bs A) → (ys : Tuple bs B)
+  → {bs : Sigs} → (xs : Tuple bs A) → (ys : Tuple bs B)
   → zip R xs ys
 zip-intro {A} {B} R f {[]} tt tt = tt
 zip-intro {A} {B} R f {b ∷ bs} ⟨ x , xs ⟩ ⟨ y , ys ⟩ =
@@ -104,13 +105,13 @@ map-pres-zip {b ∷ bs}{xs = ⟨ x , xs ⟩} {⟨ y , ys ⟩} P Q f g ⟨ z , zs
 record Lift-Pred-Tuple {A} (P : 𝒫 A)
   (P× : ∀{bs} → Tuple bs A → Set) : Set where
   field base : (P× {bs = []} tt)
-        step : (∀{b : ℕ}{bs : Sig}{x xs}
+        step : (∀{b : ℕ}{bs : Sigs}{x xs}
                → P {b} x  →  P× {bs} xs  →  P× ⟨ x , xs ⟩)
 
 record Lift-Rel-Tuple {A B} (R : A ✖ B)
   (R× : ∀{bs} → Tuple bs A → Tuple bs B → Set) : Set where
   field base : (R× {bs = []} tt tt)
-        step : (∀{b : ℕ}{bs : Sig}{x xs}{y ys}
+        step : (∀{b : ℕ}{bs : Sigs}{x xs}{y ys}
                → R {b} x y  →  R× {bs} xs ys  →  R× ⟨ x , xs ⟩ ⟨ y , ys ⟩)
 
 Lift-Eq-Tuple : ∀{A : Set} → Lift-Rel-Tuple {λ _ → A}{λ _ → A} _≡_ _≡_
@@ -128,7 +129,7 @@ all→pred {b ∷ bs} {xs = ⟨ x , xs ⟩} P P× L ⟨ z , zs ⟩ =
 lift-pred : ∀{A : Scet} → (P : 𝒫 A) → (P× : ∀ {bs} → Tuple bs A → Set)
   → (L : Lift-Pred-Tuple P P×)
   → (∀ {b} (a : A b) → P {b} a)
-  → {bs : Sig} → (xs : Tuple bs A)
+  → {bs : Sigs} → (xs : Tuple bs A)
   →  P× xs
 lift-pred {A} P P× L f {bs} xs =
   all→pred {bs}{A}{xs} P P× L (all-intro {A} P f {bs} xs)
@@ -153,7 +154,7 @@ zip-map→rel P Q R f g P→Q L zs = zip→rel Q R L (map-pres-zip P Q f g zs P�
 
 map-compose-zip : ∀{A B C C′}
    {g : B ⇨ C} {f : A ⇨ B}{h : A ⇨ C′}
-   {bs : Sig}{R : C ✖ C′}
+   {bs : Sigs}{R : C ✖ C′}
    {xs : Tuple bs A}
    → (∀ {b : ℕ} x → R {b} (g (f x)) (h x))
    → zip R (map g (map f xs)) (map h xs)

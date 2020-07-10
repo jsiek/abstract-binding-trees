@@ -2,7 +2,7 @@ open import Agda.Primitive
 open import Data.Bool using (true; false; if_then_else_) renaming (Bool to 𝔹)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
-open import Data.List using (List; []; _∷_; length)
+open import Data.List using (List; []; _∷_; length) renaming (map to lmap)
 open import Data.Maybe using (Maybe; nothing; just)
 open import Data.Nat
     using (ℕ; zero; suc; _+_; _*_; _⊔_; _∸_; _≤_; _<_; z≤n; s≤s)
@@ -14,6 +14,9 @@ open import GenericSubstitution
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
+open import Syntax
+  using (Sig; sig→ℕ; ν; ■; ↑; _•_; _,_; ext; id; Rename; Shiftable; Equiv;
+         Relatable)
 open import Var
 open import ListAux
 
@@ -33,19 +36,18 @@ data Op : Set where
   op-if : Op
   op-error : Op
 
-sig : Op → List ℕ
+sig : Op → List Sig
 sig (op-num n) = []
-sig op-mult = 0 ∷ 0 ∷ []
-sig op-let = 0 ∷ 1 ∷ []
+sig op-mult = ■ ∷ ■ ∷ []
+sig op-let = ■ ∷ ν ■ ∷ []
 sig (op-bool b) = []
-sig op-if = 0 ∷ 0 ∷ 0 ∷ []
+sig op-if = ■ ∷ ■ ∷ ■ ∷ []
 sig op-error = []
 
 open import ScopedTuple using (Tuple; _✖_; zip)
-open import Syntax using (↑; _•_; _,_; ext; id; Rename; Shiftable)
 open Syntax.OpSig Op sig using (rename; rename-id; FV-rename; FV-↑1-0)
 open import Fold Op sig 
-open import Map Op sig hiding (_⊢_≈_; _⊢ₐ_≈_; _⊢₊_≈_)
+open import Map Op sig
 open import FoldPreserve Op sig
 open import FoldFoldFusion Op sig
   renaming (_⨟ᶠ_≈_ to _⨟′_≈_)
@@ -93,7 +95,7 @@ bool? mv f
 ... | _ = nothing
 
 
-eval-op : (op : Op) → Tuple (sig op) (Bind (Maybe Val) (Maybe Val))
+eval-op : (op : Op) → Tuple (lmap sig→ℕ (sig op)) (Bind (Maybe Val) (Maybe Val))
         → Maybe Val
 eval-op (op-num n) tt = just (v-num n)
 eval-op op-error tt = nothing
@@ -264,7 +266,7 @@ if-bool? r f g
 ... | nothing = g (res→ast r)
 ... | just ⟨ b , refl ⟩ = f b
 
-pe-op : (op : Op) → Tuple (sig op) (Bind Res Res) → Res
+pe-op : (op : Op) → Tuple (lmap sig→ℕ (sig op)) (Bind Res Res) → Res
 pe-op (op-num n) tt = val (v-num n)
 pe-op (op-bool b) tt = val (v-bool b)
 pe-op op-mult ⟨ mr₁ , ⟨ mr₂ , tt ⟩ ⟩ = do
@@ -289,10 +291,11 @@ instance
 pe : (Var → Res) → AST → Res
 pe = fold
 
-pe-arg : (Var → Res) → {b : ℕ} → Arg b → Bind Res Res b
+pe-arg : (Var → Res) → {b : Sig} → Arg b → Bind Res Res (sig→ℕ b)
 pe-arg = fold-arg
 
-pe-args : (Var → Res) → {bs : List ℕ} → Args bs → Tuple bs (Bind Res Res)
+pe-args : (Var → Res) → {bs : List Sig} → Args bs
+   → Tuple (lmap sig→ℕ bs) (Bind Res Res)
 pe-args = fold-args
 
 init-env : Var → Res
@@ -330,14 +333,17 @@ zip-≡ᵇ→≡ {V}{[]} {tt} {tt} tt = refl
 zip-≡ᵇ→≡ {V}{b ∷ bs} {⟨ r , rs ⟩} {⟨ r' , rs' ⟩} ⟨ r=r' , z-rs-rs' ⟩ =
     cong₂ ⟨_,_⟩ (≡ᵇ→≡{V} r=r') (zip-≡ᵇ→≡{V} z-rs-rs')
 
-eval-op-cong : ∀{op : Op}{rs rs' : Tuple(sig op)(Bind(Maybe Val)(Maybe Val))}
+eval-op-cong : ∀{op : Op}
+   {rs rs' : Tuple (lmap sig→ℕ (sig op)) (Bind(Maybe Val)(Maybe Val))}
    → zip (_≡ᵇ_{V = Maybe Val}) rs rs' → eval-op  op rs ≡ eval-op op rs'
 eval-op-cong z rewrite zip-≡ᵇ→≡ z = refl
 
 instance
+  _ : Relatable (Maybe Val) (Maybe Val)
+  _ = record { var→val≈ = λ x → refl ; shift≈ = λ { refl → refl } }
+  
   _ : Similar (Maybe Val) (Maybe Val) (Maybe Val) (Maybe Val) 
-  _ = record { ret≈ = λ x → x ; shift≈ = λ { refl → refl }
-             ; op⩳ = eval-op-cong }
+  _ = record { ret≈ = λ x → x ; op⩳ = eval-op-cong }
   _ : Quotable Res
   _ = record { “_” = res→ast }
 
@@ -352,8 +358,8 @@ bogus43 {i} (s≤s (s≤s (s≤s ())))
 
 bind-eval : (op : Op) → (i j : ℕ)
     .{i< : i < length (sig op)}
-    .{j< : j < nth (sig op) i {i<}}
-    → Tuple (sig op) (Bind (Maybe Val) (Maybe Val)) → (Maybe Val)
+    .{j< : j < sig→ℕ (nth (sig op) i {i<})}
+    → Tuple (lmap sig→ℕ (sig op)) (Bind (Maybe Val) (Maybe Val)) → (Maybe Val)
 bind-eval op-mult (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 bind-eval op-if (suc (suc (suc i))) j {i<} {j<} rs = ⊥-elimi (bogus43 i<)
 bind-eval op-let (suc zero) zero {i<}{j<} ⟨ r , ⟨ f , tt ⟩ ⟩ = r
@@ -362,8 +368,8 @@ bind-eval op-let (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 
 bind-pe : (op : Op) → (i j : ℕ)
     .{i< : i < length (sig op)}
-    .{j< : j < nth (sig op) i {i<}}
-    → Tuple (sig op) (Bind Res Res) → Res
+    .{j< : j < sig→ℕ (nth (sig op) i {i<})}
+    → Tuple (lmap sig→ℕ (sig op)) (Bind Res Res) → Res
 bind-pe op-mult (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 bind-pe op-if (suc (suc (suc i))) j {i<} {j<} rs = ⊥-elimi (bogus43 i<)
 bind-pe op-let (suc zero) zero {i<}{j<} ⟨ r , ⟨ f , tt ⟩ ⟩ = ⇑ᵣ r
@@ -406,7 +412,7 @@ eval-down γ M mv 0∉M =
   G zero 0∈M = ⊥-elim (0∉M 0∈M)
   G (suc x) sx∈M = refl
 
-  env-ext : {b : ℕ} {arg : Arg b} {σ : Var → Var}
+  env-ext : {b : Sig} {arg : Arg b} {σ : Var → Var}
     {δ : Var → Maybe Val} {γ' : Var → Maybe Val} {v : Maybe Val}
     → (bind arg) ⊢ₐ σ ⨟ δ ≈ γ'
     → arg ⊢ₐ ext σ ⨟ (δ , v) ≈ (γ' , v)

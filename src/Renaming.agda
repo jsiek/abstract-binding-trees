@@ -13,6 +13,7 @@ open import GSubst
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; sym; cong; cong₂)
 open Eq.≡-Reasoning
+open import Sig
 open import Var 
 
 module Renaming where
@@ -26,16 +27,16 @@ ext-0 ρ = refl
 ext-suc : ∀ (ρ : Rename) x → (ext ρ) (suc x) ≡ suc ((ρ) x)
 ext-suc ρ x = refl
 
-module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
+module WithOpSig (Op : Set) (sig : Op → List Sig)  where
 
   open import AbstractBindingTree Op sig
   open import Map Op sig
 
   rename : Rename → ABT → ABT
   rename = map
-  ren-arg : Rename → {b : ℕ} →  Arg b → Arg b
+  ren-arg : Rename → {b : Sig} →  Arg b → Arg b
   ren-arg = map-arg
-  ren-args : Rename → {bs : List ℕ} →  Args bs → Args bs
+  ren-args : Rename → {bs : List Sig} →  Args bs → Args bs
   ren-args = map-args
   
   instance
@@ -108,12 +109,12 @@ module WithOpSig (Op : Set) (sig : Op → List ℕ)  where
     fvr-args : ∀ (ρ : Rename) bs (args : Args bs) y
         → FV-args (ren-args ρ args) y → Σ[ x ∈ Var ] (ρ) x ≡ y × FV-args args x
     fvr-arg ρ b (ast M) y fv = FV-rename ρ M y fv 
-    fvr-arg ρ (suc b) (bind arg) y fv 
+    fvr-arg ρ (ν b) (bind arg) y fv 
         with fvr-arg (ext ρ) b arg (suc y) fv
     ... | ⟨ 0 , eq ⟩  
         with eq
     ... | ()
-    fvr-arg ρ (suc b) (bind arg) y fv 
+    fvr-arg ρ (ν b) (bind arg) y fv 
         | ⟨ suc x , ⟨ eq , sx∈arg ⟩ ⟩ =
           ⟨ x , ⟨ suc-injective eq , sx∈arg ⟩ ⟩
     fvr-args ρ [] nil y ()

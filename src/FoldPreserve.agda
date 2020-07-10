@@ -17,7 +17,7 @@
 import ABTPredicate
 open import Agda.Primitive using (Level; lzero; lsuc)
 open import Data.Empty using (⊥)
-open import Data.List using (List; []; _∷_; length; _++_)
+open import Data.List using (List; []; _∷_; length; _++_) renaming (map to lmap)
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; z≤n; s≤s)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit.Polymorphic using (⊤; tt)
@@ -29,11 +29,12 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import ScopedTuple
-import Substitution
+open import Sig
 open import Structures
+import Substitution
 open import Var
 
-module FoldPreserve (Op : Set) (sig : Op → List ℕ) where
+module FoldPreserve (Op : Set) (sig : Op → List Sig) where
 
 open import AbstractBindingTree Op sig
 open import Fold Op sig
@@ -54,22 +55,28 @@ open FoldPreservable {{...}}
 
 data _∣_∣_⊢ᵣ_⦂_ {V C I : Set}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
-  : (b : ℕ) → List I → BType I b → Bind V C b → I → Set where
-  ast-r : ∀{Δ}{c}{A}  →  Δ ⊢c c ⦂ A →  0 ∣ Δ ∣ tt ⊢ᵣ c ⦂ A
+  : (b : Sig) → List I → BType I b → Bind V C (sig→ℕ b) → I → Set where
+  ast-r : ∀{Δ}{c}{A}  →  Δ ⊢c c ⦂ A →  ■ ∣ Δ ∣ tt ⊢ᵣ c ⦂ A
   bind-r : ∀{b A B}{Bs : BType I b}{ Δ f}
         → (∀{v} → (B ∷ Δ) ⊢v v ⦂ B → 𝐴 (B ∷ Δ) v B
                 → b ∣ (B ∷ Δ) ∣ Bs ⊢ᵣ (f v) ⦂ A)
-        → (suc b) ∣ Δ ∣ ⟨ B , Bs ⟩ ⊢ᵣ f ⦂ A
+        → (ν b) ∣ Δ ∣ ⟨ B , Bs ⟩ ⊢ᵣ f ⦂ A
+  clear-r : ∀{Δ b c A}{Bs : BType I b}
+        → b ∣ Δ ∣ Bs ⊢ᵣ c ⦂ A
+        → ∁ b ∣ Δ ∣ Bs ⊢ᵣ c ⦂ A
 
 ⊢ᵣ→⊢c : ∀{V C I : Set}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
-    {Δ : List I}{Bs : ⊤}{c : C}{A}  →  0 ∣ Δ ∣ Bs ⊢ᵣ c ⦂ A  →  Δ ⊢c c ⦂ A
+    {Δ : List I}{Bs : ⊤}{c : C}{A}
+    → ■ ∣ Δ ∣ Bs ⊢ᵣ c ⦂ A
+    → Δ ⊢c c ⦂ A
 ⊢ᵣ→⊢c {Δ}{Bs}{c}{A} (ast-r ⊢cc) = ⊢cc
+
 
 data _∣_∣_⊢ᵣ₊_⦂_ {V C I : Set}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
-  : ∀(bs : List ℕ) → List I → BTypes I bs
-              → Tuple bs (Bind V C) → Vec I (length bs) → Set where
+  : ∀(bs : List Sig) → List I → BTypes I bs
+              → Tuple (lmap sig→ℕ bs) (Bind V C) → Vec I (length bs) → Set where
   nil-r : ∀{Δ} → [] ∣ Δ ∣ tt ⊢ᵣ₊ tt ⦂ []̌ 
   cons-r : ∀{b bs r rs Δ A As Bs Bss} → b ∣ Δ ∣ Bs ⊢ᵣ r ⦂ A
       → bs ∣ Δ ∣ Bss ⊢ᵣ₊ rs ⦂ As
@@ -85,7 +92,7 @@ fold-preserves : ∀{V C I : Set}
     {M : ABT}{σ : GSubst V}{Γ Δ : List I}{A : I}
    → Γ ⊢ M ⦂ A
    → σ ⦂ Γ ⇒ Δ
-   → (∀ {op : Op}{Rs : Tuple (sig op) (Bind V C)}{Δ}{A : I}
+   → (∀ {op : Op}{Rs : Tuple (lmap sig→ℕ (sig op)) (Bind V C)}{Δ}{A : I}
         {As : Vec I (length (sig op))}{Bs}
        → sig op ∣ Δ ∣ Bs ⊢ᵣ₊ Rs ⦂ As → 𝑃 op As Bs A → Δ ⊢c (fold-op op Rs) ⦂ A)
    → Δ ⊢c fold σ M ⦂ A
@@ -108,15 +115,17 @@ fold-preserves {V}{C}{I}{E} (op-p ⊢args Pop) σ⦂ op-pres =
      → bs ∣ Γ ∣ Bss ⊢₊ args ⦂ As
      → σ ⦂ Γ ⇒ Δ
      → bs ∣ Δ ∣ Bss ⊢ᵣ₊ fold-args σ args ⦂ As
-  pres-arg {zero}{Γ}{Δ}{ast M}{A}{σ} (ast-p ⊢arg) σΓΔ =
+  pres-arg {b}{Γ}{Δ}{ast M}{A}{σ} (ast-p ⊢arg) σΓΔ =
       ast-r (fold-preserves ⊢arg σΓΔ op-pres)
-  pres-arg {suc b}{Γ}{Δ}{bind arg}{A}{σ}{⟨ B , Bs ⟩} (bind-p {b}{B} ⊢arg)
+  pres-arg {ν b}{Γ}{Δ}{bind arg}{A}{σ}{⟨ B , Bs ⟩} (bind-p {b}{B} ⊢arg)
       σΓΔ = bind-r G
       where G : ∀{v} → (B ∷ Δ) ⊢v v ⦂ B
                → 𝐴 (B ∷ Δ) v B
                → b ∣ B ∷ Δ ∣ Bs ⊢ᵣ fold-arg σ (bind arg) v ⦂ A
             G {v} ⊢v⦂B 𝐴Mv =
                 pres-arg ⊢arg (λ {x} → ext-pres {v}{σ}{Γ} ⊢v⦂B 𝐴Mv σΓΔ {x})
+  pres-arg {b}{Γ}{Δ}{clear arg}{A}{σ} (clear-p ⊢arg) σΓΔ =
+      clear-r (pres-arg {arg = arg} ⊢arg (λ ()))
   pres-args {[]} {Γ} {Δ} {nil} {[]̌} ⊢args σΓΔ = nil-r 
   pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷̌ As}
       (cons-p ⊢arg ⊢args) σΓΔ =

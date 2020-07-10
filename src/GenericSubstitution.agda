@@ -11,6 +11,7 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
+open import Sig
 open import Var
 
 module GenericSubstitution where
@@ -18,23 +19,23 @@ module GenericSubstitution where
 module _ where
 
   _≊_ : ∀{ℓ}{V₁ V₂ : Set ℓ}{{_ : Shiftable V₁}}{{_ : Shiftable V₂}}
-                  {{_ : Relatable V₁ V₂}} → GSubst V₁ → GSubst V₂ → Set
-  σ₁ ≊ σ₂ = ∀ x → σ₁ x ∼ σ₂ x                
+                  {{_ : Relatable V₁ V₂}} → GSubst V₁ → GSubst V₂ → Set ℓ
+  σ₁ ≊ σ₂ = ∀ (x : Var) → σ₁ x ≈ σ₂ x                
 
   inc-≊ : ∀{ℓ}{V₁ V₂ : Set ℓ}{{_ : Shiftable V₁}}{{_ : Shiftable V₂}}
             {{_ : Relatable V₁ V₂}} {σ₁}{σ₂}
      → σ₁ ≊ σ₂ → ⟰ σ₁ ≊ ⟰ σ₂
-  inc-≊ {σ₁ = σ₁}{σ₂} σ₁≊σ₂ x = shift∼ (σ₁≊σ₂ x)
+  inc-≊ {σ₁ = σ₁}{σ₂} σ₁≊σ₂ x = shift≈ (σ₁≊σ₂ x)
 
   ext-≊ : ∀{ℓ}{V₁ V₂ : Set ℓ}{{_ : Shiftable V₁}}{{_ : Shiftable V₂}}
            {{_ : Relatable V₁ V₂}}
       {σ₁ σ₂} → σ₁ ≊ σ₂ → ext σ₁ ≊ ext σ₂
-  ext-≊ {σ₁ = σ₁} {σ₂} σ₁≊σ₂ zero = var→val∼ 0
-  ext-≊ {σ₁ = σ₁} {σ₂} σ₁≊σ₂ (suc x) = shift∼ (σ₁≊σ₂ x)
+  ext-≊ {σ₁ = σ₁} {σ₂} σ₁≊σ₂ zero = var→val≈ 0
+  ext-≊ {σ₁ = σ₁} {σ₂} σ₁≊σ₂ (suc x) = shift≈ (σ₁≊σ₂ x)
 
   lookup∼ : ∀{ℓ}{V₁ V₂ : Set ℓ}{{_ : Shiftable V₁}}{{_ : Shiftable V₂}}
       {{_ : Relatable V₁ V₂}} {σ₁ σ₂}
-     → (x : Var) → σ₁ ≊ σ₂ → σ₁ x ∼ σ₂ x
+     → (x : Var) → σ₁ ≊ σ₂ → σ₁ x ≈ σ₂ x
   lookup∼ x σ₁≊σ₂ = σ₁≊σ₂ x
   
 module GSubstPred {ℓ}{V : Set ℓ}{I : Set} (S : Shiftable V)
@@ -44,7 +45,7 @@ module GSubstPred {ℓ}{V : Set ℓ}{I : Set} (S : Shiftable V)
   _⦂_⇒_ : GSubst V → List I → List I → Set
   σ ⦂ Γ ⇒ Δ = ∀{x A} → Γ ∋ x ⦂ A  →  Δ ⊢v σ x ⦂ A
   
-module Composition (Op : Set) (sig : Op → List ℕ)   where
+module Composition (Op : Set) (sig : Op → List Sig)   where
   open import AbstractBindingTree Op sig
   open import Map Op sig
 

@@ -16,15 +16,16 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 
 module examples.Lambda where
 
+open Syntax using (Sig; Rename; _•_; id; ↑; Shiftable; GSubst; ⟰; ν; ■)
+
 data Op : Set where
   op-lam : Op
   op-app : Op
 
-sig : Op → List ℕ
-sig op-lam = 1 ∷ []
-sig op-app = 0 ∷ 0 ∷ []
+sig : Op → List Sig
+sig op-lam = (ν ■) ∷ []
+sig op-app = ■ ∷ ■ ∷ []
 
-open Syntax using (Rename; _•_; id; ↑; Shiftable; GSubst; ⟰)
 open Syntax.OpSig Op sig
   using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫;
          rename; ABT-is-Shiftable; Var-is-Quotable; ABT-is-Quotable)

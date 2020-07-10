@@ -9,17 +9,17 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app; subst)
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Agda.Primitive using (Level; lzero; lsuc)
-
+open import Sig
+open import Substitution using (Rename; ↑; _•_)
+open import Structures
+open import Var
 
 {----------------------------------------------------------------------------
                   Well-scoped Abstract Binding Trees
  ---------------------------------------------------------------------------}
 
-module WellScoped (Op : Set) (sig : Op → List ℕ) where
+module WellScoped (Op : Set) (sig : Op → List Sig) where
 
-open import Var
-open import Structures
-open import Substitution using (Rename; ↑; _•_)
 open Substitution.ABTOps Op sig
     using (rename; ⟪_⟫; Subst; ABT-is-Shiftable)
 open import MapPreserve Op sig
@@ -32,10 +32,10 @@ open import ABTPredicate {I = ⊤} Op sig
   (λ Γ x A → x < length Γ) (λ op vs Bs A → ⊤)
   using ()
   renaming (var-p to WF-var; op-p to WF-op; ast-p to WF-ast; bind-p to WF-bind;
-            nil-p to WF-nil; cons-p to WF-cons) public
+            clear-p to WF-clear; nil-p to WF-nil; cons-p to WF-cons) public
 
 open import AbstractBindingTree Op sig
-  using (ABT; Arg; Args; `_; _⦅_⦆; ast; bind; nil; cons; Quotable;
+  using (ABT; Arg; Args; `_; _⦅_⦆; ast; bind; clear; nil; cons; Quotable;
   Var-is-Quotable; ABT-is-Quotable)
 
 mk-list : {ℓ : Level} → ℕ → List {ℓ} ⊤
@@ -45,11 +45,12 @@ mk-list (suc n) = tt ∷ mk-list n
 WF : ℕ → ABT → Set
 WF n M = mk-list n ⊢ M ⦂ tt
 
-mk-btype : (b : ℕ) → BType ⊤ b
-mk-btype zero = tt
-mk-btype (suc b) = ⟨ tt , (mk-btype b) ⟩
+mk-btype : (b : Sig) → BType ⊤ b
+mk-btype ■ = tt
+mk-btype (ν b) = ⟨ tt , (mk-btype b) ⟩
+mk-btype (∁ b) = mk-btype b
 
-mk-btypes : (bs : List ℕ) → BTypes ⊤ bs
+mk-btypes : (bs : List Sig) → BTypes ⊤ bs
 mk-btypes [] = tt
 mk-btypes (b ∷ bs) = ⟨ mk-btype b , mk-btypes bs ⟩
 
@@ -57,22 +58,23 @@ mk-vec : {ℓ : Level} → (n : ℕ) → Vec {ℓ} ⊤ n
 mk-vec zero = []̆
 mk-vec (suc n) = tt ∷̆ (mk-vec n)
 
-WF-arg : ℕ → {b : ℕ} → Arg b → Set
+WF-arg : ℕ → {b : Sig} → Arg b → Set
 WF-arg n {b} arg = b ∣ mk-list n ∣ mk-btype b ⊢ₐ arg ⦂ tt
 
-WF-args : ℕ → {bs : List ℕ} → Args bs → Set 
+WF-args : ℕ → {bs : List Sig} → Args bs → Set 
 WF-args n {bs} args = bs ∣ mk-list n ∣ mk-btypes bs ⊢₊ args ⦂ mk-vec (length bs)
 
 len-mk-list : ∀ {ℓ : Level} n → length {ℓ} (mk-list n) ≡ n
 len-mk-list zero = refl
 len-mk-list (suc n) = cong suc (len-mk-list n)
 
-mk-btype-unique : ∀{b : ℕ}{Bs : BType ⊤ b}
+mk-btype-unique : ∀{b : Sig}{Bs : BType ⊤ b}
     → Bs ≡ mk-btype b
-mk-btype-unique {zero} {tt} = refl
-mk-btype-unique {suc b} {⟨ fst , snd ⟩} = cong₂ ⟨_,_⟩ refl mk-btype-unique
+mk-btype-unique {■} {tt} = refl
+mk-btype-unique {ν b} {⟨ fst , snd ⟩} = cong₂ ⟨_,_⟩ refl (mk-btype-unique {b})
+mk-btype-unique {∁ b} {Bs} = mk-btype-unique {b}{Bs}
 
-mk-btypes-unique : ∀{bs : List ℕ}{Bss : BTypes ⊤ bs}
+mk-btypes-unique : ∀{bs : List Sig}{Bss : BTypes ⊤ bs}
     → Bss ≡ mk-btypes bs
 mk-btypes-unique {[]} {tt} = refl
 mk-btypes-unique {b ∷ bs} {⟨ fst , snd ⟩} =
@@ -133,13 +135,13 @@ module _ where
       ... | x<Γ rewrite len-mk-list {lzero} Γ = wfσ{x} x<Γ
 
 open import AbstractBindingTree Op sig
-    using (Ctx; CArg; CArgs; CHole; COp; CAst; CBind; tcons; ccons; 
+    using (Ctx; CArg; CArgs; CHole; COp; CAst; CBind; CClear; tcons; ccons; 
            plug; plug-arg; plug-args;
            ctx-depth; ctx-depth-arg; ctx-depth-args)
 
 data WF-Ctx : ℕ → Ctx → Set
-data WF-CArg : ℕ → ∀{b} → CArg b → Set
-data WF-CArgs : ℕ → ∀{bs} → CArgs bs → Set
+data WF-CArg : ℕ → ∀{b : Sig} → CArg b → Set
+data WF-CArgs : ℕ → ∀{bs : List Sig} → CArgs bs → Set
 
 data WF-Ctx where
   WF-hole : ∀{n} → WF-Ctx n CHole
@@ -154,6 +156,9 @@ data WF-CArg where
   WF-c-bind : ∀{n}{b}{CA : CArg b}
      → WF-CArg (suc n) {b} CA
      → WF-CArg n (CBind {b} CA)
+  WF-c-clear : ∀{n}{b}{CA : CArg b}
+     → WF-CArg 0 {b} CA
+     → WF-CArg n (CClear {b} CA)
 
 data WF-CArgs where
   WF-tcons : ∀{n}{b}{bs}{bs'}{A : Arg b}{cargs : CArgs bs}{eq : bs' ≡ b ∷ bs}
@@ -167,28 +172,27 @@ data WF-CArgs where
 
 WF-plug : ∀{C : Ctx}{N : ABT}{k}
    → WF-Ctx k C
-   → WF (k + ctx-depth C) N
+   → WF (ctx-depth C k) N
    → WF k (plug C N)
 WF-plug-arg : ∀{b}{A : CArg b}{N : ABT}{k}
    → WF-CArg k A
-   → WF (k + ctx-depth-arg A) N
+   → WF (ctx-depth-arg A k) N
    → WF-arg k (plug-arg A N)
 WF-plug-args : ∀{bs}{Cs : CArgs bs}{N : ABT}{k}
    → WF-CArgs k Cs
-   → WF (k + ctx-depth-args Cs) N
+   → WF (ctx-depth-args Cs k) N
    → WF-args k (plug-args Cs N)
 
 WF-plug {CHole} {N} {k} wfC wfN
     rewrite +-comm k 0 = wfN
 WF-plug {COp op cargs} {N} {k} (WF-c-op wf-cargs) wfN =
     WF-op (WF-plug-args{Cs = cargs} wf-cargs wfN ) tt
-WF-plug-arg {zero} {CAst C} {N} {k} (WF-c-ast wfC) wfN =
+WF-plug-arg {■} {CAst C} {N} {k} (WF-c-ast wfC) wfN =
     WF-ast (WF-plug wfC wfN)
-WF-plug-arg {suc n} {CBind A} {N} {k} (WF-c-bind wfA) wfN =
-    WF-bind (WF-plug-arg wfA wfN')
-    where
-    wfN' : WF (suc k + ctx-depth-arg A) N
-    wfN' rewrite +-suc k (ctx-depth-arg A) = wfN
+WF-plug-arg {ν n} {CBind A} {N} {k} (WF-c-bind wfA) wfN =
+    WF-bind (WF-plug-arg wfA wfN)
+WF-plug-arg {∁ n} {CClear A} {N} {k} (WF-c-clear wfA) wfN = 
+    WF-clear (WF-plug-arg wfA wfN)
 WF-plug-args {b ∷ bs} {tcons A Cs refl} {N} {k} (WF-tcons wfA wfCs) wfN =
     WF-cons wfA (WF-plug-args {Cs = Cs} wfCs wfN)
 WF-plug-args {b ∷ bs} {ccons C As refl} {N} {k} (WF-ccons wfC wfAs) wfN =
@@ -196,8 +200,8 @@ WF-plug-args {b ∷ bs} {ccons C As refl} {N} {k} (WF-ccons wfC wfAs) wfN =
 
 
 WF? : (n : ℕ) → (M : ABT) → Dec (WF n M)
-WF-arg? : (n : ℕ) → {b : ℕ} → (A : Arg b) → Dec (WF-arg n A)
-WF-args? : (n : ℕ) → {bs : List ℕ} → (As : Args bs) → Dec (WF-args n As)
+WF-arg? : (n : ℕ) → {b : Sig} → (A : Arg b) → Dec (WF-arg n A)
+WF-args? : (n : ℕ) → {bs : List Sig} → (As : Args bs) → Dec (WF-args n As)
 WF? n (` x)
     with suc x ≤? n
 ... | yes x<n =
@@ -227,7 +231,12 @@ WF-arg? n (bind A)
 ... | no ¬wf = no G
     where G : ¬ WF-arg n (bind A)
           G (WF-bind wf) = ¬wf wf
-
+WF-arg? n (clear arg)
+    with WF-arg? 0 arg
+... | yes wf = yes (WF-clear wf)
+... | no ¬wf = no G
+    where G : ¬ WF-arg n (clear arg)
+          G (WF-clear wf) = ¬wf wf
 WF-args? n nil = yes WF-nil
 WF-args? n (cons A As)
     with WF-arg? n A

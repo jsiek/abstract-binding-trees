@@ -11,20 +11,21 @@ open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open import ListAux
+open import Sig
 open import Var
 
 {----- Predicate on ABT's (e.g. type system for expressions) -----}
 
 module ABTPredicate {I : Set}
-  (Op : Set) (sig : Op → List ℕ)
+  (Op : Set) (sig : Op → List Sig)
   (𝑉 : List I → Var → I → Set)
   (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set) where
 
   open import AbstractBindingTree Op sig
 
   data _⊢_⦂_ : List I → ABT → I → Set
-  data _∣_∣_⊢ₐ_⦂_ : (b : ℕ) → List I → BType I b → Arg b → I → Set 
-  data _∣_∣_⊢₊_⦂_ : (bs : List ℕ) → List I → BTypes I bs → Args bs
+  data _∣_∣_⊢ₐ_⦂_ : (b : Sig) → List I → BType I b → Arg b → I → Set 
+  data _∣_∣_⊢₊_⦂_ : (bs : List Sig) → List I → BTypes I bs → Args bs
                   → Vec I (length bs) → Set
   
   data _⊢_⦂_ where
@@ -38,10 +39,17 @@ module ABTPredicate {I : Set}
        → Γ ⊢ op ⦅ args ⦆ ⦂ A
 
   data _∣_∣_⊢ₐ_⦂_ where
-    ast-p : ∀{Γ}{M}{A}  →  Γ ⊢ M ⦂ A  →  0 ∣ Γ ∣ tt ⊢ₐ ast M ⦂ A
+    ast-p : ∀{Γ}{M}{A}
+       → Γ ⊢ M ⦂ A
+       → ■ ∣ Γ ∣ tt ⊢ₐ ast M ⦂ A
        
-    bind-p : ∀{b}{B Bs Γ arg A} → b ∣ (B ∷ Γ) ∣ Bs ⊢ₐ arg ⦂ A
-       → (suc b) ∣ Γ ∣ ⟨ B , Bs ⟩ ⊢ₐ bind arg ⦂ A
+    bind-p : ∀{b}{B Bs Γ arg A}
+       → b ∣ (B ∷ Γ) ∣ Bs ⊢ₐ arg ⦂ A
+       → ν b ∣ Γ ∣ ⟨ B , Bs ⟩ ⊢ₐ bind arg ⦂ A
+
+    clear-p : ∀{b}{Bs Γ arg A}
+       → b ∣ [] ∣ Bs ⊢ₐ arg ⦂ A
+       → ∁ b ∣ Γ ∣ Bs ⊢ₐ clear arg ⦂ A
 
   data _∣_∣_⊢₊_⦂_ where
     nil-p : ∀{Γ} → [] ∣ Γ ∣ tt ⊢₊ nil ⦂ []̌ 
