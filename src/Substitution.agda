@@ -165,7 +165,7 @@ module ABTOps (Op : Set) (sig : Op → List Sig)  where
   subst-zero M = M • id
 
   _[_] : ABT → ABT → ABT
-  N [ M ] =  ⟪ subst-zero M ⟫ N
+  N [ M ] =  ⟪ M • id ⟫ N
   
   subst-zero-exts-cons : ∀{σ : Subst}{M : ABT} → ext σ ⨟ subst-zero M ≡ M • σ
   subst-zero-exts-cons {σ}{M} = begin

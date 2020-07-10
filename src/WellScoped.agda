@@ -5,6 +5,7 @@ open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit.Polymorphic using (⊤; tt)
+open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app; subst)
 open import Relation.Nullary using (¬_; Dec; yes; no)
@@ -22,7 +23,17 @@ module WellScoped (Op : Set) (sig : Op → List Sig) where
 
 open Substitution.ABTOps Op sig
     using (rename; ⟪_⟫; Subst; ABT-is-Shiftable)
-open import MapPreserve Op sig
+
+private
+  𝑉 : ∀{ℓ} → List {ℓ} ⊤ → Var → ⊤ {ℓ} → Set
+  𝑉 = λ Γ x A → suc x ≤ length Γ
+
+  𝑃 : ∀{ℓ}(op : Op) → Vec{ℓ} ⊤ (length (sig op)) → BTypes ⊤ (sig op) → ⊤ {ℓ}
+    → Set
+  𝑃 = λ op vs Bs A → ⊤
+
+open import MapPreserve Op sig ⊤ 𝑉 𝑃
+
 open import Map Op sig
 open import Data.Vec using (Vec) renaming ([] to []̆; _∷_ to _∷̆_)
 open import ABTPredicate {I = ⊤} Op sig
@@ -86,9 +97,8 @@ mk-vec-unique {ℓ}{suc n} {v ∷̆ vs} = cong₂ _∷̆_ refl mk-vec-unique
 
 module _ where
   instance
-    RenPres : MapPreservable Var ⊤ 
-    RenPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ x A → Γ ∋ x ⦂ A
-              ; 𝑉 = λ Γ x A → suc x ≤ length Γ
+    RenPres : MapPreservable Var
+    RenPres = record { _⊢v_⦂_ = λ Γ x A → Γ ∋ x ⦂ A
               ; ⊢v0 = refl ; shift-⊢v = λ z → z
               ; quote-⊢v = λ {Γ}{x}{tt} ∋x → WF-var ∋x (∋x→< {⊤}{Γ} ∋x) }
 
@@ -113,9 +123,8 @@ module _ where
 
 module _ where
   instance
-    SubstPres : MapPreservable ABT ⊤ 
-    SubstPres = record { 𝑃 = λ op vs Bs A → ⊤ ; _⊢v_⦂_ = λ Γ M A → Γ ⊢ M ⦂ A
-                ; 𝑉 = λ Γ x A → suc x ≤ length Γ 
+    SubstPres : MapPreservable ABT
+    SubstPres = record { _⊢v_⦂_ = λ Γ M A → Γ ⊢ M ⦂ A
                 ; ⊢v0 = WF-var refl (s≤s z≤n) ; quote-⊢v = λ x → x
                 ; shift-⊢v = λ {A}{B}{Δ}{v} ⊢v → ren-preserve ⊢v (λ z → z) }
 
