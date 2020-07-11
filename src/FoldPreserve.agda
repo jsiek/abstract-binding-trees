@@ -42,13 +42,15 @@ open import Fold Op sig
 record FoldPreservable (V C I : Set) {{_ : Shiftable V}}
   : Set₁ where
   field {{VC-Foldable}} : Foldable V C
-  field 𝑉 : List I → Var → I → Set
+  field 𝑉 : List I → Var → I → I → Set
         𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set
         𝐴 : List I → V → I → Set
         _⊢v_⦂_ : List I → V → I → Set
         _⊢c_⦂_ : List I → C → I → Set
         ret-pres : ∀{v}{Δ}{A} → Δ ⊢v v ⦂ A → Δ ⊢c ret v ⦂ A
         shift-⊢v : ∀{A B Δ v} → Δ ⊢v v ⦂ A → (B ∷ Δ) ⊢v ⇑ v ⦂ A
+        prev-𝑉 : ∀{x A B C Γ} → 𝑉 (C ∷ Γ) (suc x) A B → 𝑉 Γ x A B
+        𝑉-⊢v : ∀{x v A B Γ Δ} → 𝑉 Γ x A B → Δ ⊢v v ⦂ A → Δ ⊢v v ⦂ B
   open ABTPredicate Op sig 𝑉 𝑃 public
   
 open FoldPreservable {{...}}
@@ -85,7 +87,7 @@ data _∣_∣_⊢ᵣ₊_⦂_ {V C I : Set}
 _⦂_⇒_ : ∀{V C I : Set}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
     → GSubst V → List I → List I → Set
-σ ⦂ Γ ⇒ Δ = ∀{x A} → Γ ∋ x ⦂ A  →  Δ ⊢v σ x ⦂ A
+σ ⦂ Γ ⇒ Δ = ∀{x A B} → Γ ∋ x ⦂ A  →  𝑉 Γ x A B  →  Δ ⊢v σ x ⦂ B
 
 fold-preserves : ∀{V C I : Set}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
@@ -96,7 +98,7 @@ fold-preserves : ∀{V C I : Set}
         {As : Vec I (length (sig op))}{Bs}
        → sig op ∣ Δ ∣ Bs ⊢ᵣ₊ Rs ⦂ As → 𝑃 op As Bs A → Δ ⊢c (fold-op op Rs) ⦂ A)
    → Δ ⊢c fold σ M ⦂ A
-fold-preserves (var-p ∋x Vx) σ⦂ op-pres = ret-pres (σ⦂ ∋x)
+fold-preserves (var-p ∋x Vx) σ⦂ op-pres = ret-pres (σ⦂ ∋x Vx)
 fold-preserves {V}{C}{I}{E} (op-p ⊢args Pop) σ⦂ op-pres =
   op-pres (pres-args ⊢args σ⦂) Pop
   where
@@ -105,8 +107,8 @@ fold-preserves {V}{C}{I}{E} (op-p ⊢args Pop) σ⦂ op-pres =
      → 𝐴 (A ∷ Δ) v A
      → σ ⦂ Γ ⇒ Δ
      → (σ , v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
-  ext-pres {v}{σ} ⊢v⦂ Av σ⦂ {zero} {B} refl = ⊢v⦂
-  ext-pres {v}{σ} ⊢v⦂ Av σ⦂ {suc x} {B} ∋x = shift-⊢v (σ⦂ ∋x)
+  ext-pres {v}{σ} ⊢v⦂ Av σ⦂ {zero}{A}{B} refl V0 = 𝑉-⊢v V0 ⊢v⦂
+  ext-pres {v}{σ} ⊢v⦂ Av σ⦂ {suc x}{A}{B} ∋x Vsx = shift-⊢v (σ⦂ ∋x (prev-𝑉 Vsx))
   
   pres-arg : ∀{b Γ Δ}{arg : Arg b}{A}{σ : GSubst V}{Bs}
      → b ∣ Γ ∣ Bs ⊢ₐ arg ⦂ A → σ ⦂ Γ ⇒ Δ

@@ -106,10 +106,10 @@ data Type : Set where
   _⇒_   : Type → Type → Type
 
 open import Var
-open import MapPreserve Op sig
+{-open import MapPreserve Op sig-}
 
-𝑉 : List Type → Var → Type → Set
-𝑉 Γ x A = ⊤
+𝑉 : List Type → Var → Type → Type → Set
+𝑉 Γ x A B = A ≡ B
 
 𝑃 : (op : Op) → Vec Type (length (sig op)) → BTypes Type (sig op) → Type → Set
 𝑃 op-lam (B ∷̌ []̌) ⟨ ⟨ A , tt ⟩ , tt ⟩ A→B = A→B ≡ A ⇒ B
@@ -117,7 +117,7 @@ open import MapPreserve Op sig
 
 open import ABTPredicate Op sig 𝑉 𝑃
 
-pattern ⊢` ∋x = var-p ∋x tt
+pattern ⊢` ∋x = var-p ∋x refl
 pattern ⊢ƛ ⊢N eq = op-p {op = op-lam} (cons-p (bind-p (ast-p ⊢N)) nil-p) eq
 pattern ⊢· ⊢L ⊢M eq = op-p {op = op-app}
                            (cons-p (ast-p ⊢L) (cons-p (ast-p ⊢M) nil-p)) eq
@@ -156,16 +156,7 @@ progress (⊢· ⊢L ⊢M _)
 
 {-------------      Proof of Preservation    -------------}
 
-instance
-  _ : MapPreservable Var Type 
-  _ = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _∋_⦂_ ; ⊢v0 = refl ; shift-⊢v = λ x → x
-             ; quote-⊢v = λ x → ⊢` x }
-
-instance
-  _ : MapPreservable Term Type 
-  _ = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; _⊢v_⦂_ = _⊢_⦂_ ; ⊢v0 = λ {B}{Δ} → ⊢` refl
-        ; shift-⊢v = λ {A}{B}{Γ}{M} ⊢M → preserve-map M ⊢M (λ z → z)
-        ; quote-⊢v = λ x → x }
+open import SubstPreserve Op sig Type 𝑃 using (preserve-substitution)
 
 preserve : ∀ {Γ M N A}
   → Γ ⊢ M ⦂ A
@@ -176,4 +167,5 @@ preserve (⊢· ⊢L ⊢M refl) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L�
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₂ M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′) refl
 preserve (⊢ƛ ⊢M refl) (ξ-ƛ M—→N) = ⊢ƛ (preserve ⊢M M—→N) refl
 preserve {Γ}{(ƛ N) · M}{_}{B} (⊢· (⊢ƛ ⊢N refl) ⊢M refl) β-ƛ =
-   preserve-map {σ = M • ↑ 0} N ⊢N (λ { {zero} refl → ⊢M ; {suc x} ∋x → ⊢` ∋x })
+    preserve-substitution N M ⊢N ⊢M
+

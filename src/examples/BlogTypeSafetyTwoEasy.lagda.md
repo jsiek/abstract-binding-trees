@@ -186,14 +186,14 @@ don't really need an extra side condition, so we simply choose "true",
 written `⊤` in Agda.
 
 ```
-𝑉 : List Type → Var → Type → Set
-𝑉 Γ x A = ⊤
+𝑉 : List Type → Var → Type → Type → Set
+𝑉 Γ x A B = A ≡ B
 ```
 
 Next we define the predicate `𝑃` that specifies the side conditions
 for all the other syntax nodes. The definition of `𝑃` includes one
 line for each operator. The `Vec` parameter contains the types of the
-child nodes. The `BTypes` parameter contains the types of bound
+child nodes. The `BTypes` parameter contains the types of the bound
 variables. The last `Type` parameter is the type assigned to the
 current node. So for lambda abstractions (`op-lam`),
 the body has type `B`, the lambda's bound variable has type `A`, 
@@ -220,7 +220,7 @@ The raw typing rules are verbose, so we again use Agda's pattern
 synonyms to create abbreviations to match the rule names in PLFA.
 
 ```
-pattern ⊢` ∋x = var-p ∋x tt
+pattern ⊢` ∋x = var-p ∋x refl
 pattern ⊢ƛ ⊢N eq = op-p {op = op-lam} (cons-p (bind-p (ast-p ⊢N)) nil-p) eq
 pattern ⊢· ⊢L ⊢M eq = op-p {op = op-app}
                            (cons-p (ast-p ⊢L) (cons-p (ast-p ⊢M) nil-p)) eq
@@ -311,7 +311,8 @@ provided in the `SubstPreserve` module of the `abstract-binding-trees`
 library.
 
 ```
-open import SubstPreserve Op sig Type 𝑃 using (preserve-substitution)
+open import SubstPreserve Op sig Type 𝑉 𝑃 (λ x → refl) (λ { refl refl → refl })
+    (λ x → x) (λ { refl ⊢M → ⊢M }) using (preserve-substitution)
 ```
 
 So here is the proof of preservation.

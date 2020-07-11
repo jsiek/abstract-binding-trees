@@ -18,7 +18,7 @@ open import Var
 
 module ABTPredicate {I : Set}
   (Op : Set) (sig : Op → List Sig)
-  (𝑉 : List I → Var → I → Set)
+  (𝑉 : List I → Var → I → I → Set)
   (𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set) where
 
   open import AbstractBindingTree Op sig
@@ -29,9 +29,9 @@ module ABTPredicate {I : Set}
                   → Vec I (length bs) → Set
   
   data _⊢_⦂_ where
-    var-p : ∀{Γ x A}
-       → Γ ∋ x ⦂ A  →  𝑉 Γ x A
-       → Γ ⊢ ` x ⦂ A
+    var-p : ∀{Γ x A B}
+       → Γ ∋ x ⦂ A  →  𝑉 Γ x A B
+       → Γ ⊢ ` x ⦂ B
     op-p : ∀{Γ op}{args : Args (sig op)}{A}{As : Vec I (length (sig op))}
              {Bs : BTypes I (sig op)}
        → (sig op) ∣ Γ ∣ Bs ⊢₊ args ⦂ As

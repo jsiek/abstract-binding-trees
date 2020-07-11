@@ -1,6 +1,6 @@
 open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; z≤n; s≤s; _+_; _≤?_)
-open import Data.Nat.Properties using (≤-trans; ≤-step; +-comm; +-suc)
+open import Data.Nat.Properties using (≤-trans; ≤-step; +-comm; +-suc; ≤-pred)
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
@@ -25,8 +25,8 @@ open Substitution.ABTOps Op sig
     using (rename; ⟪_⟫; Subst; ABT-is-Shiftable)
 
 private
-  𝑉 : ∀{ℓ} → List {ℓ} ⊤ → Var → ⊤ {ℓ} → Set
-  𝑉 = λ Γ x A → suc x ≤ length Γ
+  𝑉 : ∀{ℓ} → List {ℓ} ⊤ → Var → ⊤ {ℓ} → ⊤ {ℓ} → Set
+  𝑉 = λ Γ x A B → suc x ≤ length Γ
 
   𝑃 : ∀{ℓ}(op : Op) → Vec{ℓ} ⊤ (length (sig op)) → BTypes ⊤ (sig op) → ⊤ {ℓ}
     → Set
@@ -37,10 +37,10 @@ open import MapPreserve Op sig ⊤ 𝑉 𝑃
 open import Map Op sig
 open import Data.Vec using (Vec) renaming ([] to []̆; _∷_ to _∷̆_)
 open import ABTPredicate {I = ⊤} Op sig
-  (λ Γ x A → x < length Γ) (λ op vs Bs A → ⊤)
+  (λ Γ x A B → x < length Γ) (λ op vs Bs A → ⊤)
   hiding (var-p; op-p; ast-p; bind-p; nil-p; cons-p)
 open import ABTPredicate {I = ⊤} Op sig
-  (λ Γ x A → x < length Γ) (λ op vs Bs A → ⊤)
+  (λ Γ x A B → x < length Γ) (λ op vs Bs A → ⊤)
   using ()
   renaming (var-p to WF-var; op-p to WF-op; ast-p to WF-ast; bind-p to WF-bind;
             clear-p to WF-clear; nil-p to WF-nil; cons-p to WF-cons) public
@@ -99,8 +99,10 @@ module _ where
   instance
     RenPres : MapPreservable Var
     RenPres = record { _⊢v_⦂_ = λ Γ x A → Γ ∋ x ⦂ A
-              ; ⊢v0 = refl ; shift-⊢v = λ z → z
-              ; quote-⊢v = λ {Γ}{x}{tt} ∋x → WF-var ∋x (∋x→< {⊤}{Γ} ∋x) }
+              ; ⊢v-var→val0 = refl
+              ; shift-⊢v = λ z → z
+              ; quote-⊢v = λ {Γ}{x}{tt} ∋x → WF-var ∋x (∋x→< {⊤}{Γ} ∋x)
+              ; 𝑉-⊢v = λ { {x}{_}{tt}{tt} le ∋x → ∋x } }
 
   ren-preserve : ∀ {Γ Δ : List ⊤}{σ : Rename}{A : ⊤}{M : ABT}
    → Γ ⊢ M ⦂ A  →  σ ⦂ Γ ⇒ Δ  →  Δ ⊢ map σ M ⦂ A
@@ -110,13 +112,13 @@ module _ where
   WFRename Γ ρ Δ = ∀ {x} → x < Γ → (ρ x) < Δ
 
   WFRename→ρ⦂ : ∀{Γ ρ Δ} → WFRename Γ ρ Δ  →  ρ ⦂ mk-list Γ ⇒ mk-list Δ
-  WFRename→ρ⦂ {Γ}{ρ}{Δ} wfΓ {x}{A} ∋x 
+  WFRename→ρ⦂ {Γ}{ρ}{Δ} wfΓ {x}{tt} ∋x  
       with ∋x→< {_}{mk-list Γ}{x} ∋x
   ... | x<Γ rewrite len-mk-list {lzero} Γ
       with wfΓ{x} x<Γ
   ... | x<Δ rewrite sym (len-mk-list {lzero} Δ)
       with <→∋x {⊤}{mk-list Δ} x<Δ 
-  ... | ∋x' rewrite len-mk-list {lzero} Δ = ∋x' 
+  ... | ∋x' rewrite len-mk-list {lzero} Δ = ∋x'
 
   WF-rename : ∀ {Γ Δ ρ M} → WFRename Γ ρ Δ → WF Γ M → WF Δ (rename ρ M)
   WF-rename {Γ}{Δ}{ρ}{M} wfΓ wfM = ren-preserve wfM (WFRename→ρ⦂ {ρ = ρ} wfΓ)
@@ -125,8 +127,11 @@ module _ where
   instance
     SubstPres : MapPreservable ABT
     SubstPres = record { _⊢v_⦂_ = λ Γ M A → Γ ⊢ M ⦂ A
-                ; ⊢v0 = WF-var refl (s≤s z≤n) ; quote-⊢v = λ x → x
-                ; shift-⊢v = λ {A}{B}{Δ}{v} ⊢v → ren-preserve ⊢v (λ z → z) }
+                ; ⊢v-var→val0 = λ {tt} → WF-var refl (s≤s z≤n)
+                ; quote-⊢v = λ x → x
+                ; shift-⊢v = λ {A}{B}{Δ}{v} ⊢v →
+                    ren-preserve ⊢v (λ {x}{tt} ∋x → ∋x)
+                ; 𝑉-⊢v = λ {x}{M}{tt}{tt} Vx ⊢M → ⊢M }
 
   sub-preserve : ∀ {Γ Δ : List ⊤}{σ : Subst}{A : ⊤}{M : ABT}
    → Γ ⊢ M ⦂ A  →  σ ⦂ Γ ⇒ Δ  →  Δ ⊢ map σ M ⦂ A
@@ -136,10 +141,10 @@ module _ where
   WFSubst Γ σ Δ = ∀ {x} → x < Γ → WF Δ (σ x)
 
   WF-subst : ∀{Γ Δ σ M} → WFSubst Γ σ Δ → WF Γ M → WF Δ (⟪ σ ⟫ M)
-  WF-subst {Γ}{Δ}{σ}{M} wfσ wfM = sub-preserve wfM σ⦂
+  WF-subst {Γ}{Δ}{σ}{M} wfσ wfM = sub-preserve wfM σ⦂ 
       where
       σ⦂ : σ ⦂ mk-list Γ ⇒ mk-list Δ
-      σ⦂ {x}{tt} ∋x
+      σ⦂ {x}{tt} ∋x 
           with ∋x→< {⊤}{mk-list Γ} ∋x
       ... | x<Γ rewrite len-mk-list {lzero} Γ = wfσ{x} x<Γ
 

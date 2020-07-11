@@ -19,7 +19,8 @@ AGDA =	ScopedTuple.agda \
 	FoldFoldFusion.agda \
 	Syntax.agda \
 	examples/Lambda.agda \
-	examples/Arith.agda
+	examples/Arith.agda \
+	examples/BlogTypeSafetyTwoEasy.lagda.md
 
 AGDAI = $(AGDA:%.agda=$(BUILD_DIR)/src/%.agdai)
 

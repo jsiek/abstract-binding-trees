@@ -147,8 +147,8 @@ data Type : Set where
 𝐴 : List Type → Maybe Val → Type → Set
 𝐴 Γ mv T = ⊤
 
-𝑉 : List Type → Var → Type → Set
-𝑉 Γ x A = ⊤
+𝑉 : List Type → Var → Type → Type → Set
+𝑉 Γ x A B = A ≡ B
 
 open import ABTPredicate Op sig 𝑉 𝑃
 
@@ -176,7 +176,8 @@ compress-⊢v {.(just _)} (⊢v-just x) = ⊢v-just x
 instance
   _ : FoldPreservable (Maybe Val) (Maybe Val) (Type)
   _ = record { 𝑉 = 𝑉 ; 𝑃 = 𝑃 ; 𝐴 = 𝐴 ; _⊢v_⦂_ = _⊢v_⦂_ ; _⊢c_⦂_ = _⊢c_⦂_
-             ; ret-pres = λ x → x ; shift-⊢v = shift-⊢v }
+             ; ret-pres = λ x → x ; shift-⊢v = shift-⊢v
+             ; 𝑉-⊢v = λ { refl ⊢v⦂ → ⊢v⦂ } ; prev-𝑉 = λ x → x }
 
 op-pres : ∀ {op}{Rs}{Δ}{A : Type}{As : Vec Type (length (sig op))}{Bs}
           → sig op ∣ Δ ∣ Bs ⊢ᵣ₊ Rs ⦂ As
@@ -210,7 +211,7 @@ op-pres {op-error} nil-r tt = ⊢v-none
 type-safety : ∀ M
    → [] ⊢ M ⦂ t-nat
    → [] ⊢c evaluate M ⦂ t-nat
-type-safety M ⊢M = fold-preserves ⊢M (λ x → ⊢v-none) op-pres
+type-safety M ⊢M = fold-preserves ⊢M (λ ()) op-pres
 
 {---------                  Partial Evaluator                         ---------}
 
