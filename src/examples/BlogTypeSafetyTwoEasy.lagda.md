@@ -180,10 +180,10 @@ data Type : Set where
   _⇒_   : Type → Type → Type
 ```
 
-The library requires that we specify an extra side condition for the
-variable rule, for which we define the following predicate `𝑉`.  We
-don't really need an extra side condition, so we simply choose "true",
-written `⊤` in Agda.
+The library asks that we specify a side condition for the variable
+rule that mediates the variable's type `A` in the environment with the
+expected type `B`, for which we define the following predicate `𝑉`.
+For the STLC we simply require that `A ≡ B`.
 
 ```
 𝑉 : List Type → Var → Type → Type → Set
@@ -308,7 +308,8 @@ and we need prove that
 
 This requires the lemma that substitution preserves typing, which is
 provided in the `SubstPreserve` module of the `abstract-binding-trees`
-library.
+library. This module places four restrictions on `𝑉`, for which we
+provide the proofs `(λ x → refl)`, etc.
 
 ```
 open import SubstPreserve Op sig Type 𝑉 𝑃 (λ x → refl) (λ { refl refl → refl })

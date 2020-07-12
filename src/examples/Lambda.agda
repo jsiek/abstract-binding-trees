@@ -156,7 +156,8 @@ progress (⊢· ⊢L ⊢M _)
 
 {-------------      Proof of Preservation    -------------}
 
-open import SubstPreserve Op sig Type 𝑃 using (preserve-substitution)
+open import SubstPreserve Op sig Type 𝑉 𝑃 (λ x → refl) (λ { refl refl → refl })
+    (λ x → x) (λ { refl ⊢M → ⊢M }) using (preserve-substitution)
 
 preserve : ∀ {Γ M N A}
   → Γ ⊢ M ⦂ A
