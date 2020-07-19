@@ -99,6 +99,25 @@ module WithOpSig (Op : Set) (sig : Op → List Sig)  where
       rename (ρ ⨟ ↑ 1) M           ≡⟨ sym (compose-rename ρ (↑ 1) M) ⟩
       rename (↑ 1) (rename ρ M)    ∎
 
+  FV-rename-fwd : ∀ (ρ : Rename) M y → FV M y
+     → FV (rename ρ M) (ρ y)
+  FV-rename-fwd ρ (` x) y refl = refl
+  FV-rename-fwd ρ (op ⦅ args ⦆) y fvMy = fvr-args ρ (sig op) args y fvMy
+    where
+    fvr-arg : ∀ (ρ : Rename) b (arg : Arg b) y
+        → FV-arg arg y → FV-arg (ren-arg ρ arg) (ρ y)
+    fvr-args : ∀ (ρ : Rename) bs (args : Args bs) y
+        → FV-args args y → FV-args (ren-args ρ args) (ρ y)
+    fvr-arg ρ ■ (ast M) y fvarg = FV-rename-fwd ρ M y fvarg
+    fvr-arg ρ (ν b) (bind arg) y fvarg =
+        fvr-arg (ρ , (var→val 0)) b arg (suc y) fvarg
+    fvr-arg ρ (∁ b) (clear arg) y ()
+    fvr-args ρ [] nil y ()
+    fvr-args ρ (b ∷ bs) (cons arg args) y (inj₁ fvargy) =
+        inj₁ (fvr-arg ρ b arg y fvargy)
+    fvr-args ρ (b ∷ bs) (cons arg args) y (inj₂ fvargsy) =
+        inj₂ (fvr-args ρ bs args y fvargsy)
+
   FV-rename : ∀ (ρ : Rename) M y → FV (rename ρ M) y
      → Σ[ x ∈ Var ] ρ x ≡ y × FV M x
   FV-rename ρ (` x) y refl = ⟨ x , ⟨ refl , refl ⟩ ⟩

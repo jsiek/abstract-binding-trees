@@ -1,6 +1,6 @@
 open import Data.Nat using (ℕ; zero; suc; _<_; z≤n; s≤s; _+_)
 open import Data.Empty using (⊥)
-open import Data.Unit.Polymorphic using (⊤; tt)
+open import Data.Unit.Polymorphic using (⊤)
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Product using (_×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)

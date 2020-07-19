@@ -79,7 +79,7 @@ Binder V C = (op : Op)
          → (i j : ℕ)
          → .{i< : i < length (sig op)}
          → .{j< : j < sig→ℕ (nth (sig op) i {i<})}
-         → Tuple (lmap sig→ℕ (sig op)) (Bind V C)
+         → Tuple (sig op) (Bind V C)
          → V
 
 ind-hyp : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ Cˢ : Set ℓˢ}{Vᵗ Cᵗ : Set ℓᵗ}{Vᶠ Cᶠ : Set ℓᶠ}
@@ -87,8 +87,8 @@ ind-hyp : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ Cˢ : Set ℓˢ}{Vᵗ Cᵗ : Set ℓᵗ}{
    {{_ : Foldable Vˢ Cˢ}} {{_ : Foldable Vᵗ Cᵗ}} {{_ : Foldable Vᶠ Cᶠ}} 
    {{_ : Quotable Cᶠ}} {{_ : Equiv Vᵗ Vˢ}}{{_ : Equiv Cᵗ Cˢ }}
    (k : ℕ) op (b : Sig)(arg : Arg b)
-   (rsᶠ : Tuple (lmap sig→ℕ (sig op)) (Bind Vᶠ Cᶠ))
-   (rsˢ : Tuple (lmap sig→ℕ (sig op)) (Bind Vˢ Cˢ))
+   (rsᶠ : Tuple (sig op) (Bind Vᶠ Cᶠ))
+   (rsˢ : Tuple (sig op) (Bind Vˢ Cˢ))
    → Binder Vˢ Cˢ → Binder Vᶠ Cᶠ
    → (Vˢ → Vᵗ)
    → .{ k< : k < length (sig op) }
@@ -111,8 +111,8 @@ ind-hyps : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ Cˢ : Set ℓˢ}{Vᵗ Cᵗ : Set ℓᵗ}
    {{_ : Foldable Vˢ Cˢ}} {{_ : Foldable Vᵗ Cᵗ}} {{_ : Foldable Vᶠ Cᶠ}} 
    {{_ : Quotable Cᶠ}} {{_ : Equiv Vᵗ Vˢ}}{{_ : Equiv Cᵗ Cˢ }}
    (pbs : List Sig)(op : Op) (bs : List Sig) (args : Args bs)
-   (rsᶠ : Tuple (lmap sig→ℕ (sig op)) (Bind Vᶠ Cᶠ))
-   (rsˢ : Tuple (lmap sig→ℕ (sig op)) (Bind Vˢ Cˢ))
+   (rsᶠ : Tuple (sig op) (Bind Vᶠ Cᶠ))
+   (rsˢ : Tuple (sig op) (Bind Vˢ Cˢ))
    → Binder Vˢ Cˢ → Binder Vᶠ Cᶠ → (Vˢ → Vᵗ)
    → .{ sig=pbs+bs : sig op ≡ pbs ++ bs }
    → (γ : GSubst Vᶠ) (τ : GSubst Vᵗ) (σ : GSubst Vˢ)
@@ -160,8 +160,8 @@ fold-fold-fusion {ℓˢ}{ℓᵗ}{ℓᶠ}{Vˢ}{Cˢ}{Vᵗ}{Cᵗ}{Vᶠ}{Cᶠ}{γ}{�
   where
   fuse-arg : ∀{γ : GSubst Vᶠ}{σ : GSubst Vˢ}{τ : GSubst Vᵗ}
      (k : ℕ) op (b : Sig) (arg : Arg b) 
-     (rsᶠ : Tuple (lmap sig→ℕ (sig op)) (Bind Vᶠ Cᶠ))
-     (rsˢ : Tuple (lmap sig→ℕ (sig op)) (Bind Vˢ Cˢ))
+     (rsᶠ : Tuple (sig op) (Bind Vᶠ Cᶠ))
+     (rsˢ : Tuple (sig op) (Bind Vˢ Cˢ))
      { k< : k < length (sig op) }
      { b≤ : sig→ℕ b ≤ sig→ℕ (nth (sig op) k {k<}) }
      → ind-hyp k op b arg rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} γ τ σ
@@ -179,8 +179,8 @@ fold-fold-fusion {ℓˢ}{ℓᵗ}{ℓᶠ}{Vˢ}{Cˢ}{Vᵗ}{Cᵗ}{Vᶠ}{Cᶠ}{γ}{�
       fuse-arg {id}{id}{id} k op b arg rsᶠ rsˢ {k<}{b≤}
   fuse-args : ∀{γ : GSubst Vᶠ}{σ : GSubst Vˢ}{τ : GSubst Vᵗ}
      (pbs : List Sig) op (bs : List Sig) (args : Args bs) 
-     (rsᶠ : Tuple (lmap sig→ℕ (sig op)) (Bind Vᶠ Cᶠ))
-     (rsˢ : Tuple (lmap sig→ℕ (sig op)) (Bind Vˢ Cˢ))
+     (rsᶠ : Tuple (sig op) (Bind Vᶠ Cᶠ))
+     (rsˢ : Tuple (sig op) (Bind Vˢ Cˢ))
      { sig= : sig op ≡ pbs ++ bs }
      → ind-hyps pbs op bs args rsᶠ rsˢ bindˢ bindᶠ s→t {sig=} γ τ σ
   fuse-args {γ}{σ}{τ} pbs op [] nil rsᶠ rsˢ {sig=} = tt

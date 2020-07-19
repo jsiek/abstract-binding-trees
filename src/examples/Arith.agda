@@ -2,7 +2,7 @@ open import Agda.Primitive
 open import Data.Bool using (true; false; if_then_else_) renaming (Bool to 𝔹)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
-open import Data.List using (List; []; _∷_; length) renaming (map to lmap)
+open import Data.List using (List; []; _∷_; length)
 open import Data.Maybe using (Maybe; nothing; just)
 open import Data.Nat
     using (ℕ; zero; suc; _+_; _*_; _⊔_; _∸_; _≤_; _<_; z≤n; s≤s)
@@ -15,7 +15,7 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import Syntax
-  using (Sig; sig→ℕ; ν; ■; ↑; _•_; _,_; ext; id; Rename; Shiftable; Equiv;
+  using (Sig; sig→ℕ; ∁; ν; ■; ↑; _•_; _,_; ext; id; Rename; Shiftable; Equiv;
          Relatable)
 open import Var
 open import ListAux
@@ -45,7 +45,8 @@ sig op-if = ■ ∷ ■ ∷ ■ ∷ []
 sig op-error = []
 
 open import ScopedTuple using (Tuple; _✖_; zip)
-open Syntax.OpSig Op sig using (rename; rename-id; FV-rename; FV-↑1-0)
+open Syntax.OpSig Op sig
+    using (rename; rename-id; FV-rename; FV-rename-fwd; FV-↑1-0)
 open import Fold Op sig 
 open import Map Op sig
 open import FoldPreserve Op sig
@@ -95,7 +96,7 @@ bool? mv f
 ... | _ = nothing
 
 
-eval-op : (op : Op) → Tuple (lmap sig→ℕ (sig op)) (Bind (Maybe Val) (Maybe Val))
+eval-op : (op : Op) → Tuple (sig op) (Bind (Maybe Val) (Maybe Val))
         → Maybe Val
 eval-op (op-num n) tt = just (v-num n)
 eval-op op-error tt = nothing
@@ -267,7 +268,7 @@ if-bool? r f g
 ... | nothing = g (res→ast r)
 ... | just ⟨ b , refl ⟩ = f b
 
-pe-op : (op : Op) → Tuple (lmap sig→ℕ (sig op)) (Bind Res Res) → Res
+pe-op : (op : Op) → Tuple (sig op) (Bind Res Res) → Res
 pe-op (op-num n) tt = val (v-num n)
 pe-op (op-bool b) tt = val (v-bool b)
 pe-op op-mult ⟨ mr₁ , ⟨ mr₂ , tt ⟩ ⟩ = do
@@ -292,11 +293,11 @@ instance
 pe : (Var → Res) → AST → Res
 pe = fold
 
-pe-arg : (Var → Res) → {b : Sig} → Arg b → Bind Res Res (sig→ℕ b)
+pe-arg : (Var → Res) → {b : Sig} → Arg b → Bind Res Res b
 pe-arg = fold-arg
 
 pe-args : (Var → Res) → {bs : List Sig} → Args bs
-   → Tuple (lmap sig→ℕ bs) (Bind Res Res)
+   → Tuple bs (Bind Res Res)
 pe-args = fold-args
 
 init-env : Var → Res
@@ -321,22 +322,24 @@ instance
   ≡-is-Equiv = record { _≈_ = _≡_ }
 
 _≡ᵇ_  : ∀ {ℓ : Level}{V : Set ℓ} → (Bind V V) ✖ (Bind V V)
-_≡ᵇ_ {ℓ}{V} = _⩳_{V₁ = V}{V}{V}{V}
+_≡ᵇ_ {ℓ}{V}{b} = _⩳_{V₁ = V}{V}{V}{V}{b}
 
-≡ᵇ→≡ : ∀ {V : Set}{b}{r r' : Bind V V b}
-   → _≡ᵇ_{V = V} r  r' → r ≡ r'
-≡ᵇ→≡ {V}{zero} {r} {r'} refl = refl
-≡ᵇ→≡ {V}{suc b} {r} {r'} r≡ᵇr' = extensionality λ x → ≡ᵇ→≡{V} (r≡ᵇr' refl)
+≡ᵇ→≡ : ∀ {V : Set}{b : Sig}{r r' : Bind V V b}
+   → _≡ᵇ_{V = V}{b} r  r' → r ≡ r'
+≡ᵇ→≡ {V}{■} {r} {r'} refl = refl
+≡ᵇ→≡ {V}{ν b} {r} {r'} r≡ᵇr' = extensionality λ x → ≡ᵇ→≡{V}{b} (r≡ᵇr' refl)
+≡ᵇ→≡ {V}{∁ b} {r} {r'} r≡ᵇr' = ≡ᵇ→≡ {V}{b} r≡ᵇr'
 
-zip-≡ᵇ→≡ : ∀{V : Set}{bs : List ℕ} {rs rs' : Tuple bs (Bind V V)}
-   → zip (_≡ᵇ_{V = V}) rs rs' → rs ≡ rs'
+zip-≡ᵇ→≡ : ∀{V : Set}{bs : List Sig} {rs rs' : Tuple bs (Bind V V)}
+   → zip (λ{b} → _≡ᵇ_{V = V}{b}) rs rs' → rs ≡ rs'
 zip-≡ᵇ→≡ {V}{[]} {tt} {tt} tt = refl
 zip-≡ᵇ→≡ {V}{b ∷ bs} {⟨ r , rs ⟩} {⟨ r' , rs' ⟩} ⟨ r=r' , z-rs-rs' ⟩ =
-    cong₂ ⟨_,_⟩ (≡ᵇ→≡{V} r=r') (zip-≡ᵇ→≡{V} z-rs-rs')
+    cong₂ ⟨_,_⟩ (≡ᵇ→≡{V}{b} r=r') (zip-≡ᵇ→≡{V} z-rs-rs')
 
 eval-op-cong : ∀{op : Op}
-   {rs rs' : Tuple (lmap sig→ℕ (sig op)) (Bind(Maybe Val)(Maybe Val))}
-   → zip (_≡ᵇ_{V = Maybe Val}) rs rs' → eval-op  op rs ≡ eval-op op rs'
+   {rs rs' : Tuple (sig op) (Bind(Maybe Val)(Maybe Val))}
+   → zip (λ {b} → _≡ᵇ_{V = Maybe Val}{b}) rs rs'
+   → eval-op  op rs ≡ eval-op op rs'
 eval-op-cong z rewrite zip-≡ᵇ→≡ z = refl
 
 instance
@@ -360,7 +363,7 @@ bogus43 {i} (s≤s (s≤s (s≤s ())))
 bind-eval : (op : Op) → (i j : ℕ)
     .{i< : i < length (sig op)}
     .{j< : j < sig→ℕ (nth (sig op) i {i<})}
-    → Tuple (lmap sig→ℕ (sig op)) (Bind (Maybe Val) (Maybe Val)) → (Maybe Val)
+    → Tuple (sig op) (Bind (Maybe Val) (Maybe Val)) → (Maybe Val)
 bind-eval op-mult (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 bind-eval op-if (suc (suc (suc i))) j {i<} {j<} rs = ⊥-elimi (bogus43 i<)
 bind-eval op-let (suc zero) zero {i<}{j<} ⟨ r , ⟨ f , tt ⟩ ⟩ = r
@@ -370,7 +373,7 @@ bind-eval op-let (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 bind-pe : (op : Op) → (i j : ℕ)
     .{i< : i < length (sig op)}
     .{j< : j < sig→ℕ (nth (sig op) i {i<})}
-    → Tuple (lmap sig→ℕ (sig op)) (Bind Res Res) → Res
+    → Tuple (sig op) (Bind Res Res) → Res
 bind-pe op-mult (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 bind-pe op-if (suc (suc (suc i))) j {i<} {j<} rs = ⊥-elimi (bogus43 i<)
 bind-pe op-let (suc zero) zero {i<}{j<} ⟨ r , ⟨ f , tt ⟩ ⟩ = ⇑ᵣ r
@@ -443,11 +446,77 @@ FV-res-⇑ (exp M) y y∋⇑r
     with FV-⟰ M y y∋⇑r
 ... | ⟨ z , ⟨ refl , fv ⟩ ⟩ = fv
 
+FV-↑suc : ∀ M x → FV (rename (↑ 1) M) (suc x) → FV M x
+FV-↑suc M x fv↑Msx
+    with FV-rename (↑ 1) M (suc x) fv↑Msx
+... | ⟨ y , ⟨ refl , fvs ⟩ ⟩ = fvs
+
+FV-res-⇑-suc : ∀ r x → FV-res (⇑ᵣ r) (suc x) → FV-res r x
+FV-res-⇑-suc (val v) x ()
+FV-res-⇑-suc (exp M) x = FV-↑suc M x
+
 FV-res-⇑-2 : ∀ r y → FV-res (⇑ᵣ r) y → Σ[ z ∈ ℕ ] y ≡ suc z × FV-res r z
 FV-res-⇑-2 (exp M) y y∋⇑r = FV-⟰ M y y∋⇑r
 
 FV-env : (Var → Res) → Var → Set
 FV-env γ x = Σ[ y ∈ Var ] FV-res (γ y) x
+
+instance
+  PE-is-SyntacticFold : SyntacticFold Res Res
+  PE-is-SyntacticFold = record { fvᵛ = FV-res ; fvᶜ = FV-res
+      ; fv-ret = λ v → refl ; fv-var→val = λ x y → refl
+      ; fv-shift = FV-res-⇑-suc }
+
+{-
+FV-pe' : ∀ γ M x → FV-res (pe γ M) x → FV-env γ x
+FV-pe' γ M x fv-pe = FV-fold γ M x G fv-pe
+  where
+  G : (γ : Syntax.GSubst Res) (op : Op) (args : Args (sig op)) (y : Var)
+     → FV-res (pe-op op (fold-args γ args)) y
+     → fv-binds (fold-args γ args) y
+  G γ op-mult (cons (ast L) (cons (ast M) nil)) y fvr
+      with to-num (pe γ L) | to-num (pe γ M)
+  ... | nothing | _
+      with fvr
+  ... | inj₁ fvrL rewrite FV-res→ast (pe γ L) = inj₁ fvrL
+  ... | inj₂ fvr′
+      with fvr′
+  ... | inj₁ fvrM rewrite FV-res→ast (pe γ M) = inj₂ (inj₁ fvrM)
+  ... | inj₂ ()
+  G γ op-mult (cons (ast L) (cons (ast M) nil)) y fvr
+      | just ⟨ n₁ , eq₁ ⟩ | nothing rewrite eq₁
+      with fvr
+  ... | inj₁ ()
+  ... | inj₂ fvr′
+      with fvr′
+  ... | inj₁ fvrM rewrite FV-res→ast (pe γ M) = inj₂ (inj₁ fvrM)
+  ... | inj₂ ()
+  G γ op-mult (cons (ast L) (cons (ast M) nil)) y fvr
+      | just ⟨ n₁ , eq₁ ⟩ | just ⟨ n₂ , eq₂ ⟩ rewrite eq₁ | eq₂
+      with fvr
+  ... | ()
+  G γ op-if (cons (ast L) (cons (ast M) (cons (ast N) nil))) y fvr
+      with to-bool (pe γ L)
+  ... | nothing
+      with fvr
+  ... | inj₁ fvrL rewrite FV-res→ast (pe γ L) = inj₁ fvrL
+  ... | inj₂ fvr′
+      with fvr′
+  ... | inj₁ fvrM rewrite FV-res→ast (pe γ M) = inj₂ (inj₁ fvrM)
+  ... | inj₂ fvr′′
+      with fvr′′
+  ... | inj₁ fvrN rewrite FV-res→ast (pe γ N) = inj₂ (inj₂ (inj₁ fvrN))
+  ... | inj₂ ()    
+  G γ op-if (cons (ast L) (cons (ast M) (cons (ast N) nil))) y fvr
+      | just ⟨ b , eq ⟩ rewrite eq
+      with b
+  ... | true = inj₂ (inj₁ fvr)
+  ... | false = inj₂ (inj₂ (inj₁ fvr))
+  G γ op-let (cons (ast M) (cons (bind (ast N)) nil)) x fvr = {!!}
+    where
+    fvr' : FV-res (⇓ (pe (⇑ᵣ (pe γ M) • (λ x₂ → ⇑ᵣ (γ x₂))) N)) x
+    fvr' = fvr
+-}
 
 FV-pe : ∀ γ M x → FV-res (pe γ M) x → FV-env γ x
 FV-pe γ (` y) x fvr = ⟨ y , fvr ⟩
@@ -572,3 +641,4 @@ pe-correct M τ∘γ=σ =
    ... | true rewrite sym (IH-M γ⨟τ≈σ) = refl
    ... | false rewrite sym (IH-N γ⨟τ≈σ) = refl
    op≈ {op-error} {nil} {τ} {σ} {γ} γ⨟τ≈σ tt = refl
+

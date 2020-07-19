@@ -17,7 +17,7 @@
 import ABTPredicate
 open import Agda.Primitive using (Level; lzero; lsuc)
 open import Data.Empty using (⊥)
-open import Data.List using (List; []; _∷_; length; _++_) renaming (map to lmap)
+open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; z≤n; s≤s)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit.Polymorphic using (⊤; tt)
@@ -57,7 +57,7 @@ open FoldPreservable {{...}}
 
 data _∣_∣_⊢ᵣ_⦂_ {V C I : Set}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
-  : (b : Sig) → List I → BType I b → Bind V C (sig→ℕ b) → I → Set where
+  : (b : Sig) → List I → BType I b → Bind V C b → I → Set where
   ast-r : ∀{Δ}{c}{A}  →  Δ ⊢c c ⦂ A →  ■ ∣ Δ ∣ tt ⊢ᵣ c ⦂ A
   bind-r : ∀{b A B}{Bs : BType I b}{ Δ f}
         → (∀{v} → (B ∷ Δ) ⊢v v ⦂ B → 𝐴 (B ∷ Δ) v B
@@ -78,7 +78,7 @@ data _∣_∣_⊢ᵣ_⦂_ {V C I : Set}
 data _∣_∣_⊢ᵣ₊_⦂_ {V C I : Set}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
   : ∀(bs : List Sig) → List I → BTypes I bs
-              → Tuple (lmap sig→ℕ bs) (Bind V C) → Vec I (length bs) → Set where
+              → Tuple bs (Bind V C) → Vec I (length bs) → Set where
   nil-r : ∀{Δ} → [] ∣ Δ ∣ tt ⊢ᵣ₊ tt ⦂ []̌ 
   cons-r : ∀{b bs r rs Δ A As Bs Bss} → b ∣ Δ ∣ Bs ⊢ᵣ r ⦂ A
       → bs ∣ Δ ∣ Bss ⊢ᵣ₊ rs ⦂ As
@@ -94,7 +94,7 @@ fold-preserves : ∀{V C I : Set}
     {M : ABT}{σ : GSubst V}{Γ Δ : List I}{A : I}
    → Γ ⊢ M ⦂ A
    → σ ⦂ Γ ⇒ Δ
-   → (∀ {op : Op}{Rs : Tuple (lmap sig→ℕ (sig op)) (Bind V C)}{Δ}{A : I}
+   → (∀ {op : Op}{Rs : Tuple (sig op) (Bind V C)}{Δ}{A : I}
         {As : Vec I (length (sig op))}{Bs}
        → sig op ∣ Δ ∣ Bs ⊢ᵣ₊ Rs ⦂ As → 𝑃 op As Bs A → Δ ⊢c (fold-op op Rs) ⦂ A)
    → Δ ⊢c fold σ M ⦂ A

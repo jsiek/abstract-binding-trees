@@ -1,16 +1,20 @@
+open import Agda.Primitive using (Level; lzero; lsuc)
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Empty using (⊥)
+open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_) renaming (map to lmap)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_; _≟_)
 open import Data.Nat.Properties using (+-suc; +-identityʳ)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit.Polymorphic using (⊤; tt)
-open import ScopedTuple
+open import Data.Vec using (Vec; []; _∷_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
 open import Relation.Nullary using (¬_; Dec; yes; no)
+open import ScopedTuple
 open import Sig
+open import Structures
 open import Var
 
 module AbstractBindingTree (Op : Set) (sig : Op → List Sig) where
@@ -69,7 +73,7 @@ map₊ {b ∷ bs} f (cons arg args) = cons (f arg) (map₊ f args)
 
 {- Convert to tuples -}
 
-⌊_⌋ : ∀{bs} → Args bs → Tuple (lmap sig→ℕ bs) (λ _ → ABT)
+⌊_⌋ : ∀{bs} → Args bs → Tuple bs (λ _ → ABT)
 ⌊_⌋ₐ : ∀{b} → Arg b → ABT
 
 ⌊_⌋ₐ {■} (ast M) = M
@@ -178,5 +182,3 @@ FV-arg (bind arg) y = FV-arg arg (suc y)
 FV-arg (clear arg) y = ⊥
 FV-args nil y = ⊥
 FV-args (cons arg args) y = FV-arg arg y ⊎ FV-args args y
-
-

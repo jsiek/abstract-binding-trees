@@ -11,19 +11,19 @@ module ScopedTuple where
 
 {- Scet: A scoped Set -}
 Scet : {ℓ : Level} → Set (lsuc ℓ)
-Scet {ℓ} = ℕ → Set ℓ
+Scet {ℓ} = Sig → Set ℓ
 
 _⇨_ : Scet → Scet → Set
-A ⇨ B = (∀ {b : ℕ} → A b → B b)
+A ⇨ B = (∀ {b : Sig} → A b → B b)
 
 𝒫 : {ℓ : Level} → Scet {ℓ} → Set (lsuc ℓ)
-𝒫 {ℓ} A = (∀ {b : ℕ} → A b → Set ℓ)
+𝒫 {ℓ} A = (∀ {b : Sig} → A b → Set ℓ)
 
 _✖_ : {ℓ₁ ℓ₂ : Level} → Scet {ℓ₁} → Scet {ℓ₂} → Set (lsuc (ℓ₁ ⊔ ℓ₂))
-_✖_ {ℓ₁}{ℓ₂} A B = (∀ {b : ℕ} → A b → B b → Set (ℓ₁ ⊔ ℓ₂))
+_✖_ {ℓ₁}{ℓ₂} A B = (∀ {b : Sig} → A b → B b → Set (ℓ₁ ⊔ ℓ₂))
 
 Sigs : Set
-Sigs = List ℕ
+Sigs = List Sig
 
 Tuple : {ℓ : Level} → Sigs → Scet {ℓ} → Set ℓ
 Tuple [] A = ⊤
@@ -61,10 +61,10 @@ map-compose {A}{B}{C} {g} {f} {b ∷ bs} {⟨ x , xs ⟩} =
 
 tuple-pred : ∀{ℓ}{A : Scet {ℓ}}{P : 𝒫 A}
   → (P× : ∀ bs → Tuple bs A → Set)
-  → (∀ (b : ℕ) → (a : A b) → P {b} a)
+  → (∀ (b : Sig) → (a : A b) → P {b} a)
   → {bs : Sigs} → (xs : Tuple bs A)
   → (P× [] tt)
-  → (∀{b : ℕ}{bs : Sigs}{x xs}
+  → (∀{b : Sig}{bs : Sigs}{x xs}
        → P {b} x  →  P× bs xs  →  P× (b ∷ bs) ⟨ x , xs ⟩)
   →  P× bs xs
 tuple-pred {A} {P} P× f {[]} tt base step = base
@@ -105,13 +105,13 @@ map-pres-zip {b ∷ bs}{xs = ⟨ x , xs ⟩} {⟨ y , ys ⟩} P Q f g ⟨ z , zs
 record Lift-Pred-Tuple {A} (P : 𝒫 A)
   (P× : ∀{bs} → Tuple bs A → Set) : Set where
   field base : (P× {bs = []} tt)
-        step : (∀{b : ℕ}{bs : Sigs}{x xs}
+        step : (∀{b : Sig}{bs : Sigs}{x xs}
                → P {b} x  →  P× {bs} xs  →  P× ⟨ x , xs ⟩)
 
 record Lift-Rel-Tuple {A B} (R : A ✖ B)
   (R× : ∀{bs} → Tuple bs A → Tuple bs B → Set) : Set where
   field base : (R× {bs = []} tt tt)
-        step : (∀{b : ℕ}{bs : Sigs}{x xs}{y ys}
+        step : (∀{b : Sig}{bs : Sigs}{x xs}{y ys}
                → R {b} x y  →  R× {bs} xs ys  →  R× ⟨ x , xs ⟩ ⟨ y , ys ⟩)
 
 Lift-Eq-Tuple : ∀{A : Set} → Lift-Rel-Tuple {λ _ → A}{λ _ → A} _≡_ _≡_
@@ -156,7 +156,7 @@ map-compose-zip : ∀{A B C C′}
    {g : B ⇨ C} {f : A ⇨ B}{h : A ⇨ C′}
    {bs : Sigs}{R : C ✖ C′}
    {xs : Tuple bs A}
-   → (∀ {b : ℕ} x → R {b} (g (f x)) (h x))
+   → (∀ {b : Sig} x → R {b} (g (f x)) (h x))
    → zip R (map g (map f xs)) (map h xs)
 map-compose-zip {A}{B}{C}{C′} {g} {f} {h} {[]} {R} {tt} gf=h = tt
 map-compose-zip {A}{B}{C}{C′} {g} {f} {h} {b ∷ bs} {R} {⟨ x , xs ⟩} gf=h =
