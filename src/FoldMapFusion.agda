@@ -269,36 +269,19 @@ fold-map-fusion {Vᵐ = Vᵐ}{Vᶠ}{Cᶠ} M σ⨟δ≈γ op-cong =
       → (ext σ) ⨟ (δ , v₁) ⩰ (γ , v₂)
   ext-pres v₁≈v₂ σ⨟δ≈γ zero rewrite quote-var→val{V = Vᵐ} 0 =
       ret≈ v₁≈v₂
-  ext-pres {σ}{δ}{γ}{v₁}{v₂} v₁≈v₂ σ⨟δ≈γ (suc x) rewrite quote-shift (σ x) =
-      H
-      {- let frf = fold-rename-fusion “ σ x ” G ? op-cong shift-ret in -}
-      {-
-      begin
-          fold (δ , v) (rename (↑ 1) “ σ x ”)
-      ≡⟨ {!!} ⟩
+  ext-pres {σ}{δ}{γ}{v₁}{v₂} v₁≈v₂ σ⨟δ≈γ (suc x)
+      rewrite quote-shift (σ x) | shift-ret (γ x) =
+          fold {C = Cᶠ} (δ , v₁) (rename (↑ 1) “ σ x ”)
+      ≈⟨ fold-rename-fusion “ σ x ” G op-cong shift-ret ⟩
           fold (⟰ δ) “ σ x ”
-      ≡⟨ {!!} {- fold-shift δ (⟰ δ) “ σ x ” (λ _ → refl) -} ⟩
+      ≈⟨ fold-shift δ (⟰ δ) “ σ x ” (λ x → shift≈ (≈-refl (δ x))) ⟩
           ⇑ (fold δ “ σ x ”)
-      ≡⟨ cong ⇑ (σ⨟δ≈γ x) ⟩
+      ≈⟨ shift≈ (σ⨟δ≈γ x) ⟩
           ⇑ (ret (γ x))
-      ≡⟨ shift-ret _ ⟩
-          ret (⇑ (γ x))
-      ∎
-      -}
+      ≈∎
       where
       G : _⨟_⩰_{Vᵐ = Var}{Vᶠ}{Cᶠ} (↑ 1) (δ , v₁) (⟰ δ)
       G x = ret≈ (≈-refl _)
-      
-      H : fold (δ , v₁) (rename (↑ 1) “ σ x ”) ≈ ret (⇑ (γ x))
-      H rewrite shift-ret (γ x) =
-              fold {C = Cᶠ} (δ , v₁) (rename (↑ 1) “ σ x ”)
-          ≈⟨ fold-rename-fusion “ σ x ” G op-cong shift-ret ⟩
-              fold (⟰ δ) “ σ x ”
-          ≈⟨ fold-shift δ (⟰ δ) “ σ x ” (λ x → shift≈ (≈-refl (δ x))) ⟩
-              ⇑ (fold δ “ σ x ”)
-          ≈⟨ shift≈ (σ⨟δ≈γ x) ⟩
-              ⇑ (ret (γ x))
-          ≈∎
 
 fold-subst-fusion : ∀ {ℓᵛ ℓᶜ : Level}{Vᶠ : Set ℓᵛ}{Cᶠ : Set ℓᶜ} 
      {{_ : Shiftable Vᶠ}} {{_ : Shiftable Cᶠ}}
