@@ -10,7 +10,7 @@ open import Var
 
 module Substitution where
 
-open import Structures public
+open import Structures hiding (module WithOpSig) public
 open import GSubst public
 open import GenericSubstitution public
 open import Renaming public

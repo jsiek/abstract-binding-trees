@@ -42,10 +42,11 @@ open import Fold Op sig
 
  -}
 
-_⨟ᶠ_≈_ : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ Cˢ : Set ℓˢ}{Vᵗ Cᵗ : Set ℓᵗ}{Vᶠ Cᶠ : Set ℓᶠ}
+_⨟ᶠ_≈_ : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ : Set}{Cˢ : Set ℓˢ}{Vᵗ : Set}{Cᵗ : Set ℓᵗ}
+   {Vᶠ : Set}{Cᶠ : Set ℓᶠ}
    {{_ : Shiftable Vˢ}} {{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
    {{_ : Foldable Vˢ Cˢ}} {{_ : Foldable Vᵗ Cᵗ}} {{_ : Foldable Vᶠ Cᶠ}} 
-   {{_ : Quotable Cᶠ}} {{_ : Equiv Vᵗ Vˢ}}{{_ : Equiv Cᵗ Cˢ }}
+   {{_ : Quotable Cᶠ}} {{_ : Equiv {ℓ₃ = lzero} Vᵗ Vˢ}}{{_ : Equiv Cᵗ Cˢ }}
    → GSubst Vᶠ → GSubst Vᵗ → GSubst Vˢ → Set (ℓˢ ⊔ ℓᵗ)
 γ ⨟ᶠ τ ≈ σ = ∀ x → fold τ “ ret (γ x) ” ≈ ret (σ x)
 
@@ -74,7 +75,7 @@ _=ˢ_ : (a : Sig) → (b : Sig) → Dec (a ≡ b)
 ... | no neq = ⊥-elimi (neq eq)
 
 
-Binder : ∀{ℓ} → Set ℓ → Set ℓ → Set ℓ
+Binder : ∀{ℓ} → Set → Set ℓ → Set ℓ
 Binder V C = (op : Op)
          → (i j : ℕ)
          → .{i< : i < length (sig op)}
@@ -82,7 +83,8 @@ Binder V C = (op : Op)
          → Tuple (sig op) (Bind V C)
          → V
 
-ind-hyp : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ Cˢ : Set ℓˢ}{Vᵗ Cᵗ : Set ℓᵗ}{Vᶠ Cᶠ : Set ℓᶠ}
+ind-hyp : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ : Set}{Cˢ : Set ℓˢ}{Vᵗ : Set}{Cᵗ : Set ℓᵗ}
+   {Vᶠ : Set}{Cᶠ : Set ℓᶠ}
    {{_ : Shiftable Vˢ}} {{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
    {{_ : Foldable Vˢ Cˢ}} {{_ : Foldable Vᵗ Cᵗ}} {{_ : Foldable Vᶠ Cᶠ}} 
    {{_ : Quotable Cᶠ}} {{_ : Equiv Vᵗ Vˢ}}{{_ : Equiv Cᵗ Cˢ }}
@@ -106,7 +108,8 @@ ind-hyp k op (ν b) (bind arg) rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} γ τ
 ind-hyp k op (∁ b) (clear arg) rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} γ τ σ =
     ind-hyp k op b arg rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} id id id
 
-ind-hyps : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ Cˢ : Set ℓˢ}{Vᵗ Cᵗ : Set ℓᵗ}{Vᶠ Cᶠ : Set ℓᶠ}
+ind-hyps : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ : Set}{Cˢ : Set ℓˢ}{Vᵗ : Set}{Cᵗ : Set ℓᵗ}{Vᶠ : Set}
+   {Cᶠ : Set ℓᶠ}
    {{_ : Shiftable Vˢ}} {{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
    {{_ : Foldable Vˢ Cˢ}} {{_ : Foldable Vᵗ Cᵗ}} {{_ : Foldable Vᶠ Cᶠ}} 
    {{_ : Quotable Cᶠ}} {{_ : Equiv Vᵗ Vˢ}}{{_ : Equiv Cᵗ Cˢ }}
@@ -132,8 +135,8 @@ ind-hyps pbs op (b ∷ bs) (cons arg args) rsᶠ rsˢ bindˢ bindᶠ s→t {sig=
                        {length-++-< pbs bs b}{pbs<} (sym (≡-rel {eq = sig=})))
        | nth-++ pbs bs b = ≤-refl
 
-fold-fold-fusion : ∀ {ℓˢ ℓᵗ ℓᶠ}{Vˢ Cˢ : Set ℓˢ}{Vᵗ Cᵗ : Set ℓᵗ}
-   {Vᶠ Cᶠ : Set ℓᶠ}
+fold-fold-fusion : ∀ {ℓˢ ℓᵗ ℓᶠ}{Vˢ : Set}{Cˢ : Set ℓˢ}{Vᵗ : Set}{Cᵗ : Set ℓᵗ}
+   {Vᶠ : Set}{Cᶠ : Set ℓᶠ}
    {{_ : Shiftable Vˢ}} {{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
    {{_ : Foldable Vˢ Cˢ}} {{_ : Foldable Vᵗ Cᵗ}} {{_ : Foldable Vᶠ Cᶠ}} 
    {{_ : Quotable Cᶠ}} {{_ : Equiv Cᵗ Cˢ}}

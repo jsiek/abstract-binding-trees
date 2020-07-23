@@ -39,58 +39,80 @@ open Substitution.ABTOps Op sig
 open import Map Op sig using (map; map-arg; map-args)
 open import MapFusion Op sig {- using (QuoteShift; ABT-is-QuoteShift) -}
 open import Fold Op sig
+open Structures.WithOpSig Op sig 
 
-_⨟_⩰_ : ∀{ℓᶠ ℓᵐ} {Vᵐ : Set ℓᵐ}{Vᶠ Cᶠ : Set ℓᶠ}
+_⨟_⩰_ : ∀{ℓᵐ ℓᵛ ℓᶠ} {Vᵐ : Set ℓᵐ}{Vᶠ : Set ℓᵛ}{Cᶠ : Set ℓᶠ}
     {{_ : Shiftable Vᵐ}} {{_ : Quotable Vᵐ}}
     {{_ : Shiftable Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+    {{_ : Equiv Cᶠ Cᶠ}}
     → GSubst Vᵐ → GSubst Vᶠ → GSubst Vᶠ → Set ℓᶠ
-σ ⨟ δ ⩰ γ = ∀ x → fold δ (“ σ x ”) ≡ ret (γ x)
+σ ⨟ δ ⩰ γ = ∀ x → fold δ (“ σ x ”) ≈ ret (γ x)
 
-_⊢_⨟_≈_ : ∀{ℓᶠ ℓᵐ} {Vᵐ : Set ℓᵐ}{Vᶠ Cᶠ : Set ℓᶠ}
+_⊢_⨟_≈_ : ∀{ℓᵐ ℓᵛ ℓᶠ} {Vᵐ : Set ℓᵐ}{Vᶠ : Set ℓᵛ}{Cᶠ : Set ℓᶠ}
     {{_ : Shiftable Vᵐ}} {{_ : Quotable Vᵐ}}
     {{_ : Shiftable Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+    {{_ : Equiv Cᶠ Cᶠ}}
     → ABT → GSubst Vᵐ → GSubst Vᶠ → GSubst Vᶠ → Set ℓᶠ
-M ⊢ σ ⨟ δ ≈ γ = ∀ x → FV M x → fold δ (“ σ x ”) ≡ ret (γ x)
+M ⊢ σ ⨟ δ ≈ γ = ∀ x → FV M x → fold δ (“ σ x ”) ≈ ret (γ x)
 
-_⊢ₐ_⨟_≈_ : ∀{ℓᶠ ℓᵐ} {Vᵐ : Set ℓᵐ}{Vᶠ Cᶠ : Set ℓᶠ}
+_⊢ₐ_⨟_≈_ : ∀{ℓᵐ ℓᵛ ℓᶠ} {Vᵐ : Set ℓᵐ}{Vᶠ : Set ℓᵛ}{Cᶠ : Set ℓᶠ}
     {{_ : Shiftable Vᵐ}} {{_ : Quotable Vᵐ}}
     {{_ : Shiftable Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+    {{_ : Equiv Cᶠ Cᶠ}}
     → {b : Sig} → Arg b → GSubst Vᵐ → GSubst Vᶠ → GSubst Vᶠ → Set ℓᶠ
-arg ⊢ₐ σ ⨟ δ ≈ γ = ∀ x → FV-arg arg x → fold δ (“ σ x ”) ≡ ret (γ x)
+arg ⊢ₐ σ ⨟ δ ≈ γ = ∀ x → FV-arg arg x → fold δ (“ σ x ”) ≈ ret (γ x)
 
-_⊢₊_⨟_≈_ : ∀{ℓᶠ ℓᵐ} {Vᵐ : Set ℓᵐ}{Vᶠ Cᶠ : Set ℓᶠ}
+_⊢₊_⨟_≈_ : ∀{ℓᵐ ℓᵛ ℓᶠ} {Vᵐ : Set ℓᵐ}{Vᶠ : Set ℓᵛ}{Cᶠ : Set ℓᶠ}
     {{_ : Shiftable Vᵐ}} {{_ : Quotable Vᵐ}}
     {{_ : Shiftable Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+    {{_ : Equiv Cᶠ Cᶠ}}
     → {bs : List Sig} → Args bs → GSubst Vᵐ → GSubst Vᶠ → GSubst Vᶠ → Set ℓᶠ
-args ⊢₊ σ ⨟ δ ≈ γ = ∀ x → FV-args args x → fold δ (“ σ x ”) ≡ ret (γ x)
+args ⊢₊ σ ⨟ δ ≈ γ = ∀ x → FV-args args x → fold δ (“ σ x ”) ≈ ret (γ x)
 
 
+{-
 module Equiv≡ where
   ≡-Equiv : ∀{ℓ}{C : Set ℓ} → Equiv C C
   ≡-Equiv {ℓ} = record { _≈_ = _≡_ }
+-}
 
 module _ where
+
+{-
+  ⩳-refl : ∀ {b}{ℓ}{V : Set}{C : Set ℓ}{bc : Bind V C b}
+     {{_ : Equiv V V}} {{_ : EquivRel C}}
+     → _⩳_{V₁ = V}{V}{C}{C}{b = b} bc bc
+  ⩳-refl {■} {bc = lift c} {{_}}{{EqC}} = lift (EquivRel.≈-refl EqC c)
+  ⩳-refl {ν b} v₁≈v₂ =
+     let ih = ⩳-refl {b} {bc = {!!} } in
+     {!!} {- -} {- ⩳-refl {b} -}
+  ⩳-refl {∁ b} = ⩳-refl {b}
+-}  
+
+{-
   open Equiv≡
   instance _ : ∀{ℓ}{V : Set ℓ} → Equiv V V ; _ = ≡-Equiv
 
-  ⩳-refl : ∀ {b}{ℓ}{V : Set ℓ}{C : Set ℓ}{v : Bind V C b}
+  ⩳-refl : ∀ {b}{ℓ}{V : Set}{C : Set ℓ}{v : Bind V C b}
      → _⩳_{V₁ = V}{V}{C}{C}{b = b} v  v
-  ⩳-refl {■} {v} = refl
-  ⩳-refl {ν b} {v} refl = ⩳-refl {b}
-  ⩳-refl {∁ b} {v} = ⩳-refl {b}
+  ⩳-refl {■} {v = lift v} = lift refl
+  ⩳-refl {ν b} refl = ⩳-refl {b}
+  ⩳-refl {∁ b} = ⩳-refl {b}
+-}
 
-  fold-map-fusion-ext : ∀{ℓᵐ ℓᶠ}{Vᵐ : Set ℓᵐ}{ Vᶠ Cᶠ : Set ℓᶠ}
+  fold-map-fusion-ext : ∀{ℓᵐ ℓᵛ ℓᶠ}{Vᵐ : Set ℓᵐ}{Vᶠ : Set ℓᵛ}{Cᶠ : Set ℓᶠ}
        {{_ : Shiftable Vᵐ}} {{_ : Quotable Vᵐ}}
        {{_ : Shiftable Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+        {{_ : Equiv Cᶠ Cᶠ}} {{_ : Similar Vᶠ Vᶠ Cᶠ Cᶠ}}
        {σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}
        (M : ABT)
      → σ ⨟ δ ⩰ γ
-     → (∀{σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}{v : Vᶠ}
-         → σ ⨟ δ ⩰ γ → ext σ ⨟ (δ , v) ⩰ (γ , v))
+     → (∀{σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}{v₁ v₂ : Vᶠ}
+         → v₁ ≈ v₂ → σ ⨟ δ ⩰ γ → ext σ ⨟ (δ , v₁) ⩰ (γ , v₂))
      → (∀{op}{rs rs′ : Tuple (sig op) (Bind Vᶠ Cᶠ)}
            → zip (λ {b} → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b}) rs rs′
-           → fold-op op rs ≡ fold-op op rs′)
-     → fold δ (map σ M)  ≡ fold γ M
+           → fold-op op rs ≈ fold-op op rs′)
+     → fold δ (map σ M) ≈ fold γ M
   fold-map-fusion-ext (` x) σ⨟δ≈γ env-ext op-cong = σ⨟δ≈γ x
   fold-map-fusion-ext {Vᵐ = Vᵐ}{Vᶠ}{Cᶠ}{σ = σ}{δ}{γ} (op ⦅ args ⦆) σ⨟δ≈γ
       env-ext op-cong = op-cong (fuse-args {sig op} args σ⨟δ≈γ)
@@ -99,32 +121,36 @@ module _ where
          → σ ⨟ δ ⩰ γ
          → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b} (fold-arg δ (map-arg σ arg))
                                     (fold-arg γ arg)
+                                    
       fuse-args : ∀{bs}{σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ} (args : Args bs)
          → σ ⨟ δ ⩰ γ
          → zip (λ {b} → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b})
                (fold-args δ (map-args σ args)) (fold-args γ args)
       fuse-arg {b} {σ} {δ} {γ} (ast M) σ⨟δ≈γ =
-          fold-map-fusion-ext M σ⨟δ≈γ env-ext op-cong
-      fuse-arg {ν b} {σ} {δ} {γ} (bind arg) σ⨟δ≈γ refl =
-          fuse-arg {b} arg (env-ext σ⨟δ≈γ)
-      fuse-arg {∁ b} {σ} {δ} {γ} (clear arg) σ⨟δ≈γ = ⩳-refl {b}
+          lift (fold-map-fusion-ext M σ⨟δ≈γ env-ext op-cong)
+      fuse-arg {ν b} {σ} {δ} {γ} (bind arg) σ⨟δ≈γ {v₁} v₁≈v₂ =
+          fuse-arg {b} arg (env-ext v₁≈v₂ σ⨟δ≈γ) 
+      fuse-arg {∁ b} {σ} {δ} {γ} (clear arg) σ⨟δ≈γ =
+          fold-arg-refl arg var→val≈ 
       fuse-args {[]} {σ} {δ} {γ} nil σ⨟δ≈γ = tt
       fuse-args {b ∷ bs} {σ} {δ} {γ} (cons arg args) σ⨟δ≈γ =
           ⟨ fuse-arg{b}{σ}{δ}{γ} arg σ⨟δ≈γ , fuse-args {bs} args σ⨟δ≈γ ⟩
 
-  fold-map-fusion-ext-FV : ∀{ℓᵐ ℓᶠ}{Vᵐ : Set ℓᵐ}{ Vᶠ Cᶠ : Set ℓᶠ}
+  fold-map-fusion-ext-FV : ∀{ℓᵐ ℓᵛ ℓᶠ}{Vᵐ : Set ℓᵐ}{ Vᶠ : Set ℓᵛ}{ Cᶠ : Set ℓᶠ}
        {{_ : Shiftable Vᵐ}} {{_ : Quotable Vᵐ}}
        {{_ : Shiftable Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+       {{_ : Equiv Cᶠ Cᶠ}} {{_ : Similar Vᶠ Vᶠ Cᶠ Cᶠ}}
        {σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}
        (M : ABT)
      → M ⊢ σ ⨟ δ ≈ γ
-     → (∀{b}{arg : Arg b}{σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}{v : Vᶠ}
+     → (∀{b}{arg : Arg b}{σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}{v₁ v₂ : Vᶠ}
+         → v₁ ≈ v₂
          → bind arg ⊢ₐ σ ⨟ δ ≈ γ
-         → arg ⊢ₐ ext σ ⨟ (δ , v) ≈ (γ , v))
+         → arg ⊢ₐ ext σ ⨟ (δ , v₁) ≈ (γ , v₂))
      → (∀{op}{rs rs′ : Tuple (sig op) (Bind Vᶠ Cᶠ)}
            → zip (λ {b} → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b}) rs rs′
-           → fold-op op rs ≡ fold-op op rs′)
-     → fold δ (map σ M)  ≡ fold γ M
+           → fold-op op rs ≈ fold-op op rs′)
+     → fold δ (map σ M)  ≈ fold γ M
   fold-map-fusion-ext-FV (` x) σ⨟δ≈γ env-ext op-cong = σ⨟δ≈γ x refl
   fold-map-fusion-ext-FV {Vᵐ = Vᵐ}{Vᶠ}{Cᶠ}{σ = σ}{δ}{γ} (op ⦅ args ⦆)
       σ⨟δ≈γ env-ext op-cong = op-cong (fuse-args {sig op} args σ⨟δ≈γ)
@@ -138,10 +164,11 @@ module _ where
          → zip (λ {b} → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b})
                (fold-args δ (map-args σ args)) (fold-args γ args)
       fuse-arg {b} {σ} {δ} {γ} (ast M) σ⨟δ≈γ =
-          fold-map-fusion-ext-FV M σ⨟δ≈γ (λ{b}{arg} → env-ext{b}{arg}) op-cong
-      fuse-arg {ν b} {σ} {δ} {γ} (bind arg) σ⨟δ≈γ refl =
-          fuse-arg {b} arg (env-ext{b}{arg} σ⨟δ≈γ)
-      fuse-arg {∁ b} {σ} {δ} {γ} (clear arg) σ⨟δ≈γ = ⩳-refl {b}
+          lift (fold-map-fusion-ext-FV M σ⨟δ≈γ
+                     (λ{b}{arg} → env-ext{b}{arg}) op-cong)
+      fuse-arg {ν b} {σ} {δ} {γ} (bind arg) σ⨟δ≈γ v₁≈v₂ =
+         fuse-arg {b} arg (env-ext{b}{arg} v₁≈v₂ σ⨟δ≈γ)
+      fuse-arg {∁ b} {σ} {δ} {γ} (clear arg) σ⨟δ≈γ = fold-arg-refl arg var→val≈
       fuse-args {[]} {σ} {δ} {γ} nil σ⨟δ≈γ = tt
       fuse-args {b ∷ bs} {σ} {δ} {γ} (cons arg args) σ⨟δ≈γ =
           ⟨ fuse-arg {b}{σ}{δ}{γ} arg G , fuse-args {bs} args H ⟩
@@ -151,121 +178,139 @@ module _ where
           H : args ⊢₊ σ ⨟ δ ≈ γ
           H x x∈args = σ⨟δ≈γ x (inj₂ x∈args)
 
-  fold-rename-fusion : ∀ {ℓ : Level}{Vᶠ Cᶠ : Set ℓ}
+  fold-rename-fusion : ∀ {ℓᵛ ℓᶜ : Level}{Vᶠ : Set ℓᵛ}{Cᶠ : Set ℓᶜ}
        {{_ : Shiftable Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}} {{_ : Shiftable Cᶠ}}
+       {{_ : Relatable Cᶠ Cᶠ}} {{_ : Similar Vᶠ Vᶠ Cᶠ Cᶠ}}
        {ρ : Rename}{δ γ : GSubst Vᶠ}
        (M : ABT)
      → ρ ⨟ δ ⩰ γ
      → (∀{op}{rs rs′ : Tuple (sig op) (Bind Vᶠ Cᶠ)}
            → zip (λ {b} → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b}) rs rs′
-           → fold-op op rs ≡ fold-op op rs′)
-     → (∀ (v : Vᶠ) → ⇑ (ret v) ≡ ret (⇑ v))
-     → fold δ (rename ρ M)  ≡ fold γ M
-  fold-rename-fusion {ℓ}{Vᶠ}{Eᶠ} M ρ⨟δ≈γ op-cong shift-ret =
+           → fold-op op rs ≈ fold-op op rs′)
+     → (∀ (v : Vᶠ) → ret (⇑ v) ≡ ⇑ (ret v))
+     → fold δ (rename ρ M) ≈ fold γ M
+  fold-rename-fusion {Vᶠ = Vᶠ}{Eᶠ} M ρ⨟δ≈γ op-cong shift-ret =
     fold-map-fusion-ext M ρ⨟δ≈γ ext-env op-cong
     where
-    ext-env : ∀{ρ : Rename}{σ₁ σ₂ : GSubst Vᶠ}{v : Vᶠ} → ρ ⨟ σ₁ ⩰ σ₂
-       → ext ρ ⨟ (σ₁ , v) ⩰ (σ₂ , v)
-    ext-env {ρ} {σ₁} {σ₂} {v} prem zero = refl
-    ext-env {ρ} {σ₁} {σ₂} {v} prem (suc x) =
-        begin
-            ret (⇑ (σ₁ (ρ x)))
-        ≡⟨ sym (shift-ret _) ⟩
-            ⇑ (ret (σ₁ (ρ x)))
-        ≡⟨ cong ⇑ (prem x) ⟩
-            ⇑ (ret (σ₂ x))
-        ≡⟨ shift-ret _ ⟩
-            ret (⇑ (σ₂ x))
-        ∎
+    ext-env : ∀{ρ : Rename}{σ₁ σ₂ : GSubst Vᶠ}{v₁ v₂ : Vᶠ}
+       → v₁ ≈ v₂ → ρ ⨟ σ₁ ⩰ σ₂
+       → ext ρ ⨟ (σ₁ , v₁) ⩰ (σ₂ , v₂)
+    ext-env {ρ} {σ₁} {σ₂} {v₁}{v₂} v₁≈v₂ prem zero = ret≈ v₁≈v₂
+    ext-env {ρ} {σ₁} {σ₂} {v₁}{v₂} v₁≈v₂ prem (suc x) =
+        G
+        where
+        G : ret (⇑ (σ₁ (ρ x))) ≈ ret (⇑ (σ₂ x))
+        G rewrite shift-ret (σ₁ (ρ x)) | shift-ret (σ₂ x) = shift≈ (prem x)
 
-module _ where
-  private
-   instance
-     ≡⇑-Equiv : ∀{ℓ}{C : Set ℓ} {{_ : Shiftable C}}
-              → Equiv {ℓ}{ℓ} C C
-     ≡⇑-Equiv {ℓ} = record { _≈_ = (λ c c' → c ≡ ⇑ c') }
-
-  record FoldShift {ℓ} (V : Set ℓ) (C : Set ℓ)
-    {{_ : Shiftable V}} {{_ : Foldable V C}}
-    : Set ℓ
+≈⇑-Equiv : ∀{ℓ}{A : Set ℓ} {{_ : Equiv A A}} {{_ : Shiftable A}} 
+            → Equiv {ℓ}{ℓ} A A
+≈⇑-Equiv {ℓ} = record { _≈_ = (λ c c' → c ≈ (⇑ c')) }
+  
+≈⇑-Relatable : ∀{ℓ}{A : Set ℓ} 
+    {{_ : Shiftable A}} {{_ : Relatable A A}} {{_ : ShiftId A}}
+  → Relatable A A
+≈⇑-Relatable = record { eq = ≈⇑-Equiv
+                      ; var→val≈ = shift-id 
+                      ; shift≈ = λ v₁≈⇑v₂ → shift≈ v₁≈⇑v₂ }
+                      
+record FoldShift {ℓᵛ ℓᶜ} (V : Set ℓᵛ) (C : Set ℓᶜ)
+  {{_ : Equiv V V}} {{_ : Equiv C C}}
+  {{_ : Shiftable V}} {{_ : Shiftable C}}
+  {{_ : Foldable V C}} 
+  : Set (ℓᵛ ⊔ ℓᶜ)
+  where
+  field shift-ret : ∀ (v : V) → ret (⇑ v) ≡ ⇑ (ret v)
+        op-shift : ∀ {op} {rs↑ rs : Tuple (sig op) (Bind V C)}
+          → zip (λ {b} → _⩳_ {{≈⇑-Equiv}}{{≈⇑-Equiv}} {b = b}) rs↑ rs
+          → (fold-op op rs↑) ≈ (⇑ (fold-op op rs))
+open FoldShift {{...}}
+  
+≈⇑-Similar : ∀{ℓᵛ ℓᶜ}{V : Set ℓᵛ}{C : Set ℓᶜ}
+    {{_ : Shiftable V}} {{_ : Shiftable C}} {{_ : Foldable V C}}
+    {{_ : Equiv C C}} {{_ : Similar V V C C}}
+    {{_ : ShiftId V}} {{FS : FoldShift V C}}
+  → Similar V V C C {{EqC = ≈⇑-Equiv}}
+≈⇑-Similar {ℓᵛ}{ℓᶜ}{V}{C} {{FS = FS}} =
+    record { rel = ≈⇑-Relatable {A = V} ; ret≈ = return-≈ ; op⩳ = op-shift }
     where
-    field {{C-is-Shiftable}} : Shiftable C
-    field shift-ret : ∀ (v : V) → ⇑ (ret v) ≡ ret (⇑ v)
-          op-shift : ∀ {op} {rs↑ rs : Tuple (sig op) (Bind V C)}
-            → zip (λ {b} → _⩳_{ℓ}{ℓ}{V}{V}{C}{C}{b}) rs↑ rs
-            → fold-op op rs↑ ≡ ⇑ (fold-op op rs)
-  open FoldShift {{...}}
-  
-
-  instance
-    ≡⇑-Relatable : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} {{_ : ShiftId V}}
-      → Relatable V V
-    ≡⇑-Relatable = record { eq = ≡⇑-Equiv
-                   ; var→val≈ = λ x → sym (shift-id x)
-                   ; shift≈ = λ { refl → refl } }
+    return-≈ : {v₁ v₂ : V} → v₁ ≈ ⇑ v₂ → (ret v₁) ≈ (⇑ (ret v₂))
+    return-≈ {v₁}{v₂} v₁≈⇑v₂ rewrite sym (shift-ret v₂) = ret≈ v₁≈⇑v₂
     
-    ≡⇑-Similar : ∀{ℓ}{V : Set ℓ}{C : Set ℓ} {{_ : Shiftable V}}
-        {{_ : Foldable V C}} {{_ : FoldShift V C}} {{_ : ShiftId V}}
-      → Similar V V C C
-    ≡⇑-Similar {C = C} = record { ret≈ = λ { {_}{v} refl → sym (shift-ret v) }
-                         {-; shift≈ = λ { refl → refl } -} ; op⩳ = op-shift } 
-   
-  fold-shift : ∀ {ℓ : Level}{Vᶠ Cᶠ : Set ℓ}
-     {{_ : Shiftable Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
-     {{_ : FoldShift Vᶠ Cᶠ}} {{_ : ShiftId Vᶠ}}
-     (δ δ↑ : GSubst Vᶠ)
-     (M : ABT)
-     → (∀ x → δ↑ x ≡ ⇑ (δ x))
-     → fold δ↑ M ≡ ⇑ (fold δ M)
-  fold-shift δ δ↑ M δ=shift = sim M δ=shift
-  
+fold-shift : ∀ {ℓᵛ ℓᶜ : Level}{Vᶠ : Set ℓᵛ}{Cᶠ : Set ℓᶜ}
+   {{_ : Shiftable Vᶠ}} {{_ : Shiftable Cᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+   {{_ : Equiv Cᶠ Cᶠ}} {{_ : Similar Vᶠ Vᶠ Cᶠ Cᶠ}}
+   {{_ : ShiftId Vᶠ}} {{_ : FoldShift Vᶠ Cᶠ}}
+   (δ δ↑ : GSubst Vᶠ)
+   (M : ABT)
+   → (∀ x → δ↑ x ≈ ⇑ (δ x))
+   → fold δ↑ M ≈ ⇑ (fold δ M)
+fold-shift {Vᶠ = Vᶠ}{Cᶠ} δ δ↑ M δ=shift =
+  let S = ≈⇑-Similar {V = Vᶠ}{Cᶠ} in
+  sim {{EqV = ≈⇑-Equiv}} {{EqC = ≈⇑-Equiv}} {{Sim = S}} M δ=shift
 
-open Equiv≡
-instance _ : ∀{ℓ}{V : Set ℓ} → Equiv V V ; _ = ≡-Equiv
-open FoldShift {{...}} public
-  
-fold-map-fusion : ∀{ℓᵐ ℓᶠ}{Vᵐ : Set ℓᵐ}{Vᶠ Cᶠ : Set ℓᶠ}
-     {{_ : Shiftable Vᵐ}} {{_ : Shiftable Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
+fold-map-fusion : ∀{ℓᵐ ℓᵛ ℓᶠ}{Vᵐ : Set ℓᵐ}{Vᶠ : Set ℓᵛ}{Cᶠ : Set ℓᶠ}
+     {{_ : Shiftable Vᵐ}} {{_ : Shiftable Vᶠ}} {{_ : Shiftable Cᶠ}} 
+     {{_ : Foldable Vᶠ Cᶠ}}
+     {{_ : Relatable Cᶠ Cᶠ}} {{_ : EquivRel Cᶠ}}
+     {{_ : Similar Vᶠ Vᶠ Cᶠ Cᶠ}} {{_ : EquivRel Vᶠ}}
      {{_ : FoldShift Vᶠ Cᶠ}} {{_ : QuoteShift Vᵐ}} {{_ : ShiftId Vᶠ}}
      {σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}
      (M : ABT)
    → σ ⨟ δ ⩰ γ
    → (∀{op}{rs rs′ : Tuple (sig op) (Bind Vᶠ Cᶠ)}
          → zip (λ {b} → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b}) rs rs′
-         → fold-op op rs ≡ fold-op op rs′)
-   → fold δ (map σ M)  ≡  fold γ M
-fold-map-fusion {ℓᵐ}{ℓᶠ}{Vᵐ}{Vᶠ}{Cᶠ} M σ⨟δ≈γ op-cong =
+         → fold-op op rs ≈ fold-op op rs′)
+   → fold δ (map σ M)  ≈  fold γ M
+fold-map-fusion {Vᵐ = Vᵐ}{Vᶠ}{Cᶠ} M σ⨟δ≈γ op-cong =
   fold-map-fusion-ext M σ⨟δ≈γ ext-pres op-cong
   where
-  ext-pres : ∀{σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}{v : Vᶠ} → σ ⨟ δ ⩰ γ
-                → (ext σ) ⨟ (δ , v) ⩰ (γ , v)
-  ext-pres {σ}{δ}{γ}{v} σ⨟δ≈γ zero rewrite quote-var→val{V = Vᵐ} 0 = refl
-  ext-pres {σ}{δ}{γ}{v} σ⨟δ≈γ (suc x) rewrite quote-shift (σ x) =
+  ext-pres : ∀{σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}{v₁ v₂ : Vᶠ}
+      → v₁ ≈ v₂ → σ ⨟ δ ⩰ γ
+      → (ext σ) ⨟ (δ , v₁) ⩰ (γ , v₂)
+  ext-pres v₁≈v₂ σ⨟δ≈γ zero rewrite quote-var→val{V = Vᵐ} 0 =
+      ret≈ v₁≈v₂
+  ext-pres {σ}{δ}{γ}{v₁}{v₂} v₁≈v₂ σ⨟δ≈γ (suc x) rewrite quote-shift (σ x) =
+      H
+      {- let frf = fold-rename-fusion “ σ x ” G ? op-cong shift-ret in -}
+      {-
       begin
           fold (δ , v) (rename (↑ 1) “ σ x ”)
-      ≡⟨ fold-rename-fusion “ σ x ” G op-cong shift-ret ⟩
+      ≡⟨ {!!} ⟩
           fold (⟰ δ) “ σ x ”
-      ≡⟨ fold-shift δ (⟰ δ) “ σ x ” (λ _ → refl) ⟩
+      ≡⟨ {!!} {- fold-shift δ (⟰ δ) “ σ x ” (λ _ → refl) -} ⟩
           ⇑ (fold δ “ σ x ”)
       ≡⟨ cong ⇑ (σ⨟δ≈γ x) ⟩
           ⇑ (ret (γ x))
       ≡⟨ shift-ret _ ⟩
           ret (⇑ (γ x))
       ∎
+      -}
       where
-      G : _⨟_⩰_{ℓᶠ}{lzero}{Var}{Vᶠ}{Cᶠ} (↑ 1) (δ , v) (⟰ δ)
-      G x = refl
+      G : _⨟_⩰_{Vᵐ = Var}{Vᶠ}{Cᶠ} (↑ 1) (δ , v₁) (⟰ δ)
+      G x = ret≈ (≈-refl _)
+      
+      H : fold (δ , v₁) (rename (↑ 1) “ σ x ”) ≈ ret (⇑ (γ x))
+      H rewrite shift-ret (γ x) =
+              fold {C = Cᶠ} (δ , v₁) (rename (↑ 1) “ σ x ”)
+          ≈⟨ fold-rename-fusion “ σ x ” G op-cong shift-ret ⟩
+              fold (⟰ δ) “ σ x ”
+          ≈⟨ fold-shift δ (⟰ δ) “ σ x ” (λ x → shift≈ (≈-refl (δ x))) ⟩
+              ⇑ (fold δ “ σ x ”)
+          ≈⟨ shift≈ (σ⨟δ≈γ x) ⟩
+              ⇑ (ret (γ x))
+          ≈∎
 
-fold-subst-fusion : ∀ {ℓ : Level}{Vᶠ Cᶠ : Set ℓ} 
-     {{_ : Shiftable Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}} {{_ : FoldShift Vᶠ Cᶠ}}
-     {{_ : ShiftId Vᶠ}}
-     {σ : Subst}{δ γ : GSubst Vᶠ}
+fold-subst-fusion : ∀ {ℓᵛ ℓᶜ : Level}{Vᶠ : Set ℓᵛ}{Cᶠ : Set ℓᶜ} 
+     {{_ : Shiftable Vᶠ}} {{_ : Shiftable Cᶠ}}
+     {{_ : Foldable Vᶠ Cᶠ}}
+     {{_ : Relatable Cᶠ Cᶠ}} {{_ : EquivRel Cᶠ}}
+     {{_ : Similar Vᶠ Vᶠ Cᶠ Cᶠ}} {{_ : EquivRel Vᶠ}}
+     {{_ : FoldShift Vᶠ Cᶠ}} {{_ : ShiftId Vᶠ}}
+       {σ : Subst}{δ γ : GSubst Vᶠ}
      (M : ABT)
    → σ ⨟ δ ⩰ γ
    → (∀{op}{rs rs′ : Tuple (sig op) (Bind Vᶠ Cᶠ)}
          → zip (λ {b} → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b}) rs rs′
-         → fold-op op rs ≡ fold-op op rs′)
-   → fold δ (⟪ σ ⟫ M)  ≡ fold γ M
-fold-subst-fusion {ℓ}{Vᶠ}{Eᶠ} M σ⨟δ≈γ op-cong =
-  fold-map-fusion M σ⨟δ≈γ op-cong
-
+         → fold-op op rs ≈ fold-op op rs′)
+   → fold δ (⟪ σ ⟫ M)  ≈ fold γ M
+fold-subst-fusion M σ⨟δ≈γ op-cong = fold-map-fusion M σ⨟δ≈γ op-cong

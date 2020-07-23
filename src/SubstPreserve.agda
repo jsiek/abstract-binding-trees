@@ -29,11 +29,6 @@ open import AbstractBindingTree Op sig
 open Renaming.WithOpSig Op sig
 
 module _ where
-{-
-  private
-    𝑉-≡ : List I → Var → I → I → Set
-    𝑉-≡ = λ Γ x A B → A ≡ B
--}
   open import MapPreserve Op sig I 𝑉 𝑃
   open import ABTPredicate Op sig 𝑉 𝑃 
 

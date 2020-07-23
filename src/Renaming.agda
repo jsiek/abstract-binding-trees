@@ -8,7 +8,7 @@ open import Data.Nat.Properties using (+-comm; suc-injective)
 open import Data.Product using (_×_; Σ; Σ-syntax) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (_∘_)
-open import Structures
+open import Structures hiding (module WithOpSig)
 open import GSubst
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; sym; cong; cong₂)

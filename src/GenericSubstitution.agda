@@ -18,8 +18,10 @@ module GenericSubstitution where
 
 module _ where
 
-  _≊_ : ∀{ℓ}{V₁ V₂ : Set ℓ}{{_ : Shiftable V₁}}{{_ : Shiftable V₂}}
-                  {{_ : Relatable V₁ V₂}} → GSubst V₁ → GSubst V₂ → Set ℓ
+  _≊_ : ∀{ℓ₁ ℓ₂}{V₁ : Set ℓ₁}{V₂ : Set ℓ₂}
+     {{_ : Shiftable V₁}} {{_ : Shiftable V₂}}
+     {{_ : Relatable V₁ V₂}}
+     → GSubst V₁ → GSubst V₂ → Set (ℓ₁ ⊔ ℓ₂)
   σ₁ ≊ σ₂ = ∀ (x : Var) → σ₁ x ≈ σ₂ x                
 
   inc-≊ : ∀{ℓ}{V₁ V₂ : Set ℓ}{{_ : Shiftable V₁}}{{_ : Shiftable V₂}}
