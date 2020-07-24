@@ -1,4 +1,40 @@
-{---------                  Partial Evaluator                         ---------}
+open import Agda.Primitive
+open import Data.Bool using (true; false; if_then_else_) renaming (Bool to 𝔹)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
+open import Data.List using (List; []; _∷_; length)
+open import Data.Maybe using (Maybe; nothing; just)
+open import Data.Nat
+    using (ℕ; zero; suc; _+_; _*_; _⊔_; _∸_; _≤_; _<_; z≤n; s≤s)
+open import Data.Product using (_×_; Σ; Σ-syntax) renaming (_,_ to ⟨_,_⟩ )
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import examples.Arith
+open import GSubst
+open import ListAux
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
+open Eq.≡-Reasoning
+open import ScopedTuple using (Tuple; _✖_; zip)
+open import Structures
+open import Syntax
+  using (Sig; sig→ℕ; ∁; ν; ■; ↑; _•_; _,_; ext; id; Rename; Shiftable; Equiv;
+         Relatable)
+open import Var
+
+open import AbstractBindingTree Op sig renaming (ABT to AST)
+open import Fold Op sig 
+open import MapFusion Op sig using (QuoteShift; ABT-is-QuoteShift)
+open import FoldMapFusion Op sig
+  using (fold-rename-fusion; fold-map-fusion-ext-FV; FoldShift; _⊢_⨟_≈_;
+  _⊢ₐ_⨟_≈_; _⊢₊_⨟_≈_)
+  renaming (_⨟_⩰_ to _′⨟_≈_)
+open import FoldFoldFusion Op sig renaming (_⨟ᶠ_≈_ to _⨟′_≈_)
+open import Map Op sig
+open Structures.WithOpSig Op sig
+open Syntax.OpSig Op sig
+    using (rename; rename-id; FV-rename; FV-rename-fwd; FV-↑1-0)
+
+module examples.ArithPartialEval where
 
 data Res : Set where
   val : Val → Res
@@ -55,12 +91,12 @@ if-bool? r f g
 pe-op : (op : Op) → Tuple (sig op) (Bind Res Res) → Res
 pe-op (op-num n) tt = val (v-num n)
 pe-op (op-bool b) tt = val (v-bool b)
-pe-op op-mult ⟨ mr₁ , ⟨ mr₂ , tt ⟩ ⟩ = do
+pe-op op-mult ⟨ lift mr₁ , ⟨ lift mr₂ , tt ⟩ ⟩ = do
    if-num? mr₁ (λ n₁ → if-num? mr₂ (λ n₂ →  val (v-num (n₁ * n₂)))
                                  (λ N₂ → exp ($ n₁ ⊗ N₂)))
               (λ N₁ → exp (N₁ ⊗ res→ast mr₂))
-pe-op op-let ⟨ mr , ⟨ f , tt ⟩ ⟩ = ⇓ (f (⇑ᵣ mr))
-pe-op op-if ⟨ mrᶜ , ⟨ mrᵗ , ⟨ mrᵉ , tt ⟩ ⟩ ⟩ = do
+pe-op op-let ⟨ lift mr , ⟨ f , tt ⟩ ⟩ = ⇓ (lower (f (⇑ᵣ mr)))
+pe-op op-if ⟨ lift mrᶜ , ⟨ lift mrᵗ , ⟨ lift mrᵉ , tt ⟩ ⟩ ⟩ = do
    if-bool? mrᶜ (λ b → if b then mrᵗ else mrᵉ)
                 (λ Mᶜ → exp (cond Mᶜ then res→ast mrᵗ else res→ast mrᵉ))
 pe-op op-error tt = exp error
@@ -109,8 +145,8 @@ _≡ᵇ_  : ∀ {ℓ : Level}{V : Set ℓ} → (Bind V V) ✖ (Bind V V)
 _≡ᵇ_ {ℓ}{V}{b} = _⩳_{V₁ = V}{V}{V}{V}{b}
 
 ≡ᵇ→≡ : ∀ {V : Set}{b : Sig}{r r' : Bind V V b}
-   → _≡ᵇ_{V = V}{b} r  r' → r ≡ r'
-≡ᵇ→≡ {V}{■} {r} {r'} refl = refl
+   → _≡ᵇ_{V = V}{b} r r'  →  r ≡ r'
+≡ᵇ→≡ {V}{■} {lift c} {lift c'} (lift refl) = refl
 ≡ᵇ→≡ {V}{ν b} {r} {r'} r≡ᵇr' = extensionality λ x → ≡ᵇ→≡{V}{b} (r≡ᵇr' refl)
 ≡ᵇ→≡ {V}{∁ b} {r} {r'} r≡ᵇr' = ≡ᵇ→≡ {V}{b} r≡ᵇr'
 
@@ -150,7 +186,7 @@ bind-eval : (op : Op) → (i j : ℕ)
     → Tuple (sig op) (Bind (Maybe Val) (Maybe Val)) → (Maybe Val)
 bind-eval op-mult (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 bind-eval op-if (suc (suc (suc i))) j {i<} {j<} rs = ⊥-elimi (bogus43 i<)
-bind-eval op-let (suc zero) zero {i<}{j<} ⟨ r , ⟨ f , tt ⟩ ⟩ = r
+bind-eval op-let (suc zero) zero {i<}{j<} ⟨ lift r , ⟨ f , tt ⟩ ⟩ = r
 bind-eval op-let (suc zero) (suc j) {i<} {j<} rs = ⊥-elimi (bogus21 j<)
 bind-eval op-let (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 
@@ -160,7 +196,7 @@ bind-pe : (op : Op) → (i j : ℕ)
     → Tuple (sig op) (Bind Res Res) → Res
 bind-pe op-mult (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 bind-pe op-if (suc (suc (suc i))) j {i<} {j<} rs = ⊥-elimi (bogus43 i<)
-bind-pe op-let (suc zero) zero {i<}{j<} ⟨ r , ⟨ f , tt ⟩ ⟩ = ⇑ᵣ r
+bind-pe op-let (suc zero) zero {i<}{j<} ⟨ lift r , ⟨ f , tt ⟩ ⟩ = ⇑ᵣ r
 bind-pe op-let (suc zero) (suc j) {i<} {j<} rs = ⊥-elimi (bogus21 j<)
 bind-pe op-let (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 
@@ -178,7 +214,7 @@ eval-shift : ∀ (τ : Var → Maybe Val) M (mv : Maybe Val)
    → eval (τ , mv) (rename (↑ 1) M) ≡ eval τ M
 eval-shift τ M mv = fold-rename-fusion M G eval-op-cong (λ v → refl)
   where
-  G : _′⨟_≈_{Vᵐ = Var} (↑ 1) (τ , mv) τ
+  G : _′⨟_≈_ {Vᵐ = Var} (↑ 1) (τ , mv) τ
   G zero = refl
   G (suc x) = refl
 
@@ -194,7 +230,7 @@ eval-down : ∀ (γ : Var → Maybe Val) (M : AST) (mv : Maybe Val)
   → eval γ (map ⟱ M) ≡  eval (γ , mv) M
 eval-down γ M mv 0∉M =
   fold-map-fusion-ext-FV {σ = ⟱}{δ = γ}{γ = γ , mv} M G
-      (λ{b}{arg} → env-ext{b}{arg}) eval-op-cong 
+      (λ { {b}{arg} refl → env-ext{b}{arg} }) eval-op-cong 
   where
   G : M ⊢ ⟱ ⨟ γ ≈ (γ , mv)
   G zero 0∈M = ⊥-elim (0∉M 0∈M)

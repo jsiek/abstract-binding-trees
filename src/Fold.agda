@@ -6,6 +6,7 @@ open import Data.Product
     using (_×_; proj₁; proj₂; Σ-syntax) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit.Polymorphic using (⊤; tt)
+open import Level using (levelOfType)
 open import Structures
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
@@ -24,18 +25,20 @@ module Fold (Op : Set) (sig : Op → List Sig) where
 open import AbstractBindingTree Op sig
 open Structures.WithOpSig Op sig
 
+private
+  variable
+    ℓ : Level
+    V V₁ V₂ C C₁ C₂ : Set ℓ
+
 {-------------------------------------------------------------------------------
  Folding over an abstract binding tree
  ------------------------------------------------------------------------------}
 
-fold : ∀{ℓᵛ ℓᶜ}{V : Set ℓᵛ}{C : Set ℓᶜ}
-   {{_ : Shiftable V}} {{_ : Foldable V C}}
+fold : {{_ : Shiftable V}} {{_ : Foldable V C}}
    → GSubst V → ABT → C
-fold-arg : ∀{ℓᵛ ℓᶜ}{V : Set ℓᵛ}{C : Set ℓᶜ}
-   {{_ : Shiftable V}} {{_ : Foldable V C}}
+fold-arg : {{_ : Shiftable V}} {{_ : Foldable V C}}
    → GSubst V → {b : Sig} → Arg b → Bind V C b
-fold-args : ∀{ℓᵛ ℓᶜ}{V : Set ℓᵛ}{C : Set ℓᶜ}
-   {{_ : Shiftable V}} {{_ : Foldable V C}}
+fold-args : {{_ : Shiftable V}} {{_ : Foldable V C}}
    → GSubst V → {bs : List Sig} → Args bs → Tuple bs (Bind V C)
 
 fold σ (` x) = ret (σ x)
@@ -50,20 +53,18 @@ fold-args σ {b ∷ bs} (cons arg args) = ⟨ fold-arg σ arg , fold-args σ arg
  Simulation between two folds
  ------------------------------------------------------------------------------}
 
-_≅_ : ∀ {ℓ₁ ℓ₂}{V₁ : Set ℓ₁}{V₂ : Set ℓ₂} {{_ : Equiv V₁ V₂}}
-   (σ₁ : GSubst V₁) (σ₂ : GSubst V₂)  → Set (ℓ₁ ⊔ ℓ₂)
+_≅_ : {{_ : Equiv V₁ V₂}}
+   (σ₁ : GSubst V₁) (σ₂ : GSubst V₂) → Set (levelOfType V₁ ⊔ levelOfType V₂)
 _≅_ σ₁ σ₂ = ∀ x → σ₁ x ≈ σ₂ x
 
-sim-ext : ∀{ℓᵛ₁ ℓᵛ₂}{V₁ : Set ℓᵛ₁}{V₂ : Set ℓᵛ₂}
-  {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{v₁ : V₁}{v₂ : V₂}
+sim-ext : {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{v₁ : V₁}{v₂ : V₂}
   {{_ : Shiftable V₁}} {{_ : Shiftable V₂}}
   {{_ : Relatable V₁ V₂}}
    → σ₁ ≅ σ₂ → v₁ ≈ v₂ → (σ₁ , v₁) ≅ (σ₂ , v₂)
 sim-ext {σ₁} {σ₂} {v₁} {v₂} σ₁≅σ₂ v₁≈v₂ zero = v₁≈v₂
 sim-ext {σ₁} {σ₂} {v₁} {v₂} σ₁≅σ₂ v₁≈v₂ (suc x) = shift≈ (σ₁≅σ₂ x)
     
-sim : ∀{ℓᵛ₁ ℓᵛ₂ ℓᶜ₁ ℓᶜ₂}{V₁ : Set ℓᵛ₁}{V₂ : Set ℓᵛ₂}{C₁ : Set ℓᶜ₁}{C₂ : Set ℓᶜ₂}
-   {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}
+sim : ∀ {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}
    {{S1 : Shiftable V₁}} {{S2 : Shiftable V₂}}
    {{F1 : Foldable V₁ C₁}} {{F2 : Foldable V₂ C₂}}
    {{EqV : Equiv V₁ V₂}} {{EqC : Equiv C₁ C₂}} {{Sim : Similar V₁ V₂ C₁ C₂}}
@@ -71,15 +72,13 @@ sim : ∀{ℓᵛ₁ ℓᵛ₂ ℓᶜ₁ ℓᶜ₂}{V₁ : Set ℓᵛ₁}{V₂ : 
    → σ₁ ≅ σ₂
    → (fold σ₁ M) ≈ (fold σ₂ M)
 
-sim-arg : ∀{ℓᵛ₁ ℓᵛ₂ ℓᶜ₁ ℓᶜ₂}{V₁ : Set ℓᵛ₁}{V₂ : Set ℓᵛ₂}{C₁ : Set ℓᶜ₁}{C₂ : Set ℓᶜ₂}
-    {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{b} (arg : Arg b)
+sim-arg : ∀ {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{b} (arg : Arg b)
    {{_ : Shiftable V₁}} {{_ : Shiftable V₂}}
    {{_ : Foldable V₁ C₁}} {{_ : Foldable V₂ C₂}}
    {{_ : Equiv C₁ C₂}} {{_ : Similar V₁ V₂ C₁ C₂}}
    → σ₁ ≅ σ₂ → (_⩳_ {b = b}) (fold-arg σ₁ {b} arg) (fold-arg σ₂ {b} arg)
 
-sim-args : ∀{ℓᵛ₁ ℓᵛ₂ ℓᶜ₁ ℓᶜ₂}{V₁ : Set ℓᵛ₁}{V₂ : Set ℓᵛ₂}{C₁ : Set ℓᶜ₁}
-   {C₂ : Set ℓᶜ₂}{σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{bs} (args : Args bs)
+sim-args : ∀ {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{bs} (args : Args bs)
    {{_ : Shiftable V₁}} {{_ : Shiftable V₂}}
    {{_ : Foldable V₁ C₁}} {{_ : Foldable V₂ C₂}}
    {{_ : Equiv C₁ C₂}} {{_ : Similar V₁ V₂ C₁ C₂}}   
@@ -101,8 +100,7 @@ sim-args {bs = b ∷ bs} (cons arg args) σ₁≊σ₂ =
     ⟨ sim-arg arg σ₁≊σ₂ , sim-args args σ₁≊σ₂ ⟩
 
 
-fold-refl : ∀{ℓᵛ ℓᶜ}{V : Set ℓᵛ}{C : Set ℓᶜ}
-   {σ : GSubst V}
+fold-refl : ∀ {σ : GSubst V}
    {{_ : Shiftable V}} {{_ : Foldable V C}}
    {{_ : Equiv C C}} {{_ : Similar V V C C}}
    → (M : ABT)
@@ -110,8 +108,7 @@ fold-refl : ∀{ℓᵛ ℓᶜ}{V : Set ℓᵛ}{C : Set ℓᶜ}
    → fold σ M ≈ fold σ M
 fold-refl M σ≅σ = sim M σ≅σ
 
-fold-arg-refl : ∀{ℓᵛ ℓᶜ}{V : Set ℓᵛ}{C : Set ℓᶜ}
-    {σ : GSubst V}{b} (arg : Arg b)
+fold-arg-refl : ∀ {σ : GSubst V}{b} (arg : Arg b)
    {{_ : Shiftable V}} {{_ : Foldable V C}}
    {{_ : Equiv C C}} {{_ : Similar V V C C}}
    → σ ≅ σ → (_⩳_ {b = b}) (fold-arg σ {b} arg) (fold-arg σ {b} arg)
@@ -122,27 +119,21 @@ fold-arg-refl arg σ≅σ = sim-arg arg σ≅σ
  FV of fold
  ------------------------------------------------------------------------------}
 
-fv-env : ∀{ℓᵛ ℓᶜ : Level}{V : Set ℓᵛ}{C : Set ℓᶜ} {{_ : SyntacticFold V C}}
-   → GSubst V → Var → Set
+fv-env : {{_ : SyntacticFold V C}} → GSubst V → Var → Set
 fv-env γ x = Σ[ y ∈ Var ] fvᵛ (γ y) x
 
 
-fv-bind : ∀{ℓᵛ ℓᶜ : Level}{V : Set ℓᵛ}{C : Set ℓᶜ}
-    {{_ : SyntacticFold V C}} {b : Sig}
-    → Bind V C b → Var → Set
+fv-bind : {{_ : SyntacticFold V C}} {b : Sig} → Bind V C b → Var → Set
 fv-bind {b = ■} (lift r) x = fvᶜ r x
 fv-bind {b = ν b} r x = fv-bind {b = b} (r (var→val 0)) (suc x)
 fv-bind {b = ∁ b} r x = ⊥
 
-fv-binds : ∀{ℓᵛ ℓᶜ : Level}{V : Set ℓᵛ}{C : Set ℓᶜ}
-    {{_ : SyntacticFold V C}} {bs : List Sig}
-    → Tuple bs (Bind V C)
-    → Var
-    → Set
+fv-binds : {{_ : SyntacticFold V C}} {bs : List Sig}
+    → Tuple bs (Bind V C) → Var → Set
 fv-binds {bs = []} tt x = ⊥
 fv-binds {bs = b ∷ bs} ⟨ r , rs ⟩ x = fv-bind {b = b} r x ⊎ fv-binds rs x
 
-FV-fold : ∀{ℓᵛ ℓᶜ}{V : Set ℓᵛ}{C : Set ℓᶜ} {{_ : SyntacticFold V C}}
+FV-fold : {{_ : SyntacticFold V C}}
      (γ : GSubst V) (M : ABT) (x : Var)
    → ((γ : GSubst V) (op : Op) (args : Args (sig op)) (x : Var)
       → fvᶜ (fold-op op (fold-args γ args)) x

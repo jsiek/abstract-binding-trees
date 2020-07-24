@@ -38,6 +38,7 @@ module FoldPreserve (Op : Set) (sig : Op → List Sig) where
 
 open import AbstractBindingTree Op sig
 open import Fold Op sig
+open Structures.WithOpSig Op sig
 
 record FoldPreservable (V C I : Set) {{_ : Shiftable V}}
   : Set₁ where
@@ -58,7 +59,7 @@ open FoldPreservable {{...}}
 data _∣_∣_⊢ᵣ_⦂_ {V C I : Set}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
   : (b : Sig) → List I → BType I b → Bind V C b → I → Set where
-  ast-r : ∀{Δ}{c}{A}  →  Δ ⊢c c ⦂ A →  ■ ∣ Δ ∣ tt ⊢ᵣ c ⦂ A
+  ast-r : ∀{Δ}{c}{A}  →  Δ ⊢c c ⦂ A →  ■ ∣ Δ ∣ tt ⊢ᵣ lift c ⦂ A
   bind-r : ∀{b A B}{Bs : BType I b}{ Δ f}
         → (∀{v} → (B ∷ Δ) ⊢v v ⦂ B → 𝐴 (B ∷ Δ) v B
                 → b ∣ (B ∷ Δ) ∣ Bs ⊢ᵣ (f v) ⦂ A)
@@ -70,7 +71,7 @@ data _∣_∣_⊢ᵣ_⦂_ {V C I : Set}
 ⊢ᵣ→⊢c : ∀{V C I : Set}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
     {Δ : List I}{Bs : ⊤}{c : C}{A}
-    → ■ ∣ Δ ∣ Bs ⊢ᵣ c ⦂ A
+    → ■ ∣ Δ ∣ Bs ⊢ᵣ lift c ⦂ A
     → Δ ⊢c c ⦂ A
 ⊢ᵣ→⊢c {Δ}{Bs}{c}{A} (ast-r ⊢cc) = ⊢cc
 

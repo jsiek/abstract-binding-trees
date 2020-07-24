@@ -12,6 +12,7 @@ open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 open import Function using (_∘_)
 open import GSubst
+open import Level using (levelOfType)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app; subst)
 open Eq.≡-Reasoning
@@ -26,6 +27,7 @@ module FoldFoldFusion (Op : Set) (sig : Op → List Sig) where
 
 open import AbstractBindingTree Op sig
 open import Fold Op sig
+open Structures.WithOpSig Op sig
 
 {-
   Example: 
@@ -42,12 +44,15 @@ open import Fold Op sig
 
  -}
 
-_⨟ᶠ_≈_ : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ : Set}{Cˢ : Set ℓˢ}{Vᵗ : Set}{Cᵗ : Set ℓᵗ}
-   {Vᶠ : Set}{Cᶠ : Set ℓᶠ}
-   {{_ : Shiftable Vˢ}} {{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
+private
+  variable
+    ℓ : Level
+    Vˢ Vᵗ Vᶠ Cˢ Cᵗ Cᶠ : Set ℓ
+
+_⨟ᶠ_≈_ : {{_ : Shiftable Vˢ}} {{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
    {{_ : Foldable Vˢ Cˢ}} {{_ : Foldable Vᵗ Cᵗ}} {{_ : Foldable Vᶠ Cᶠ}} 
-   {{_ : Quotable Cᶠ}} {{_ : Equiv {ℓ₃ = lzero} Vᵗ Vˢ}}{{_ : Equiv Cᵗ Cˢ }}
-   → GSubst Vᶠ → GSubst Vᵗ → GSubst Vˢ → Set (ℓˢ ⊔ ℓᵗ)
+   {{_ : Quotable Cᶠ}} {{_ : Equiv Vᵗ Vˢ}}{{_ : Equiv Cᵗ Cˢ }}
+   → GSubst Vᶠ → GSubst Vᵗ → GSubst Vˢ → Set (levelOfType Cˢ ⊔ levelOfType Cᵗ)
 γ ⨟ᶠ τ ≈ σ = ∀ x → fold τ “ ret (γ x) ” ≈ ret (σ x)
 
 
@@ -83,12 +88,10 @@ Binder V C = (op : Op)
          → Tuple (sig op) (Bind V C)
          → V
 
-ind-hyp : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ : Set}{Cˢ : Set ℓˢ}{Vᵗ : Set}{Cᵗ : Set ℓᵗ}
-   {Vᶠ : Set}{Cᶠ : Set ℓᶠ}
-   {{_ : Shiftable Vˢ}} {{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
+ind-hyp : {{_ : Shiftable Vˢ}} {{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
    {{_ : Foldable Vˢ Cˢ}} {{_ : Foldable Vᵗ Cᵗ}} {{_ : Foldable Vᶠ Cᶠ}} 
    {{_ : Quotable Cᶠ}} {{_ : Equiv Vᵗ Vˢ}}{{_ : Equiv Cᵗ Cˢ }}
-   (k : ℕ) op (b : Sig)(arg : Arg b)
+   (k : ℕ) (op : Op) (b : Sig)(arg : Arg b)
    (rsᶠ : Tuple (sig op) (Bind Vᶠ Cᶠ))
    (rsˢ : Tuple (sig op) (Bind Vˢ Cˢ))
    → Binder Vˢ Cˢ → Binder Vᶠ Cᶠ
@@ -96,7 +99,7 @@ ind-hyp : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ : Set}{Cˢ : Set ℓˢ}{Vᵗ : Set}{Cᵗ 
    → .{ k< : k < length (sig op) }
    → .{ b≤ : (sig→ℕ b) ≤ sig→ℕ (nth (sig op) k {k<}) }
    → (γ : GSubst Vᶠ) (τ : GSubst Vᵗ) (σ : GSubst Vˢ)
-   → Set (ℓˢ ⊔ ℓᵗ)
+   → Set (levelOfType Cˢ ⊔ levelOfType Cᵗ)
 ind-hyp k op b (ast M) rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} γ τ σ =
     γ ⨟ᶠ τ ≈ σ →
     fold τ “ fold γ M ” ≈ fold σ M
@@ -108,9 +111,7 @@ ind-hyp k op (ν b) (bind arg) rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} γ τ
 ind-hyp k op (∁ b) (clear arg) rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} γ τ σ =
     ind-hyp k op b arg rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} id id id
 
-ind-hyps : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ : Set}{Cˢ : Set ℓˢ}{Vᵗ : Set}{Cᵗ : Set ℓᵗ}{Vᶠ : Set}
-   {Cᶠ : Set ℓᶠ}
-   {{_ : Shiftable Vˢ}} {{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
+ind-hyps : {{_ : Shiftable Vˢ}} {{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
    {{_ : Foldable Vˢ Cˢ}} {{_ : Foldable Vᵗ Cᵗ}} {{_ : Foldable Vᶠ Cᶠ}} 
    {{_ : Quotable Cᶠ}} {{_ : Equiv Vᵗ Vˢ}}{{_ : Equiv Cᵗ Cˢ }}
    (pbs : List Sig)(op : Op) (bs : List Sig) (args : Args bs)
@@ -119,7 +120,7 @@ ind-hyps : ∀{ℓˢ ℓᵗ ℓᶠ}{Vˢ : Set}{Cˢ : Set ℓˢ}{Vᵗ : Set}{Cᵗ
    → Binder Vˢ Cˢ → Binder Vᶠ Cᶠ → (Vˢ → Vᵗ)
    → .{ sig=pbs+bs : sig op ≡ pbs ++ bs }
    → (γ : GSubst Vᶠ) (τ : GSubst Vᵗ) (σ : GSubst Vˢ)
-   → Set (ℓˢ ⊔ ℓᵗ)
+   → Set (levelOfType Cˢ ⊔ levelOfType Cᵗ)
 ind-hyps pbs op [] nil rsᶠ rsˢ bindˢ bindᶠ s→t {sig=} γ τ σ = ⊤
 ind-hyps pbs op (b ∷ bs) (cons arg args) rsᶠ rsˢ bindˢ bindᶠ s→t {sig=} γ τ σ =
    ind-hyp (length pbs) op b arg rsᶠ rsˢ bindˢ bindᶠ s→t {pbs<} {b≤} γ τ σ
@@ -135,9 +136,7 @@ ind-hyps pbs op (b ∷ bs) (cons arg args) rsᶠ rsˢ bindˢ bindᶠ s→t {sig=
                        {length-++-< pbs bs b}{pbs<} (sym (≡-rel {eq = sig=})))
        | nth-++ pbs bs b = ≤-refl
 
-fold-fold-fusion : ∀ {ℓˢ ℓᵗ ℓᶠ}{Vˢ : Set}{Cˢ : Set ℓˢ}{Vᵗ : Set}{Cᵗ : Set ℓᵗ}
-   {Vᶠ : Set}{Cᶠ : Set ℓᶠ}
-   {{_ : Shiftable Vˢ}} {{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
+fold-fold-fusion : {{_ : Shiftable Vˢ}}{{_ : Shiftable Vᵗ}} {{_ : Shiftable Vᶠ}}
    {{_ : Foldable Vˢ Cˢ}} {{_ : Foldable Vᵗ Cᵗ}} {{_ : Foldable Vᶠ Cᶠ}} 
    {{_ : Quotable Cᶠ}} {{_ : Equiv Cᵗ Cˢ}}
    {{_ : Similar Vᵗ Vˢ Cᵗ Cˢ}}
@@ -155,7 +154,7 @@ fold-fold-fusion : ∀ {ℓˢ ℓᵗ ℓᶠ}{Vˢ : Set}{Cˢ : Set ℓˢ}{Vᵗ : 
              ≈ fold-op op (fold-args σ args))
    → fold τ “ fold γ M ” ≈ fold σ M
 fold-fold-fusion (` x) γ⨟τ≈σ bindˢ bindᶠ s→t op≈ {- fuse-ext -} = γ⨟τ≈σ x
-fold-fold-fusion {ℓˢ}{ℓᵗ}{ℓᶠ}{Vˢ}{Cˢ}{Vᵗ}{Cᵗ}{Vᶠ}{Cᶠ}{γ}{σ}{τ}
+fold-fold-fusion {Vˢ = Vˢ}{Vᵗ = Vᵗ}{Vᶠ = Vᶠ}{Cˢ = Cˢ}{Cᵗ = Cᵗ}{Cᶠ = Cᶠ}{γ}{σ}{τ}
   (op ⦅ args ⦆) γ⨟τ≈σ bindˢ bindᶠ s→t op≈ {- fuse-ext -} =
   let rsᶠ = fold-args γ args in
   let rsˢ = fold-args σ args in

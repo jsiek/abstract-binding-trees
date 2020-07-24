@@ -1,3 +1,19 @@
+open import Data.Bool using (true; false; if_then_else_) renaming (Bool to 𝔹)
+open import Data.List using (List; []; _∷_; length)
+open import Data.Maybe using (Maybe; nothing; just)
+open import Data.Product
+    using (_×_; proj₁; proj₂; Σ-syntax) renaming (_,_ to ⟨_,_⟩ )
+open import Data.Unit.Polymorphic using (⊤; tt)
+open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
+open import examples.Arith
+open import FoldPreserve Op sig
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Sig
+open import Structures using (lower; lift-lower-id)
+open import Var 
+
+module examples.ArithTypeSafety where
+
 data Type : Set where
   t-nat : Type
   t-bool : Type
@@ -61,9 +77,9 @@ op-pres {op-let} {A = Tᵣ}{As = T₁ ∷̌ T₂ ∷̌ []̆}
         (cons-r (ast-r{c = c} Prhs)
                 (cons-r (bind-r{b}{Δ = Δ}{f = f} Pbody) nil-r))
         ⟨ refl , refl ⟩ =
-    let wtres : (T₁ ∷ Δ) ⊢c f c ⦂ T₂
-        wtres = ⊢ᵣ→⊢c (Pbody {c} (shift-⊢v Prhs) tt) in
-    compress-⊢v wtres
+    compress-⊢v {B = T₁} (⊢ᵣ→⊢c G)
+    where G : Sig.Sig.■ ∣ T₁ ∷ Δ ∣ tt ⊢ᵣ Structures.lift (lower (f c)) ⦂ Tᵣ
+          G rewrite lift-lower-id (f c) = Pbody {c} (shift-⊢v Prhs) tt
 op-pres {op-bool b} nil-r refl = ⊢v-just ⊢-bool
 op-pres {op-if} (cons-r (ast-r Pc) (cons-r (ast-r Pthn)
                                    (cons-r (ast-r Pels) nil-r)))
