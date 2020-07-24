@@ -91,16 +91,6 @@ record ShiftId {ℓ} (V : Set ℓ) {{_ : Equiv V V}} {{S : Shiftable V}}
     field shift-id : ∀ x → (var→val{V = V} x) ≈ (⇑ (var→val x))
 open ShiftId {{...}} public
 
-data Lift (ℓᵛ : Level) {ℓᶜ : Level} (C : Set ℓᶜ) : Set (ℓᵛ ⊔ ℓᶜ) where
-  lift : C → Lift ℓᵛ C
-
-lower : ∀{ℓᵛ ℓᶜ}{C : Set ℓᶜ} → Lift ℓᵛ C → C
-lower (lift c) = c
-
-lift-lower-id : ∀{ℓᵛ ℓᶜ}{C : Set ℓᶜ} (lc : Lift ℓᵛ C)
-  → lift (lower lc) ≡ lc
-lift-lower-id (lift c) = refl
-
 Bind : {ℓᵛ ℓᶜ : Level} → Set ℓᵛ → Set ℓᶜ → Sig → Set (ℓᵛ ⊔ ℓᶜ)
 Bind {ℓᵛ}{ℓᶜ} V C ■ = Lift ℓᵛ C
 Bind V C (ν b) = V → Bind V C b

@@ -1,8 +1,10 @@
+open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Data.Nat using (ℕ; zero; suc; _<_; z≤n; s≤s; _+_)
 open import Data.Empty using (⊥)
 open import Data.Unit.Polymorphic using (⊤)
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Product using (_×_)
+open import Level using (levelOfType)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Sig
 
@@ -11,31 +13,50 @@ module Var where
 Var : Set
 Var = ℕ
 
-_∋_⦂_ : ∀{I : Set} → List I → Var → I → Set
-_∋_⦂_ {I} [] x A = ⊥
-_∋_⦂_ {I} (B ∷ Γ) zero A = A ≡ B
-_∋_⦂_ {I} (B ∷ Γ) (suc x) A = Γ ∋ x ⦂ A
+data Lift (ℓᵛ : Level) {ℓᶜ : Level} (C : Set ℓᶜ) : Set (ℓᵛ ⊔ ℓᶜ) where
+  lift : C → Lift ℓᵛ C
 
-∋x→< : ∀{I : Set}{Γ : List I}{x A} → Γ ∋ x ⦂ A → x < (length Γ)
-∋x→< {I}{B ∷ Γ} {zero} {A} ∋x = s≤s z≤n
-∋x→< {I}{B ∷ Γ} {suc x} {A} ∋x = s≤s (∋x→< {I}{Γ} ∋x)
+lower : ∀{ℓᵛ ℓᶜ}{C : Set ℓᶜ} → Lift ℓᵛ C → C
+lower (lift c) = c
 
-<→∋x : ∀{I : Set}{Γ : List ⊤}{x A} → x < (length Γ) → Γ ∋ x ⦂ A
-<→∋x {I}{B ∷ Γ} {zero} {A} x<Γ = refl
-<→∋x {I}{B ∷ Γ} {suc x} {A} (s≤s x<Γ) = <→∋x {I}{Γ}{x}{A} x<Γ
+lift-lower-id : ∀{ℓᵛ ℓᶜ}{C : Set ℓᶜ} (lc : Lift ℓᵛ C)
+  → lift (lower lc) ≡ lc
+lift-lower-id (lift c) = refl
 
-∋++ : ∀{I}{Γ Δ : List I}{x A} →  Γ ∋ x ⦂ A  → (Δ ++ Γ) ∋ (length Δ + x) ⦂ A  
-∋++ {I}{Γ} {[]} {x} {A} ∋ΔΓ = ∋ΔΓ
-∋++ {I}{Γ} {B ∷ Δ} {x} {A} ∋ΔΓ = ∋++ {I}{Γ}{Δ}{x}{A} ∋ΔΓ
+private
+  variable
+    ℓ : Level
+    I : Set ℓ
+    Γ Δ : List I
+    x : Var
+    A : I
+
+_∋_⦂_ : List I → Var → I → Set (levelOfType I)
+_∋_⦂_ {I = I} [] x A = Lift (levelOfType I) ⊥
+_∋_⦂_ (B ∷ Γ) zero A = A ≡ B
+_∋_⦂_ (B ∷ Γ) (suc x) A = Γ ∋ x ⦂ A
+
+∋x→< : Γ ∋ x ⦂ A → x < (length Γ)
+∋x→< {Γ = []} {x} (lift ())
+∋x→< {Γ = B ∷ Γ} {x = zero} ∋x = s≤s z≤n
+∋x→< {Γ = B ∷ Γ} {x = suc x} ∋x = s≤s (∋x→< {Γ = Γ} ∋x)
+
+<→∋x : ∀{Γ : List {a = lzero} ⊤}{x A} → x < (length Γ) → Γ ∋ x ⦂ A
+<→∋x {Γ = B ∷ Γ} {x = zero} x<Γ = refl
+<→∋x {Γ = B ∷ Γ} {x = suc x} (s≤s x<Γ) = <→∋x {Γ = Γ} x<Γ 
+
+∋++ : Γ ∋ x ⦂ A  → (Δ ++ Γ) ∋ (length Δ + x) ⦂ A  
+∋++ {Δ = []} ∋ΔΓ = ∋ΔΓ
+∋++ {Δ = B ∷ Δ} ∋ΔΓ = ∋++ {Δ = Δ} ∋ΔΓ
 
 {--- types for bound variables ---}
 
-BType : Set → Sig → Set
+BType : ∀{ℓ} → Set ℓ → Sig → Set ℓ
 BType I ■ = ⊤
 BType I (ν b) = I × BType I b
 BType I (∁ b) = BType I b
 
-BTypes : Set → List Sig → Set
+BTypes : ∀{ℓ} → Set ℓ → List Sig → Set ℓ
 BTypes I [] = ⊤
 BTypes I (b ∷ bs) = BType I b × BTypes I bs
 

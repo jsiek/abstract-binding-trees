@@ -15,7 +15,7 @@
  ----------------------------------}
 
 import ABTPredicate
-open import Agda.Primitive using (Level; lzero; lsuc)
+open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; z≤n; s≤s)
@@ -36,12 +36,17 @@ open import Var
 
 module FoldPreserve (Op : Set) (sig : Op → List Sig) where
 
+private
+  variable
+    ℓ ℓᵛ ℓᶜ ℓⁱ : Level
+    V C I : Set ℓ
+
 open import AbstractBindingTree Op sig
 open import Fold Op sig
 open Structures.WithOpSig Op sig
 
-record FoldPreservable (V C I : Set) {{_ : Shiftable V}}
-  : Set₁ where
+record FoldPreservable (V : Set ℓᵛ) (C : Set ℓᶜ) (I : Set ℓⁱ)
+  {{_ : Shiftable V}} : Set (lsuc (ℓᵛ ⊔ ℓᶜ ⊔ ℓⁱ)) where
   field {{VC-Foldable}} : Foldable V C
   field 𝑉 : List I → Var → I → I → Set
         𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set
@@ -128,7 +133,7 @@ fold-preserves {V}{C}{I}{E} (op-p ⊢args Pop) σ⦂ op-pres =
             G {v} ⊢v⦂B 𝐴Mv =
                 pres-arg ⊢arg (λ {x} → ext-pres {v}{σ}{Γ} ⊢v⦂B 𝐴Mv σΓΔ {x})
   pres-arg {b}{Γ}{Δ}{clear arg}{A}{σ} (clear-p ⊢arg) σΓΔ =
-      clear-r (pres-arg {arg = arg} ⊢arg (λ ()))
+      clear-r (pres-arg {arg = arg} ⊢arg λ { (lift ()) _ })
   pres-args {[]} {Γ} {Δ} {nil} {[]̌} ⊢args σΓΔ = nil-r 
   pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷̌ As}
       (cons-p ⊢arg ⊢args) σΓΔ =

@@ -147,7 +147,7 @@ progress : ∀ {M A}
   → [] ⊢ M ⦂ A
     ----------
   → Progress M
-progress (⊢` ())
+progress (⊢` (lift ()))
 progress (⊢ƛ ⊢N _)                          =  done V-ƛ
 progress (⊢· ⊢L ⊢M _)
     with progress ⊢L

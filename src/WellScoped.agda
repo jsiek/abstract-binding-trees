@@ -1,3 +1,4 @@
+open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; z≤n; s≤s; _+_; _≤?_)
 open import Data.Nat.Properties using (≤-trans; ≤-step; +-comm; +-suc; ≤-pred)
@@ -28,7 +29,8 @@ private
   𝑉 : ∀{ℓ} → List {ℓ} ⊤ → Var → ⊤ {ℓ} → ⊤ {ℓ} → Set
   𝑉 = λ Γ x A B → suc x ≤ length Γ
 
-  𝑃 : ∀{ℓ}(op : Op) → Vec{ℓ} ⊤ (length (sig op)) → BTypes ⊤ (sig op) → ⊤ {ℓ}
+  𝑃 : ∀{ℓ}(op : Op) → Vec{ℓ} ⊤ (length (sig op))
+    → BTypes {lzero} ⊤ (sig op) → ⊤ {ℓ}
     → Set
   𝑃 = λ op vs Bs A → ⊤
 
@@ -36,10 +38,10 @@ open import MapPreserve Op sig ⊤ 𝑉 𝑃
 
 open import Map Op sig
 open import Data.Vec using (Vec) renaming ([] to []̆; _∷_ to _∷̆_)
-open import ABTPredicate {I = ⊤} Op sig
+open import ABTPredicate {ℓ = lzero}{I = ⊤} Op sig
   (λ Γ x A B → x < length Γ) (λ op vs Bs A → ⊤)
   hiding (var-p; op-p; ast-p; bind-p; nil-p; cons-p)
-open import ABTPredicate {I = ⊤} Op sig
+open import ABTPredicate {ℓ = lzero} {I = ⊤} Op sig
   (λ Γ x A B → x < length Γ) (λ op vs Bs A → ⊤)
   using ()
   renaming (var-p to WF-var; op-p to WF-op; ast-p to WF-ast; bind-p to WF-bind;
@@ -56,12 +58,12 @@ mk-list (suc n) = tt ∷ mk-list n
 WF : ℕ → ABT → Set
 WF n M = mk-list n ⊢ M ⦂ tt
 
-mk-btype : (b : Sig) → BType ⊤ b
+mk-btype : (b : Sig) → BType {lzero} ⊤ b
 mk-btype ■ = tt
 mk-btype (ν b) = ⟨ tt , (mk-btype b) ⟩
 mk-btype (∁ b) = mk-btype b
 
-mk-btypes : (bs : List Sig) → BTypes ⊤ bs
+mk-btypes : (bs : List Sig) → BTypes {lzero} ⊤ bs
 mk-btypes [] = tt
 mk-btypes (b ∷ bs) = ⟨ mk-btype b , mk-btypes bs ⟩
 
@@ -101,7 +103,7 @@ module _ where
     RenPres = record { _⊢v_⦂_ = λ Γ x A → Γ ∋ x ⦂ A
               ; ⊢v-var→val0 = refl
               ; shift-⊢v = λ z → z
-              ; quote-⊢v = λ {Γ}{x}{tt} ∋x → WF-var ∋x (∋x→< {⊤}{Γ} ∋x)
+              ; quote-⊢v = λ {Γ}{x}{tt} ∋x → WF-var ∋x (∋x→< {Γ = Γ} ∋x)
               ; 𝑉-⊢v = λ { {x}{_}{tt}{tt} le ∋x → ∋x } }
 
   ren-preserve : ∀ {Γ Δ : List ⊤}{σ : Rename}{A : ⊤}{M : ABT}
@@ -113,11 +115,11 @@ module _ where
 
   WFRename→ρ⦂ : ∀{Γ ρ Δ} → WFRename Γ ρ Δ  →  ρ ⦂ mk-list Γ ⇒ mk-list Δ
   WFRename→ρ⦂ {Γ}{ρ}{Δ} wfΓ {x}{tt} ∋x  
-      with ∋x→< {_}{mk-list Γ}{x} ∋x
+      with ∋x→< {Γ = mk-list Γ}{x} ∋x
   ... | x<Γ rewrite len-mk-list {lzero} Γ
       with wfΓ{x} x<Γ
   ... | x<Δ rewrite sym (len-mk-list {lzero} Δ)
-      with <→∋x {⊤}{mk-list Δ} x<Δ 
+      with <→∋x {Γ = mk-list Δ} x<Δ 
   ... | ∋x' rewrite len-mk-list {lzero} Δ = ∋x'
 
   WF-rename : ∀ {Γ Δ ρ M} → WFRename Γ ρ Δ → WF Γ M → WF Δ (rename ρ M)
@@ -145,7 +147,7 @@ module _ where
       where
       σ⦂ : σ ⦂ mk-list Γ ⇒ mk-list Δ
       σ⦂ {x}{tt} ∋x 
-          with ∋x→< {⊤}{mk-list Γ} ∋x
+          with ∋x→< {Γ = mk-list Γ} ∋x
       ... | x<Γ rewrite len-mk-list {lzero} Γ = wfσ{x} x<Γ
 
 open import AbstractBindingTree Op sig
@@ -220,7 +222,7 @@ WF? n (` x)
     with suc x ≤? n
 ... | yes x<n =
       let x<ln = subst (λ □ → x < □) (sym (len-mk-list n)) x<n in
-      yes (WF-var (<→∋x {⊤}{mk-list n} x<ln) x<ln)
+      yes (WF-var (<→∋x {Γ = mk-list n} x<ln) x<ln)
 WF? n (` x) | no ¬x<n = no G
     where G : ¬ WF n (` x)
           G (WF-var ∋x lt) =
