@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K #-}
 {---------------------------------
 
   Fold preserves any ABT predicate

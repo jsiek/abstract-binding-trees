@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K #-}
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (+-comm)
@@ -45,7 +46,7 @@ module ABTOps (Op : Set) (sig : Op → List Sig)  where
           ; quote-var→val₁ = λ x → refl ; quote-map = λ σ₂ v₁ → refl }
 
   sub-up-seq : ∀ k (σ : Subst) → ↑ k ⨟ σ ≡ drop k σ
-  sub-up-seq k σ rewrite up-seq k σ | map-sub-id (drop k σ) = refl
+  sub-up-seq k σ = up-seq k σ
 
   sub-cons-seq : ∀ x σ₁ σ₂ → (x • σ₁) ⨟ σ₂ ≡ ⟪ σ₂ ⟫ x • (σ₁ ⨟ σ₂)
   sub-cons-seq x σ₁ σ₂ rewrite cons-seq x σ₁ σ₂ = refl
@@ -54,7 +55,7 @@ module ABTOps (Op : Set) (sig : Op → List Sig)  where
   sub-head M σ = refl
 
   sub-tail : ∀ (M : ABT) (σ : Subst) → (↑ 1 ⨟ M • σ) ≡ σ
-  sub-tail M σ rewrite sub-up-seq 1 (M • σ) | drop-0 σ = refl
+  sub-tail M σ = sub-up-seq 1 (M • σ)
 
   sub-suc : ∀ (M : ABT) σ x → ⟪ M • σ ⟫ (` suc x) ≡ ⟪ σ ⟫ (` x)
   sub-suc M σ x = refl
@@ -63,7 +64,7 @@ module ABTOps (Op : Set) (sig : Op → List Sig)  where
   shift-eq x k = refl
 
   sub-idL : (σ : Subst) → id ⨟ σ ≡ σ
-  sub-idL σ rewrite sub-up-seq 0 σ | drop-0 σ = refl
+  sub-idL σ = sub-up-seq 0 σ
 
   sub-dist :  ∀ σ τ M → ((M • σ) ⨟ τ) ≡ ((⟪ τ ⟫ M) • (σ ⨟ τ))
   sub-dist σ τ M rewrite sub-cons-seq M σ τ = refl

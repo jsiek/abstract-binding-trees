@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K  #-}
 open import Agda.Primitive using (Level; lzero; lsuc)
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Empty using (⊥)

@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K #-}
 import ABTPredicate
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Nat using (ℕ; zero; suc)

@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K --safe #-}
 open import Data.Nat using (ℕ; zero; suc)
 
 module Sig where

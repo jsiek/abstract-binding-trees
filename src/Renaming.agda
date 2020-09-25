@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K #-}
 {----------------------------------------------------------------------------
                              Renaming
  ---------------------------------------------------------------------------}
@@ -45,7 +46,7 @@ module WithOpSig (Op : Set) (sig : Op → List Sig)  where
                        ; var→val-suc-shift = λ {x} → refl }
 
   ren-up-seq : ∀ (k : ℕ) (ρ : Rename) → ↑ k ⨟ ρ ≡ drop k ρ
-  ren-up-seq k ρ rewrite up-seq k ρ | map-sub-id (drop k ρ) = refl
+  ren-up-seq k ρ = up-seq k ρ
 
   ren-cons-seq : ∀ x (ρ₁ ρ₂ : Rename) → (x • ρ₁) ⨟ ρ₂ ≡ (ρ₂) x • (ρ₁ ⨟ ρ₂)
   ren-cons-seq x ρ₁ ρ₂ rewrite cons-seq x ρ₁ ρ₂ = refl

@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K #-}
 {-
      Fusion of fold and map:
 
