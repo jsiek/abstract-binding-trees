@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K --safe #-}
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.List.Properties using (length-++; ++-assoc; ≡-dec)
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; z≤n; s≤s; _≟_)

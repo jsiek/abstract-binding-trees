@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K #-}
 open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Data.Empty.Irrelevant renaming (⊥-elim to ⊥-elimi)
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; z≤n; s≤s; _+_; _≤?_)

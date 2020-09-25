@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K --safe #-}
 open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Data.Nat using (ℕ; zero; suc; _<_; z≤n; s≤s; _+_)
 open import Data.Empty using (⊥)

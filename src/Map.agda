@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K #-}
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩ )
