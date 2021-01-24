@@ -3,9 +3,11 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit.Polymorphic using (⊤; tt)
+open import Data.Unit renaming (⊤ to Unit; tt to unit)
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
+open import Level using (lift)
 open import Sig
 
 module ScopedTuple where
@@ -101,7 +103,7 @@ map-pres-zip : ∀{ℓ₁ ℓ₂}{bs}{A1 B1 : Scet {ℓ₁}}{A2 B2 : Scet {ℓ�
   → zip (λ{b} → P {b}) {bs} xs ys
   → (∀{b}{x}{y} →  P {b} x y  →  Q (f x) (g y))
   → zip Q (map f xs) (map g ys)
-map-pres-zip {bs = []} {xs = tt} {tt} P Q f g tt pres = tt
+map-pres-zip {bs = []} {xs = tt} {tt} P Q f g tt pres = lift unit
 map-pres-zip {bs = b ∷ bs}{xs = ⟨ x , xs ⟩} {⟨ y , ys ⟩} P Q f g ⟨ z , zs ⟩
     pres =
     ⟨ pres z , map-pres-zip P Q f g zs pres ⟩
