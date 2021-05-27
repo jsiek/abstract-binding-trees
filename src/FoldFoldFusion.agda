@@ -81,7 +81,7 @@ _=ˢ_ : (a : Sig) → (b : Sig) → Dec (a ≡ b)
 ... | no neq = ⊥-elimi (neq eq)
 
 
-Binder : ∀{ℓ} → Set → Set ℓ → Set ℓ
+Binder : ∀{ℓ} → Set ℓ → Set ℓ → Set ℓ
 Binder V C = (op : Op)
          → (i j : ℕ)
          → .{i< : i < length (sig op)}

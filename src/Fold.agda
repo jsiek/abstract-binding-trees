@@ -44,7 +44,7 @@ fold-args : {{_ : Shiftable V}} {{_ : Foldable V C}}
 
 fold σ (` x) = ret (σ x)
 fold σ (op ⦅ args ⦆) = fold-op op (fold-args σ {sig op} args)
-fold-arg σ (ast M) = lift (fold σ M)
+fold-arg σ (ast M) = (fold σ M)
 fold-arg σ (bind arg) v = fold-arg (σ , v) arg
 fold-arg σ (clear arg) = fold-arg id arg
 fold-args σ {[]} nil = tt
@@ -54,8 +54,8 @@ fold-args σ {b ∷ bs} (cons arg args) = ⟨ fold-arg σ arg , fold-args σ arg
  Simulation between two folds
  ------------------------------------------------------------------------------}
 
-_≅_ : {{_ : Equiv V₁ V₂}}
-   (σ₁ : GSubst V₁) (σ₂ : GSubst V₂) → Set (levelOfType V₁ ⊔ levelOfType V₂)
+_≅_ : {ℓ : Level}{V₁ V₂ : Set ℓ} {{_ : Equiv V₁ V₂}}
+   (σ₁ : GSubst V₁) (σ₂ : GSubst V₂) → Set ℓ
 _≅_ σ₁ σ₂ = ∀ x → σ₁ x ≈ σ₂ x
 
 sim-ext : {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{v₁ : V₁}{v₂ : V₂}
@@ -91,7 +91,7 @@ sim (` x) σ₁≅σ₂ = ret≈ (σ₁≅σ₂ x)
 sim {V₁ = V₁}{V₂}{C₁}{C₂}{σ₁}{σ₂} (op ⦅ args ⦆) σ₁≅σ₂ =
     op⩳ (sim-args args σ₁≅σ₂)
 
-sim-arg (ast M) σ₁≊σ₂ = lift (sim M σ₁≊σ₂)
+sim-arg (ast M) σ₁≊σ₂ = sim M σ₁≊σ₂
 sim-arg {b = ν b} (bind arg) σ₁≊σ₂ v₁≈v₂ = 
     sim-arg {b = b} arg (sim-ext σ₁≊σ₂ v₁≈v₂)
 sim-arg (clear arg) σ₁≊σ₂ = sim-arg arg λ x → var→val≈ x
@@ -125,7 +125,7 @@ fv-env γ x = Σ[ y ∈ Var ] fvᵛ (γ y) x
 
 
 fv-bind : {{_ : SyntacticFold V C}} {b : Sig} → Bind V C b → Var → Set
-fv-bind {b = ■} (lift r) x = fvᶜ r x
+fv-bind {b = ■} r x = fvᶜ r x
 fv-bind {b = ν b} r x = fv-bind {b = b} (r (var→val 0)) (suc x)
 fv-bind {b = ∁ b} r x = ⊥
 

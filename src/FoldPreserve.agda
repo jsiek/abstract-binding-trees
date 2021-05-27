@@ -39,15 +39,15 @@ module FoldPreserve (Op : Set) (sig : Op → List Sig) where
 
 private
   variable
-    ℓ ℓᵛ ℓᶜ ℓⁱ : Level
+    ℓ : Level
     V C I : Set ℓ
 
 open import AbstractBindingTree Op sig
 open import Fold Op sig
 open Structures.WithOpSig Op sig
 
-record FoldPreservable (V : Set ℓᵛ) (C : Set ℓᶜ) (I : Set ℓⁱ)
-  {{_ : Shiftable V}} : Set (lsuc (ℓᵛ ⊔ ℓᶜ ⊔ ℓⁱ)) where
+record FoldPreservable (V : Set ℓ) (C : Set ℓ) (I : Set ℓ)
+  {{_ : Shiftable V}} : Set (lsuc ℓ) where
   field {{VC-Foldable}} : Foldable V C
   field 𝑉 : List I → Var → I → I → Set
         𝑃 : (op : Op) → Vec I (length (sig op)) → BTypes I (sig op) → I → Set
@@ -62,10 +62,10 @@ record FoldPreservable (V : Set ℓᵛ) (C : Set ℓᶜ) (I : Set ℓⁱ)
   
 open FoldPreservable {{...}}
 
-data _∣_∣_⊢ᵣ_⦂_ {V C I : Set}
+data _∣_∣_⊢ᵣ_⦂_ {ℓ}{V C I : Set ℓ}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
-  : (b : Sig) → List I → BType I b → Bind V C b → I → Set where
-  ast-r : ∀{Δ}{c}{A}  →  Δ ⊢c c ⦂ A →  ■ ∣ Δ ∣ tt ⊢ᵣ lift c ⦂ A
+  : (b : Sig) → List I → BType I b → Bind V C b → I → Set ℓ where
+  ast-r : ∀{Δ}{c}{A}  →  Δ ⊢c c ⦂ A →  ■ ∣ Δ ∣ tt ⊢ᵣ c ⦂ A
   bind-r : ∀{b A B}{Bs : BType I b}{ Δ f}
         → (∀{v} → (B ∷ Δ) ⊢v v ⦂ B → 𝐴 (B ∷ Δ) v B
                 → b ∣ (B ∷ Δ) ∣ Bs ⊢ᵣ (f v) ⦂ A)
@@ -74,29 +74,29 @@ data _∣_∣_⊢ᵣ_⦂_ {V C I : Set}
         → b ∣ Δ ∣ Bs ⊢ᵣ c ⦂ A
         → ∁ b ∣ Δ ∣ Bs ⊢ᵣ c ⦂ A
 
-⊢ᵣ→⊢c : ∀{V C I : Set}
+⊢ᵣ→⊢c : ∀{ℓ}{V C I : Set ℓ}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
     {Δ : List I}{Bs : ⊤}{c : C}{A}
-    → ■ ∣ Δ ∣ Bs ⊢ᵣ lift c ⦂ A
+    → ■ ∣ Δ ∣ Bs ⊢ᵣ c ⦂ A
     → Δ ⊢c c ⦂ A
 ⊢ᵣ→⊢c {Δ}{Bs}{c}{A} (ast-r ⊢cc) = ⊢cc
 
 
-data _∣_∣_⊢ᵣ₊_⦂_ {V C I : Set}
+data _∣_∣_⊢ᵣ₊_⦂_ {ℓ}{V C I : Set ℓ}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
   : ∀(bs : List Sig) → List I → BTypes I bs
-              → Tuple bs (Bind V C) → Vec I (length bs) → Set where
+              → Tuple bs (Bind V C) → Vec I (length bs) → Set ℓ where
   nil-r : ∀{Δ} → [] ∣ Δ ∣ tt ⊢ᵣ₊ tt ⦂ []̌ 
   cons-r : ∀{b bs r rs Δ A As Bs Bss} → b ∣ Δ ∣ Bs ⊢ᵣ r ⦂ A
       → bs ∣ Δ ∣ Bss ⊢ᵣ₊ rs ⦂ As
       → (b ∷ bs) ∣ Δ ∣ ⟨ Bs , Bss ⟩ ⊢ᵣ₊ ⟨ r , rs ⟩ ⦂ (A ∷̌ As)
 
-_⦂_⇒_ : ∀{V C I : Set}
+_⦂_⇒_ : ∀{ℓ}{V C I : Set ℓ}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
-    → GSubst V → List I → List I → Set
+    → GSubst V → List I → List I → Set ℓ
 σ ⦂ Γ ⇒ Δ = ∀{x A B} → Γ ∋ x ⦂ A  →  𝑉 Γ x A B  →  Δ ⊢v σ x ⦂ B
 
-fold-preserves : ∀{V C I : Set}
+fold-preserves : ∀{ℓ}{V C I : Set ℓ}
     {{_ : Shiftable V}} {{_ : FoldPreservable V C I}}
     {M : ABT}{σ : GSubst V}{Γ Δ : List I}{A : I}
    → Γ ⊢ M ⦂ A
@@ -106,7 +106,7 @@ fold-preserves : ∀{V C I : Set}
        → sig op ∣ Δ ∣ Bs ⊢ᵣ₊ Rs ⦂ As → 𝑃 op As Bs A → Δ ⊢c (fold-op op Rs) ⦂ A)
    → Δ ⊢c fold σ M ⦂ A
 fold-preserves (var-p ∋x Vx) σ⦂ op-pres = ret-pres (σ⦂ ∋x Vx)
-fold-preserves {V}{C}{I}{E} (op-p ⊢args Pop) σ⦂ op-pres =
+fold-preserves {ℓ}{V}{C}{I}{E} (op-p ⊢args Pop) σ⦂ op-pres =
   op-pres (pres-args ⊢args σ⦂) Pop
   where
   ext-pres : ∀{v : V}{σ : GSubst V}{Γ Δ : List I}{A : I}
@@ -134,7 +134,7 @@ fold-preserves {V}{C}{I}{E} (op-p ⊢args Pop) σ⦂ op-pres =
             G {v} ⊢v⦂B 𝐴Mv =
                 pres-arg ⊢arg (λ {x} → ext-pres {v}{σ}{Γ} ⊢v⦂B 𝐴Mv σΓΔ {x})
   pres-arg {b}{Γ}{Δ}{clear arg}{A}{σ} (clear-p ⊢arg) σΓΔ =
-      clear-r (pres-arg {arg = arg} ⊢arg λ { (lift ()) _ })
+      clear-r (pres-arg {arg = arg} ⊢arg λ { () _ })
   pres-args {[]} {Γ} {Δ} {nil} {[]̌} ⊢args σΓΔ = nil-r 
   pres-args {b ∷ bs} {Γ} {Δ} {cons arg args} {A ∷̌ As}
       (cons-p ⊢arg ⊢args) σΓΔ =

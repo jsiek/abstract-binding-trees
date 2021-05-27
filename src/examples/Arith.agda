@@ -94,13 +94,13 @@ eval-op : (op : Op) → Tuple (sig op) (Bind (Maybe Val) (Maybe Val))
         → Maybe Val
 eval-op (op-num n) tt = just (v-num n)
 eval-op op-error tt = nothing
-eval-op op-mult ⟨ lift x , ⟨ lift y , tt ⟩ ⟩ = do
+eval-op op-mult ⟨ x , ⟨ y , tt ⟩ ⟩ = do
    v₁ ← x ; v₂ ← y 
    num? v₁ (λ n → num? v₂ (λ m → just (v-num (n * m))))
-eval-op op-let ⟨ lift mv , ⟨ f , tt ⟩ ⟩ = lower (f mv)
+eval-op op-let ⟨ mv , ⟨ f , tt ⟩ ⟩ = f mv
    {- skipping check on mv, simpler -}
 eval-op (op-bool b) tt = just (v-bool b)
-eval-op op-if ⟨ lift cnd , ⟨ lift thn , ⟨ lift els , tt ⟩ ⟩ ⟩ = do
+eval-op op-if ⟨ cnd , ⟨ thn , ⟨ els , tt ⟩ ⟩ ⟩ = do
    vᶜ ← cnd
    bool? vᶜ (λ b → if b then thn else els)
 

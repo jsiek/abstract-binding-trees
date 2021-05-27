@@ -91,12 +91,12 @@ if-bool? r f g
 pe-op : (op : Op) → Tuple (sig op) (Bind Res Res) → Res
 pe-op (op-num n) tt = val (v-num n)
 pe-op (op-bool b) tt = val (v-bool b)
-pe-op op-mult ⟨ lift mr₁ , ⟨ lift mr₂ , tt ⟩ ⟩ = do
+pe-op op-mult ⟨ mr₁ , ⟨ mr₂ , tt ⟩ ⟩ = do
    if-num? mr₁ (λ n₁ → if-num? mr₂ (λ n₂ →  val (v-num (n₁ * n₂)))
                                  (λ N₂ → exp ($ n₁ ⊗ N₂)))
               (λ N₁ → exp (N₁ ⊗ res→ast mr₂))
-pe-op op-let ⟨ lift mr , ⟨ f , tt ⟩ ⟩ = ⇓ (lower (f (⇑ᵣ mr)))
-pe-op op-if ⟨ lift mrᶜ , ⟨ lift mrᵗ , ⟨ lift mrᵉ , tt ⟩ ⟩ ⟩ = do
+pe-op op-let ⟨ mr , ⟨ f , tt ⟩ ⟩ = ⇓ (f (⇑ᵣ mr))
+pe-op op-if ⟨ mrᶜ , ⟨ mrᵗ , ⟨ mrᵉ , tt ⟩ ⟩ ⟩ = do
    if-bool? mrᶜ (λ b → if b then mrᵗ else mrᵉ)
                 (λ Mᶜ → exp (cond Mᶜ then res→ast mrᵗ else res→ast mrᵉ))
 pe-op op-error tt = exp error
@@ -146,7 +146,7 @@ _≡ᵇ_ {ℓ}{V}{b} = _⩳_{V₁ = V}{V}{V}{V}{b}
 
 ≡ᵇ→≡ : ∀ {V : Set}{b : Sig}{r r' : Bind V V b}
    → _≡ᵇ_{V = V}{b} r r'  →  r ≡ r'
-≡ᵇ→≡ {V}{■} {lift c} {lift c'} (lift refl) = refl
+≡ᵇ→≡ {V}{■} {c} {c'} (refl) = refl
 ≡ᵇ→≡ {V}{ν b} {r} {r'} r≡ᵇr' = extensionality λ x → ≡ᵇ→≡{V}{b} (r≡ᵇr' refl)
 ≡ᵇ→≡ {V}{∁ b} {r} {r'} r≡ᵇr' = ≡ᵇ→≡ {V}{b} r≡ᵇr'
 
@@ -186,7 +186,7 @@ bind-eval : (op : Op) → (i j : ℕ)
     → Tuple (sig op) (Bind (Maybe Val) (Maybe Val)) → (Maybe Val)
 bind-eval op-mult (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 bind-eval op-if (suc (suc (suc i))) j {i<} {j<} rs = ⊥-elimi (bogus43 i<)
-bind-eval op-let (suc zero) zero {i<}{j<} ⟨ lift r , ⟨ f , tt ⟩ ⟩ = r
+bind-eval op-let (suc zero) zero {i<}{j<} ⟨ r , ⟨ f , tt ⟩ ⟩ = r
 bind-eval op-let (suc zero) (suc j) {i<} {j<} rs = ⊥-elimi (bogus21 j<)
 bind-eval op-let (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 
@@ -196,7 +196,7 @@ bind-pe : (op : Op) → (i j : ℕ)
     → Tuple (sig op) (Bind Res Res) → Res
 bind-pe op-mult (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 bind-pe op-if (suc (suc (suc i))) j {i<} {j<} rs = ⊥-elimi (bogus43 i<)
-bind-pe op-let (suc zero) zero {i<}{j<} ⟨ lift r , ⟨ f , tt ⟩ ⟩ = ⇑ᵣ r
+bind-pe op-let (suc zero) zero {i<}{j<} ⟨ r , ⟨ f , tt ⟩ ⟩ = ⇑ᵣ r
 bind-pe op-let (suc zero) (suc j) {i<} {j<} rs = ⊥-elimi (bogus21 j<)
 bind-pe op-let (suc (suc i)) j {i<} {j<} rs = ⊥-elimi (bogus32 i<)
 

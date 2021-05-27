@@ -102,7 +102,7 @@ module _ where
          → zip (λ {b} → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b})
                (fold-args δ (map-args σ args)) (fold-args γ args)
       fuse-arg {b} {σ} {δ} {γ} (ast M) σ⨟δ≈γ =
-          lift (fold-map-fusion-ext M σ⨟δ≈γ env-ext op-cong)
+          fold-map-fusion-ext M σ⨟δ≈γ env-ext op-cong
       fuse-arg {ν b} {σ} {δ} {γ} (bind arg) σ⨟δ≈γ {v₁} v₁≈v₂ =
           fuse-arg {b} arg (env-ext v₁≈v₂ σ⨟δ≈γ) 
       fuse-arg {∁ b} {σ} {δ} {γ} (clear arg) σ⨟δ≈γ =
@@ -139,8 +139,8 @@ module _ where
          → zip (λ {b} → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b})
                (fold-args δ (map-args σ args)) (fold-args γ args)
       fuse-arg {b} {σ} {δ} {γ} (ast M) σ⨟δ≈γ =
-          lift (fold-map-fusion-ext-FV M σ⨟δ≈γ
-                     (λ{b}{arg} → env-ext{b}{arg}) op-cong)
+          fold-map-fusion-ext-FV M σ⨟δ≈γ
+                     (λ{b}{arg} → env-ext{b}{arg}) op-cong
       fuse-arg {ν b} {σ} {δ} {γ} (bind arg) σ⨟δ≈γ v₁≈v₂ =
          fuse-arg {b} arg (env-ext{b}{arg} v₁≈v₂ σ⨟δ≈γ)
       fuse-arg {∁ b} {σ} {δ} {γ} (clear arg) σ⨟δ≈γ = fold-arg-refl arg var→val≈
@@ -187,11 +187,11 @@ module _ where
                       ; var→val≈ = shift-id 
                       ; shift≈ = λ v₁≈⇑v₂ → shift≈ v₁≈⇑v₂ }
                       
-record FoldShift {ℓᵛ ℓᶜ} (V : Set ℓᵛ) (C : Set ℓᶜ)
+record FoldShift {ℓ} (V : Set ℓ) (C : Set ℓ)
   {{_ : Equiv V V}} {{_ : Equiv C C}}
   {{_ : Shiftable V}} {{_ : Shiftable C}}
   {{_ : Foldable V C}} 
-  : Set (ℓᵛ ⊔ ℓᶜ) where
+  : Set ℓ where
   field shift-ret : ∀ (v : V) → ret (⇑ v) ≡ ⇑ (ret v)
         op-shift : ∀ {op} {rs↑ rs : Tuple (sig op) (Bind V C)}
           → zip (λ {b} → _⩳_ {{≈⇑-Equiv}}{{≈⇑-Equiv}} {b = b}) rs↑ rs

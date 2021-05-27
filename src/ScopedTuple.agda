@@ -7,7 +7,6 @@ open import Data.Unit renaming (⊤ to Unit; tt to unit)
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
-open import Level using (lift)
 open import Sig
 
 module ScopedTuple where
@@ -16,14 +15,14 @@ module ScopedTuple where
 Scet : {ℓ : Level} → Set (lsuc ℓ)
 Scet {ℓ} = Sig → Set ℓ
 
-_⇨_ : {ℓ₁ ℓ₂ : Level} → Scet {ℓ₁} → Scet {ℓ₂} → Set (ℓ₁ ⊔ ℓ₂)
+_⇨_ : {ℓ : Level} → Scet {ℓ} → Scet {ℓ} → Set ℓ
 A ⇨ B = (∀ {b : Sig} → A b → B b)
 
 𝒫 : {ℓ : Level} → Scet {ℓ} → Set (lsuc ℓ)
 𝒫 {ℓ} A = (∀ {b : Sig} → A b → Set ℓ)
 
-_✖_ : {ℓ₁ ℓ₂ : Level} → Scet {ℓ₁} → Scet {ℓ₂} → Set (lsuc (ℓ₁ ⊔ ℓ₂))
-_✖_ {ℓ₁}{ℓ₂} A B = (∀ {b : Sig} → A b → B b → Set (ℓ₁ ⊔ ℓ₂))
+_✖_ : {ℓ : Level} → Scet {ℓ} → Scet {ℓ} → Set (lsuc ℓ)
+_✖_ {ℓ} A B = (∀ {b : Sig} → A b → B b → Set ℓ)
 
 Sigs : Set
 Sigs = List Sig
@@ -32,8 +31,8 @@ Tuple : {ℓ : Level} → Sigs → Scet {ℓ} → Set ℓ
 Tuple [] A = ⊤
 Tuple (b ∷ bs) A = A b × Tuple bs A
 
-map : ∀{ℓ ℓ′ : Level}{A : Scet {ℓ}}{B : Scet {ℓ′}} → (A ⇨ B) → {bs : Sigs}
-   → Tuple {ℓ} bs A → Tuple {ℓ′} bs B
+map : ∀{ℓ : Level}{A : Scet {ℓ}}{B : Scet {ℓ}} → (A ⇨ B) → {bs : Sigs}
+   → Tuple {ℓ} bs A → Tuple {ℓ} bs B
 map f {[]} ⊤ = tt
 map f {b ∷ bs} ⟨ x , xs ⟩ = ⟨ f x , map f xs ⟩
 
@@ -46,8 +45,8 @@ all : ∀{A} → 𝒫 A → {bs : Sigs} → Tuple bs A → Set
 all {A} P {[]} tt = ⊤
 all {A} P {b ∷ bs} ⟨ x , xs ⟩ = P x × (all P xs)
 
-zip : ∀{ℓ₁}{ℓ₂}{A B} → _✖_ {ℓ₁}{ℓ₂} A B → {bs : Sigs}
-   → Tuple bs A → Tuple bs B → Set (ℓ₁ ⊔ ℓ₂)
+zip : ∀{ℓ}{A B} → _✖_ {ℓ} A B → {bs : Sigs}
+   → Tuple bs A → Tuple bs B → Set ℓ
 zip R {[]} tt tt = ⊤
 zip R {b ∷ bs} ⟨ a₁ , as₁ ⟩ ⟨ a₂ , as₂ ⟩ = R a₁ a₂ × zip R as₁ as₂
 
@@ -77,8 +76,6 @@ tuple-pred {A} {P} P× f {x ∷ bs} ⟨ fst , snd ⟩ base step =
     step (f x fst) (tuple-pred P× f snd base step)
 
 
-
-
 all-intro : ∀{A : Scet} → (P : 𝒫 A)
   → (∀ {b} (a : A b) → P {b} a)
   → {bs : Sigs} → (xs : Tuple bs A)
@@ -98,12 +95,12 @@ zip-intro {A} {B} R f {[]} tt tt = tt
 zip-intro {A} {B} R f {b ∷ bs} ⟨ x , xs ⟩ ⟨ y , ys ⟩ =
     ⟨ (f x y) , (zip-intro R f xs ys) ⟩
 
-map-pres-zip : ∀{ℓ₁ ℓ₂}{bs}{A1 B1 : Scet {ℓ₁}}{A2 B2 : Scet {ℓ₂}} {xs ys}
+map-pres-zip : ∀{ℓ}{bs}{A1 B1 : Scet {ℓ}}{A2 B2 : Scet {ℓ}} {xs ys}
   → (P : A1 ✖ B1) → (Q : A2 ✖ B2) → (f : A1 ⇨ A2) → (g : B1 ⇨ B2)
   → zip (λ{b} → P {b}) {bs} xs ys
   → (∀{b}{x}{y} →  P {b} x y  →  Q (f x) (g y))
   → zip Q (map f xs) (map g ys)
-map-pres-zip {bs = []} {xs = tt} {tt} P Q f g tt pres = lift unit
+map-pres-zip {bs = []} {xs = tt} {tt} P Q f g tt pres = tt
 map-pres-zip {bs = b ∷ bs}{xs = ⟨ x , xs ⟩} {⟨ y , ys ⟩} P Q f g ⟨ z , zs ⟩
     pres =
     ⟨ pres z , map-pres-zip P Q f g zs pres ⟩
@@ -149,7 +146,7 @@ zip→rel {bs = b ∷ bs} {xs = ⟨ x , xs ⟩} {⟨ y , ys ⟩} R R× L ⟨ z ,
     let IH = zip→rel {bs = bs} {xs = xs} {ys} R R× L zs in
     Lift-Rel-Tuple.step L z IH
 
-zip-map→rel  : ∀{ℓ₁ ℓ₂}{bs}{A1 B1 : Scet {ℓ₁}}{A2 B2 : Scet {ℓ₂}}{xs ys}
+zip-map→rel  : ∀{ℓ}{bs}{A1 B1 : Scet {ℓ}}{A2 B2 : Scet {ℓ}}{xs ys}
   → (P : A1 ✖ B1)  →  (Q : A2 ✖ B2)
   → (R : ∀ {bs} → Tuple bs A2 → Tuple bs B2 → Set)
   → (f : A1 ⇨ A2)  →  (g : B1 ⇨ B2)

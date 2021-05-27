@@ -92,8 +92,14 @@ record ShiftId {ℓ} (V : Set ℓ) {{_ : Equiv V V}} {{S : Shiftable V}}
     field shift-id : ∀ x → (var→val{V = V} x) ≈ (⇑ (var→val x))
 open ShiftId {{...}} public
 
+{-
 Bind : {ℓᵛ ℓᶜ : Level} → Set ℓᵛ → Set ℓᶜ → Sig → Set (ℓᵛ ⊔ ℓᶜ)
 Bind {ℓᵛ}{ℓᶜ} V C ■ = Lift ℓᵛ C
+Bind V C (ν b) = V → Bind V C b
+Bind V C (∁ b) = Bind V C b
+-}
+Bind : {ℓ : Level} → Set ℓ → Set ℓ → Sig → Set ℓ
+Bind V C ■ = C
 Bind V C (ν b) = V → Bind V C b
 Bind V C (∁ b) = Bind V C b
 
@@ -101,30 +107,29 @@ Bind V C (∁ b) = Bind V C b
  Equivalence of Bind's based on equivalence of V's and C's.
  -}
 
-_⩳_  : ∀ {ℓᵛ₁ ℓᵛ₂ ℓᶜ₁ ℓᶜ₂ : Level} {V₁ : Set ℓᵛ₁}{V₂ : Set ℓᵛ₂}
-     {C₁ : Set ℓᶜ₁}{C₂ : Set ℓᶜ₂}
+_⩳_  : ∀ {ℓ : Level} {V₁ : Set ℓ}{V₂ : Set ℓ}
+     {C₁ : Set ℓ}{C₂ : Set ℓ}
      {{EqV : Equiv V₁ V₂}} {{EqC : Equiv C₁ C₂}}
    → (Bind V₁ C₁) ✖ (Bind V₂ C₂)
-_⩳_ {ℓᵛ₁}{ℓᵛ₂}{ℓᶜ₁}{ℓᶜ₂}{b = ■} (lift c₁) (lift c₂) =
-    Lift (ℓᵛ₁ ⊔ ℓᵛ₂) (c₁ ≈ c₂)
+_⩳_ {ℓ}{b = ■} c₁ c₂ = c₁ ≈ c₂
 _⩳_ {V₁ = V₁}{V₂}{C₁}{C₂}{{R}}{b = ν b} r₁ r₂ =
   ∀{v₁ : V₁}{v₂ : V₂} → v₁ ≈ v₂ → _⩳_ {b = b} (r₁ v₁) (r₂ v₂)
 _⩳_ {b = ∁ b} r₁ r₂ = _⩳_ {b = b} r₁ r₂ 
 
 module WithOpSig (Op : Set) (sig : Op → List Sig) where
 
-  record Foldable {ℓᵛ ℓᶜ : Level}(V : Set ℓᵛ)(C : Set ℓᶜ) : Set (lsuc (ℓᵛ ⊔ ℓᶜ))
+  record Foldable {ℓ : Level}(V : Set ℓ)(C : Set ℓ) : Set ℓ
       where
     field ret : V → C
-          fold-op : (op : Op) → Tuple {ℓᵛ ⊔ ℓᶜ} (sig op) (Bind V C) → C
+          fold-op : (op : Op) → Tuple {ℓ} (sig op) (Bind V C) → C
   open Foldable {{...}} public
 
-  record Similar {ℓᵛ₁ ℓᶜ₁ ℓᵛ₂ ℓᶜ₂} (V₁ : Set ℓᵛ₁)(V₂ : Set ℓᵛ₂)
-    (C₁ : Set ℓᶜ₁)(C₂ : Set ℓᶜ₂)
+  record Similar {ℓ} (V₁ : Set ℓ)(V₂ : Set ℓ)
+    (C₁ : Set ℓ)(C₂ : Set ℓ)
     {{SV1 : Shiftable V₁}} {{SV2 : Shiftable V₂}}
     {{F1 : Foldable V₁ C₁}} {{F2 : Foldable V₂ C₂}}
     {{EqC : Equiv C₁ C₂}}
-        : Set (lsuc (ℓᵛ₁ ⊔ ℓᵛ₂ ⊔ ℓᶜ₁ ⊔ ℓᶜ₂)) where
+        : Set (lsuc ℓ) where
     field {{rel}} : Relatable V₁ V₂
     field ret≈ : ∀{v₁ : V₁}{v₂ : V₂} → v₁ ≈ v₂ → (Foldable.ret F1 v₁) ≈ (ret v₂)
     field op⩳ : ∀{op}{rs₁ : Tuple (sig op) (Bind V₁ C₁)}
@@ -133,8 +138,8 @@ module WithOpSig (Op : Set) (sig : Op → List Sig) where
               → fold-op op rs₁ ≈ fold-op op rs₂
   open Similar {{...}} public
 
-  record SyntacticFold {ℓᵛ ℓᶜ : Level}(V : Set ℓᵛ)(C : Set ℓᶜ)
-    : Set (lsuc (ℓᵛ ⊔ ℓᶜ)) where
+  record SyntacticFold {ℓ : Level}(V : Set ℓ)(C : Set ℓ)
+    : Set (lsuc ℓ) where
     field {{V-shiftable}} : Shiftable V
           {{foldable}} : Foldable V C
           fvᵛ : V → Var → Set
