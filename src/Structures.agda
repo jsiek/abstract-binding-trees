@@ -10,6 +10,30 @@ open import Var
 
 module Structures where
 
+
+{-
+
+  A Shiftable thing of type V may contain variable occurences (de
+  Bruijn indices) that need to be shifted up by one when they go
+  underneath a variable binder. Thus, the operations on Shiftable
+  things are:
+
+  1. ⇑ v        to shift all the variables in v up by one.
+  2. var→val x  to inject the variable x into a V.
+  
+  Also, we require that incrementing a variable x and then injecting it into
+  V is equal to injecting it into V and then shifting the result.
+
+  var→val (suc x) ≡ ⇑ (var→val x)
+
+  Examples of Shiftable things:
+
+     * Variables (shifting increments the variable, injecting is the identity)
+     * Terms (shifting applies a renaming to the term, injecting wraps
+              the variable in the term constructors for variables)
+     * Maybe ℕ (shifting does nothing; variables get mapped to `nothing`)
+
+-}
 record Shiftable {ℓ} (V : Set ℓ) : Set ℓ where
   field ⇑ : V → V
         var→val : Var → V
@@ -39,15 +63,15 @@ _⨟_ : ∀{ℓ}{V₁ V₂ V₃ : Set ℓ} {{_ : Shiftable V₁}} {{_ : Composab
      → (Var → V₁) → (Var → V₂) → (Var → V₃)
 (σ₁ ⨟ σ₂) x = ⌈ σ₂ ⌉ (σ₁ x)
 
-record Equiv {ℓ₁ ℓ₂} (V₁ : Set ℓ₁)(V₂ : Set ℓ₂) : Set (lsuc (ℓ₁ ⊔ ℓ₂)) where
-  field _≈_ : V₁ → V₂ → Set (ℓ₁ ⊔ ℓ₂)
+record Equiv {ℓ} (V₁ : Set ℓ)(V₂ : Set ℓ) : Set (lsuc ℓ) where
+  field _≈_ : V₁ → V₂ → Set ℓ
 open Equiv {{...}} public
 
 instance
   ≡-Var-is-Equiv : Equiv Var Var
   ≡-Var-is-Equiv = record { _≈_ = _≡_ }
 
-record EquivRel {ℓ} (V : Set ℓ) {{_ : Equiv V V}} : Set (lsuc ℓ) where
+record EquivRel {ℓ} (V : Set ℓ) {{_ : Equiv {ℓ} V V}} : Set ℓ where
   field ≈-refl : ∀ (v : V) → v ≈ v
         ≈-sym : ∀ {u v : V} → u ≈ v → v ≈ u
         ≈-trans : ∀ {u v w : V} → u ≈ v → v ≈ w → u ≈ w
@@ -56,21 +80,23 @@ open EquivRel {{...}} public
 infixr 2 _≈⟨⟩_ _≈⟨_⟩_
 infix  3 _≈∎
 
-_≈⟨⟩_ : ∀ {ℓ}{A : Set ℓ} {{_ : Equiv A A}} {{_ : EquivRel A}} (x : A) {y : A} 
+_≈⟨⟩_ : ∀ {ℓ}{A : Set ℓ} {{_ : Equiv{ℓ} A A}} {{_ : EquivRel A}}
+    (x : A) {y : A} 
   → x ≡ y
     -----
   → x ≈ y
 x ≈⟨⟩ refl  =  ≈-refl x
 
-_≈⟨_⟩_ : ∀ {ℓ}{A : Set ℓ} {{_ : Equiv A A}} {{_ : EquivRel A}} (x : A) {y z : A}
-  → x ≈ y
-  → y ≈ z
-    -----
+_≈⟨_⟩_ : ∀ {ℓ}{A : Set ℓ} {{_ : Equiv{ℓ} A A}} {{_ : EquivRel A}}
+    (x : A) {y z : A}
+  → x ≈ y  →  y ≈ z
+    ---------------
   → x ≈ z
 x ≈⟨ x≈y ⟩ y≈z  =  ≈-trans x≈y y≈z
 
-_≈∎ : ∀ {ℓ}{A : Set ℓ} {{_ : Equiv A A}} {{_ : EquivRel A}} (x : A)
-    -----
+_≈∎ : ∀ {ℓ}{A : Set ℓ} {{_ : Equiv{ℓ} A A}} {{_ : EquivRel A}}
+    (x : A)
+    -------
   → x ≈ x
 x ≈∎  =  ≈-refl x
 
@@ -80,14 +106,14 @@ instance
       ; ≈-sym = λ { {u}{v} refl → refl }
       ; ≈-trans = λ { {u}{v}{w} refl refl → refl } }
 
-record Relatable {ℓ₁ ℓ₂} (V₁ : Set ℓ₁) (V₂ : Set ℓ₂)
-    {{_ : Shiftable V₁}} {{_ : Shiftable V₂}} : Set (lsuc (ℓ₁ ⊔ ℓ₂)) where
-    field {{eq}} : Equiv {ℓ₁}{ℓ₂} V₁ V₂
+record Relatable {ℓ} (V₁ : Set ℓ) (V₂ : Set ℓ)
+    {{_ : Shiftable V₁}} {{_ : Shiftable V₂}} : Set (lsuc ℓ) where
+    field {{eq}} : Equiv {ℓ} V₁ V₂
           var→val≈ : ∀ x → (var→val{V = V₁} x) ≈ (var→val{V = V₂} x)
           shift≈ : ∀{v₁ : V₁}{v₂ : V₂} → v₁ ≈ v₂ → (⇑ v₁) ≈ (⇑ v₂)
 open Relatable {{...}} public
 
-record ShiftId {ℓ} (V : Set ℓ) {{_ : Equiv V V}} {{S : Shiftable V}} 
+record ShiftId {ℓ} (V : Set ℓ) {{_ : Equiv{ℓ} V V}} {{S : Shiftable V}} 
     : Set ℓ where
     field shift-id : ∀ x → (var→val{V = V} x) ≈ (⇑ (var→val x))
 open ShiftId {{...}} public
@@ -107,9 +133,8 @@ Bind V C (∁ b) = Bind V C b
  Equivalence of Bind's based on equivalence of V's and C's.
  -}
 
-_⩳_  : ∀ {ℓ : Level} {V₁ : Set ℓ}{V₂ : Set ℓ}
-     {C₁ : Set ℓ}{C₂ : Set ℓ}
-     {{EqV : Equiv V₁ V₂}} {{EqC : Equiv C₁ C₂}}
+_⩳_  : ∀ {ℓ} {V₁ V₂ : Set ℓ} {C₁ C₂ : Set ℓ}
+     {{EqV : Equiv{ℓ} V₁ V₂}} {{EqC : Equiv{ℓ} C₁ C₂}}
    → (Bind V₁ C₁) ✖ (Bind V₂ C₂)
 _⩳_ {ℓ}{b = ■} c₁ c₂ = c₁ ≈ c₂
 _⩳_ {V₁ = V₁}{V₂}{C₁}{C₂}{{R}}{b = ν b} r₁ r₂ =
@@ -128,7 +153,7 @@ module WithOpSig (Op : Set) (sig : Op → List Sig) where
     (C₁ : Set ℓ)(C₂ : Set ℓ)
     {{SV1 : Shiftable V₁}} {{SV2 : Shiftable V₂}}
     {{F1 : Foldable V₁ C₁}} {{F2 : Foldable V₂ C₂}}
-    {{EqC : Equiv C₁ C₂}}
+    {{EqC : Equiv{ℓ} C₁ C₂}}
         : Set (lsuc ℓ) where
     field {{rel}} : Relatable V₁ V₂
     field ret≈ : ∀{v₁ : V₁}{v₂ : V₂} → v₁ ≈ v₂ → (Foldable.ret F1 v₁) ≈ (ret v₂)

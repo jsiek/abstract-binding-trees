@@ -29,8 +29,10 @@ ext : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} → GSubst V → GSubst V
 ext σ = (var→val 0) • ⟰ σ
 
 {- obsolete, use • instead -}
+{-
 _,_ : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} → GSubst V → V → GSubst V
 (σ , v) = v • ⟰ σ
+-}
 
 drop : ∀{ℓ}{V : Set ℓ} → (k : ℕ) → GSubst V → GSubst V
 drop k σ x = σ (k + x)

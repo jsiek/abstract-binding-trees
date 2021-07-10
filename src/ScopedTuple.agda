@@ -45,7 +45,7 @@ all : ∀{A} → 𝒫 A → {bs : Sigs} → Tuple bs A → Set
 all {A} P {[]} tt = ⊤
 all {A} P {b ∷ bs} ⟨ x , xs ⟩ = P x × (all P xs)
 
-zip : ∀{ℓ}{A B} → _✖_ {ℓ} A B → {bs : Sigs}
+zip : ∀{ℓ}{A B : Scet {ℓ}} → A ✖ B → {bs : Sigs}
    → Tuple bs A → Tuple bs B → Set ℓ
 zip R {[]} tt tt = ⊤
 zip R {b ∷ bs} ⟨ a₁ , as₁ ⟩ ⟨ a₂ , as₂ ⟩ = R a₁ a₂ × zip R as₁ as₂
@@ -100,7 +100,7 @@ map-pres-zip : ∀{ℓ}{bs}{A1 B1 : Scet {ℓ}}{A2 B2 : Scet {ℓ}} {xs ys}
   → zip (λ{b} → P {b}) {bs} xs ys
   → (∀{b}{x}{y} →  P {b} x y  →  Q (f x) (g y))
   → zip Q (map f xs) (map g ys)
-map-pres-zip {bs = []} {xs = tt} {tt} P Q f g tt pres = tt
+map-pres-zip {ℓ}{bs = []} P Q f g tt pres = tt
 map-pres-zip {bs = b ∷ bs}{xs = ⟨ x , xs ⟩} {⟨ y , ys ⟩} P Q f g ⟨ z , zs ⟩
     pres =
     ⟨ pres z , map-pres-zip P Q f g zs pres ⟩
@@ -161,7 +161,8 @@ map-compose-zip : ∀{ℓ}{A B C C′ : Scet{ℓ}}
    {xs : Tuple bs A}
    → (∀ {b : Sig} x → R {b} (g (f x)) (h x))
    → zip R (map g (map f xs)) (map h xs)
-map-compose-zip {bs = []} {R} {tt} gf=h = tt
+map-compose-zip {bs = []} gf=h = tt
 map-compose-zip {bs = b ∷ bs} {R} {⟨ x , xs ⟩} gf=h =
     ⟨ (gf=h x) , (map-compose-zip gf=h) ⟩
+
 

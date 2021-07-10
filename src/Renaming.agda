@@ -111,7 +111,7 @@ module WithOpSig (Op : Set) (sig : Op → List Sig)  where
         → FV-args args y → FV-args (ren-args ρ args) (ρ y)
     fvr-arg ρ ■ (ast M) y fvarg = FV-rename-fwd ρ M y fvarg
     fvr-arg ρ (ν b) (bind arg) y fvarg =
-        fvr-arg (ρ , (var→val 0)) b arg (suc y) fvarg
+        fvr-arg ((var→val 0) • ⟰ ρ) b arg (suc y) fvarg
     fvr-arg ρ (∁ b) (clear arg) y ()
     fvr-args ρ [] nil y ()
     fvr-args ρ (b ∷ bs) (cons arg args) y (inj₁ fvargy) =

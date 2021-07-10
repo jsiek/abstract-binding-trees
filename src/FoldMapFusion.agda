@@ -46,7 +46,7 @@ open Structures.WithOpSig Op sig
 private
   variable
     ℓ : Level
-    Vᵐ Vᶠ Cᶠ A V C : Set ℓ
+    Vᵐ Vᶠ Cᶠ : Set ℓ
 
 _⨟_⩰_ : {{_ : Shiftable Vᵐ}} {{_ : Quotable Vᵐ}}
     {{_ : Shiftable Vᶠ}} {{_ : Foldable Vᶠ Cᶠ}}
@@ -177,18 +177,18 @@ module _ where
         G : ret (⇑ (σ₁ (ρ x))) ≈ ret (⇑ (σ₂ x))
         G rewrite shift-ret (σ₁ (ρ x)) | shift-ret (σ₂ x) = shift≈ (prem x)
 
-≈⇑-Equiv : ∀{ℓ}{A : Set ℓ} {{_ : Equiv A A}} {{_ : Shiftable A}} 
-            → Equiv {ℓ}{ℓ} A A
+≈⇑-Equiv : ∀{ℓ}{A : Set ℓ} {{_ : Equiv{ℓ} A A}} {{_ : Shiftable A}} 
+            → Equiv {ℓ} A A
 ≈⇑-Equiv = record { _≈_ = (λ c c' → c ≈ (⇑ c')) }
   
-≈⇑-Relatable : {{_ : Shiftable A}} {{_ : Relatable A A}} {{_ : ShiftId A}}
+≈⇑-Relatable : ∀{ℓ}{A}{{_ : Shiftable{ℓ} A}} {{_ : Relatable{ℓ} A A}} {{_ : ShiftId A}}
    → Relatable A A
 ≈⇑-Relatable = record { eq = ≈⇑-Equiv
                       ; var→val≈ = shift-id 
                       ; shift≈ = λ v₁≈⇑v₂ → shift≈ v₁≈⇑v₂ }
                       
 record FoldShift {ℓ} (V : Set ℓ) (C : Set ℓ)
-  {{_ : Equiv V V}} {{_ : Equiv C C}}
+  {{_ : Equiv{ℓ} V V}} {{_ : Equiv{ℓ} C C}}
   {{_ : Shiftable V}} {{_ : Shiftable C}}
   {{_ : Foldable V C}} 
   : Set ℓ where
@@ -198,10 +198,10 @@ record FoldShift {ℓ} (V : Set ℓ) (C : Set ℓ)
           → (fold-op op rs↑) ≈ (⇑ (fold-op op rs))
 open FoldShift {{...}}
   
-≈⇑-Similar : {{_ : Shiftable V}} {{_ : Shiftable C}} {{_ : Foldable V C}}
+≈⇑-Similar : ∀{ℓ}{V C}{{_ : Shiftable V}} {{_ : Shiftable C}} {{_ : Foldable V C}}
     {{_ : Equiv C C}} {{_ : Similar V V C C}}
     {{_ : ShiftId V}} {{_ : FoldShift V C}}
-  → Similar V V C C {{EqC = ≈⇑-Equiv}}
+  → Similar{ℓ} V V C C {{EqC = ≈⇑-Equiv}}
 ≈⇑-Similar {V = V} =
     record { rel = ≈⇑-Relatable {A = V} ; ret≈ = return-≈ ; op⩳ = op-shift }
     where

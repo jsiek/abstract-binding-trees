@@ -97,7 +97,7 @@ map-map-fusion {ℓ}{V₁}{V₂}{V₃} M σ₂○σ₁≈σ₃ =
   map-map-fusion-ext M σ₂○σ₁≈σ₃ mm-fuse-ext
   where
   G : ∀{σ₂ : GSubst V₂} → _○_≈_ {lzero}{ℓ}{ℓ}{Var}
-                         (σ₂ , (var→val 0)) (↑ 1) (⟰ σ₂)
+                         ((var→val 0) • ⟰ σ₂) (↑ 1) (⟰ σ₂)
   G {σ₂} x = refl
   H : ∀{σ₂ : GSubst V₂} → ↑ 1 ○ σ₂ ≈ ⟰ σ₂
   H {σ₂} x rewrite quote-shift{ℓ}{V₂} (σ₂ x) = refl
@@ -106,18 +106,18 @@ map-map-fusion {ℓ}{V₁}{V₂}{V₃} M σ₂○σ₁≈σ₃ =
       → σ₂ ○ σ₁ ≈ σ₃ → ext σ₂ ○ ext σ₁ ≈ ext σ₃
   mm-fuse-ext {σ₁}{σ₂}{σ₃} σ₂○σ₁≈σ₃ zero =
       begin
-          map (σ₂ , (var→val 0)) “ (var→val{ℓ}{V₁} 0) ”
-              ≡⟨ cong (map (σ₂ , (var→val{ℓ}{V₂} 0))) (quote-var→val{ℓ}{V₁} 0) ⟩
-          map (σ₂ , (var→val 0)) (` 0)       ≡⟨⟩
-          “ (σ₂ , (var→val 0)) 0 ”
+          map ((var→val 0) • ⟰ σ₂) “ (var→val{ℓ}{V₁} 0) ”
+              ≡⟨ cong (map ((var→val{ℓ}{V₂} 0) • ⟰ σ₂)) (quote-var→val{ℓ}{V₁} 0) ⟩
+          map ((var→val 0) • ⟰ σ₂) (` 0)       ≡⟨⟩
+          “ ((var→val 0) • ⟰ σ₂) 0 ”
                                         ≡⟨⟩
           “ (var→val{ℓ}{V₂} 0) ”        ≡⟨ (quote-var→val{ℓ}{V₂} 0) ⟩
           ` 0                        ≡⟨ sym (quote-var→val{ℓ}{V₃} 0) ⟩
           “ (var→val{ℓ}{V₃} 0) ”        ∎
   mm-fuse-ext {σ₁}{σ₂}{σ₃} σ₂○σ₁≈σ₃ (suc x) = begin
-      map (σ₂ , (var→val 0)) “ ⇑ (σ₁ x) ”
-              ≡⟨ cong (map (σ₂ , (var→val 0))) (quote-shift{ℓ}{V₁} (σ₁ x)) ⟩
-      map (σ₂ , (var→val 0)) (rename (↑ 1) “ σ₁ x ”)
+      map ((var→val 0) • ⟰ σ₂) “ ⇑ (σ₁ x) ”
+              ≡⟨ cong (map ((var→val 0) • ⟰ σ₂)) (quote-shift{ℓ}{V₁} (σ₁ x)) ⟩
+      map ((var→val 0) • ⟰ σ₂) (rename (↑ 1) “ σ₁ x ”)
                      ≡⟨ map-rename-fusion “ σ₁ x ” G ⟩
       map (⟰ σ₂) “ σ₁ x ”
                               ≡⟨ sym (rename-map-fusion “ σ₁ x ” H) ⟩
