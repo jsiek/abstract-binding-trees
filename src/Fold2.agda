@@ -71,6 +71,8 @@ fold-args f v₀ σ {b ∷ bs} (cons arg args) =
 
 {-------------------------------------------------------------------------------
  Fold-Rename Fusion
+
+ fold f v₀ δ (rename ρ M) ≡ fold f v₀ (λ x → fold f v₀ δ (` ρ x)) M
  ------------------------------------------------------------------------------}
 
 fold-rename-fusion : ∀ {f : ((op : Op) → Tuple (sig op) (ArgTy V) → V)}{v₀ : V}
@@ -113,6 +115,8 @@ fold-rename-fusion {ℓ}{V = V}{f = f}{v₀} {δ} {ρ} (op ⦅ args ⦆) =
 
 {-------------------------------------------------------------------------------
  Fold-Subst Fusion
+
+ fold f v₀ δ (⟪ σ ⟫ M) ≡ fold f v₀ (λ x → fold f v₀ δ (σ x)) M
  ------------------------------------------------------------------------------}
 
 fold-subst-fusion : ∀ {f : ((op : Op) → Tuple (sig op) (ArgTy V) → V)}{v₀ : V}
