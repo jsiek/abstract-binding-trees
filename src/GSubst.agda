@@ -15,7 +15,7 @@ GSubst V = Var → V
 ↑ k x = var→val (k + x)
 
 infixr 6 _•_
-_•_ : ∀{ℓ}{V : Set ℓ}{{_ : Shiftable V}} → V → GSubst V → GSubst V
+_•_ : ∀{ℓ}{V : Set ℓ} → V → GSubst V → GSubst V
 (v • σ) 0 = v
 (v • σ) (suc x) = σ x
 
