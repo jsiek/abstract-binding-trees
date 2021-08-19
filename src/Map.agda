@@ -84,18 +84,18 @@ map-cong : ∀{ℓ}{V₁ : Set ℓ}{V₂ : Set ℓ}
    {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}
    → (M : ABT)
    → σ₁ ≃ σ₂
-   → (∀{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} → σ₁ ≃ σ₂ → ext σ₁ ≃ ext σ₂)
+   → (∀{σ''₁ : GSubst V₁}{σ''₂ : GSubst V₂} → σ''₁ ≃ σ''₂ → ext σ''₁ ≃ ext σ''₂)
    → map σ₁ M ≡ map σ₂ M
 map-cong (` x) σ₁≃σ₂ mc-ext = σ₁≃σ₂ x
-map-cong (op ⦅ args ⦆) σ₁≃σ₂ mc-ext =
+map-cong {V₁ = V₁} {V₂ = V₂} {σ₁ = σ₁} {σ₂ = σ₂} (op ⦅ args ⦆) σ₁≃σ₂ mc-ext =
   cong (_⦅_⦆ op) (mc-args args σ₁≃σ₂)
   where
   mc-arg : ∀{σ₁ σ₂ b} (arg : Arg b) → σ₁ ≃ σ₂
      → map-arg σ₁ arg ≡ map-arg σ₂ arg
   mc-args : ∀{σ₁ σ₂ bs} (args : Args bs) → σ₁ ≃ σ₂
      → map-args σ₁ args ≡ map-args σ₂ args
-  mc-arg (ast M) σ₁≃σ₂ =
-      cong ast (map-cong M σ₁≃σ₂ mc-ext)
+  mc-arg {σ₁ = σ'₁} {σ₂ = σ'₂} {b = b} (ast M) σ₁≃σ₂ =
+      cong ast (map-cong M σ₁≃σ₂ λ {σ₁} {σ₂} → mc-ext {σ₁} {σ₂})
   mc-arg (bind arg) σ₁≃σ₂ =
       cong bind (mc-arg arg (mc-ext σ₁≃σ₂))
   mc-arg (clear arg) σ₁≃σ₂ = refl
