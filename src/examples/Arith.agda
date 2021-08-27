@@ -19,6 +19,7 @@ open import Syntax
   using (Sig; sig→ℕ; ∁; ν; ■; ↑; _•_; ext; id; Rename; Shiftable; Equiv;
          Relatable)
 open import Var
+open import Sig using (Result)
 
 module examples.Arith where
 
@@ -39,18 +40,7 @@ sig op-if = ■ ∷ ■ ∷ ■ ∷ []
 sig op-error = []
 
 open import ScopedTuple using (Tuple; _✖_; zip)
-open import Fold Op sig 
-
-{-
-open import Map Op sig
-open import FoldFoldFusion Op sig
-  renaming (_⨟ᶠ_≈_ to _⨟′_≈_)
-open import MapFusion Op sig using (QuoteShift; ABT-is-QuoteShift)
-open import FoldMapFusion Op sig
-  using (fold-rename-fusion; fold-map-fusion-ext-FV; FoldShift; _⊢_⨟_≈_;
-  _⊢ₐ_⨟_≈_; _⊢₊_⨟_≈_)
-  renaming (_⨟_⩰_ to _′⨟_≈_)
--}
+open import Fold2 Op sig
 
 open import AbstractBindingTree Op sig renaming (ABT to AST)
 pattern $ n  = op-num n ⦅ nil ⦆
@@ -90,7 +80,7 @@ bool? mv f
 ... | _ = nothing
 
 
-eval-op : (op : Op) → Tuple (sig op) (Bind (Maybe Val) (Maybe Val))
+eval-op : (op : Op) → Tuple (sig op) (Result (Maybe Val))
         → Maybe Val
 eval-op (op-num n) tt = just (v-num n)
 eval-op op-error tt = nothing
@@ -106,12 +96,8 @@ eval-op op-if ⟨ cnd , ⟨ thn , ⟨ els , tt ⟩ ⟩ ⟩ = do
 
 open Structures.WithOpSig Op sig
 
-instance
-  MVal-is-Foldable : Foldable (Maybe Val) (Maybe Val)
-  MVal-is-Foldable = record { ret = λ x → x ; fold-op = eval-op }
-
 eval : (Var → Maybe Val) → AST → Maybe Val
-eval = fold
+eval = fold eval-op nothing
 
 evaluate : AST → Maybe Val
 evaluate M = eval (λ x → nothing) M
