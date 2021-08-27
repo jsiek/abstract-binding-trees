@@ -1,4 +1,12 @@
 {-# OPTIONS --without-K #-}
+
+{-
+
+  This fold is going to be replaced by Fold2 once that version catches
+  up to this one.
+
+-}
+
 open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_) renaming (map to lmap)
@@ -45,7 +53,7 @@ fold-args : {{_ : Shiftable V}} {{_ : Foldable V C}}
 fold σ (` x) = ret (σ x)
 fold σ (op ⦅ args ⦆) = fold-op op (fold-args σ {sig op} args)
 fold-arg σ (ast M) = (fold σ M)
-fold-arg σ (bind arg) v = fold-arg (σ , v) arg
+fold-arg σ (bind arg) v = fold-arg (v • ⟰ σ) arg
 fold-arg σ (clear arg) = fold-arg id arg
 fold-args σ {[]} nil = tt
 fold-args σ {b ∷ bs} (cons arg args) = ⟨ fold-arg σ arg , fold-args σ args ⟩
@@ -61,7 +69,7 @@ _≅_ σ₁ σ₂ = ∀ x → σ₁ x ≈ σ₂ x
 sim-ext : {σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{v₁ : V₁}{v₂ : V₂}
   {{_ : Shiftable V₁}} {{_ : Shiftable V₂}}
   {{_ : Relatable V₁ V₂}}
-   → σ₁ ≅ σ₂ → v₁ ≈ v₂ → (σ₁ , v₁) ≅ (σ₂ , v₂)
+   → σ₁ ≅ σ₂ → v₁ ≈ v₂ → (v₁ • ⟰ σ₁) ≅ (v₂ • ⟰ σ₂)
 sim-ext {σ₁} {σ₂} {v₁} {v₂} σ₁≅σ₂ v₁≈v₂ zero = v₁≈v₂
 sim-ext {σ₁} {σ₂} {v₁} {v₂} σ₁≅σ₂ v₁≈v₂ (suc x) = shift≈ (σ₁≅σ₂ x)
     
@@ -150,7 +158,7 @@ FV-fold {V = V}{C} γ (op ⦅ args ⦆) x fv-op fv-fold =
      → fv-bind {b = b} (fold-arg γ arg) x → fv-env γ x
   FV-fold-arg γ (ast M) x fv-fold = FV-fold γ M x fv-op fv-fold
   FV-fold-arg γ (bind arg) x fv-fold 
-      with FV-fold-arg (γ , var→val 0) arg (suc x) fv-fold
+      with FV-fold-arg ((var→val 0) • ⟰ γ) arg (suc x) fv-fold
   ... | ⟨ suc y , fvγ'y ⟩ = ⟨ y , fv-shift (γ y) x fvγ'y ⟩
   ... | ⟨ 0 , fvγ'y ⟩ rewrite fv-var→val {V = V} 0 (suc x)
       with fvγ'y

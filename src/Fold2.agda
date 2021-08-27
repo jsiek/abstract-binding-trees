@@ -38,7 +38,7 @@ private
 
  fold f v₀ σ M
 
- Applies f to every operator node in M and the results of
+ Applies f at every operator node in M to the results of
  recursively folding its subexpressions.
 
  Applies σ to every variable node in M.
@@ -48,17 +48,12 @@ private
 
  ------------------------------------------------------------------------------}
 
-ArgTy : {ℓ : Level} → Set ℓ → Sig → Set ℓ
-ArgTy V ■ = V
-ArgTy V (ν b) = V → ArgTy V b
-ArgTy V (∁ b) = ArgTy V b
-
-fold : ((op : Op) → Tuple (sig op) (ArgTy V) → V)
+fold : ((op : Op) → Tuple (sig op) (Result V) → V)
    → V → GSubst V → ABT → V
-fold-arg : ((op : Op) → Tuple (sig op) (ArgTy V) → V)
-   → V → GSubst V → {b : Sig} → Arg b → ArgTy V b
-fold-args : ((op : Op) → Tuple (sig op) (ArgTy V) → V)
-   → V → GSubst V → {bs : List Sig} → Args bs → Tuple bs (ArgTy V)
+fold-arg : ((op : Op) → Tuple (sig op) (Result V) → V)
+   → V → GSubst V → {b : Sig} → Arg b → Result V b
+fold-args : ((op : Op) → Tuple (sig op) (Result V) → V)
+   → V → GSubst V → {bs : List Sig} → Args bs → Tuple bs (Result V)
 
 fold f v₀ σ (` x) = σ x
 fold f v₀ σ (op ⦅ args ⦆) = f op (fold-args f v₀ σ {sig op} args)
@@ -75,7 +70,7 @@ fold-args f v₀ σ {b ∷ bs} (cons arg args) =
  fold f v₀ δ (rename ρ M) ≡ fold f v₀ (λ x → fold f v₀ δ (` ρ x)) M
  ------------------------------------------------------------------------------}
 
-fold-rename-fusion : ∀ {f : ((op : Op) → Tuple (sig op) (ArgTy V) → V)}{v₀ : V}
+fold-rename-fusion : ∀ {f : ((op : Op) → Tuple (sig op) (Result V) → V)}{v₀ : V}
      {δ : GSubst V}{ρ : Rename}
      (M : ABT)
    → fold f v₀ δ (rename ρ M) ≡ fold f v₀ (λ x → fold f v₀ δ (` ρ x)) M
@@ -119,7 +114,7 @@ fold-rename-fusion {ℓ}{V = V}{f = f}{v₀} {δ} {ρ} (op ⦅ args ⦆) =
  fold f v₀ δ (⟪ σ ⟫ M) ≡ fold f v₀ (λ x → fold f v₀ δ (σ x)) M
  ------------------------------------------------------------------------------}
 
-fold-subst-fusion : ∀ {f : ((op : Op) → Tuple (sig op) (ArgTy V) → V)}{v₀ : V}
+fold-subst-fusion : ∀ {f : ((op : Op) → Tuple (sig op) (Result V) → V)}{v₀ : V}
      {δ : GSubst V}{σ : Subst}
      (M : ABT)
    → fold f v₀ δ (⟪ σ ⟫ M) ≡ fold f v₀ (λ x → fold f v₀ δ (σ x)) M

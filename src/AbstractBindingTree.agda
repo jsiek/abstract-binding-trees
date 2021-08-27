@@ -3,7 +3,7 @@ open import Agda.Primitive using (Level; lzero; lsuc)
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Empty using (⊥)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.List using (List; []; _∷_) renaming (map to lmap)
+open import Data.List using (List; []; _∷_; replicate) renaming (map to lmap)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_; _≟_)
 open import Data.Nat.Properties using (+-suc; +-identityʳ)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
@@ -38,19 +38,6 @@ data Args where
 var-injective : ∀ {x y} → ` x ≡ ` y → x ≡ y
 var-injective refl = refl
 
-{-
-bind-arg : ∀{m} → (n : ℕ) → Arg m → Arg (n + m)
-bind-arg  zero A = A
-bind-arg {m} (suc n) A
-    with bind-arg {suc m} n (bind A)
-... | ih rewrite +-suc n m = ih
-
-bind-ast : ∀(n : ℕ) → ABT → Arg n
-bind-ast n M
-    with bind-arg n (ast M)
-... | A rewrite +-identityʳ n = A
--}
-
 {- Return suc x where x is the largest free variable in a term. -}
 max-var : ABT → ℕ
 max-var-arg : ∀{b} → Arg b → ℕ
@@ -71,6 +58,12 @@ max-var-args (cons arg args) = (max-var-arg arg) ⊔ (max-var-args args)
 map₊ : ∀{bs} → (∀ {b} → Arg b → Arg b) → Args bs → Args bs
 map₊ {[]} f nil = nil
 map₊ {b ∷ bs} f (cons arg args) = cons (f arg) (map₊ f args)
+
+{- todo: generalize away the replicate -}
+append₊ : ∀{n m} → (xs : Args (replicate n ■))
+  → (ys : Args (replicate m ■)) → Args (replicate (n + m) ■)
+append₊ {zero} {m} nil ys = ys
+append₊ {suc n} {m} (cons x xs) ys = cons x (append₊ xs ys)
 
 {- Convert to tuples -}
 

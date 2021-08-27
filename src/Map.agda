@@ -74,7 +74,7 @@ map-map-fusion-ext {V₁ = V₁}{V₂}{V₃} (op ⦅ args ⦆) σ₂○σ₁≈�
 _≃_ : ∀{ℓ}{V₁ : Set ℓ}{V₂ : Set ℓ}
         {{_ : Shiftable V₁}} {{_ : Shiftable V₂}}
         {{_ : Quotable V₁}} {{_ : Quotable V₂}}
-        (σ₂ : GSubst V₂)(σ₁ : GSubst V₁) → Set
+        (σ₁ : GSubst V₁)(σ₂ : GSubst V₂) → Set
 _≃_ σ₁ σ₂ = ∀ x → “ σ₁ x ” ≡ “ σ₂ x ”
 
 {- todo: generalize to map-cong to simulation -}
@@ -87,12 +87,12 @@ map-cong : ∀{ℓ}{V₁ : Set ℓ}{V₂ : Set ℓ}
    → (∀{σ₁ : GSubst V₁}{σ₂ : GSubst V₂} → σ₁ ≃ σ₂ → ext σ₁ ≃ ext σ₂)
    → map σ₁ M ≡ map σ₂ M
 map-cong (` x) σ₁≃σ₂ mc-ext = σ₁≃σ₂ x
-map-cong (op ⦅ args ⦆) σ₁≃σ₂ mc-ext =
+map-cong {ℓ}{V₁}{V₂} (op ⦅ args ⦆) σ₁≃σ₂ mc-ext =
   cong (_⦅_⦆ op) (mc-args args σ₁≃σ₂)
   where
-  mc-arg : ∀{σ₁ σ₂ b} (arg : Arg b) → σ₁ ≃ σ₂
+  mc-arg : ∀{σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{b} (arg : Arg b) → σ₁ ≃ σ₂
      → map-arg σ₁ arg ≡ map-arg σ₂ arg
-  mc-args : ∀{σ₁ σ₂ bs} (args : Args bs) → σ₁ ≃ σ₂
+  mc-args : ∀{σ₁ : GSubst V₁}{σ₂ : GSubst V₂}{bs} (args : Args bs) → σ₁ ≃ σ₂
      → map-args σ₁ args ≡ map-args σ₂ args
   mc-arg (ast M) σ₁≃σ₂ =
       cong ast (map-cong M σ₁≃σ₂ mc-ext)
@@ -100,7 +100,7 @@ map-cong (op ⦅ args ⦆) σ₁≃σ₂ mc-ext =
       cong bind (mc-arg arg (mc-ext σ₁≃σ₂))
   mc-arg (clear arg) σ₁≃σ₂ = refl
   mc-args {bs = []} nil σ₁≃σ₂ = refl
-  mc-args {bs = b ∷ bs} (cons arg args) σ₁≃σ₂ =
+  mc-args {σ₁}{σ₂} {b ∷ bs} (cons arg args) σ₁≃σ₂ =
       cong₂ cons (mc-arg arg σ₁≃σ₂) (mc-args args σ₁≃σ₂)
 
 _⊢_≃_ : ∀{ℓ}{V₁ : Set ℓ}{V₂ : Set ℓ}

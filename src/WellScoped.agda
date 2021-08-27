@@ -59,6 +59,9 @@ mk-list (suc n) = tt ∷ mk-list n
 WF : ℕ → ABT → Set
 WF n M = mk-list n ⊢ M ⦂ tt
 
+not-WF-0-var : ∀{x} → ¬ WF 0 (` x)
+not-WF-0-var {x} (WF-var () _)
+
 mk-btype : (b : Sig) → BType {lzero} ⊤ b
 mk-btype ■ = tt
 mk-btype (ν b) = ⟨ tt , (mk-btype b) ⟩
