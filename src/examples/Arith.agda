@@ -17,9 +17,8 @@ open Eq.≡-Reasoning
 open import Structures
 open import Syntax
   using (Sig; sig→ℕ; ∁; ν; ■; ↑; _•_; ext; id; Rename; Shiftable; Equiv;
-         Relatable)
+         Relatable; Result)
 open import Var
-open import Sig using (Result)
 
 module examples.Arith where
 
