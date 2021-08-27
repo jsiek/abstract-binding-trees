@@ -113,7 +113,7 @@ fold-preserves {ℓ}{V}{C}{I}{E} (op-p ⊢args Pop) σ⦂ op-pres =
      → (A ∷ Δ) ⊢v v ⦂ A
      → 𝐴 (A ∷ Δ) v A
      → σ ⦂ Γ ⇒ Δ
-     → (σ , v) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+     → (v • ⟰ σ) ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
   ext-pres {v}{σ} ⊢v⦂ Av σ⦂ {zero}{A}{B} refl V0 = 𝑉-⊢v V0 ⊢v⦂
   ext-pres {v}{σ} ⊢v⦂ Av σ⦂ {suc x}{A}{B} ∋x Vsx = shift-⊢v (σ⦂ ∋x (prev-𝑉 Vsx))
   

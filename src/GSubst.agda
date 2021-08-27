@@ -28,7 +28,7 @@ id = ↑ 0
 ext : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} → GSubst V → GSubst V
 ext σ = (var→val 0) • ⟰ σ
 
-{- obsolete, use • instead -}
+{- obsolete, use (v • ⟰ σ) instead of (σ , v) -}
 {-
 _,_ : ∀{ℓ}{V : Set ℓ} {{_ : Shiftable V}} → GSubst V → V → GSubst V
 (σ , v) = v • ⟰ σ

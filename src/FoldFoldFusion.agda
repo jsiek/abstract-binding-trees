@@ -106,9 +106,9 @@ ind-hyp k op b (ast M) rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} γ τ σ =
     fold τ “ fold γ M ” ≈ fold σ M
 ind-hyp k op (ν b) (bind arg) rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} γ τ σ =
     ind-hyp k op b arg rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {≤-trans (≤-step ≤-refl) b≤}
-       (γ , bindᶠ op k (sig→ℕ b) {k<} {b≤} rsᶠ)
-       (τ , s→t (bindˢ op k (sig→ℕ b) {k<}{b≤} rsˢ))
-       (σ , bindˢ op k (sig→ℕ b) {k<} {b≤} rsˢ)
+       ((bindᶠ op k (sig→ℕ b) {k<} {b≤} rsᶠ) • ⟰ γ)
+       ((s→t (bindˢ op k (sig→ℕ b) {k<}{b≤} rsˢ)) • ⟰ τ)
+       ((bindˢ op k (sig→ℕ b) {k<} {b≤} rsˢ) • ⟰ σ)
 ind-hyp k op (∁ b) (clear arg) rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} γ τ σ =
     ind-hyp k op b arg rsᶠ rsˢ bindˢ bindᶠ s→t {k<} {b≤} id id id
 
@@ -171,9 +171,9 @@ fold-fold-fusion {Vˢ = Vˢ}{Vᵗ = Vᵗ}{Vᶠ = Vᶠ}{Cˢ = Cˢ}{Cᵗ = Cᵗ}{C
   fuse-arg {γ}{σ}{τ} k op b (ast M) rsᶠ rsˢ γ⨟τ≈σ =
       fold-fold-fusion M γ⨟τ≈σ bindˢ bindᶠ s→t op≈
   fuse-arg {γ}{σ}{τ} k op (ν b) (bind arg) rsᶠ rsˢ {k<} {b≤} =
-      fuse-arg {γ , bindᶠ op k (sig→ℕ b) {k<} {b≤} rsᶠ}
-               {σ , bindˢ op k (sig→ℕ b) {k<} {b≤} rsˢ}
-               {τ , s→t (bindˢ op k (sig→ℕ b) {k<} {b≤} rsˢ)}
+      fuse-arg {(bindᶠ op k (sig→ℕ b) {k<} {b≤} rsᶠ) • ⟰ γ}
+               {(bindˢ op k (sig→ℕ b) {k<} {b≤} rsˢ) • ⟰ σ}
+               {(s→t (bindˢ op k (sig→ℕ b) {k<} {b≤} rsˢ)) • ⟰ τ}
                k op b arg rsᶠ rsˢ {k<} {b≤′}
       where
       b≤′ : sig→ℕ b ≤ sig→ℕ (nth (sig op) k)

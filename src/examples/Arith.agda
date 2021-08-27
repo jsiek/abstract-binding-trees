@@ -16,7 +16,7 @@ open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app)
 open Eq.≡-Reasoning
 open import Structures
 open import Syntax
-  using (Sig; sig→ℕ; ∁; ν; ■; ↑; _•_; _,_; ext; id; Rename; Shiftable; Equiv;
+  using (Sig; sig→ℕ; ∁; ν; ■; ↑; _•_; ext; id; Rename; Shiftable; Equiv;
          Relatable)
 open import Var
 

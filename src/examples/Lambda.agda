@@ -7,6 +7,7 @@
 -}
 
 import Syntax
+open import Level using (lift)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )

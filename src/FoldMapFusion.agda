@@ -83,7 +83,7 @@ module _ where
        (M : ABT)
      → σ ⨟ δ ⩰ γ
      → (∀{σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}{v₁ v₂ : Vᶠ}
-         → v₁ ≈ v₂ → σ ⨟ δ ⩰ γ → ext σ ⨟ (δ , v₁) ⩰ (γ , v₂))
+         → v₁ ≈ v₂ → σ ⨟ δ ⩰ γ → ext σ ⨟ (v₁ • ⟰ δ) ⩰ (v₂ • ⟰ γ))
      → (∀{op}{rs rs′ : Tuple (sig op) (Bind Vᶠ Cᶠ)}
            → zip (λ {b} → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b}) rs rs′
            → fold-op op rs ≈ fold-op op rs′)
@@ -121,7 +121,7 @@ module _ where
      → (∀{b}{arg : Arg b}{σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}{v₁ v₂ : Vᶠ}
          → v₁ ≈ v₂
          → bind arg ⊢ₐ σ ⨟ δ ≈ γ
-         → arg ⊢ₐ ext σ ⨟ (δ , v₁) ≈ (γ , v₂))
+         → arg ⊢ₐ ext σ ⨟ (v₁ • ⟰ δ) ≈ (v₂ • ⟰ γ))
      → (∀{op}{rs rs′ : Tuple (sig op) (Bind Vᶠ Cᶠ)}
            → zip (λ {b} → _⩳_{V₁ = Vᶠ}{Vᶠ}{Cᶠ}{Cᶠ}{b}) rs rs′
            → fold-op op rs ≈ fold-op op rs′)
@@ -169,7 +169,7 @@ module _ where
     where
     ext-env : ∀{ρ : Rename}{σ₁ σ₂ : GSubst Vᶠ}{v₁ v₂ : Vᶠ}
        → v₁ ≈ v₂ → ρ ⨟ σ₁ ⩰ σ₂
-       → ext ρ ⨟ (σ₁ , v₁) ⩰ (σ₂ , v₂)
+       → ext ρ ⨟ (v₁ • ⟰ σ₁) ⩰ (v₂ • ⟰ σ₂)
     ext-env {ρ} {σ₁} {σ₂} {v₁}{v₂} v₁≈v₂ prem zero = ret≈ v₁≈v₂
     ext-env {ρ} {σ₁} {σ₂} {v₁}{v₂} v₁≈v₂ prem (suc x) =
         G
@@ -236,12 +236,12 @@ fold-map-fusion {Vᵐ = Vᵐ}{Vᶠ = Vᶠ}{Cᶠ = Cᶠ} M σ⨟δ≈γ op-cong =
   where
   ext-pres : ∀{σ : GSubst Vᵐ}{δ γ : GSubst Vᶠ}{v₁ v₂ : Vᶠ}
       → v₁ ≈ v₂ → σ ⨟ δ ⩰ γ
-      → (ext σ) ⨟ (δ , v₁) ⩰ (γ , v₂)
+      → (ext σ) ⨟ (v₁ • ⟰ δ) ⩰ (v₂ • ⟰ γ)
   ext-pres v₁≈v₂ σ⨟δ≈γ zero rewrite quote-var→val{V = Vᵐ} 0 =
       ret≈ v₁≈v₂
   ext-pres {σ}{δ}{γ}{v₁}{v₂} v₁≈v₂ σ⨟δ≈γ (suc x)
       rewrite quote-shift (σ x) | shift-ret (γ x) =
-          fold {C = Cᶠ} (δ , v₁) (rename (↑ 1) “ σ x ”)
+          fold {C = Cᶠ} (v₁ • ⟰ δ) (rename (↑ 1) “ σ x ”)
       ≈⟨ fold-rename-fusion “ σ x ” G op-cong shift-ret ⟩
           fold (⟰ δ) “ σ x ”
       ≈⟨ fold-shift δ (⟰ δ) “ σ x ” (λ x → shift≈ (≈-refl (δ x))) ⟩
@@ -250,7 +250,7 @@ fold-map-fusion {Vᵐ = Vᵐ}{Vᶠ = Vᶠ}{Cᶠ = Cᶠ} M σ⨟δ≈γ op-cong =
           ⇑ (ret (γ x))
       ≈∎
       where
-      G : _⨟_⩰_{Vᵐ = Var}{Vᶠ = Vᶠ}{Cᶠ = Cᶠ} (↑ 1) (δ , v₁) (⟰ δ)
+      G : _⨟_⩰_{Vᵐ = Var}{Vᶠ = Vᶠ}{Cᶠ = Cᶠ} (↑ 1) (v₁ • ⟰ δ) (⟰ δ)
       G x = ret≈ (≈-refl _)
 
 fold-subst-fusion : {{_ : Shiftable Vᶠ}} {{_ : Shiftable Cᶠ}}
