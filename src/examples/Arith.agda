@@ -41,7 +41,7 @@ sig op-error = []
 open import ScopedTuple using (Tuple; _✖_; zip)
 open import Fold2 Op sig
 
-open import AbstractBindingTree Op sig renaming (ABT to AST)
+open import AbstractBindingTree Op sig renaming (ABT to AST) public
 pattern $ n  = op-num n ⦅ nil ⦆
 pattern # b  = op-bool b ⦅ nil ⦆
 infixl 7  _⊗_
