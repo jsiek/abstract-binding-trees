@@ -61,6 +61,13 @@ _⦂_⇒_ : ∀{V : Set}
    → GSubst V → List I → List I → Set
 _⦂_⇒_ {V} σ Γ Δ = ∀{x : Var} {A : I} → Γ ∋ x ⦂ A  →  Δ ⊢v σ x ⦂ A
 
+ext-pres : ∀ {V : Set} {σ : GSubst V} {Γ Δ : List I} {A : I}
+             {{_ : Quotable V}} {{_ : Shiftable V}} {{_ : MapPreservable V}}
+  → σ     ⦂ Γ       ⇒ Δ
+  → ext σ ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+ext-pres {σ = σ} σ⦂ {zero} refl = ⊢v-var→val0
+ext-pres {σ = σ} σ⦂ {suc x} ∋x = shift-⊢v (σ⦂ ∋x)
+
 preserve-map : ∀ {V : Set}{Γ Δ : List I}{σ : GSubst V}{A : I}
    {{_ : Quotable V}} {{_ : Shiftable V}} {{_ : MapPreservable V}}
    (M : ABT)
@@ -72,11 +79,6 @@ preserve-map {V}{Γ}{Δ}{σ}{A}(` x) (var-p {A = B} ∋x 𝑉x) σ⦂ =
 preserve-map {V} (op ⦅ args ⦆) (op-p ⊢args Pop) σ⦂ =
     op-p (pres-args ⊢args σ⦂) Pop
     where
-    map-pres-ext : ∀ {σ : GSubst V}{Γ Δ : List I}{A : I}
-       → σ ⦂ Γ ⇒ Δ  →  ext σ ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
-    map-pres-ext {σ = σ} σ⦂ {zero} refl = ⊢v-var→val0 
-    map-pres-ext {σ = σ} σ⦂ {suc x} ∋x = shift-⊢v (σ⦂ ∋x)
-   
     pres-arg : ∀{b Γ Δ}{arg : Arg b}{A σ Bs}
        → b ∣ Γ ∣ Bs ⊢ₐ arg ⦂ A → σ ⦂ Γ ⇒ Δ
        → b ∣ Δ ∣ Bs ⊢ₐ map-arg σ {b} arg ⦂ A
@@ -86,7 +88,7 @@ preserve-map {V} (op ⦅ args ⦆) (op-p ⊢args Pop) σ⦂ =
     pres-arg {b} {arg = ast M} (ast-p ⊢M) σ⦂ =
         ast-p (preserve-map M ⊢M σ⦂)
     pres-arg {ν b}{Γ}{Δ}{bind arg}{σ = σ} (bind-p {B = B}{A = A} ⊢arg) σ⦂ =
-        bind-p (pres-arg ⊢arg (λ{x}{A} → map-pres-ext{σ}{Γ}{Δ} σ⦂ {x}{A}))
+        bind-p (pres-arg ⊢arg (λ{x}{A} → ext-pres {V}{σ}{Γ}{Δ} σ⦂ {x}{A}))
     pres-arg {b} {arg = clear arg} (clear-p ⊢arg) σ⦂ = clear-p ⊢arg
     pres-args {[]} {args = nil} nil-p σ⦂ = nil-p
     pres-args {b ∷ bs} {args = cons arg args} (cons-p ⊢arg ⊢args) σ⦂ =
