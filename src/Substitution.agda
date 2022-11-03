@@ -96,7 +96,10 @@ module ABTOps (Op : Set) (sig : Op → List Sig)  where
 
   rename→subst≃ : (ρ : Rename) → ρ ≃ rename→subst ρ
   rename→subst≃ ρ x = refl
-  
+
+  rename→subst-ext : ∀ ρ → rename→subst (ext ρ) ≡ ext (rename→subst ρ)
+  rename→subst-ext ρ = extensionality λ { 0 → refl ; (suc x) → refl }
+
   rename-subst : ∀ ρ M → rename ρ M ≡ ⟪ rename→subst ρ ⟫ M
   rename-subst ρ M = map-cong M (rename→subst≃ ρ) MCE 
       where
@@ -147,6 +150,12 @@ module ABTOps (Op : Set) (sig : Op → List Sig)  where
   sub-idR : ∀ (σ : Subst) → σ ⨟ id ≡ σ 
   sub-idR σ = extensionality (λ _ → sub-id)
 
+  0•↑1-id : ` 0 • ↑ 1 ≡ id
+  0•↑1-id = extensionality λ { 0 → refl ; (suc x) → refl }
+
+  sub-0•↑1 : ∀ M → ⟪ ` 0 • ↑ 1 ⟫ M ≡ M
+  sub-0•↑1 M rewrite 0•↑1-id = sub-id
+
   exts-0 : ∀ (σ : Subst) → (ext σ) 0 ≡ ` 0
   exts-0 σ = refl
 
@@ -166,7 +175,7 @@ module ABTOps (Op : Set) (sig : Op → List Sig)  where
   subst-zero M = M • id
 
   _[_] : ABT → ABT → ABT
-  N [ M ] =  ⟪ M • id ⟫ N
+  N [ M ] =  ⟪ subst-zero M ⟫ N
   
   subst-zero-exts-cons : ∀{σ : Subst}{M : ABT} → ext σ ⨟ subst-zero M ≡ M • σ
   subst-zero-exts-cons {σ}{M} = begin
