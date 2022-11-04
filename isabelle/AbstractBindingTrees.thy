@@ -58,6 +58,9 @@ end
 interpretation var_s: substable "Var 0" "Suc" "\<lambda> x. x" "Var"
   by unfold_locales auto
 
+abbreviation extr :: "var sub \<Rightarrow> var sub" where
+  "extr \<rho> \<equiv> var_s.ext \<rho>"
+
 abbreviation shift :: "('op ABT) sub" ("\<up>") where
   "\<up> x \<equiv> Var (Suc x)"
 
@@ -70,6 +73,9 @@ abbreviation rename :: "var sub \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT" whe
 interpretation abt_s: substable "Var 0" "rename Suc" "Var" "\<lambda> x. x"
   by unfold_locales auto
  
+abbreviation exts :: "('op ABT) sub \<Rightarrow> ('op ABT) sub" where
+  "exts \<sigma> \<equiv> abt_s.ext \<sigma>"
+
 abbreviation subst :: "('op ABT) sub \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT" ("\<llangle>_\<rrangle>") where
   "\<llangle> \<sigma> \<rrangle> \<equiv> abt_s.map_abt \<sigma>"
 
@@ -83,8 +89,17 @@ fun subst_zero :: "'op ABT \<Rightarrow> var \<Rightarrow> 'op ABT" where
 abbreviation subst_one :: "'op ABT \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT" ("_[_]" 70) where
   "subst_one N M \<equiv> \<llangle> subst_zero M \<rrangle> N"
 
-abbreviation seq :: "('op ABT) sub \<Rightarrow> ('op ABT) sub \<Rightarrow> ('op ABT) sub" ("_;_") where
+abbreviation seqss :: "('op ABT) sub \<Rightarrow> ('op ABT) sub \<Rightarrow> ('op ABT) sub" ("_;_") where
   "(\<sigma> ; \<tau>) x \<equiv> \<llangle>\<tau>\<rrangle> (\<sigma> x)"
+
+abbreviation seqrs :: "var sub \<Rightarrow> ('op ABT) sub \<Rightarrow> ('op ABT) sub" ("_r;_") where
+  "(\<rho> r; \<tau>) x \<equiv> \<tau> (\<rho> x)"
+
+abbreviation seqsr :: "('op ABT) sub \<Rightarrow> var sub \<Rightarrow> ('op ABT) sub" ("_;r_") where
+  "(\<sigma> ;r \<rho>) x \<equiv> rename \<rho> (\<sigma> x)"
+
+abbreviation seqrr :: "var sub \<Rightarrow> var sub \<Rightarrow> var sub" ("_r;r_") where
+  "(\<sigma> r;r \<rho>) x \<equiv> \<rho> (\<sigma> x)"
 
 abbreviation id :: "('op ABT) sub" where
   "id x \<equiv> Var x"
@@ -189,17 +204,17 @@ interpretation ren_sub:
   by unfold_locales auto
 
 lemma cong_ext:
- "ren_sub.cong \<sigma> \<tau> \<Longrightarrow> ren_sub.cong (var_s.ext \<sigma>) (abt_s.ext \<tau>)"
+ "ren_sub.cong \<sigma> \<tau> \<Longrightarrow> ren_sub.cong (extr \<sigma>) (exts \<tau>)"
 proof clarify
   fix x
   assume st: "ren_sub.cong \<sigma> \<tau>" 
-  show "\<lceil>var_s.ext \<sigma>\<rceil> x = (abt_s.ext \<tau>) x" 
+  show "\<lceil>extr \<sigma>\<rceil> x = (abt_s.ext \<tau>) x" 
   proof (cases x)
     case 0
     then show ?thesis by simp
   next
     case (Suc y)
-    with Suc have "\<lceil>var_s.ext \<sigma>\<rceil> x = Var (Suc (\<sigma> y))" by simp
+    with Suc have "\<lceil>extr \<sigma>\<rceil> x = Var (Suc (\<sigma> y))" by simp
     also have "... = rename Suc (Var (\<sigma> y))" by simp
     also have "... = rename Suc (\<tau> y)" using st by simp
     also have "... = abt_s.ext \<tau> x" using Suc by simp
@@ -219,16 +234,15 @@ locale substable3 = S1: substable trm s1 v2v1 q1 + S2: substable trm s2 v2v2 q2
     for trm and s1 and v2v1 and q1 and s2 and q2 and v2v2 and s3 and q3 and v2v3
 begin
 
+(*   (\<sigma> ; \<tau>) = \<rho>    *)
 abbreviation comp_cong :: "'c sub \<Rightarrow> 'b sub \<Rightarrow> 'd sub \<Rightarrow> bool" where
   "comp_cong \<tau> \<sigma> \<rho> \<equiv> \<forall> x. S2.map_abt \<tau> (q1 (\<sigma> x)) = q3 (\<rho> x)"
 
 abbreviation map_fusion_P1 :: "'a ABT \<Rightarrow> bool" where
-  "map_fusion_P1 M \<equiv> \<forall> \<sigma> \<tau> \<rho>.
-             comp_cong \<tau> \<sigma> \<rho> 
+  "map_fusion_P1 M \<equiv> \<forall> \<sigma> \<tau> \<rho>. comp_cong \<tau> \<sigma> \<rho> 
         \<longrightarrow> S2.map_abt \<tau> (S1.map_abt \<sigma> M) = S3.map_abt \<rho> M"
 abbreviation map_fusion_P2 :: "'a Arg \<Rightarrow> bool" where
-  "map_fusion_P2 M \<equiv> \<forall> \<sigma> \<tau> \<rho>.
-             comp_cong \<tau> \<sigma> \<rho> 
+  "map_fusion_P2 M \<equiv> \<forall> \<sigma> \<tau> \<rho>. comp_cong \<tau> \<sigma> \<rho> 
         \<longrightarrow> S2.map_arg \<tau> (S1.map_arg \<sigma> M) = S3.map_arg \<rho> M"
 
 lemma map_fusion_aux: 
@@ -254,8 +268,10 @@ interpretation rss:
   substable3 "Var 0" Suc "\<lambda>x. x" Var "rename Suc" "\<lambda>x. x" Var "rename Suc" "\<lambda>x. x" Var
   by unfold_locales 
 
-lemma rss_comp_cong_ext: "rss.comp_cong \<tau> \<sigma> \<rho> \<Longrightarrow>
-       rss.comp_cong (abt_s.ext \<tau>) (var_s.ext \<sigma>) (abt_s.ext \<rho>)"
+lemma rsscc_eq_seqrs[simp]: "(\<rho> r; \<sigma> = \<tau>) = (rss.comp_cong \<sigma> \<rho> \<tau>)" by auto
+
+lemma rss_comp_cong_ext: "\<rho> r; \<sigma> = \<tau> \<Longrightarrow>
+       rss.comp_cong (abt_s.ext \<sigma>) (extr \<rho>) (abt_s.ext \<tau>)"
   apply simp apply clarify
   apply (case_tac x)
    apply simp
@@ -263,10 +279,10 @@ lemma rss_comp_cong_ext: "rss.comp_cong \<tau> \<sigma> \<rho> \<Longrightarrow>
   done
 
 theorem map_rename_fusion:
-  assumes 1: "rss.comp_cong \<sigma> \<rho> \<tau>"
+  assumes 1: "\<rho> r; \<sigma> = \<tau>"
   shows "\<llangle>\<sigma>\<rrangle> (rename \<rho> M) = \<llangle>\<tau>\<rrangle> M"
   apply (rule rss.map_fusion)
-  using 1 apply fast
+  using 1 apply force
   using rss_comp_cong_ext apply auto
   done
 
@@ -275,7 +291,7 @@ interpretation rrr:
   by unfold_locales 
 
 lemma rrr_comp_cong_ext: "(\<forall> x. \<tau> (\<sigma> x) = \<rho> x) \<Longrightarrow>
-        (var_s.ext \<tau>) ((var_s.ext \<sigma>) x) = (var_s.ext \<rho>) x"
+        (extr \<tau>) ((extr \<sigma>) x) = (extr \<rho>) x"
   apply (case_tac x)
    apply simp
   apply simp
@@ -296,33 +312,24 @@ interpretation srs:
   "rename Suc" "\<lambda> x. x" Var
   by unfold_locales
 
+lemma srscc_eq_seqsr[simp]: "(\<sigma> ;r \<rho> = \<tau>) = (srs.comp_cong \<rho> \<sigma> \<tau>)" by auto
+
 lemma srs_comp_cong_ext: fixes x :: var
-  assumes cc: "srs.comp_cong \<rho> \<sigma> \<tau>"
-  shows "rename (var_s.ext \<rho>) (abt_s.ext \<sigma> x) = abt_s.ext \<tau> x"
+  assumes cc: "\<sigma> ;r \<rho> = \<tau>"
+  shows "rename (extr \<rho>) (exts \<sigma> x) = exts \<tau> x"
 proof (cases x)
   case 0
   then show ?thesis by simp
 next
   case (Suc y)
-  have 1: "\<forall>x. var_s.ext \<rho> (Suc x) = var_s.ext \<rho> (Suc x)"
-    apply auto done
-  have 2: " \<forall>x. var_s.lift_sub \<rho> x = var_s.lift_sub \<rho> x" by simp
-  (* why didn't calculation reasoning work here? -Jeremy *)
-  from Suc have 8: "rename (var_s.ext \<rho>) (abt_s.ext \<sigma> x) 
-        = rename (var_s.ext \<rho>) (rename Suc (\<sigma> y))" by simp
-  from 1 have 3: "rename (var_s.ext \<rho>) (rename Suc (\<sigma> y)) 
-          = rename (\<lambda> x. (var_s.ext \<rho>) (Suc x)) (\<sigma> y)"
-    using rename_fusion[of "(var_s.ext \<rho>)" Suc "(\<lambda> x. (var_s.ext \<rho>) (Suc x))"] by fast
-  have 4: "rename (\<lambda> x. (var_s.ext \<rho>) (Suc x)) (\<sigma> y) 
-          = rename (var_s.lift_sub \<rho>) (\<sigma> y)" by simp
-  have 5: "rename (var_s.lift_sub \<rho>) (\<sigma> y) 
-          = rename (\<lambda> x. Suc (\<rho> x)) (\<sigma> y)" by simp
-  from 2 have 6: "rename (\<lambda> x. Suc (\<rho> x)) (\<sigma> y)
-          = rename Suc (rename \<rho> (\<sigma> y))"
-    using rename_fusion[of Suc \<rho> "\<lambda> x. Suc (\<rho> x)" "\<sigma> y"] by auto
-  have 7: "rename Suc (rename \<rho> (\<sigma> y)) 
-           = abt_s.ext \<tau> x" using Suc cc by auto
-  show ?thesis using 8 3 4 5 6 7 by simp
+  have            "rename (extr \<rho>) (exts \<sigma> x) 
+                 = rename (extr \<rho>) (rename Suc (\<sigma> y))" using Suc by simp
+  also have "... = rename (\<lambda> x. (extr \<rho>) (Suc x)) (\<sigma> y)" using rename_fusion[of "(extr \<rho>)" Suc "(\<lambda> x. (extr \<rho>) (Suc x))"] by fast
+  also have "... = rename (\<lambda> x. Suc (\<rho> x)) (\<sigma> y)" by simp
+  also have "... = rename Suc (rename \<rho> (\<sigma> y))" using rename_fusion[of Suc \<rho> "\<lambda> x. Suc (\<rho> x)" "\<sigma> y"] by auto
+  also have "... = rename Suc (\<tau> y)" using cc by auto
+  also have "... = exts \<tau> x" using Suc by simp
+  finally show ?thesis .
 qed
 
 theorem rename_map_fusion:
