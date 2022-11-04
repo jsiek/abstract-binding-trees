@@ -181,26 +181,6 @@ theorem map_cong: assumes 1: "\<sigma> \<cong> \<tau>" and 2: "\<And> \<sigma> \
   shows "L.map_abt \<sigma> M = R.map_abt \<tau> M"
   using 1 2 map_cong_aux[of M] by blast
 
-abbreviation map_fusion_P1 :: "'a ABT \<Rightarrow> bool" where
-  "map_fusion_P1 M \<equiv> \<forall> \<sigma> \<tau>. R.map_abt \<tau> (L.map_abt \<sigma> M) = \<llangle>\<lambda> x. R.map_abt \<tau> (q (\<sigma> x))\<rrangle> M"
-
-abbreviation map_fusion_P2 :: "'a Arg \<Rightarrow> bool" where
-  "map_fusion_P2 A \<equiv> \<forall> \<sigma> \<tau>. R.map_arg \<tau> (L.map_arg \<sigma> A) 
-                          = abt_s.map_arg (\<lambda> x. R.map_abt \<tau> (q (\<sigma> x))) A"
-
-
-lemma map_fusion_aux: "map_fusion_P1 M"
-  apply (induction M rule: ABT.induct[of map_fusion_P1 map_fusion_P2])
-     apply force
-  apply force
-  apply force
-  apply auto
-  sorry
-
-theorem map_fusion:
-  shows "R.map_abt \<tau> (L.map_abt \<sigma> M) = \<llangle>\<lambda> x. R.map_abt \<tau> (q (\<sigma> x))\<rrangle> M"
-  using map_fusion_aux by blast
-
 end
 (*********************** end substable2 ****************************************)
 
@@ -232,6 +212,129 @@ theorem rename_subst: "rename \<rho> M = \<llangle> \<lceil> \<rho> \<rceil> \<r
    apply force
   using cong_ext apply blast
   done
+
+(********************** locale substable3 **************************************)
+locale substable3 = S1: substable trm s1 v2v1 q1 + S2: substable trm s2 v2v2 q2
+    + S3: substable trm s3 v2v3 q3
+    for trm and s1 and v2v1 and q1 and s2 and q2 and v2v2 and s3 and q3 and v2v3
+begin
+
+abbreviation comp_cong :: "'c sub \<Rightarrow> 'b sub \<Rightarrow> 'd sub \<Rightarrow> bool" where
+  "comp_cong \<tau> \<sigma> \<rho> \<equiv> \<forall> x. S2.map_abt \<tau> (q1 (\<sigma> x)) = q3 (\<rho> x)"
+
+abbreviation map_fusion_P1 :: "'a ABT \<Rightarrow> bool" where
+  "map_fusion_P1 M \<equiv> \<forall> \<sigma> \<tau> \<rho>.
+             comp_cong \<tau> \<sigma> \<rho> 
+        \<longrightarrow> S2.map_abt \<tau> (S1.map_abt \<sigma> M) = S3.map_abt \<rho> M"
+abbreviation map_fusion_P2 :: "'a Arg \<Rightarrow> bool" where
+  "map_fusion_P2 M \<equiv> \<forall> \<sigma> \<tau> \<rho>.
+             comp_cong \<tau> \<sigma> \<rho> 
+        \<longrightarrow> S2.map_arg \<tau> (S1.map_arg \<sigma> M) = S3.map_arg \<rho> M"
+
+lemma map_fusion_aux: 
+  assumes 1: "\<forall> \<sigma> \<tau> \<rho>. comp_cong \<tau> \<sigma> \<rho> \<longrightarrow> comp_cong (S2.ext \<tau>) (S1.ext \<sigma>) (S3.ext \<rho>)"
+  shows "map_fusion_P1 M"
+  apply (induction M rule: ABT.induct[of map_fusion_P1 map_fusion_P2])
+  apply force
+    apply force
+   apply force
+  apply simp apply clarify using 1 apply fast
+  done
+
+theorem map_fusion:
+  assumes 1: "comp_cong \<tau> \<sigma> \<rho>"
+  and 2: "\<forall> \<sigma> \<tau> \<rho>. comp_cong \<tau> \<sigma> \<rho> \<longrightarrow> comp_cong (S2.ext \<tau>) (S1.ext \<sigma>) (S3.ext \<rho>)"
+  shows "S2.map_abt \<tau> (S1.map_abt \<sigma> M) = S3.map_abt \<rho> M"
+  using map_fusion_aux 1 2 by fast
+
+end
+(********************** end substable3 **************************************)
+
+interpretation rss:
+  substable3 "Var 0" Suc "\<lambda>x. x" Var "rename Suc" "\<lambda>x. x" Var "rename Suc" "\<lambda>x. x" Var
+  by unfold_locales 
+
+lemma rss_comp_cong_ext: "rss.comp_cong \<tau> \<sigma> \<rho> \<Longrightarrow>
+       rss.comp_cong (abt_s.ext \<tau>) (var_s.ext \<sigma>) (abt_s.ext \<rho>)"
+  apply simp apply clarify
+  apply (case_tac x)
+   apply simp
+  apply simp
+  done
+
+theorem map_rename_fusion:
+  assumes 1: "rss.comp_cong \<sigma> \<rho> \<tau>"
+  shows "\<llangle>\<sigma>\<rrangle> (rename \<rho> M) = \<llangle>\<tau>\<rrangle> M"
+  apply (rule rss.map_fusion)
+  using 1 apply fast
+  using rss_comp_cong_ext apply auto
+  done
+
+interpretation rrr: 
+  substable3 "Var 0" Suc "\<lambda> x. x" Var Suc Var "\<lambda> x. x" Suc Var "\<lambda> x. x"
+  by unfold_locales 
+
+lemma rrr_comp_cong_ext: "(\<forall> x. \<tau> (\<sigma> x) = \<rho> x) \<Longrightarrow>
+        (var_s.ext \<tau>) ((var_s.ext \<sigma>) x) = (var_s.ext \<rho>) x"
+  apply (case_tac x)
+   apply simp
+  apply simp
+  done
+
+theorem rename_fusion:
+  assumes 1: "\<forall> x. \<sigma> (\<rho> x) = \<tau> x"
+  shows "rename \<sigma> (rename \<rho> M) = rename \<tau> M"
+  apply (rule rrr.map_fusion)
+  using 1 apply force
+  using rrr_comp_cong_ext apply auto
+  done
+
+interpretation srs: 
+  substable3 "Var 0" 
+  "rename Suc" Var "\<lambda> x. x" 
+  Suc Var "\<lambda> x. x"
+  "rename Suc" "\<lambda> x. x" Var
+  by unfold_locales
+
+lemma srs_comp_cong_ext: fixes x :: var
+  assumes cc: "srs.comp_cong \<rho> \<sigma> \<tau>"
+  shows "rename (var_s.ext \<rho>) (abt_s.ext \<sigma> x) = abt_s.ext \<tau> x"
+proof (cases x)
+  case 0
+  then show ?thesis by simp
+next
+  case (Suc y)
+  have 1: "\<forall>x. var_s.ext \<rho> (Suc x) = var_s.ext \<rho> (Suc x)"
+    apply auto done
+  have 2: " \<forall>x. var_s.lift_sub \<rho> x = var_s.lift_sub \<rho> x" by simp
+  (* why didn't calculation reasoning work here? -Jeremy *)
+  from Suc have 8: "rename (var_s.ext \<rho>) (abt_s.ext \<sigma> x) 
+        = rename (var_s.ext \<rho>) (rename Suc (\<sigma> y))" by simp
+  from 1 have 3: "rename (var_s.ext \<rho>) (rename Suc (\<sigma> y)) 
+          = rename (\<lambda> x. (var_s.ext \<rho>) (Suc x)) (\<sigma> y)"
+    using rename_fusion[of "(var_s.ext \<rho>)" Suc "(\<lambda> x. (var_s.ext \<rho>) (Suc x))"] by fast
+  have 4: "rename (\<lambda> x. (var_s.ext \<rho>) (Suc x)) (\<sigma> y) 
+          = rename (var_s.lift_sub \<rho>) (\<sigma> y)" by simp
+  have 5: "rename (var_s.lift_sub \<rho>) (\<sigma> y) 
+          = rename (\<lambda> x. Suc (\<rho> x)) (\<sigma> y)" by simp
+  from 2 have 6: "rename (\<lambda> x. Suc (\<rho> x)) (\<sigma> y)
+          = rename Suc (rename \<rho> (\<sigma> y))"
+    using rename_fusion[of Suc \<rho> "\<lambda> x. Suc (\<rho> x)" "\<sigma> y"] by auto
+  have 7: "rename Suc (rename \<rho> (\<sigma> y)) 
+           = abt_s.ext \<tau> x" using Suc cc by auto
+  show ?thesis using 8 3 4 5 6 7 by simp
+qed
+
+theorem rename_map_fusion:
+  assumes 1: "srs.comp_cong \<rho> \<sigma> \<tau>"
+  shows "rename \<rho> (\<llangle>\<sigma>\<rrangle> M) = \<llangle>\<tau>\<rrangle> M"
+  apply (rule srs.map_fusion)
+  using 1 apply fast
+  using srs_comp_cong_ext apply auto
+  done
+
+
+
 
 section "Lambda Calculus"
 
