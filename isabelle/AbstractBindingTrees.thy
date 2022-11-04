@@ -89,16 +89,16 @@ fun subst_zero :: "'op ABT \<Rightarrow> var \<Rightarrow> 'op ABT" where
 abbreviation subst_one :: "'op ABT \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT" ("_[_]" 70) where
   "subst_one N M \<equiv> \<llangle> subst_zero M \<rrangle> N"
 
-abbreviation seqss :: "('op ABT) sub \<Rightarrow> ('op ABT) sub \<Rightarrow> ('op ABT) sub" ("_;_") where
+abbreviation seqss :: "('op ABT) sub \<Rightarrow> ('op ABT) sub \<Rightarrow> ('op ABT) sub" ("_ ; _") where
   "(\<sigma> ; \<tau>) x \<equiv> \<llangle>\<tau>\<rrangle> (\<sigma> x)"
 
-abbreviation seqrs :: "var sub \<Rightarrow> ('op ABT) sub \<Rightarrow> ('op ABT) sub" ("_r;_") where
+abbreviation seqrs :: "var sub \<Rightarrow> ('op ABT) sub \<Rightarrow> ('op ABT) sub" ("_ r; _") where
   "(\<rho> r; \<tau>) x \<equiv> \<tau> (\<rho> x)"
 
-abbreviation seqsr :: "('op ABT) sub \<Rightarrow> var sub \<Rightarrow> ('op ABT) sub" ("_;r_") where
+abbreviation seqsr :: "('op ABT) sub \<Rightarrow> var sub \<Rightarrow> ('op ABT) sub" ("_ ;r _") where
   "(\<sigma> ;r \<rho>) x \<equiv> rename \<rho> (\<sigma> x)"
 
-abbreviation seqrr :: "var sub \<Rightarrow> var sub \<Rightarrow> var sub" ("_r;r_") where
+abbreviation seqrr :: "var sub \<Rightarrow> var sub \<Rightarrow> var sub" ("_ r;r _") where
   "(\<sigma> r;r \<rho>) x \<equiv> \<rho> (\<sigma> x)"
 
 abbreviation id :: "('op ABT) sub" where
@@ -322,11 +322,11 @@ proof (cases x)
   then show ?thesis by simp
 next
   case (Suc y)
-  have            "rename (extr \<rho>) (exts \<sigma> x) 
+  have            "((exts \<sigma>) ;r (extr \<rho>)) x 
                  = rename (extr \<rho>) (rename Suc (\<sigma> y))" using Suc by simp
-  also have "... = rename (\<lambda> x. (extr \<rho>) (Suc x)) (\<sigma> y)" using rename_fusion[of "(extr \<rho>)" Suc "(\<lambda> x. (extr \<rho>) (Suc x))"] by fast
-  also have "... = rename (\<lambda> x. Suc (\<rho> x)) (\<sigma> y)" by simp
-  also have "... = rename Suc (rename \<rho> (\<sigma> y))" using rename_fusion[of Suc \<rho> "\<lambda> x. Suc (\<rho> x)" "\<sigma> y"] by auto
+  also have "... = rename (Suc r;r (extr \<rho>)) (\<sigma> y)" using rename_fusion[of "(extr \<rho>)" Suc "(\<lambda> x. (extr \<rho>) (Suc x))" "\<sigma> y"] by fast
+  also have "... = rename (\<rho> r;r Suc) (\<sigma> y)" by simp
+  also have "... = rename Suc (rename \<rho> (\<sigma> y))" using rename_fusion[of Suc \<rho> "\<rho> r;r Suc" "\<sigma> y"] by auto
   also have "... = rename Suc (\<tau> y)" using cc by auto
   also have "... = exts \<tau> x" using Suc by simp
   finally show ?thesis .
