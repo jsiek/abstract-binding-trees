@@ -278,7 +278,7 @@ lemma rss_comp_cong_ext: "\<rho> r; \<sigma> = \<tau> \<Longrightarrow>
   apply simp
   done
 
-theorem map_rename_fusion:
+theorem subst_rename_fusion:
   assumes 1: "\<rho> r; \<sigma> = \<tau>"
   shows "\<llangle>\<sigma>\<rrangle> (rename \<rho> M) = \<llangle>\<tau>\<rrangle> M"
   apply (rule rss.map_fusion)
@@ -332,7 +332,7 @@ next
   finally show ?thesis .
 qed
 
-theorem rename_map_fusion:
+theorem rename_subst_fusion:
   assumes 1: "srs.comp_cong \<rho> \<sigma> \<tau>"
   shows "rename \<rho> (\<llangle>\<sigma>\<rrangle> M) = \<llangle>\<tau>\<rrangle> M"
   apply (rule srs.map_fusion)
@@ -340,8 +340,37 @@ theorem rename_map_fusion:
   using srs_comp_cong_ext apply auto
   done
 
+interpretation sss: 
+  substable3 "Var 0" "rename Suc" Var "\<lambda> x. x"
+   "rename Suc" "\<lambda> x. x" Var
+   "rename Suc" "\<lambda> x. x" Var
+  by unfold_locales
 
+lemma ssscc_eq_seqss[simp]: "(\<sigma> ; \<rho> = \<tau>) = (sss.comp_cong \<rho> \<sigma> \<tau>)" by auto
 
+lemma sss_comp_cong_ext: 
+  fixes x :: var
+  assumes 1: "(\<sigma> ; \<rho>) = \<tau>"
+  shows "((exts \<sigma>) ; (exts \<rho>)) x = exts \<tau> x"
+proof (cases x)
+  case 0
+  then show ?thesis by simp
+next
+  case (Suc y)
+  have "((exts \<sigma>) ; (exts \<rho>)) x = ((abt_s.lift_sub \<sigma>) ; (exts \<rho>)) y" using Suc by simp
+  also have "... = \<llangle>Suc r; exts \<rho>\<rrangle> (\<sigma> y)" using subst_rename_fusion[of "exts \<rho>" Suc "Suc r; exts \<rho>"] by auto
+  also have "... = rename Suc (\<llangle>\<rho>\<rrangle> (\<sigma> y))" 
+    using rename_subst_fusion[of Suc \<rho> "Suc r; exts \<rho>" "\<sigma> y"] by auto
+  also have "... = rename Suc (\<tau> y)" using 1 by simp
+  also have "... = exts \<tau> x" using Suc by simp
+  finally show ?thesis .
+qed
+
+theorem subst_subst_fusion: "\<llangle>\<rho>\<rrangle> (\<llangle>\<sigma>\<rrangle> M) = \<llangle>\<sigma> ; \<rho>\<rrangle> M"
+  apply (rule sss.map_fusion)
+  apply simp
+  using sss_comp_cong_ext apply auto
+  done
 
 section "Lambda Calculus"
 
