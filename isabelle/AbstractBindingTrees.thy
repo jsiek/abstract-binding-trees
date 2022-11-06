@@ -21,9 +21,12 @@ section "Substitutions"
 
 type_synonym 'v sub = "var \<Rightarrow> 'v"
 
-fun cons :: "'v \<Rightarrow> 'v sub \<Rightarrow> 'v sub" (infixl "\<bullet>" 65) where
-  "(v \<bullet> \<sigma>) 0 = v" |
-  "(v \<bullet> \<sigma>) (Suc x) = \<sigma> x"
+fun cons_aux :: "'v \<Rightarrow> 'v sub \<Rightarrow> 'v sub" where
+  "(cons_aux v \<sigma>) 0 = v" |
+  "(cons_aux v \<sigma>) (Suc x) = \<sigma> x"
+
+definition cons :: "'v \<Rightarrow> 'v sub \<Rightarrow> 'v sub" (infixl "\<bullet>" 65) where
+  "v \<bullet> \<sigma> \<equiv> cons_aux v \<sigma>"
 
 abbreviation drop :: "nat \<Rightarrow> 'v sub \<Rightarrow> 'v sub" where
   "drop k \<sigma> x \<equiv> \<sigma> (k + x)"
@@ -35,22 +38,21 @@ locale substable =
   and var2val :: "var \<Rightarrow>'v" ("\<lfloor>_\<rfloor>")
   and quote :: "'v \<Rightarrow> 'op ABT"
   assumes var2val_lift: "\<lfloor>Suc x\<rfloor> \<equiv> \<Up> \<lfloor>x\<rfloor>"
-  and quote_var: "quote \<lfloor>x\<rfloor> = Var x"
 begin
 
 abbreviation lift_sub :: "'v sub \<Rightarrow> 'v sub" ("\<Up>") where
   "\<Up> \<sigma> x \<equiv> \<Up> (\<sigma> x)"
 
 abbreviation ext :: "'v sub \<Rightarrow> 'v sub" where
-  "ext \<sigma> \<equiv> \<lfloor>0\<rfloor> \<bullet> \<Up> \<sigma>"
+  "ext \<sigma> \<equiv> \<lfloor>0\<rfloor> \<bullet> (\<Up> \<sigma>)"
 
-fun map_abt :: "'v sub \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT"
-  and map_arg :: "'v sub \<Rightarrow> 'op Arg \<Rightarrow> 'op Arg"
+fun map_abt :: "'v sub \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT" ("\<llangle>_\<rrangle>_" 70)
+  and map_arg :: "'v sub \<Rightarrow> 'op Arg \<Rightarrow> 'op Arg" ("\<llangle>_\<rrangle>\<^sub>a_" 70)
   where
- "map_abt \<sigma> (Var x) = quote (\<sigma> x)" |
- "map_abt \<sigma> (App op args) = App op (map (map_arg \<sigma>) args)" |
- "map_arg \<sigma> (Trm M) = Trm (map_abt \<sigma> M)" |
- "map_arg \<sigma> (Bnd A) = Bnd (map_arg (ext \<sigma>) A)" 
+ "\<llangle>\<sigma>\<rrangle> (Var x) = quote (\<sigma> x)" |
+ "\<llangle>\<sigma>\<rrangle> (App op args) = App op (map (map_arg \<sigma>) args)" |
+ "\<llangle>\<sigma>\<rrangle>\<^sub>a (Trm M) = Trm (\<llangle>\<sigma>\<rrangle> M)" |
+ "\<llangle>\<sigma>\<rrangle>\<^sub>a (Bnd A) = Bnd (\<llangle>ext \<sigma>\<rrangle>\<^sub>a A)" 
 
 end
 (********************** end substable ***************************)
@@ -76,7 +78,7 @@ interpretation abt_s: substable "Var 0" "rename Suc" "Var" "\<lambda> x. x"
 abbreviation exts :: "('op ABT) sub \<Rightarrow> ('op ABT) sub" where
   "exts \<sigma> \<equiv> abt_s.ext \<sigma>"
 
-abbreviation subst :: "('op ABT) sub \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT" ("\<llangle>_\<rrangle>") where
+definition subst :: "('op ABT) sub \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT" ("\<llangle>_\<rrangle>") where
   "\<llangle> \<sigma> \<rrangle> \<equiv> abt_s.map_abt \<sigma>"
 
 abbreviation ren_sub :: "var sub \<Rightarrow> ('op ABT) sub" ("\<lceil>_\<rceil>") where
@@ -89,7 +91,7 @@ fun subst_zero :: "'op ABT \<Rightarrow> var \<Rightarrow> 'op ABT" where
 abbreviation subst_one :: "'op ABT \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT" ("_[_]" 70) where
   "subst_one N M \<equiv> \<llangle> subst_zero M \<rrangle> N"
 
-abbreviation seqss :: "('op ABT) sub \<Rightarrow> ('op ABT) sub \<Rightarrow> ('op ABT) sub" ("_ ; _") where
+abbreviation seqss :: "('op ABT) sub \<Rightarrow> ('op ABT) sub \<Rightarrow> ('op ABT) sub" (infixl ";" 60) where
   "(\<sigma> ; \<tau>) x \<equiv> \<llangle>\<tau>\<rrangle> (\<sigma> x)"
 
 abbreviation seqrs :: "var sub \<Rightarrow> ('op ABT) sub \<Rightarrow> ('op ABT) sub" ("_ r; _") where
@@ -104,27 +106,31 @@ abbreviation seqrr :: "var sub \<Rightarrow> var sub \<Rightarrow> var sub" ("_ 
 abbreviation id :: "('op ABT) sub" where
   "id x \<equiv> Var x"
 
-theorem IdL: "id; \<sigma> = \<sigma>"
-  by simp
+theorem IdL[simp]: "id ; \<sigma> = \<sigma>"
+  by (simp add: subst_def)
 
-theorem ShiftId: shows "(\<up> ; id) = \<up>"
-  by simp
+theorem ShiftId[simp]: shows "(\<up> ; id) = \<up>"
+  by (simp add: subst_def)
 
-theorem HeadCons: "(M \<bullet> \<sigma>) 0 = M"
-  by simp
+theorem VarId: "\<llangle>id\<rrangle> (Var x) = Var x"
+  by (simp add: subst_def)
 
-theorem ShiftCons: "\<up> ; (M \<bullet> \<sigma>) = \<sigma>"
-  by simp
+theorem HeadCons[simp]: "\<llangle>M \<bullet> \<sigma>\<rrangle> (Var 0) = M"
+  by (simp add: cons_def subst_def)
+
+theorem ShiftCons[simp]: "\<up> ; (M \<bullet> \<sigma>) = \<sigma>"
+  by (simp add: cons_def subst_def)
 
 (********************** locale subst_quote_shift ***************************)
 locale subst_quote_shift = substable +
-  assumes quote_shift: "quote (\<Up> v) = rename Suc (quote v)"
+  assumes quote_var: "quote \<lfloor>x\<rfloor> = Var x"
+  and quote_shift: "quote (\<Up> v) = rename Suc (quote v)"
 begin
 
 lemma id_ext: "(\<forall> x. quote (\<sigma> x) = Var x) \<Longrightarrow> quote ((ext \<sigma>) x) = Var x"
   apply (case_tac x)
-  using quote_var apply force
-  using quote_shift apply force
+  using quote_var apply (force simp add: cons_def)
+  using quote_shift apply (force simp add: cons_def)
   done
 
 abbreviation P_id_abt :: "'a ABT \<Rightarrow> bool" where
@@ -152,26 +158,29 @@ end
 interpretation var_sqs: subst_quote_shift "Var 0" Suc "\<lambda> x. x" Var
   by unfold_locales auto
 
-theorem rename_id: "rename (\<lambda> x. x) M = M"
+theorem rename_id[simp]: "rename (\<lambda> x. x) M = M"
   by (rule var_sqs.map_abt_id) simp
 
 interpretation abt_sqs: subst_quote_shift "Var 0" "rename Suc" Var "\<lambda> x. x"
   by unfold_locales auto
 
-theorem subst_id: "\<llangle>id\<rrangle> M = M"
-  by (rule abt_sqs.map_abt_id) simp
+theorem subst_id[simp]: "\<llangle>id\<rrangle> M = M"
+  unfolding subst_def by (rule abt_sqs.map_abt_id) simp
   
-theorem IdR: "\<sigma>; id = \<sigma>"
-  using subst_id by auto
+theorem IdR[simp]: "\<sigma> ; id = \<sigma>"
+  by simp
 
 theorem ConsSeq[simp]: "(v \<bullet> \<sigma>); \<tau> = \<llangle> \<tau> \<rrangle> v \<bullet> (\<sigma> ; \<tau>)"
   apply (rule ext)
   apply (case_tac x)
-   apply auto
+   apply (auto simp add: cons_def)
   done
 
-theorem DistSeq: "(M \<bullet> \<sigma>) ; \<tau> = (\<llangle>\<tau>\<rrangle> M) \<bullet> (\<sigma> ; \<tau>)"
-  by simp
+theorem DistSeq[simp]: "(M \<bullet> \<sigma>) ; \<tau> = (\<llangle>\<tau>\<rrangle> M) \<bullet> (\<sigma> ; \<tau>)"
+  apply (rule ext)
+  apply (case_tac x)
+  apply (auto simp add: cons_def)
+  done
 
 (********************** locale substable2 **************************************)
 locale substable2 = L: substable trm s v2v q + R: substable trm s' v2v' q'
@@ -211,19 +220,19 @@ proof clarify
   show "\<lceil>extr \<sigma>\<rceil> x = (abt_s.ext \<tau>) x" 
   proof (cases x)
     case 0
-    then show ?thesis by simp
+    then show ?thesis by (simp add: cons_def)
   next
     case (Suc y)
-    with Suc have "\<lceil>extr \<sigma>\<rceil> x = Var (Suc (\<sigma> y))" by simp
+    with Suc have "\<lceil>extr \<sigma>\<rceil> x = Var (Suc (\<sigma> y))" by (simp add: cons_def)
     also have "... = rename Suc (Var (\<sigma> y))" by simp
     also have "... = rename Suc (\<tau> y)" using st by simp
-    also have "... = abt_s.ext \<tau> x" using Suc by simp
+    also have "... = abt_s.ext \<tau> x" using Suc by (simp add: cons_def)
     finally show ?thesis .
   qed  
 qed
 
 theorem rename_subst: "rename \<rho> M = \<llangle> \<lceil> \<rho> \<rceil> \<rrangle> M"
-  apply (rule ren_sub.map_cong)
+  unfolding subst_def apply (rule ren_sub.map_cong)
    apply force
   using cong_ext apply blast
   done
@@ -274,14 +283,14 @@ lemma rss_comp_cong_ext: "\<rho> r; \<sigma> = \<tau> \<Longrightarrow>
        rss.comp_cong (abt_s.ext \<sigma>) (extr \<rho>) (abt_s.ext \<tau>)"
   apply simp apply clarify
   apply (case_tac x)
-   apply simp
-  apply simp
+   apply (simp add: cons_def)
+   apply (simp add: cons_def)
   done
 
 theorem subst_rename_fusion:
   assumes 1: "\<rho> r; \<sigma> = \<tau>"
   shows "\<llangle>\<sigma>\<rrangle> (rename \<rho> M) = \<llangle>\<tau>\<rrangle> M"
-  apply (rule rss.map_fusion)
+  unfolding subst_def apply (rule rss.map_fusion)
   using 1 apply force
   using rss_comp_cong_ext apply auto
   done
@@ -293,8 +302,8 @@ interpretation rrr:
 lemma rrr_comp_cong_ext: "(\<forall> x. \<tau> (\<sigma> x) = \<rho> x) \<Longrightarrow>
         (extr \<tau>) ((extr \<sigma>) x) = (extr \<rho>) x"
   apply (case_tac x)
-   apply simp
-  apply simp
+   apply (simp add: cons_def)
+  apply (simp add: cons_def)
   done
 
 theorem rename_fusion:
@@ -319,23 +328,24 @@ lemma srs_comp_cong_ext: fixes x :: var
   shows "rename (extr \<rho>) (exts \<sigma> x) = exts \<tau> x"
 proof (cases x)
   case 0
-  then show ?thesis by simp
+  then show ?thesis by (simp add: cons_def)
 next
   case (Suc y)
   have            "((exts \<sigma>) ;r (extr \<rho>)) x 
-                 = rename (extr \<rho>) (rename Suc (\<sigma> y))" using Suc by simp
+                 = rename (extr \<rho>) (rename Suc (\<sigma> y))" using Suc by (simp add: cons_def)
   also have "... = rename (Suc r;r (extr \<rho>)) (\<sigma> y)" using rename_fusion[of "(extr \<rho>)" Suc "(\<lambda> x. (extr \<rho>) (Suc x))" "\<sigma> y"] by fast
-  also have "... = rename (\<rho> r;r Suc) (\<sigma> y)" by simp
+  also have "... = rename (\<rho> r;r Suc) (\<sigma> y)" by (simp add: cons_def)
   also have "... = rename Suc (rename \<rho> (\<sigma> y))" using rename_fusion[of Suc \<rho> "\<rho> r;r Suc" "\<sigma> y"] by auto
   also have "... = rename Suc (\<tau> y)" using cc by auto
-  also have "... = exts \<tau> x" using Suc by simp
+  also have "... = exts \<tau> x" using Suc by (simp add: cons_def)
   finally show ?thesis .
 qed
 
+(* This could instead be rename_map_fusion (more generic) *)
 theorem rename_subst_fusion:
   assumes 1: "srs.comp_cong \<rho> \<sigma> \<tau>"
   shows "rename \<rho> (\<llangle>\<sigma>\<rrangle> M) = \<llangle>\<tau>\<rrangle> M"
-  apply (rule srs.map_fusion)
+  unfolding subst_def apply (rule srs.map_fusion)
   using 1 apply fast
   using srs_comp_cong_ext apply auto
   done
@@ -346,31 +356,41 @@ interpretation sss:
    "rename Suc" "\<lambda> x. x" Var
   by unfold_locales
 
-lemma ssscc_eq_seqss[simp]: "(\<sigma> ; \<rho> = \<tau>) = (sss.comp_cong \<rho> \<sigma> \<tau>)" by auto
+lemma ssscc_eq_seqss: "(\<sigma> ; \<rho> = \<tau>) = (sss.comp_cong \<rho> \<sigma> \<tau>)"
+  unfolding subst_def by auto
 
-lemma sss_comp_cong_ext: 
+lemma seqss_eq_ssscc: "(sss.comp_cong \<rho> \<sigma> \<tau>) = (\<sigma> ; \<rho> = \<tau>)"
+  unfolding subst_def by auto
+
+lemma sss_comp_cong_ext:
   fixes x :: var
   assumes 1: "(\<sigma> ; \<rho>) = \<tau>"
   shows "((exts \<sigma>) ; (exts \<rho>)) x = exts \<tau> x"
 proof (cases x)
   case 0
-  then show ?thesis by simp
+  then show ?thesis by (simp add: cons_def subst_def)
 next
   case (Suc y)
-  have "((exts \<sigma>) ; (exts \<rho>)) x = ((abt_s.lift_sub \<sigma>) ; (exts \<rho>)) y" using Suc by simp
+  have "(exts \<sigma> ; exts \<rho>) x = ((abt_s.lift_sub \<sigma>) ; (exts \<rho>)) y" using Suc by (simp add: cons_def)
   also have "... = \<llangle>Suc r; exts \<rho>\<rrangle> (\<sigma> y)" using subst_rename_fusion[of "exts \<rho>" Suc "Suc r; exts \<rho>"] by auto
   also have "... = rename Suc (\<llangle>\<rho>\<rrangle> (\<sigma> y))" 
-    using rename_subst_fusion[of Suc \<rho> "Suc r; exts \<rho>" "\<sigma> y"] by auto
-  also have "... = rename Suc (\<tau> y)" using 1 by simp
-  also have "... = exts \<tau> x" using Suc by simp
+    using rename_subst_fusion[of Suc \<rho> "Suc r; exts \<rho>" "\<sigma> y"] by (auto simp add: cons_def)
+  also have "... = rename Suc (\<tau> y)" using 1 unfolding subst_def by auto
+  also have "... = exts \<tau> x" using Suc by (simp add: cons_def)
   finally show ?thesis .
 qed
 
 theorem subst_subst_fusion: "\<llangle>\<rho>\<rrangle> (\<llangle>\<sigma>\<rrangle> M) = \<llangle>\<sigma> ; \<rho>\<rrangle> M"
-  apply (rule sss.map_fusion)
-  apply simp
-  using sss_comp_cong_ext apply auto
-  done
+  unfolding subst_def apply (rule sss.map_fusion)
+   apply force
+proof clarify
+  fix \<sigma> \<tau> \<rho> x
+  assume 1: "sss.comp_cong \<tau> \<sigma> \<rho>" 
+  from 1 have "\<sigma> ; \<tau> = \<rho>" unfolding subst_def by auto
+  then have "(exts \<sigma> ; exts \<tau>) x = exts \<rho> x" by (rule sss_comp_cong_ext)
+  then show "abt_s.map_abt (exts \<tau>) (exts \<sigma> x) = exts \<rho> x" unfolding subst_def by simp
+qed
+
 
 section "Lambda Calculus"
 
