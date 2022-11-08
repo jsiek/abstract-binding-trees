@@ -17,7 +17,7 @@ fun cons_aux :: "'v \<Rightarrow> 'v sub \<Rightarrow> 'v sub" where
   "(cons_aux v \<sigma>) 0 = v" |
   "(cons_aux v \<sigma>) (Suc x) = \<sigma> x"
 
-definition cons :: "'v \<Rightarrow> 'v sub \<Rightarrow> 'v sub" (infixl "\<bullet>" 55) where
+definition cons :: "'v \<Rightarrow> 'v sub \<Rightarrow> 'v sub" (infixl "\<bullet>" 75) where
   "v \<bullet> \<sigma> \<equiv> cons_aux v \<sigma>"
 
 (********************** locale substable ***************************)

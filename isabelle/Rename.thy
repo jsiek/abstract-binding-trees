@@ -2,6 +2,11 @@ theory Rename
   imports Main ABT
 begin
 
+(*
+ Note: renamings are an internal device to help define substitution.
+ Renamings are not meant to be used outside of this ABT library.
+*)
+
 interpretation var_s: substable "Var 0" "Suc" "\<lambda> x. x" "Var"
   by unfold_locales auto
 
@@ -11,7 +16,7 @@ definition extr :: "var sub \<Rightarrow> var sub" where
 definition rename :: "var sub \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT" where
   "rename \<equiv> var_s.map_abt"
 
-definition seqrr :: "var sub \<Rightarrow> var sub \<Rightarrow> var sub" (infixl "r;r" 70) where
+definition seqrr :: "var sub \<Rightarrow> var sub \<Rightarrow> var sub" (infixr "r;r" 70) where
   "(\<sigma> r;r \<rho>) x \<equiv> \<rho> (\<sigma> x)"
 
 lemma extr_cons_seq[simp]: "extr \<rho> = 0 \<bullet> (\<rho> r;r Suc)"
@@ -26,8 +31,14 @@ theorem RShiftId[simp]: "Suc r;r (\<lambda> x. x) = Suc"
 theorem RHeadCons[simp]: "(x \<bullet> \<rho>) 0 = x"
   unfolding cons_def by simp
 
+theorem RHeadConsRen[simp]: "rename (x \<bullet> \<rho>) (Var 0) = Var x"
+  unfolding rename_def by simp
+
 theorem RTailCons[simp]: "(y \<bullet> \<sigma>) (Suc x) = \<sigma> x"
   unfolding cons_def by simp 
+
+theorem RTailConsRen[simp]: "rename (y \<bullet> \<sigma>) (Var (Suc x)) = Var (\<sigma> x)"
+  unfolding rename_def by simp 
 
 theorem RShiftCons[simp]: "Suc r;r (x \<bullet> \<rho>) = \<rho>"
   unfolding cons_def  seqrr_def shift_def by simp
@@ -82,7 +93,7 @@ theorem RConsSeq[simp]: "(y \<bullet> \<sigma>) r;r \<tau> =  (\<tau> y) \<bulle
   apply simp
   done
 
-theorem RAssoc[simp]: "(\<rho> r;r \<sigma>) r;r \<tau> = \<rho> r;r (\<sigma> r;r \<tau>)"
+theorem RAssoc[simp]: "(\<rho> r;r \<sigma>) r;r \<tau> = \<rho> r;r \<sigma> r;r \<tau>"
   unfolding seqrr_def by simp
 
 interpretation rrr: 
@@ -92,19 +103,18 @@ interpretation rrr:
 lemma rrr_comp_cong_ext: assumes 1: "\<sigma> r;r \<tau> = \<rho>"
   shows "extr \<sigma> r;r extr \<tau> = extr \<rho>"
 proof simp
-  have            "0 \<bullet> \<sigma> r;r (\<tau> r;r Suc) 
-                 = 0 \<bullet> (\<sigma> r;r \<tau>) r;r Suc" by simp
-  also have "... = 0 \<bullet> \<rho> r;r Suc" using 1 by simp
-  finally show "0 \<bullet> \<sigma> r;r (\<tau> r;r Suc) = 0 \<bullet> \<rho> r;r Suc" .
+  have            "0 \<bullet> (\<sigma> r;r (\<tau> r;r Suc))
+                 = 0 \<bullet> ((\<sigma> r;r \<tau>) r;r Suc)" by simp
+  also have "... = 0 \<bullet> (\<rho> r;r Suc)" using 1 by simp
+  finally show "0 \<bullet> (\<sigma> r;r (\<tau> r;r Suc)) = 0 \<bullet> (\<rho> r;r Suc)" .
 qed
 
 theorem rename_fusion:
-  assumes 1: "\<forall> x. \<sigma> (\<rho> x) = \<tau> x"
-  shows "rename \<sigma> (rename \<rho> M) = rename \<tau> M"
+  shows "rename \<sigma> (rename \<rho> M) = rename (\<rho> r;r \<sigma>) M"
   unfolding rename_def 
 proof (rule rrr.map_fusion)
-  show " \<forall>x. var_s.map_abt \<sigma> (Var (\<rho> x)) = Var (\<tau> x)"
-    using 1 apply force done
+  show " \<forall>x. var_s.map_abt \<sigma> (Var (\<rho> x)) = Var ((\<rho> r;r \<sigma>) x)"
+    unfolding seqrr_def by simp
 next
   show " \<forall>\<sigma> \<tau> \<rho>.
        (\<forall>x. var_s.map_abt \<tau> (Var (\<sigma> x)) = Var (\<rho> x)) \<longrightarrow>
