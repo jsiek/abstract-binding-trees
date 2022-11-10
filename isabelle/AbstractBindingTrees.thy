@@ -353,4 +353,7 @@ declare subst_two_def[simp]
 theorem substitution: "M[N][L] = M\<lbrace>L\<rbrace>[N[L]]"
   by simp
 
+theorem exts_sub_cons: "(\<llangle>exts \<sigma>\<rrangle> N)[V] = \<llangle>V \<bullet> \<sigma>\<rrangle> N" 
+  by simp
+
 end
