@@ -11,7 +11,7 @@ interpretation var_s: substable "Var 0" "Suc" "\<lambda> x. x" "Var"
   by unfold_locales auto
 
 definition extr :: "var sub \<Rightarrow> var sub" where
-  "extr \<rho> \<equiv> var_s.ext \<rho>"
+  "extr \<rho> \<equiv> var_s.extend \<rho>"
 
 definition rename :: "var sub \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT" where
   "rename \<equiv> var_s.map_abt"
@@ -49,7 +49,7 @@ locale subst_quote_shift = substable +
   and quote_shift: "quote (\<Up> v) = rename Suc (quote v)"
 begin
   
-  lemma id_ext: "(\<forall> x. quote (\<sigma> x) = Var x) \<Longrightarrow> quote ((ext \<sigma>) x) = Var x"
+  lemma id_ext: "(\<forall> x. quote (\<sigma> x) = Var x) \<Longrightarrow> quote ((extend \<sigma>) x) = Var x"
     apply (case_tac x)
     using quote_var apply (force simp add: cons_def)
     using quote_shift apply (force simp add: cons_def rename_def)
@@ -118,16 +118,76 @@ proof (rule rrr.map_fusion)
 next
   show " \<forall>\<sigma> \<tau> \<rho>.
        (\<forall>x. var_s.map_abt \<tau> (Var (\<sigma> x)) = Var (\<rho> x)) \<longrightarrow>
-       (\<forall>x. var_s.map_abt (var_s.ext \<tau>) (Var (var_s.ext \<sigma> x)) = Var (var_s.ext \<rho> x))"
+       (\<forall>x. var_s.map_abt (var_s.extend \<tau>) (Var (var_s.extend \<sigma> x)) = Var (var_s.extend \<rho> x))"
   proof clarify
     fix \<sigma> :: "var sub" and \<tau> \<rho> x
     assume "\<forall>x. var_s.map_abt \<tau> (Var (\<sigma> x)) = Var (\<rho> x)"
     then have "\<sigma> r;r \<tau> = \<rho>" unfolding seqrr_def by simp
     then have "extr \<sigma> r;r extr \<tau> = extr \<rho>" by (rule rrr_comp_cong_ext)
     then have "(extr \<sigma> r;r extr \<tau>) x = (extr \<rho>) x" by simp
-    then show "var_s.map_abt (var_s.ext \<tau>) (Var (var_s.ext \<sigma> x)) = Var (var_s.ext \<rho> x)"
+    then show "var_s.map_abt (var_s.extend \<tau>) (Var (var_s.extend \<sigma> x)) = Var (var_s.extend \<rho> x)"
       unfolding seqrr_def extr_def by simp
   qed
 qed
+
+context abt_predicate
+begin
+  
+  definition ren_pres :: "var sub \<Rightarrow> 't list \<Rightarrow> 't list \<Rightarrow> bool" ("_:_\<hookrightarrow>_" 55) where
+    "\<rho> : \<Gamma> \<hookrightarrow> \<Gamma>' \<equiv> \<forall> x T. var_pred x \<Gamma> T \<longrightarrow> var_pred (\<rho> x) \<Gamma>' T"
+  
+  abbreviation wf_abt_P :: "'t list \<Rightarrow> 'op ABT \<Rightarrow> 't \<Rightarrow> bool" where
+    "wf_abt_P \<Gamma> M T \<equiv> \<forall> \<rho> \<Gamma>'. \<rho> : \<Gamma> \<hookrightarrow> \<Gamma>' \<longrightarrow> \<Gamma>' \<turnstile> rename \<rho> M : T"
+  
+  abbreviation wf_arg_P :: "'t list \<Rightarrow> 't list \<Rightarrow> 'op Arg \<Rightarrow> 't \<Rightarrow> bool" where
+    "wf_arg_P \<Gamma> Bs A T \<equiv> \<forall> \<rho> \<Gamma>'. (\<rho> : \<Gamma> \<hookrightarrow> \<Gamma>') \<longrightarrow> (\<Gamma>' ; Bs \<turnstile>\<^sub>a var_s.map_arg \<rho> A : T)"
+  
+  abbreviation wf_args_P :: "'t list \<Rightarrow> 't list list \<Rightarrow> ('op Arg) list \<Rightarrow> 't list \<Rightarrow> bool" where
+    "wf_args_P \<Gamma> Bss As Ts \<equiv> \<forall> \<rho> \<Gamma>'. (\<rho> : \<Gamma> \<hookrightarrow> \<Gamma>') \<longrightarrow> (\<Gamma>' ; Bss \<turnstile>\<^sub>+ map (var_s.map_arg \<rho>) As : Ts)"
+  
+  lemma rename_pres_aux: "(\<Gamma> \<turnstile> M : T \<longrightarrow> wf_abt_P \<Gamma> M T) 
+      \<and> (\<Gamma>; Bss \<turnstile>\<^sub>+ As : Ts \<longrightarrow> wf_args_P \<Gamma> Bss As Ts)
+      \<and> (\<Gamma>; Bs \<turnstile>\<^sub>a A : T \<longrightarrow> wf_arg_P \<Gamma> Bs A T)"
+  proof (induction rule: wf_abt_wf_args_wf_arg.induct)
+    case (wf_var \<Gamma> x T)
+    then show ?case unfolding ren_pres_def rename_def by auto
+  next
+    case (wf_app \<Gamma> Bss args Ts op T)
+    then show ?case unfolding rename_def by auto
+  next
+    case (wf_trm \<Gamma> M T Bs)
+  then show ?case unfolding rename_def by auto
+  next
+    case (wf_bnd T' \<Gamma> Bs A T)
+    show ?case apply clarify apply simp
+    proof -
+      fix \<rho> \<Gamma>'
+      assume rho_ok: "\<rho> : \<Gamma> \<hookrightarrow> \<Gamma>'"
+      have rhoex_ok: "(var_s.extend \<rho>) : (T'#\<Gamma>) \<hookrightarrow> (T'#\<Gamma>')" using rho_ok unfolding ren_pres_def
+        apply auto apply (case_tac x) apply auto using var_pred_zero apply blast
+        
+        sorry
+      with wf_bnd.IH
+      have "T'#\<Gamma>'; Bs \<turnstile>\<^sub>a (var_s.map_arg (var_s.extend \<rho>) A) : T" by blast
+      then show "\<Gamma>'; T'#Bs \<turnstile>\<^sub>a Bnd (var_s.map_arg (var_s.extend \<rho>) A) : T" by blast
+    qed
+  next
+    case (wf_nil \<Gamma>)
+    then show ?case by auto
+  next
+    case (wf_cons \<Gamma> Bs A T Bss As Ts)
+    then show ?case by auto
+  qed
+  
+  theorem rename_pres: "\<lbrakk> \<Gamma> \<turnstile> M : T; \<rho> : \<Gamma> \<hookrightarrow> \<Gamma>' \<rbrakk> \<Longrightarrow> \<Gamma>' \<turnstile> rename \<rho> M : T"
+    using rename_pres_aux by blast
+  
+  theorem shift_pres: "\<lbrakk> \<Gamma> \<turnstile> M : T \<rbrakk> \<Longrightarrow> T'#\<Gamma> \<turnstile> rename Suc M : T"
+    apply (rule rename_pres)
+    apply assumption
+    unfolding ren_pres_def apply auto
+    done
+  
+  end
 
 end

@@ -32,8 +32,8 @@ begin
   abbreviation lift_sub :: "'v sub \<Rightarrow> 'v sub" ("\<Up>") where
     "\<Up> \<sigma> x \<equiv> \<Up> (\<sigma> x)"
   
-  abbreviation ext :: "'v sub \<Rightarrow> 'v sub" where
-    "ext \<sigma> \<equiv> \<lfloor>0\<rfloor> \<bullet> (\<Up> \<sigma>)"
+  abbreviation extend :: "'v sub \<Rightarrow> 'v sub" where
+    "extend \<sigma> \<equiv> \<lfloor>0\<rfloor> \<bullet> (\<Up> \<sigma>)"
   
   fun map_abt :: "'v sub \<Rightarrow> 'op ABT \<Rightarrow> 'op ABT" ("\<llangle>_\<rrangle>_" 70)
     and map_arg :: "'v sub \<Rightarrow> 'op Arg \<Rightarrow> 'op Arg" ("\<llangle>_\<rrangle>\<^sub>a_" 70)
@@ -41,7 +41,7 @@ begin
    "\<llangle>\<sigma>\<rrangle> (Var x) = quote (\<sigma> x)" |
    "\<llangle>\<sigma>\<rrangle> (App op args) = App op (map (map_arg \<sigma>) args)" |
    "\<llangle>\<sigma>\<rrangle>\<^sub>a (Trm M) = Trm (\<llangle>\<sigma>\<rrangle> M)" |
-   map_arg_bnd:"\<llangle>\<sigma>\<rrangle>\<^sub>a (Bnd A) = Bnd (\<llangle>ext \<sigma>\<rrangle>\<^sub>a A)" 
+   map_arg_bnd:"\<llangle>\<sigma>\<rrangle>\<^sub>a (Bnd A) = Bnd (\<llangle>extend \<sigma>\<rrangle>\<^sub>a A)" 
 
 end
 
@@ -54,18 +54,18 @@ begin
     "\<sigma> \<cong> \<tau> \<equiv> \<forall> x. q (\<sigma> x) =  q' (\<tau> x)"
   
   abbreviation map_cong_P1 :: "'a ABT \<Rightarrow> bool" where
-    "map_cong_P1 M \<equiv> \<forall> \<sigma> \<tau>. \<sigma> \<cong> \<tau> \<longrightarrow> (\<forall> \<sigma> \<tau>. \<sigma> \<cong> \<tau> \<longrightarrow> L.ext \<sigma> \<cong> R.ext \<tau> )
+    "map_cong_P1 M \<equiv> \<forall> \<sigma> \<tau>. \<sigma> \<cong> \<tau> \<longrightarrow> (\<forall> \<sigma> \<tau>. \<sigma> \<cong> \<tau> \<longrightarrow> L.extend \<sigma> \<cong> R.extend \<tau> )
             \<longrightarrow> L.map_abt \<sigma> M = R.map_abt \<tau> M"
   
   abbreviation map_cong_P2 :: "'a Arg \<Rightarrow> bool" where
-    "map_cong_P2 A \<equiv> \<forall> \<sigma> \<tau>. \<sigma> \<cong> \<tau> \<longrightarrow> (\<forall> \<sigma> \<tau>. \<sigma> \<cong> \<tau> \<longrightarrow> L.ext \<sigma> \<cong> R.ext \<tau> )
+    "map_cong_P2 A \<equiv> \<forall> \<sigma> \<tau>. \<sigma> \<cong> \<tau> \<longrightarrow> (\<forall> \<sigma> \<tau>. \<sigma> \<cong> \<tau> \<longrightarrow> L.extend \<sigma> \<cong> R.extend \<tau> )
             \<longrightarrow> L.map_arg \<sigma> A = R.map_arg \<tau> A"
   
   lemma map_cong_aux: "map_cong_P1 M"
     by (induction M rule: ABT.induct[of map_cong_P1 map_cong_P2]) 
        (auto simp add: L.map_arg_bnd R.map_arg_bnd)
   
-  theorem map_cong: assumes 1: "\<sigma> \<cong> \<tau>" and 2: "\<And> \<sigma> \<tau>. \<sigma> \<cong> \<tau> \<Longrightarrow> L.ext \<sigma> \<cong> R.ext \<tau>"
+  theorem map_cong: assumes 1: "\<sigma> \<cong> \<tau>" and 2: "\<And> \<sigma> \<tau>. \<sigma> \<cong> \<tau> \<Longrightarrow> L.extend \<sigma> \<cong> R.extend \<tau>"
     shows "L.map_abt \<sigma> M = R.map_abt \<tau> M"
     using 1 2 map_cong_aux[of M] by blast
 
@@ -89,7 +89,7 @@ begin
           \<longrightarrow> S2.map_arg \<tau> (S1.map_arg \<sigma> M) = S3.map_arg \<rho> M"
   
   lemma map_fusion_aux: 
-    assumes 1: "\<forall> \<sigma> \<tau> \<rho>. comp_cong \<tau> \<sigma> \<rho> \<longrightarrow> comp_cong (S2.ext \<tau>) (S1.ext \<sigma>) (S3.ext \<rho>)"
+    assumes 1: "\<forall> \<sigma> \<tau> \<rho>. comp_cong \<tau> \<sigma> \<rho> \<longrightarrow> comp_cong (S2.extend \<tau>) (S1.extend \<sigma>) (S3.extend \<rho>)"
     shows "map_fusion_P1 M"
     apply (induction M rule: ABT.induct[of map_fusion_P1 map_fusion_P2])
     apply force
@@ -100,9 +100,36 @@ begin
   
   theorem map_fusion:
     assumes 1: "comp_cong \<tau> \<sigma> \<rho>"
-    and 2: "\<forall> \<sigma> \<tau> \<rho>. comp_cong \<tau> \<sigma> \<rho> \<longrightarrow> comp_cong (S2.ext \<tau>) (S1.ext \<sigma>) (S3.ext \<rho>)"
+    and 2: "\<forall> \<sigma> \<tau> \<rho>. comp_cong \<tau> \<sigma> \<rho> \<longrightarrow> comp_cong (S2.extend \<tau>) (S1.extend \<sigma>) (S3.extend \<rho>)"
     shows "S2.map_abt \<tau> (S1.map_abt \<sigma> M) = S3.map_abt \<rho> M"
     using map_fusion_aux 1 2 by fast
+
+end
+
+(********************** locale abt_predicate **************************************)
+
+locale abt_predicate =
+  fixes op_pred :: "'op \<Rightarrow> 't list list \<Rightarrow> 't list \<Rightarrow> 't \<Rightarrow> bool"
+begin
+
+inductive wf_abt :: "'t list \<Rightarrow> 'op ABT \<Rightarrow> 't \<Rightarrow> bool" ("_\<turnstile>_:_" 55) 
+  and wf_args :: "'t list \<Rightarrow> 't list list \<Rightarrow> ('op Arg) list \<Rightarrow> 't list \<Rightarrow> bool" ("_;_\<turnstile>\<^sub>+_:_") 
+  and wf_arg :: "'t list \<Rightarrow> 't list \<Rightarrow> 'op Arg \<Rightarrow> 't \<Rightarrow> bool" ("_;_\<turnstile>\<^sub>a_:_") where
+  wf_var[intro!]: "\<lbrakk> nth \<Gamma> x = T \<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> Var x : T" |
+  wf_app[intro!]: "\<lbrakk> \<Gamma>; Bss \<turnstile>\<^sub>+ args : Ts; op_pred op Bss Ts T \<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> App op args : T" |
+  wf_trm[intro!]: "\<Gamma> \<turnstile> M : T \<Longrightarrow> \<Gamma>; Bs \<turnstile>\<^sub>a Trm M : T" |
+  wf_bnd[intro!]: "T' # \<Gamma>; Bs \<turnstile>\<^sub>a A : T \<Longrightarrow> \<Gamma>; T' # Bs \<turnstile>\<^sub>a Bnd A : T" |
+  wf_nil[intro!]: "\<Gamma>; [] \<turnstile>\<^sub>+ [] : []" |
+  wf_cons[intro!]: "\<lbrakk> \<Gamma>; Bs \<turnstile>\<^sub>a A : T; \<Gamma>; Bss \<turnstile>\<^sub>+ As : Ts\<rbrakk> \<Longrightarrow> \<Gamma>; Bs#Bss \<turnstile>\<^sub>+ A#As : T#Ts"
+
+(*
+inductive_cases
+  wf_var_elim[elim!]: "\<Gamma> \<turnstile> Var x : T" and
+  wf_app_elim[elim!]: "\<Gamma> \<turnstile> App op args : T" and
+  wf_trm_elim[elim!]: "\<Gamma>; Bs \<turnstile>\<^sub>a Trm M : T" and
+  wf_bnd_elim[elim!]: "\<Gamma>; Bs \<turnstile>\<^sub>a Bnd A : T" and
+  wf_cons_elim[elim!]: "\<Gamma>; Bss \<turnstile>\<^sub>+ As : Ts"
+*)
 
 end
 
