@@ -1,11 +1,20 @@
+(*
+  I'm relatively happy with this experiment.
+  The idea was to use a custom Term data type, but
+  make many of the substitution lemmas generic,
+  in a sequence of locale's that culminate in
+  the substitution lemma.
+ 
+*)
+
 theory Experiment3
   imports Main SubstHelper
 begin
 
 datatype Term =
-    Var var
-    | App Term Term (infixl "\<cdot>" 70)
-    | Lam Term      ("\<lambda>")
+  Var var
+  | App Term Term (infixl "\<cdot>" 70)
+  | Lam Term      ("\<lambda>")
 
 abbreviation extr :: "Renaming \<Rightarrow> Renaming" where
   "extr \<rho> \<equiv> 0 \<bullet> \<Up>\<^sub>r \<rho>"
@@ -39,9 +48,9 @@ definition seq :: "Subst \<Rightarrow> Subst \<Rightarrow> Subst" (infixr ";" 70
 
 interpretation interp_sub: subst1 Var lift_sub sub ren seq
   apply unfold_locales
-  apply (simp add: ren_def)
-  apply (simp add: seq_def)
-   apply (simp add: lift_sub_def ren_def)
+    apply (simp add: ren_def)
+   apply (simp add: seq_def)
+  apply (simp add: lift_sub_def ren_def)
   done
 
 lemma rename_sub_ren: "rename \<rho> M = sub (ren \<rho>) M"
@@ -98,7 +107,7 @@ proof (induction M arbitrary: \<sigma> \<tau>)
   then show ?case by (simp add: seq_def)
 next
   case (Lam N)
-  let ?S = "Var 0 \<bullet> \<Up> \<sigma>" and ?T = "Var 0 \<bullet> \<Up> \<tau>"
+  let ?S = "exts \<sigma>" and ?T = "exts \<tau>"
   from Lam have IH: "sub ?T (sub ?S N) = sub (?S ; ?T) N" by fast
   from IH show ?case using interp_sub.exts_seq by simp
 next
@@ -118,7 +127,7 @@ definition ext :: "Subst \<Rightarrow> Subst" where
 declare ext_def[simp]
 
 lemma sub_id[simp]: "sub ids M = M"
-  apply (induction M)
+  apply (induction M) 
     apply (simp add: ids_def)
    apply simp
   apply simp
@@ -130,7 +139,6 @@ interpretation interp_sub: subst6 Var lift_sub sub ren seq ids ext
 abbreviation subst_one :: "Term \<Rightarrow> Term \<Rightarrow> Term" ("_[_]" 70) where
   "subst_one N M \<equiv> sub (M \<bullet> ids) N"
 abbreviation subst_two :: "Term \<Rightarrow> Term \<Rightarrow> Term" ("_\<lbrace>_\<rbrace>" 60) where
- "N \<lbrace> M \<rbrace> \<equiv> sub (ext (M \<bullet> ids)) N"
-
+  "N \<lbrace> M \<rbrace> \<equiv> sub (ext (M \<bullet> ids)) N"
 
 end

@@ -1,7 +1,15 @@
+(*
+
+This file contains a sequence of locale's that help
+prove the usual substitution lemmas for a language.
+The client has to prove ren_sub, sub_ren, sub_sub, and sub_id,
+but the locale's in this file make that easier.
+
+*)
+
 theory SubstHelper
 imports Main
 begin
-
 
 type_synonym var = nat
 type_synonym Renaming = "var \<Rightarrow> var"
