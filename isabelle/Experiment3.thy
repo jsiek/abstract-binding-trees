@@ -11,16 +11,22 @@ theory Experiment3
   imports Main SubstHelper
 begin
 
+section "Syntax"
+
 datatype Term =
   Var var
+  | Bool bool
   | App Term Term (infixl "\<cdot>" 70)
   | Lam Term      ("\<lambda>")
+
+section "Substitution"
 
 abbreviation extr :: "Renaming \<Rightarrow> Renaming" where
   "extr \<rho> \<equiv> 0 \<bullet> \<Up>\<^sub>r \<rho>"
 
 fun rename :: "Renaming \<Rightarrow> Term \<Rightarrow> Term" where
   "rename \<rho> (Var x) = Var (\<rho> x)" |
+  "rename \<rho> (Bool b) = Bool b" |
   "rename \<rho> (L \<cdot> M) = (rename \<rho> L) \<cdot> (rename \<rho> M)" |
   "rename \<rho> (\<lambda> N) = \<lambda> (rename (extr \<rho>) N)"
 
@@ -37,6 +43,7 @@ abbreviation exts :: "Subst \<Rightarrow> Subst" where
 
 fun sub :: "Subst \<Rightarrow> Term \<Rightarrow> Term" where
   "sub \<sigma> (Var x) = \<sigma> x" |
+  "sub \<sigma> (Bool b) = Bool b" |
   "sub \<sigma> (L \<cdot> M) = (sub \<sigma> L) \<cdot> (sub \<sigma> M)" |
   "sub \<sigma> (\<lambda> N) = \<lambda> (sub (exts \<sigma>) N)"
 
@@ -70,6 +77,9 @@ proof (induction M arbitrary: \<tau> \<rho>)
   case (Var x)
   then show ?case by (simp add: seq_def)
 next
+  case (Bool b)
+  then show ?case by simp
+next
   case (App L M)
   then show ?case by simp
 next
@@ -89,6 +99,9 @@ proof (induction M arbitrary: \<sigma> \<rho>)
   case (Var x)
   then show ?case by (simp add: seq_def)
 next
+  case (Bool b)
+  then show ?case by simp
+next
   case (App L M)
   then show ?case by simp
 next
@@ -105,6 +118,9 @@ lemma sub_sub[simp]: "sub \<tau> (sub \<sigma> M) = sub (\<sigma> ; \<tau>) M"
 proof (induction M arbitrary: \<sigma> \<tau>)
   case (Var x)
   then show ?case by (simp add: seq_def)
+next
+  case (Bool b)
+  then show ?case by simp
 next
   case (Lam N)
   let ?S = "exts \<sigma>" and ?T = "exts \<tau>"
@@ -130,6 +146,7 @@ lemma sub_id[simp]: "sub ids M = M"
   apply (induction M) 
     apply (simp add: ids_def)
    apply simp
+   apply simp
   apply simp
   done
 
@@ -140,5 +157,96 @@ abbreviation subst_one :: "Term \<Rightarrow> Term \<Rightarrow> Term" ("_[_]" 7
   "subst_one N M \<equiv> sub (M \<bullet> ids) N"
 abbreviation subst_two :: "Term \<Rightarrow> Term \<Rightarrow> Term" ("_\<lbrace>_\<rbrace>" 60) where
   "N \<lbrace> M \<rbrace> \<equiv> sub (ext (M \<bullet> ids)) N"
+
+
+section "Type System"
+
+datatype Type =
+    TVar var
+  | TBool
+  | TFun Type Type (infixl "\<rightarrow>" 60)
+
+type_synonym TEnv = "Type list" 
+
+inductive wtt :: "TEnv \<Rightarrow> Term \<Rightarrow> Type \<Rightarrow> bool" ("_\<turnstile>_:_" 55) where
+  wt_var[intro!]: "\<Gamma>!x = A \<Longrightarrow> \<Gamma> \<turnstile> Var x : A" |
+  wt_bool[intro!]: "\<Gamma> \<turnstile> Bool b : TBool" |
+  wt_app[intro!]: "\<lbrakk> \<Gamma> \<turnstile> L : A \<rightarrow> B; \<Gamma> \<turnstile> M : A \<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> L \<cdot> M : B" |
+  wt_lam[intro!]: "\<lbrakk> A#\<Gamma> \<turnstile> N : B\<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> \<lambda> N : A \<rightarrow> B"
+
+inductive_cases
+  wt_var_elim[elim!]: "\<Gamma> \<turnstile> Var x : A" and
+  wt_bool_elim[elim!]: "\<Gamma> \<turnstile> Bool b : A" and
+  wt_app_elim[elim!]: "\<Gamma> \<turnstile> App L M : A" and
+  wt_lam_elim[elim!]: "\<Gamma> \<turnstile> \<lambda> N : A" 
+
+definition wt_ren :: "Renaming \<Rightarrow> TEnv \<Rightarrow> TEnv \<Rightarrow> bool" where
+  "wt_ren \<rho> \<Gamma> \<Gamma>' \<equiv> \<forall> x. \<Gamma>!x = \<Gamma>'!(\<rho> x)"
+declare wt_ren_def[simp]
+
+lemma ext_wt_ren: assumes 1: "wt_ren \<rho> \<Gamma> \<Gamma>'"
+  shows "wt_ren (extr \<rho>) (A# \<Gamma>) (A#\<Gamma>')"
+  apply auto 
+  apply (case_tac x) 
+   apply force
+  using 1 apply force 
+  done
+
+lemma wt_rename_pres: "\<lbrakk> \<Gamma> \<turnstile> M : A; wt_ren \<rho> \<Gamma> \<Gamma>' \<rbrakk> \<Longrightarrow> \<Gamma>' \<turnstile> rename \<rho> M : A"
+proof (induction M arbitrary: \<Gamma> \<Gamma>' \<rho> A)
+  case (Var x)
+  then show ?case by auto
+next
+  case (Bool b)
+  then show ?case by auto
+next
+  case (App L M)
+  then show ?case by auto
+next
+  case (Lam N)
+  then show ?case using ext_wt_ren by auto
+qed
+
+definition wt_sub :: "Subst \<Rightarrow> TEnv \<Rightarrow> TEnv \<Rightarrow> bool" where
+  "wt_sub \<sigma> \<Gamma> \<Gamma>' \<equiv> \<forall> x. \<Gamma>' \<turnstile> \<sigma> x : \<Gamma>!x"
+declare wt_sub_def[simp]
+
+lemma ext_wt_sub: assumes 1: "wt_sub \<sigma> \<Gamma> \<Gamma>'"
+  shows "wt_sub (ext \<sigma>) (A#\<Gamma>) (A#\<Gamma>')"
+  apply auto
+proof -
+  fix x
+  show "A # \<Gamma>'\<turnstile>(Var 0 \<bullet> (\<sigma> ; \<up>)) x:(A # \<Gamma>) ! x"
+  proof (cases x)
+    case 0
+    then show ?thesis by auto 
+  next
+    case (Suc y)
+    from 1 have 2: "\<Gamma>' \<turnstile> \<sigma> y : \<Gamma>!y" by auto
+    from 2 have "A#\<Gamma>' \<turnstile> rename Suc (\<sigma> y) : \<Gamma>!y" by (rule wt_rename_pres) auto
+    then have "A#\<Gamma>' \<turnstile> sub \<up> (\<sigma> y) : \<Gamma>!y" using rename_sub_ren[of Suc "\<sigma> y"] by simp
+    with Suc show ?thesis by (simp add: seq_def)
+  qed
+qed
+
+lemma wt_sub_pres: "\<lbrakk> \<Gamma> \<turnstile> M : A; wt_sub \<sigma> \<Gamma> \<Gamma>' \<rbrakk> \<Longrightarrow> \<Gamma>' \<turnstile> sub \<sigma> M : A"
+proof (induction M arbitrary: \<Gamma> \<Gamma>' \<sigma> A)
+  case (Var x)
+  then show ?case by auto
+next
+  case (Bool x)
+  then show ?case by auto
+next
+  case (App L M)
+  then show ?case by auto
+next
+  case (Lam N)
+  from Lam obtain B C where 1: "B#\<Gamma> \<turnstile> N : C" and 2: "A = B \<rightarrow> C" by auto
+  from Lam have 3: "wt_sub (ext \<sigma>) (B#\<Gamma>) (B#\<Gamma>')" using ext_wt_sub by auto
+  from 1 3 Lam have "B#\<Gamma>' \<turnstile> sub (ext \<sigma>) N : C" by blast
+  with 2 show ?case by auto
+qed
+
+
 
 end

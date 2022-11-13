@@ -159,11 +159,11 @@ definition wf_ren\<^sub>t :: "Renaming \<Rightarrow> nat \<Rightarrow> nat \<Rig
   "wf_ren\<^sub>t \<rho> \<Gamma> \<Gamma>' \<equiv> \<forall> x. x < \<Gamma> \<longrightarrow> \<rho> x < \<Gamma>'"
 declare wf_ren\<^sub>t_def[simp]
 
-(* Node: need equations about renaming! *)
 lemma ext_wf_rent: assumes 1: "wf_ren\<^sub>t \<rho> \<Gamma> \<Gamma>'"
   shows "wf_ren\<^sub>t (extr \<rho>) (Suc \<Gamma>) (Suc \<Gamma>')"
   apply auto apply (case_tac x) apply force
-  apply (simp add: lift_ren_def) using 1 apply auto done
+  using 1 apply force 
+  done
 
 lemma wft_rename_pres: "\<lbrakk> wft \<Gamma> A; wf_ren\<^sub>t \<rho> \<Gamma> \<Gamma>' \<rbrakk> \<Longrightarrow> wft \<Gamma>' (rename\<^sub>t \<rho> A)"
 proof (induction A arbitrary: \<Gamma> \<Gamma>' \<rho>)

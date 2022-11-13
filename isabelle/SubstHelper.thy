@@ -20,6 +20,7 @@ fun cons :: "'v \<Rightarrow> (var \<Rightarrow> 'v) \<Rightarrow> (var \<Righta
 
 definition lift_ren :: "Renaming \<Rightarrow> Renaming" ("\<Up>\<^sub>r") where
   "\<Up>\<^sub>r \<rho> x \<equiv> Suc (\<rho> x)"
+declare lift_ren_def[simp]
 
 locale subst1 =
   fixes Var :: "var \<Rightarrow> 'a"
