@@ -135,19 +135,17 @@ lemma shift_sub_ren[simp]: "\<Up> (\<sigma> ; ren \<rho>) = \<Up> \<sigma> ; Var
   done
 
 lemma sub_ren: "sub (ren \<rho>) (sub \<sigma> M) = sub (\<sigma> ; ren \<rho>) M"
-  apply (induction M arbitrary: \<sigma> \<rho>)
-    apply (simp add: seq_def)
-   apply simp
-  apply simp
-proof -
-  fix M \<sigma> \<rho> 
-  assume IH: "\<And>\<sigma> \<rho>. sub (ren \<rho>) (sub \<sigma> M) = sub (\<sigma> ; ren \<rho>) M"
-  have "sub (Var 0 \<bullet> \<Up> (ren \<rho>)) (sub (Var 0 \<bullet> \<Up> \<sigma>) M)
-        = sub (ren (0 \<bullet> \<Up> \<rho>)) (sub (Var 0 \<bullet> \<Up> \<sigma>) M)" by simp
-  also have "... = sub ((Var 0 \<bullet> \<Up> \<sigma>) ; ren (0 \<bullet> \<Up> \<rho>)) M" using IH by fast
-  also have "... = sub (Var 0 \<bullet> (\<Up> \<sigma> ; Var 0 \<bullet> \<Up> (ren \<rho>))) M" by simp
-  finally show "sub (Var 0 \<bullet> \<Up> (ren \<rho>)) (sub (Var 0 \<bullet> \<Up> \<sigma>) M) 
-        = sub (Var 0 \<bullet> (\<Up> \<sigma> ; Var 0 \<bullet> \<Up> (ren \<rho>))) M" .
+proof (induction M arbitrary: \<sigma> \<rho>)
+  case (Var x)
+  then show ?case by (simp add: seq_def)
+next
+  case (App L M)
+  then show ?case by simp
+next
+  case (Lam N)
+  let ?S = "Var 0 \<bullet> \<Up> \<sigma>" and ?R = "0 \<bullet> \<Up> \<rho>"
+  from Lam have "sub (ren ?R) (sub ?S N) = sub (?S ; ren ?R) N" by fast 
+  then show ?case by simp
 qed
 
 lemma sub_suc: fixes \<rho>::Renaming shows "(\<sigma> ; ren Suc) = \<Up> \<sigma>"
@@ -158,13 +156,15 @@ proof (induction M arbitrary: \<sigma> \<tau>)
   case (Var x)
   then show ?case by (simp add: seq_def)
 next
-  case (Lam M)
-  have "Var 0 \<bullet> \<Up> \<sigma> ; Var 0 \<bullet> \<Up> \<tau> = Var 0 \<bullet> \<Up> (\<sigma> ; \<tau>)"
+  case (Lam N)
+  let ?S = "Var 0 \<bullet> \<Up> \<sigma>" and ?T = "Var 0 \<bullet> \<Up> \<tau>"
+  from Lam have IH: "sub ?T (sub ?S N) = sub (?S ; ?T) N" by fast
+  have "?S ; ?T = Var 0 \<bullet> \<Up> (\<sigma> ; \<tau>)"
     apply (rule ext) apply (case_tac x) 
      apply (simp add: seq_def lift_sub_def)
     apply (simp add: seq_def lift_sub_def ren_sub lift_def rename_sub_ren)
     using sub_ren sub_suc apply auto done
-  with Lam show ?case by simp
+  with IH show ?case by simp
 next
   case (App L M)
   then show ?case by simp
@@ -208,6 +208,5 @@ theorem substitution: "M[N][L] = M\<lbrace>L\<rbrace>[N[L]]"
 
 theorem ext_sub_cons: "(sub (ext \<sigma>) N)[V] = sub (V \<bullet> \<sigma>) N" 
   by simp
-
 
 end
