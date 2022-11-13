@@ -19,13 +19,15 @@ locale substitution =
     and ren :: "Renaming \<Rightarrow> (var \<Rightarrow> 't)"
     and sub :: "(var \<Rightarrow> 't) \<Rightarrow> 't \<Rightarrow> 't"
     and ids :: "var \<Rightarrow> 't"
+    and seq :: "(var \<Rightarrow> 't) \<Rightarrow> (var \<Rightarrow> 't) \<Rightarrow> (var \<Rightarrow> 't)" (infixr ";" 70)
   assumes ren_def: "ren \<rho> x = Var (\<rho> x)"
-    and ren_shift[simp]: "ren (\<Up> \<rho>) = lift_sub (ren \<rho>)"
+    and ren_shift[simp]: "ren (\<Up> \<rho>) = lift_sub (ren \<rho>)" (* was lift_sub (ren \<rho>)  *)
     and sub_var[simp]: "sub \<sigma> (Var x) = \<sigma> x"
     and shift_var[simp]: "\<Up> Var x = Var (Suc x)"
     and lift_ren_var[simp]: "lift_sub (ren \<rho>) x = Var (Suc (\<rho> x))"
     and lift_sub_var[simp]: "lift_sub \<sigma> x = sub (ren Suc) (\<sigma> x)"
     and ids_def: "ids x = Var x"
+    and seq_def: "(\<sigma> ; \<tau>) x \<equiv> sub \<tau> (\<sigma> x)"
 begin
 
 lemma ren_cons[simp]: "ren (y \<bullet> \<rho>) = Var y \<bullet> ren \<rho>"
@@ -44,9 +46,6 @@ lemma ext_id[simp]: "Var 0 \<bullet> \<Up> ids = ids"
   apply (simp add: ren_def)
   done
 
-definition seq :: "(var \<Rightarrow> 't) \<Rightarrow> (var \<Rightarrow> 't) \<Rightarrow> (var \<Rightarrow> 't)" (infixr ";" 70) where
-  "(\<sigma> ; \<tau>) x \<equiv> sub \<tau> (\<sigma> x)"
-
 theorem shift_ren_seq[simp]: "\<Up> (ren \<rho> ; \<tau>) = (\<Up> (ren \<rho>) ; Var 0 \<bullet> \<Up> \<tau>)"
   apply (rule ext)
   apply (case_tac x)
@@ -64,6 +63,19 @@ lemma shift_seq_ren[simp]: "ren Suc ; Var 0 \<bullet> \<Up> (ren \<rho>) = ren (
   apply (case_tac x)
    apply (simp add: seq_def ren_def)
   apply (simp add: seq_def ren_def )
+  done
+
+theorem ConsSeq[simp]: "(M \<bullet> \<sigma>) ; \<tau> = sub \<tau> M \<bullet> (\<sigma> ; \<tau>)"
+  apply (rule ext)
+  apply (case_tac x)
+   apply (simp add: seq_def)
+   apply (simp add: seq_def)
+  done
+
+lemma shift_seq_sub[simp]: "ren Suc ; Var 0 \<bullet> \<Up> \<sigma> = \<Up> \<sigma>"
+  apply (rule ext) apply (case_tac x) 
+   apply (simp add: seq_def ren_def)
+   apply (simp add: seq_def ren_def)
   done
 
 end
@@ -116,16 +128,6 @@ definition ids :: "Subst" where
 definition seq :: "Subst \<Rightarrow> Subst \<Rightarrow> Subst" (infixr ";" 70) where
   "(\<sigma> ; \<tau>) x \<equiv> sub \<tau> (\<sigma> x)"
 
-(*
-lemma id_sub[simp]: "sub \<sigma> (ids x) = \<sigma> x"
-  unfolding ids_def by simp
-
-lemma ext_id[simp]: "Var 0 \<bullet> \<Up> ids = ids"
-  apply (rule ext) unfolding ids_def lift_sub_def ren_def
-  apply (case_tac x) apply auto 
-  done
-*)
-
 lemma ren_shift[simp]: "ren (\<Up> \<rho>) = \<Up> (ren \<rho>)"
   apply (rule ext)
   apply (case_tac x)
@@ -135,7 +137,7 @@ lemma ren_shift[simp]: "ren (\<Up> \<rho>) = \<Up> (ren \<rho>)"
 
 (***********************************************************)
 
-interpretation subst: substitution Var lift_sub ren sub ids
+interpretation subst: substitution Var lift_sub ren sub ids seq
   apply unfold_locales
   apply (simp add: ren_def)
   using ren_shift apply simp
@@ -143,7 +145,8 @@ interpretation subst: substitution Var lift_sub ren sub ids
    apply (simp add: ren_def)
    apply (simp add: lift_sub_def ren_def)
    apply simp
-  apply (simp add: ids_def)
+   apply (simp add: ids_def)
+  apply (simp add: seq_def)
   done
 
 (***********************************************************)
@@ -155,62 +158,21 @@ lemma sub_id[simp]: "sub ids M = M"
    apply simp
   done
 
-(*
-lemma ren_cons[simp]: "ren (y \<bullet> \<rho>) = Var y \<bullet> ren \<rho>"
-  apply (rule ext)
-  apply (case_tac x)
-   apply (simp add: ren_def)
-  apply (simp add: ren_def)
-  done
-*)
-
-
-
-
-
-theorem ConsSeq[simp]: "(M \<bullet> \<sigma>) ; \<tau> = sub \<tau> M \<bullet> (\<sigma> ; \<tau>)"
-  apply (rule ext)
-  apply (case_tac x)
-   apply (simp add: seq_def)
-   apply (simp add: seq_def)
-  done
-
-theorem shift_ren_seq[simp]: "\<Up> (ren \<rho> ; \<tau>) = (\<Up> (ren \<rho>) ; Var 0 \<bullet> \<Up> \<tau>)"
-  apply (rule ext)
-  apply (case_tac x)
-   apply (simp add: seq_def lift_sub_def ren_def)
-   apply (simp add: seq_def lift_sub_def ren_def)
-  done
-
 lemma ren_sub: "sub \<tau> (sub (ren \<rho>) M) = sub (ren \<rho> ; \<tau>) M"
-  apply (induction M arbitrary: \<tau> \<rho>)
-    apply (simp add: seq_def)
-   apply simp
-  apply simp
-proof -
-  fix M \<tau> \<rho>
-  assume IH: "\<And>\<tau> \<rho>. sub \<tau> (sub (ren \<rho>) M) = sub (ren \<rho> ; \<tau>) M"
-  have "sub (Var 0 \<bullet> \<Up> \<tau>) (sub (Var 0 \<bullet> \<Up> (ren \<rho>)) M)
-        = sub (Var 0 \<bullet> \<Up> \<tau>) (sub (ren (0 \<bullet> \<Up> \<rho>)) M)" by simp
-  also have "... = sub (ren (0 \<bullet> \<Up> \<rho>) ; Var 0 \<bullet> \<Up> \<tau>) M" using IH by fast
-  also have "... = sub (Var 0 \<bullet> (\<Up> (ren \<rho>) ; Var 0 \<bullet> \<Up> \<tau>)) M" by simp
-  finally show "sub (Var 0 \<bullet> \<Up> \<tau>) (sub (Var 0 \<bullet> \<Up> (ren \<rho>)) M) 
-               = sub (Var 0 \<bullet> (\<Up> (ren \<rho>) ; Var 0 \<bullet> \<Up> \<tau>)) M" .
+proof (induction M arbitrary: \<tau> \<rho>)
+  case (Var x)
+  then show ?case by (simp add: seq_def)
+next
+  case (App L M)
+  then show ?case by simp
+next
+  case (Lam N)
+  let ?T = "Var 0 \<bullet> \<Up> \<tau>" and ?R = "0 \<bullet> \<Up> \<rho>"
+  from Lam have "sub ?T (sub (ren ?R) N) = sub (ren ?R ; ?T) N" by blast
+  then show ?case by simp
 qed
 
-lemma ren_suc[simp]: fixes \<rho>::Renaming shows "(ren \<rho> ; ren Suc) = ren (\<Up> \<rho>)"
-  apply (rule ext)
-  apply (simp add: seq_def ren_def)
-  done
-
-lemma shift_seq_ren[simp]: "ren Suc ; Var 0 \<bullet> \<Up> (ren \<rho>) = ren (\<Up> \<rho>)"
-  apply (rule ext)
-  apply (case_tac x)
-   apply (simp add: seq_def ren_def)
-  apply (simp add: seq_def ren_def )
-  done
-
-lemma shift_sub_ren[simp]: "\<Up> (\<sigma> ; ren \<rho>) = (\<Up> \<sigma> ; Var 0 \<bullet> ren (\<Up> \<rho>) )"
+lemma shift_sub_ren[simp]: "\<Up> (\<sigma> ; ren \<rho>) = \<Up> \<sigma> ; Var 0 \<bullet> ren (\<Up> \<rho>)"
   apply (rule ext)
   apply (case_tac x)
    apply (simp add: seq_def ren_def ren_sub)
@@ -235,12 +197,6 @@ qed
 
 lemma sub_suc[simp]: fixes \<rho>::Renaming shows "(\<sigma> ; ren Suc) = \<Up> \<sigma>"
   unfolding seq_def lift_sub_def apply (rule ext) using rename_sub_ren apply simp done
-
-lemma shift_seq_sub[simp]: "ren Suc ; Var 0 \<bullet> \<Up> \<sigma> = \<Up> \<sigma>"
-  apply (rule ext) apply (case_tac x) 
-   apply (simp add: seq_def ren_def)
-   apply (simp add: seq_def ren_def)
-  done
 
 lemma sub_sub: "sub \<tau> (sub \<sigma> M) = sub (\<sigma> ; \<tau>) M"
 proof (induction M arbitrary: \<sigma> \<tau>)
