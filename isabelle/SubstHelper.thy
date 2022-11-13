@@ -49,7 +49,7 @@ end
 
 locale subst2 = subst1 +
   assumes lift_def: "\<Up> \<sigma> x = sub (ren Suc) (\<sigma> x)"
-    and sub_var: "sub \<sigma> (Var x) = \<sigma> x"
+    and sub_var[simp]: "sub \<sigma> (Var x) = \<sigma> x"
 begin
 
 theorem shift_ren_seq[simp]: "\<Up> (ren \<rho> ; \<tau>) = \<Up> (ren \<rho>) ; Var 0 \<bullet> \<Up> \<tau>"
@@ -64,6 +64,111 @@ lemma ren_suc: fixes \<rho>::Renaming shows "(ren \<rho> ; ren Suc) = \<Up> (ren
   apply (simp add: seq_def ren_def lift_def)
   done
 
+lemma shift_seq_ren[simp]: "ren Suc ; Var 0 \<bullet> \<Up> (ren \<rho>) = ren (\<Up>\<^sub>r \<rho>)"
+  apply (rule ext)
+  apply (case_tac x)
+   apply (simp add: seq_def ren_def sub_var)
+  apply (simp add: seq_def ren_def sub_var)
+  done
+
+lemma shift_seq_sub[simp]: "ren Suc ; M \<bullet> \<sigma> = \<sigma>"
+  apply (rule ext) apply (case_tac x) 
+   apply (simp add: seq_def ren_def sub_var)
+   apply (simp add: seq_def ren_def sub_var)
+  done
+
 end
+
+locale subst3 = subst2 + 
+  assumes ren_sub: "sub \<tau> (sub (ren \<rho>) M) = sub (ren \<rho> ; \<tau>) M"
+begin
+
+lemma shift_sub_ren[simp]: "\<Up> (\<sigma> ; ren \<rho>) = \<Up> \<sigma> ; Var 0 \<bullet> ren (\<Up>\<^sub>r \<rho>)"
+  apply (rule ext)
+  apply (case_tac x)
+   apply (simp add: seq_def ren_def ren_sub lift_def ren_suc)
+   apply (simp add: seq_def ren_def ren_sub lift_def ren_suc)
+  done
+
+end
+
+locale subst4 = subst3 + 
+  assumes sub_ren: "sub (ren \<rho>) (sub \<sigma> M) = sub (\<sigma> ; ren \<rho>) M"
+begin
+
+lemma sub_suc: fixes \<rho>::Renaming shows "(\<sigma> ; ren Suc) = \<Up> \<sigma>"
+  unfolding seq_def apply (rule ext)
+  apply (simp add: lift_def)  
+  done
+
+abbreviation exts :: "(var \<Rightarrow> 'a) \<Rightarrow> (var \<Rightarrow> 'a)" where
+  "exts \<sigma> \<equiv> Var 0 \<bullet> \<Up> \<sigma>"
+
+lemma exts_seq: "exts \<sigma> ; exts \<tau> = exts (\<sigma> ; \<tau>)"
+  apply (rule ext) apply (case_tac x) 
+   apply (simp add: seq_def lift_def sub_var)
+  apply (simp add: seq_def lift_def ren_sub)
+  using sub_ren sub_suc apply auto done
+
+end
+
+locale subst5 = subst4 +
+  fixes ids :: "var \<Rightarrow> 'a"
+  assumes sub_sub[simp]: "sub \<tau> (sub \<sigma> M) = sub (\<sigma> ; \<tau>) M"
+    and ids_def: "ids x = Var x"
+begin
+
+lemma id_sub[simp]: "sub \<sigma> (ids x) = \<sigma> x"
+  unfolding ids_def sub_var by simp
+
+lemma exts_id[simp]: "exts ids = ids"
+  apply (rule ext) unfolding ids_def ren_def
+  apply (case_tac x) apply force
+  apply (simp add: ren_def lift_def sub_var)
+  done
+
+theorem seq_ids_left[simp]: "ids ; \<sigma> = \<sigma>" 
+  unfolding seq_def ids_def sub_var by simp
+
+theorem seq_assoc[simp]: "(\<sigma> ; \<tau>) ; \<rho> = \<sigma> ; (\<tau> ; \<rho>)"
+  apply (rule ext)
+  unfolding seq_def apply simp
+  unfolding seq_def by simp
+
+lemma lift_sub_seq_suc[simp]: "\<Up> \<sigma> = \<sigma> ; ren Suc"
+  apply (rule ext)
+  unfolding lift_def seq_def apply (simp add: ren_def) done
+
+lemma cons_shift_ids[simp]: "Var 0 \<bullet> ren Suc = ids"
+  apply (rule ext)
+  unfolding ids_def apply (case_tac x) apply simp apply (simp add: ren_def) done
+
+end
+
+locale subst6 = subst5 +
+  fixes ext :: "(var \<Rightarrow> 'a) \<Rightarrow> (var \<Rightarrow> 'a)"
+  assumes sub_id[simp]: "sub ids M = M"
+    and ext_def[simp]: "ext \<sigma> = Var 0 \<bullet> (\<sigma> ; ren Suc)"
+begin
+
+abbreviation subst_one :: "'a \<Rightarrow> 'a \<Rightarrow> 'a" ("_[_]" 70) where
+  "subst_one N M \<equiv> sub (M \<bullet> ids) N"
+abbreviation subst_two :: "'a \<Rightarrow> 'a \<Rightarrow> 'a" ("_\<lbrace>_\<rbrace>" 60) where
+ "N \<lbrace> M \<rbrace> \<equiv> sub (ext (M \<bullet> ids)) N"
+
+theorem seq_ids_right[simp]: "\<sigma> ; ids = \<sigma>"
+  unfolding seq_def by simp
+
+theorem subst_commute: "(sub (ext \<sigma>) N) [ sub \<sigma> M ] = sub \<sigma> (N [ M ])"
+  by simp
+
+theorem substitution: "M[N][L] = M\<lbrace>L\<rbrace>[N[L]]"
+  by simp
+
+theorem ext_sub_cons: "(sub (ext \<sigma>) N)[V] = sub (V \<bullet> \<sigma>) N" 
+  by simp
+
+end
+
 
 end
