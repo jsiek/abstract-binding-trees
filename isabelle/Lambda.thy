@@ -7,7 +7,7 @@
  
 *)
 
-theory Experiment3
+theory Lambda
   imports Main SubstHelper
 begin
 
@@ -169,7 +169,7 @@ datatype Type =
 type_synonym TEnv = "Type list" 
 
 inductive wtt :: "TEnv \<Rightarrow> Term \<Rightarrow> Type \<Rightarrow> bool" ("_\<turnstile>_:_" 55) where
-  wt_var[intro!]: "\<Gamma>!x = A \<Longrightarrow> \<Gamma> \<turnstile> Var x : A" |
+  wt_var[intro!]: "\<lbrakk> x < length \<Gamma>; \<Gamma>!x = A \<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> Var x : A" |
   wt_bool[intro!]: "\<Gamma> \<turnstile> Bool b : TBool" |
   wt_app[intro!]: "\<lbrakk> \<Gamma> \<turnstile> L : A \<rightarrow> B; \<Gamma> \<turnstile> M : A \<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> L \<cdot> M : B" |
   wt_lam[intro!]: "\<lbrakk> A#\<Gamma> \<turnstile> N : B\<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> \<lambda> N : A \<rightarrow> B"
@@ -181,15 +181,14 @@ inductive_cases
   wt_lam_elim[elim!]: "\<Gamma> \<turnstile> \<lambda> N : A" 
 
 definition wt_ren :: "Renaming \<Rightarrow> TEnv \<Rightarrow> TEnv \<Rightarrow> bool" where
-  "wt_ren \<rho> \<Gamma> \<Gamma>' \<equiv> \<forall> x. \<Gamma>!x = \<Gamma>'!(\<rho> x)"
+  "wt_ren \<rho> \<Gamma> \<Gamma>' \<equiv> \<forall> x. x < length \<Gamma> \<longrightarrow> \<rho> x < length \<Gamma>' \<and> \<Gamma>!x = \<Gamma>'!(\<rho> x)"
 declare wt_ren_def[simp]
 
 lemma ext_wt_ren: assumes 1: "wt_ren \<rho> \<Gamma> \<Gamma>'"
-  shows "wt_ren (extr \<rho>) (A# \<Gamma>) (A#\<Gamma>')"
+  shows "wt_ren (extr \<rho>) (A#\<Gamma>) (A#\<Gamma>')"
   apply auto 
-  apply (case_tac x) 
-   apply force
-  using 1 apply force 
+   apply (case_tac x) apply force using 1 apply force
+  apply (case_tac x) apply force using 1 apply force 
   done
 
 lemma wt_rename_pres: "\<lbrakk> \<Gamma> \<turnstile> M : A; wt_ren \<rho> \<Gamma> \<Gamma>' \<rbrakk> \<Longrightarrow> \<Gamma>' \<turnstile> rename \<rho> M : A"
@@ -208,21 +207,21 @@ next
 qed
 
 definition wt_sub :: "Subst \<Rightarrow> TEnv \<Rightarrow> TEnv \<Rightarrow> bool" where
-  "wt_sub \<sigma> \<Gamma> \<Gamma>' \<equiv> \<forall> x. \<Gamma>' \<turnstile> \<sigma> x : \<Gamma>!x"
+  "wt_sub \<sigma> \<Gamma> \<Gamma>' \<equiv> \<forall> x. x < length \<Gamma> \<longrightarrow> \<Gamma>' \<turnstile> \<sigma> x : \<Gamma>!x"
 declare wt_sub_def[simp]
 
 lemma ext_wt_sub: assumes 1: "wt_sub \<sigma> \<Gamma> \<Gamma>'"
   shows "wt_sub (ext \<sigma>) (A#\<Gamma>) (A#\<Gamma>')"
   apply auto
 proof -
-  fix x
+  fix x assume xg: "x < Suc (length \<Gamma>)"
   show "A # \<Gamma>'\<turnstile>(Var 0 \<bullet> (\<sigma> ; \<up>)) x:(A # \<Gamma>) ! x"
   proof (cases x)
     case 0
     then show ?thesis by auto 
   next
     case (Suc y)
-    from 1 have 2: "\<Gamma>' \<turnstile> \<sigma> y : \<Gamma>!y" by auto
+    from 1 xg Suc have 2: "\<Gamma>' \<turnstile> \<sigma> y : \<Gamma>!y" by auto
     from 2 have "A#\<Gamma>' \<turnstile> rename Suc (\<sigma> y) : \<Gamma>!y" by (rule wt_rename_pres) auto
     then have "A#\<Gamma>' \<turnstile> sub \<up> (\<sigma> y) : \<Gamma>!y" using rename_sub_ren[of Suc "\<sigma> y"] by simp
     with Suc show ?thesis by (simp add: seq_def)
@@ -247,6 +246,62 @@ next
   with 2 show ?case by auto
 qed
 
+lemma wft_subst_pres: "\<lbrakk> B#\<Gamma> \<turnstile> M : A; \<Gamma> \<turnstile> N : B \<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> M[N] : A"
+  apply (rule wt_sub_pres)
+   apply assumption
+  apply auto
+  apply (case_tac x)
+   apply (auto simp add: ids_def)
+  done
 
+section "Semantics"
+
+inductive reduce :: "Term \<Rightarrow> Term \<Rightarrow> bool" (infix "\<longmapsto>" 50) where
+  beta[intro!]: "(\<lambda> N) \<cdot> M \<longmapsto> N[M]" |
+  appl[intro!]: "L \<longmapsto> L' \<Longrightarrow> L \<cdot> M \<longmapsto> L' \<cdot> M" |
+  appr[intro!]: "M \<longmapsto> M' \<Longrightarrow> L \<cdot> M \<longmapsto> L \<cdot> M'" |
+  abs[intro!]: "N \<longmapsto> N' \<Longrightarrow> \<lambda> N \<longmapsto> \<lambda> N'"
+
+inductive val :: "Term \<Rightarrow> bool" where
+  vlam[intro!]: "val (\<lambda> N)" |
+  vbool[intro!]: "val (Bool b)"
+
+lemma preservation: "\<lbrakk> M \<longmapsto> N; \<Gamma> \<turnstile> M : A \<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> N : A"
+proof (induction M N arbitrary: \<Gamma> A rule: reduce.induct)
+case (beta N M)
+  then show ?case using wft_subst_pres by auto
+next
+  case (appl L L' M)
+  then show ?case by auto
+next
+  case (appr M M' L)
+  then show ?case by auto
+next
+  case (abs N N')
+  then show ?case by auto
+qed
+
+lemma progress: "\<Gamma> \<turnstile> M : A \<Longrightarrow> \<Gamma> = [] \<Longrightarrow> val M \<or> (\<exists> N. M \<longmapsto> N)"
+proof (induction M A rule: wtt.induct)
+case (wt_var \<Gamma> x A)
+  then show ?case by auto
+next
+  case (wt_bool \<Gamma> b)
+  then show ?case by auto
+next
+  case (wt_app \<Gamma> L A B M)
+  from wt_app have " val L \<or> (\<exists>L'. L \<longmapsto> L')" by auto
+  then show ?case
+  proof
+    assume "val L"
+    show ?thesis sorry
+  next
+    assume "\<exists>L'. L \<longmapsto> L'"
+    then show ?thesis by auto
+  qed
+next
+  case (wt_lam A \<Gamma> N B)
+  then show ?case by auto
+qed
 
 end
