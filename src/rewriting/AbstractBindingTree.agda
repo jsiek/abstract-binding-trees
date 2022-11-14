@@ -12,6 +12,7 @@ open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec; []; _∷_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
+open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import ScopedTuple
 open import Sig
@@ -139,6 +140,61 @@ rename-ren-arg {ρ} {.(ν _)} {bind arg} rewrite ext-ren {ρ} =
 rename-ren-args {ρ} {.[]} {nil} = refl
 rename-ren-args {ρ} {.(_ ∷ _)} {cons arg args} =
     cong₂ cons rename-ren-arg rename-ren-args
+
+shift-ren-seq : ∀ {ρ τ} → ⟰ (ren ρ ⨟ τ) ≡ ⟰ (ren ρ) ⨟ (` 0 • ⟰ τ)
+shift-ren-seq {ρ}{τ} = extensionality (aux {ρ}{τ})
+    where
+    aux : ∀ {ρ τ} → ∀ x → ⟰ (ren ρ ⨟ τ) x ≡  (⟰ (ren ρ) ⨟ (` 0 • ⟰ τ)) x
+    aux zero = refl
+    aux (suc x) = refl
+
+shift-seq-ren : ∀ {ρ} → ren suc ⨟ ` 0 • ⟰ (ren ρ) ≡ ren (⟰ᵣ ρ)
+shift-seq-ren {ρ} = extensionality aux
+    where
+    aux : ∀ {ρ} → ∀ x → (ren suc ⨟ ` 0 • ⟰ (ren ρ)) x ≡ ren (⟰ᵣ ρ) x
+    aux {ρ} zero = refl
+    aux {ρ} (suc x) = refl
+
+shift-seq-sub : ∀{σ M} → ren suc ⨟ M • σ ≡ σ
+shift-seq-sub {σ}{M} = extensionality (aux{σ}{M})
+    where
+    aux : ∀{σ M} → ∀ x → (ren suc ⨟ M • σ) x ≡ σ x
+    aux {σ} {M} zero = refl
+    aux {σ} {M} (suc x) = refl
+
+ext-seq : ∀ {ρ}{τ} → ext (ren ρ) ⨟ ext τ ≡ ext (ren ρ ⨟ τ)
+ext-seq {ρ}{τ} = extensionality aux
+    where
+    aux : ∀{ρ}{τ} → ∀ x → (ext (ren ρ) ⨟ ext τ) x ≡ ext (ren ρ ⨟ τ) x
+    aux {ρ} {τ} zero = refl
+    aux {ρ} {τ} (suc x) = refl
+
+ren-sub : ∀ {τ ρ M} → sub τ (sub (ren ρ) M) ≡ sub (ren ρ ⨟ τ) M
+ren-sub-arg : ∀ {τ ρ b}{arg : Arg b}
+   → sub-arg τ (sub-arg (ren ρ) arg) ≡ sub-arg (ren ρ ⨟ τ) arg
+ren-sub-args : ∀ {τ ρ bs}{args : Args bs}
+   → sub-args τ (sub-args (ren ρ) args) ≡ sub-args (ren ρ ⨟ τ) args
+ren-sub {τ} {ρ} {` x} = refl
+ren-sub {τ} {ρ} {op ⦅ args ⦆} = cong ((λ X → op ⦅ X ⦆)) ren-sub-args
+ren-sub-arg {τ} {ρ} {.■} {ast M} = cong ast (ren-sub{τ}{ρ}{M})
+ren-sub-arg {τ} {ρ} {.(ν _)} {bind arg} = cong bind G
+   where
+   IH : sub-arg (ext τ) (sub-arg (ren (extr ρ)) arg)
+        ≡ sub-arg (ren (extr ρ) ⨟ (ext τ)) arg
+   IH = ren-sub-arg{ext τ}{extr ρ}
+   
+   G : sub-arg (ext τ) (sub-arg (ext (ren ρ)) arg) ≡
+       sub-arg (ext (ren ρ ⨟ τ)) arg
+   G = begin
+        sub-arg (ext τ) (sub-arg (ext (ren ρ)) arg) ≡⟨ cong (λ X → sub-arg (ext τ) (sub-arg X arg)) ext-ren ⟩
+        sub-arg (ext τ) (sub-arg (ren (extr ρ)) arg) ≡⟨ IH ⟩
+        sub-arg (ren (extr ρ) ⨟ (ext τ)) arg ≡⟨ cong (λ X → sub-arg (X ⨟ (ext τ)) arg) (sym ext-ren) ⟩
+        sub-arg (ext (ren ρ) ⨟ (ext τ)) arg ≡⟨ cong (λ X → sub-arg X arg) ext-seq ⟩
+        sub-arg (ext (ren ρ ⨟ τ)) arg ∎
+         
+ren-sub-args {τ} {ρ} {.[]} {nil} = refl
+ren-sub-args {τ} {ρ} {.(_ ∷ _)} {cons arg args} =
+   cong₂ cons ren-sub-arg ren-sub-args
 
 {----------------------------------------------------------------------------
  Free variables
