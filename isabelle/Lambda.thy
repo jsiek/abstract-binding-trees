@@ -184,27 +184,15 @@ definition wt_ren :: "Renaming \<Rightarrow> TEnv \<Rightarrow> TEnv \<Rightarro
   "wt_ren \<rho> \<Gamma> \<Gamma>' \<equiv> \<forall> x. x < length \<Gamma> \<longrightarrow> \<rho> x < length \<Gamma>' \<and> \<Gamma>!x = \<Gamma>'!(\<rho> x)"
 declare wt_ren_def[simp]
 
-lemma ext_wt_ren: assumes 1: "wt_ren \<rho> \<Gamma> \<Gamma>'"
-  shows "wt_ren (extr \<rho>) (A#\<Gamma>) (A#\<Gamma>')"
+lemma ext_wt_ren: "wt_ren \<rho> \<Gamma> \<Gamma>' \<Longrightarrow> wt_ren (extr \<rho>) (A#\<Gamma>) (A#\<Gamma>')"
   apply auto 
-   apply (case_tac x) apply force using 1 apply force
-  apply (case_tac x) apply force using 1 apply force 
+   apply (case_tac x) apply force apply force
+  apply (case_tac x) apply force apply force 
   done
 
 lemma wt_rename_pres: "\<lbrakk> \<Gamma> \<turnstile> M : A; wt_ren \<rho> \<Gamma> \<Gamma>' \<rbrakk> \<Longrightarrow> \<Gamma>' \<turnstile> rename \<rho> M : A"
-proof (induction M arbitrary: \<Gamma> \<Gamma>' \<rho> A)
-  case (Var x)
-  then show ?case by auto
-next
-  case (Bool b)
-  then show ?case by auto
-next
-  case (App L M)
-  then show ?case by auto
-next
-  case (Lam N)
-  then show ?case using ext_wt_ren by auto
-qed
+  apply (induction M arbitrary: \<Gamma> \<Gamma>' \<rho> A)
+  using ext_wt_ren by auto
 
 definition wt_sub :: "Subst \<Rightarrow> TEnv \<Rightarrow> TEnv \<Rightarrow> bool" where
   "wt_sub \<sigma> \<Gamma> \<Gamma>' \<equiv> \<forall> x. x < length \<Gamma> \<longrightarrow> \<Gamma>' \<turnstile> \<sigma> x : \<Gamma>!x"
@@ -229,22 +217,8 @@ proof -
 qed
 
 lemma wt_sub_pres: "\<lbrakk> \<Gamma> \<turnstile> M : A; wt_sub \<sigma> \<Gamma> \<Gamma>' \<rbrakk> \<Longrightarrow> \<Gamma>' \<turnstile> sub \<sigma> M : A"
-proof (induction M arbitrary: \<Gamma> \<Gamma>' \<sigma> A)
-  case (Var x)
-  then show ?case by auto
-next
-  case (Bool x)
-  then show ?case by auto
-next
-  case (App L M)
-  then show ?case by auto
-next
-  case (Lam N)
-  from Lam obtain B C where 1: "B#\<Gamma> \<turnstile> N : C" and 2: "A = B \<rightarrow> C" by auto
-  from Lam have 3: "wt_sub (ext \<sigma>) (B#\<Gamma>) (B#\<Gamma>')" using ext_wt_sub by auto
-  from 1 3 Lam have "B#\<Gamma>' \<turnstile> sub (ext \<sigma>) N : C" by blast
-  with 2 show ?case by auto
-qed
+  apply (induction M arbitrary: \<Gamma> \<Gamma>' \<sigma> A)
+  using ext_wt_sub by auto
 
 lemma wft_subst_pres: "\<lbrakk> B#\<Gamma> \<turnstile> M : A; \<Gamma> \<turnstile> N : B \<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> M[N] : A"
   apply (rule wt_sub_pres)
@@ -269,50 +243,10 @@ inductive val :: "Term \<Rightarrow> bool" where
 inductive_cases val_elim[elim!]: "val V"
 
 lemma preservation: "\<lbrakk> M \<longmapsto> N; \<Gamma> \<turnstile> M : A \<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> N : A"
-proof (induction M N arbitrary: \<Gamma> A rule: reduce.induct)
-case (beta N M)
-  then show ?case using wft_subst_pres by auto
-next
-  case (appl L L' M)
-  then show ?case by auto
-next
-  case (appr M M' L)
-  then show ?case by auto
-next
-  case (abs N N')
-  then show ?case by auto
-qed
+  apply (induction M N arbitrary: \<Gamma> A rule: reduce.induct)
+  using wft_subst_pres by auto
 
 lemma progress: "\<Gamma> \<turnstile> M : A \<Longrightarrow> \<Gamma> = [] \<Longrightarrow> val M \<or> (\<exists> N. M \<longmapsto> N)"
-proof (induction M A rule: wtt.induct)
-case (wt_var \<Gamma> x A)
-  then show ?case by auto
-next
-  case (wt_bool \<Gamma> b)
-  then show ?case by auto
-next
-  case (wt_app \<Gamma> L A B M)
-  from wt_app have " val L \<or> (\<exists>L'. L \<longmapsto> L')" by auto
-  then show ?case
-  proof
-    assume vL: "val L"
-    from wt_app have " val M \<or> (\<exists>M'. M \<longmapsto> M')" by auto
-    then show ?thesis
-    proof
-      assume vM: "val M"
-      from vL wt_app obtain N where l: "L = \<lambda> N" by auto
-      then show ?thesis by auto
-    next
-      assume sM: "\<exists>M'. M \<longmapsto> M'"
-      from sM show ?thesis by auto
-    qed
-  next
-    assume "\<exists>L'. L \<longmapsto> L'"
-    then show ?thesis by auto
-  qed
-next
-  case (wt_lam A \<Gamma> N B)
-  then show ?case by auto
-qed
+  by (induction M A rule: wtt.induct) auto
 
 end
