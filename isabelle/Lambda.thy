@@ -266,6 +266,8 @@ inductive val :: "Term \<Rightarrow> bool" where
   vlam[intro!]: "val (\<lambda> N)" |
   vbool[intro!]: "val (Bool b)"
 
+inductive_cases val_elim[elim!]: "val V"
+
 lemma preservation: "\<lbrakk> M \<longmapsto> N; \<Gamma> \<turnstile> M : A \<rbrakk> \<Longrightarrow> \<Gamma> \<turnstile> N : A"
 proof (induction M N arbitrary: \<Gamma> A rule: reduce.induct)
 case (beta N M)
@@ -293,8 +295,17 @@ next
   from wt_app have " val L \<or> (\<exists>L'. L \<longmapsto> L')" by auto
   then show ?case
   proof
-    assume "val L"
-    show ?thesis sorry
+    assume vL: "val L"
+    from wt_app have " val M \<or> (\<exists>M'. M \<longmapsto> M')" by auto
+    then show ?thesis
+    proof
+      assume vM: "val M"
+      from vL wt_app obtain N where l: "L = \<lambda> N" by auto
+      then show ?thesis by auto
+    next
+      assume sM: "\<exists>M'. M \<longmapsto> M'"
+      from sM show ?thesis by auto
+    qed
   next
     assume "\<exists>L'. L \<longmapsto> L'"
     then show ?thesis by auto
