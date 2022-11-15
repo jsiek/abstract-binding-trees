@@ -96,6 +96,9 @@ sub-arg σ (bind M) = bind (sub-arg (exts σ) M)
 sub-args σ nil = nil
 sub-args σ (cons arg args) = cons (sub-arg σ arg) (sub-args σ args)
 
+⟪_⟫ : Subst → ABT → ABT
+⟪ σ ⟫ M = sub σ M
+
 ren : Rename → Subst
 ren ρ x = ` ρ x
 

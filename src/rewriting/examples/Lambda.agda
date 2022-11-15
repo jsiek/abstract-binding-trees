@@ -1,3 +1,4 @@
+{-# OPTIONS --without-K --rewriting #-}
 {-
 
   This is an example of using Abstract Binding Trees to define the
@@ -6,18 +7,15 @@
 
 -}
 
-import Syntax
-open import Level using (lift)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
+open import Sig
 
 module rewriting.examples.Lambda where
-
-open Syntax using (Sig; Rename; _•_; id; ↑; Shiftable; GSubst; ⟰; ν; ■)
 
 data Op : Set where
   op-lam : Op
@@ -27,15 +25,15 @@ sig : Op → List Sig
 sig op-lam = (ν ■) ∷ []
 sig op-app = ■ ∷ ■ ∷ []
 
-open Syntax.OpSig Op sig
-  using (`_; _⦅_⦆; cons; nil; bind; ast; _[_]; Subst; ⟪_⟫;
-         rename; ABT-is-Shiftable; Var-is-Quotable; ABT-is-Quotable)
-  renaming (ABT to Term)
-  
+open import rewriting.AbstractBindingTree Op sig
+
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
 
 infixl 7  _·_
 pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
+
+Term : Set
+Term = ABT
 
 {-------------      Examples regarding substitution   -------------}
 
@@ -45,7 +43,7 @@ sub-app = λ L M σ → refl
 sub-lam : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ ` 0 • ⟰ σ ⟫ N)
 sub-lam N σ = refl 
 
-ren-lam : ∀ (N : Term) (ρ : Rename) → rename ρ (ƛ N) ≡ ƛ (rename (0 • ⟰ ρ) N)
+ren-lam : ∀ (N : Term) (ρ : Rename) → ⟪ ren ρ ⟫ (ƛ N) ≡ ƛ (⟪ ren (0 •ᵣ ⟰ᵣ ρ) ⟫ N)
 ren-lam N σ = refl 
 
 _ : ∀ (M L : Term) → (M • L • id) 0 ≡ M
@@ -107,7 +105,6 @@ data Type : Set where
   _⇒_   : Type → Type → Type
 
 open import Var
-{-open import MapPreserve Op sig-}
 
 𝑉 : List Type → Var → Type → Type → Set
 𝑉 Γ x A B = A ≡ B
@@ -116,7 +113,7 @@ open import Var
 𝑃 op-lam (B ∷̌ []̌) ⟨ ⟨ A , tt ⟩ , tt ⟩ A→B = A→B ≡ A ⇒ B
 𝑃 op-app (A→B ∷̌ A ∷̌ []̌) ⟨ tt , ⟨ tt , tt ⟩ ⟩ B = A→B ≡ A ⇒ B
 
-open import ABTPredicate Op sig 𝑉 𝑃
+open import rewriting.ABTPredicate Op sig 𝑉 𝑃
 
 pattern ⊢` ∋x = var-p ∋x refl
 pattern ⊢ƛ ⊢N eq = op-p {op = op-lam} (cons-p (bind-p (ast-p ⊢N)) nil-p) eq
@@ -148,7 +145,7 @@ progress : ∀ {M A}
   → [] ⊢ M ⦂ A
     ----------
   → Progress M
-progress (⊢` (lift ()))
+progress (⊢` ())
 progress (⊢ƛ ⊢N _)                          =  done V-ƛ
 progress (⊢· ⊢L ⊢M _)
     with progress ⊢L
