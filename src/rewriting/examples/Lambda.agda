@@ -43,8 +43,13 @@ sub-app = λ L M σ → refl
 sub-lam : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ ` 0 • ⟰ σ ⟫ N)
 sub-lam N σ = refl 
 
+sub-lam2 : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ ` 0 • (σ ⨟ ↑) ⟫ N)
+sub-lam2 N σ = {!!} 
+
+{-
 ren-lam : ∀ (N : Term) (ρ : Rename) → ⟪ ren ρ ⟫ (ƛ N) ≡ ƛ (⟪ ren (0 •ᵣ ⟰ᵣ ρ) ⟫ N)
-ren-lam N σ = refl 
+ren-lam N σ = refl
+-}
 
 _ : ∀ (M L : Term) → (M • L • id) 0 ≡ M
 _ = λ M L → refl
@@ -154,8 +159,8 @@ progress (⊢· ⊢L ⊢M _)
 
 {-------------      Proof of Preservation    -------------}
 
-open import SubstPreserve Op sig Type 𝑉 𝑃 (λ x → refl) (λ { refl refl → refl })
-    (λ x → x) (λ { refl ⊢M → ⊢M }) using (preserve-substitution)
+open SubstPreserve (λ x → refl) (λ x → x) (λ x → x) (λ x → x) (λ {refl ⊢M → ⊢M})
+  using (preserve-substitution)
 
 preserve : ∀ {Γ M N A}
   → Γ ⊢ M ⦂ A

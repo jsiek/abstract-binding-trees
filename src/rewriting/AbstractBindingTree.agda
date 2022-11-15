@@ -42,30 +42,34 @@ data Args where
  Renaming
 ----------------------------------------------------------------------------}
 
-Rename : Set
-Rename = Var → Var
+module Renaming where
 
-infixr 6 _•ᵣ_
-_•ᵣ_ : Var → Rename → Rename
-(y •ᵣ ρ) 0 = y
-(y •ᵣ ρ) (suc x) = ρ x
+  Rename : Set
+  Rename = Var → Var
 
-⟰ᵣ : Rename → Rename
-⟰ᵣ ρ x = suc (ρ x)
+  infixr 6 _•ᵣ_
+  _•ᵣ_ : Var → Rename → Rename
+  (y •ᵣ ρ) 0 = y
+  (y •ᵣ ρ) (suc x) = ρ x
 
-extr : Rename → Rename
-extr ρ = 0 •ᵣ ⟰ᵣ ρ
+  ⟰ᵣ : Rename → Rename
+  ⟰ᵣ ρ x = suc (ρ x)
 
-rename : Rename → ABT → ABT
-rename-arg : Rename → {b : Sig} → Arg b → Arg b
-rename-args : Rename → {bs : List Sig} → Args bs → Args bs
+  extr : Rename → Rename
+  extr ρ = 0 •ᵣ ⟰ᵣ ρ
 
-rename ρ (` x) = ` ρ x
-rename ρ (op ⦅ args ⦆) = op ⦅ rename-args ρ args ⦆
-rename-arg ρ (ast M) = ast (rename ρ M)
-rename-arg ρ (bind M) = bind (rename-arg (extr ρ) M)
-rename-args ρ nil = nil
-rename-args ρ (cons arg args) = cons (rename-arg ρ arg) (rename-args ρ args)
+  rename : Rename → ABT → ABT
+  rename-arg : Rename → {b : Sig} → Arg b → Arg b
+  rename-args : Rename → {bs : List Sig} → Args bs → Args bs
+
+  rename ρ (` x) = ` ρ x
+  rename ρ (op ⦅ args ⦆) = op ⦅ rename-args ρ args ⦆
+  rename-arg ρ (ast M) = ast (rename ρ M)
+  rename-arg ρ (bind M) = bind (rename-arg (extr ρ) M)
+  rename-args ρ nil = nil
+  rename-args ρ (cons arg args) = cons (rename-arg ρ arg) (rename-args ρ args)
+
+open Renaming
 
 {----------------------------------------------------------------------------
  Substitution
@@ -96,9 +100,6 @@ sub-arg σ (bind M) = bind (sub-arg (exts σ) M)
 sub-args σ nil = nil
 sub-args σ (cons arg args) = cons (sub-arg σ arg) (sub-args σ args)
 
-⟪_⟫ : Subst → ABT → ABT
-⟪ σ ⟫ M = sub σ M
-
 ren : Rename → Subst
 ren ρ x = ` ρ x
 
@@ -111,7 +112,7 @@ abstract
   seq-def : ∀ σ τ x → (σ ⨟ τ) x ≡ sub τ (σ x)
   seq-def σ τ x = refl
 {-# REWRITE seq-def #-}
-  
+
 {-
 ren-con : ∀ {y ρ} → ren (y •ᵣ ρ) ≡ ((` y) • ren ρ)
 ren-con {y}{ρ} = extensionality aux   
@@ -286,22 +287,60 @@ sub-args-id {.(_ ∷ _)} {cons arg args} = cong₂ cons sub-arg-id sub-args-id
  Public Interface
 ----------------------------------------------------------------------------}
 
-↑ : Subst
-↑ = ren suc
+abstract
+  ↑ : Subst
+  ↑ = ren suc
 
-ext : Subst → Subst
-ext σ = ` 0 • (σ ⨟ ↑)
+  ext : Subst → Subst
+  ext σ = ` 0 • (σ ⨟ ↑)
+
+  ⟪_⟫ : Subst → ABT → ABT
+  ⟪ σ ⟫ M = sub σ M
+
+  ⟪_⟫₊ : Subst → {bs : List Sig} → Args bs → Args bs
+  ⟪ σ ⟫₊ args = sub-args σ args
+
+  ⟪_⟫ₐ : Subst → {b : Sig} → Arg b → Arg b
+  ⟪ σ ⟫ₐ arg = sub-arg σ arg
+
+  sub-var : ∀{σ x} → ⟪ σ ⟫ (` x) ≡ σ x
+  sub-var {σ}{x} = refl
+  {-# REWRITE sub-var #-}
+
+  sub-op : ∀{σ : Subst}{op : Op}{args : Args (sig op)} → ⟪ σ ⟫ (op ⦅ args ⦆) ≡ op ⦅ ⟪ σ ⟫₊ args ⦆
+  sub-op {σ}{op}{args} = refl
+  {-# REWRITE sub-op #-}
+
+  sub-arg-ast : ∀{σ M} → ⟪ σ ⟫ₐ (ast M) ≡ ast (⟪ σ ⟫ M)
+  sub-arg-ast {σ}{M} = refl
+  {-# REWRITE sub-arg-ast #-}
+  
+  sub-arg-bind : ∀{σ b}{arg : Arg b} → ⟪ σ ⟫ₐ (bind arg) ≡ bind (⟪ ext σ ⟫ₐ arg)
+  sub-arg-bind {σ}{b}{arg} = refl
+  {-# REWRITE sub-arg-bind #-}
+
+  sub-args-nil : ∀{σ} → ⟪ σ ⟫₊ nil ≡ nil
+  sub-args-nil {σ} = refl
+  {-# REWRITE sub-args-nil #-}
+
+  sub-args-cons : ∀{σ}{b}{bs}{arg : Arg b}{args : Args bs}
+     → ⟪ σ ⟫₊ (cons arg args) ≡ cons (⟪ σ ⟫ₐ arg) (⟪ σ ⟫₊ args)
+  sub-args-cons {σ}{arg}{args} = refl
+  {-# REWRITE sub-args-cons #-}
+
+{- TODO: add more rewrites! -}
 
 _[_] : ABT → ABT → ABT
 N [ M ] =  sub (M • id) N
 
 _〔_〕 : ABT → ABT → ABT
-_〔_〕 N M = sub (ext (M • id)) N
+_〔_〕 N M = sub (exts (M • id)) N
+{- TODO: change to ext -}
 
 substitution : ∀{M N L} → M [ N ] [ L ] ≡ M 〔 L 〕 [ N [ L ] ]
 substitution {M}{N}{L} = refl
 
-exts-sub-cons : ∀ {σ N V} → (sub (ext σ) N) [ V ] ≡ sub (V • σ) N
+exts-sub-cons : ∀ {σ N V} → (sub (exts σ) N) [ V ] ≡ sub (V • σ) N
 exts-sub-cons {σ}{N}{V} = refl
 
 
