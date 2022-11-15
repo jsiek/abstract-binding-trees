@@ -170,12 +170,21 @@ shift-seq-ren {ρ} = extensionality aux
     aux {ρ} zero = refl
     aux {ρ} (suc x) = refl
 
-shift-seq-sub : ∀{σ M} → ren suc ⨟ M • σ ≡ σ
-shift-seq-sub {σ}{M} = extensionality (aux{σ}{M})
+sub-tail : ∀{σ M} → ren suc ⨟ M • σ ≡ σ
+sub-tail {σ}{M} = extensionality (aux{σ}{M})
     where
     aux : ∀{σ M} → ∀ x → (ren suc ⨟ M • σ) x ≡ σ x
     aux {σ} {M} zero = refl
     aux {σ} {M} (suc x) = refl
+{-# REWRITE sub-tail #-}
+
+sub-tail2 : ∀{σ M} → (λ z → ` suc z) ⨟ M • σ ≡ σ
+sub-tail2 {σ}{M} = extensionality (aux{σ}{M})
+    where
+    aux : ∀{σ M} → ∀ x → ((λ z → ` suc z) ⨟ M • σ) x ≡ σ x
+    aux {σ} {M} zero = refl
+    aux {σ} {M} (suc x) = refl
+{-{-# REWRITE sub-tail2 #-}-}
 
 ext-ren-sub : ∀ {ρ}{τ} → ext (ren ρ) ⨟ ext τ ≡ ext (ren ρ ⨟ τ)
 ext-ren-sub {ρ}{τ} = extensionality (aux{ρ}{τ})
@@ -224,6 +233,61 @@ sub-ren-arg {ρ} {σ} {.(ν _)} {bind arg} = cong bind sub-ren-arg
 sub-ren-args {ρ} {σ} {.[]} {nil} = refl
 sub-ren-args {ρ} {σ} {.(_ ∷ _)} {cons arg args} = cong₂ cons sub-ren-arg sub-ren-args
 {-# REWRITE sub-ren #-}
+
+sub-sub : ∀{σ τ M} → sub τ (sub σ M) ≡ sub (σ ⨟ τ) M
+sub-sub-arg : ∀{σ τ b}{arg : Arg b} → sub-arg τ (sub-arg σ arg) ≡ sub-arg (σ ⨟ τ) arg
+sub-sub-args : ∀{σ τ bs}{args : Args bs} → sub-args τ (sub-args σ args) ≡ sub-args (σ ⨟ τ) args
+sub-sub {σ} {τ} {` x} = refl
+sub-sub {σ} {τ} {op ⦅ args ⦆} = cong (λ X → op ⦅ X ⦆) sub-sub-args
+sub-sub-arg {σ} {τ} {.■} {ast M} = cong ast (sub-sub{σ}{τ}{M})
+sub-sub-arg {σ} {τ} {.(ν _)} {bind arg} = cong bind sub-sub-arg
+sub-sub-args {σ} {τ} {.[]} {nil} = refl
+sub-sub-args {σ} {τ} {.(_ ∷ _)} {cons arg args} = cong₂ cons sub-sub-arg sub-sub-args
+{-# REWRITE sub-sub #-}
+
+shift-seq : ∀{σ} → ⟰ σ ≡ σ ⨟ ren suc
+shift-seq {σ} = refl
+
+idᵣ : Rename
+idᵣ x = x
+
+extr-id : (0 •ᵣ ⟰ᵣ idᵣ) ≡ idᵣ {- extr idᵣ ≡ idᵣ -}
+extr-id = extensionality aux
+  where
+  aux : ∀ x → extr idᵣ x ≡ idᵣ x
+  aux zero = refl
+  aux (suc x) = refl
+{-# REWRITE extr-id #-}
+
+id : Subst
+id x = ` x
+
+ext-id : ext id ≡ id
+ext-id = refl
+
+sub-id : ∀ {M} → sub id M ≡ M
+sub-arg-id : ∀ {b}{arg : Arg b} → sub-arg id arg ≡ arg
+sub-args-id : ∀ {bs}{args : Args bs} → sub-args id args ≡ args
+sub-id {` x} = refl
+sub-id {op ⦅ args ⦆} = cong (λ X → op ⦅ X ⦆) sub-args-id
+sub-arg-id {.■} {ast M} = cong ast sub-id
+sub-arg-id {.(ν _)} {bind arg} = cong bind sub-arg-id
+sub-args-id {.[]} {nil} = refl
+sub-args-id {.(_ ∷ _)} {cons arg args} = cong₂ cons sub-arg-id sub-args-id
+{-# REWRITE sub-id #-}
+
+_[_] : ABT → ABT → ABT
+N [ M ] =  sub (M • id) N
+
+_〔_〕 : ABT → ABT → ABT
+_〔_〕 N M = sub (ext (M • id)) N
+
+substitution : ∀{M N L} → M [ N ] [ L ] ≡ M 〔 L 〕 [ N [ L ] ]
+substitution {M}{N}{L} = refl
+
+exts-sub-cons : ∀ {σ N V} → (sub (ext σ) N) [ V ] ≡ sub (V • σ) N
+exts-sub-cons {σ}{N}{V} = refl
+
 
 {----------------------------------------------------------------------------
  Free variables
