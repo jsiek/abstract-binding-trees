@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K  #-}
+{-# OPTIONS --without-K --rewriting #-}
 open import Agda.Primitive using (Level; lzero; lsuc)
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Empty using (⊥)
@@ -18,6 +18,9 @@ open import ScopedTuple
 open import Sig
 open import Var
 open import Structures using (extensionality)
+
+open import Agda.Builtin.Equality
+open import Agda.Builtin.Equality.Rewrite
 
 module rewriting.AbstractBindingTree (Op : Set) (sig : Op → List Sig) where
 
@@ -96,10 +99,17 @@ sub-args σ (cons arg args) = cons (sub-arg σ arg) (sub-args σ args)
 ren : Rename → Subst
 ren ρ x = ` ρ x
 
-infixr 5 _⨟_
-_⨟_ : Subst → Subst → Subst
-(σ ⨟ τ) x = sub τ (σ x)
+abstract 
+  infixr 5 _⨟_
+  _⨟_ : Subst → Subst → Subst
+  (σ ⨟ τ) x = sub τ (σ x)
 
+abstract
+  seq-def : ∀ σ τ x → (σ ⨟ τ) x ≡ sub τ (σ x)
+  seq-def σ τ x = refl
+{-# REWRITE seq-def #-}
+  
+{-
 ren-con : ∀ {y ρ} → ren (y •ᵣ ρ) ≡ ((` y) • ren ρ)
 ren-con {y}{ρ} = extensionality aux   
     where
@@ -114,19 +124,23 @@ ren-shift {ρ} = extensionality aux
     aux {ρ} zero = refl
     aux {ρ} (suc x) = refl
 
-cons-seq : ∀{σ τ M} → (M • σ) ⨟ τ ≡ sub τ M • (σ ⨟ τ)
-cons-seq {σ}{τ}{M} = extensionality aux
+-}
+
+cons-seq : ∀ σ τ M → (M • σ) ⨟ τ ≡ sub τ M • (σ ⨟ τ)
+cons-seq σ τ M = extensionality aux
     where
     aux : ∀{σ τ M} → ∀ x → ((M • σ) ⨟ τ) x ≡ (sub τ M • (σ ⨟ τ)) x
     aux {σ} {τ} {M} zero = refl
     aux {σ} {τ} {M} (suc x) = refl
+{-# REWRITE cons-seq #-}
 
-ext-ren : ∀{ρ} → ext (ren ρ) ≡ ren (extr ρ)
+ext-ren : ∀{ρ} → (` 0) • ⟰ (ren ρ) ≡ ren (extr ρ)
 ext-ren {ρ} = extensionality aux
     where
     aux : ∀{ρ} → ∀ x → ext (ren ρ) x ≡ ren (extr ρ) x
     aux {ρ} zero = refl
     aux {ρ} (suc x) = refl
+{-# REWRITE ext-ren #-}
 
 rename-ren : ∀{ρ M} → rename ρ M ≡ sub (ren ρ) M
 rename-ren-arg : ∀{ρ b}{arg : Arg b} → rename-arg ρ arg ≡ sub-arg (ren ρ) arg
@@ -135,11 +149,12 @@ rename-ren-args : ∀{ρ bs}{args : Args bs}
 rename-ren {ρ} {` x} = refl
 rename-ren {ρ} {op ⦅ args ⦆} = cong ((λ X → op ⦅ X ⦆)) rename-ren-args
 rename-ren-arg {ρ} {.■} {ast M} = cong ast rename-ren
-rename-ren-arg {ρ} {.(ν _)} {bind arg} rewrite ext-ren {ρ} =
+rename-ren-arg {ρ} {.(ν _)} {bind arg} =
     cong bind rename-ren-arg
 rename-ren-args {ρ} {.[]} {nil} = refl
 rename-ren-args {ρ} {.(_ ∷ _)} {cons arg args} =
     cong₂ cons rename-ren-arg rename-ren-args
+{-# REWRITE rename-ren #-}
 
 shift-ren-seq : ∀ {ρ τ} → ⟰ (ren ρ ⨟ τ) ≡ ⟰ (ren ρ) ⨟ (` 0 • ⟰ τ)
 shift-ren-seq {ρ}{τ} = extensionality (aux {ρ}{τ})
@@ -162,12 +177,13 @@ shift-seq-sub {σ}{M} = extensionality (aux{σ}{M})
     aux {σ} {M} zero = refl
     aux {σ} {M} (suc x) = refl
 
-ext-seq : ∀ {ρ}{τ} → ext (ren ρ) ⨟ ext τ ≡ ext (ren ρ ⨟ τ)
-ext-seq {ρ}{τ} = extensionality aux
+ext-ren-sub : ∀ {ρ}{τ} → ext (ren ρ) ⨟ ext τ ≡ ext (ren ρ ⨟ τ)
+ext-ren-sub {ρ}{τ} = extensionality (aux{ρ}{τ})
     where
     aux : ∀{ρ}{τ} → ∀ x → (ext (ren ρ) ⨟ ext τ) x ≡ ext (ren ρ ⨟ τ) x
     aux {ρ} {τ} zero = refl
     aux {ρ} {τ} (suc x) = refl
+{-# REWRITE ext-ren-sub #-}
 
 ren-sub : ∀ {τ ρ M} → sub τ (sub (ren ρ) M) ≡ sub (ren ρ ⨟ τ) M
 ren-sub-arg : ∀ {τ ρ b}{arg : Arg b}
@@ -177,24 +193,37 @@ ren-sub-args : ∀ {τ ρ bs}{args : Args bs}
 ren-sub {τ} {ρ} {` x} = refl
 ren-sub {τ} {ρ} {op ⦅ args ⦆} = cong ((λ X → op ⦅ X ⦆)) ren-sub-args
 ren-sub-arg {τ} {ρ} {.■} {ast M} = cong ast (ren-sub{τ}{ρ}{M})
-ren-sub-arg {τ} {ρ} {.(ν _)} {bind arg} = cong bind G
-   where
-   IH : sub-arg (ext τ) (sub-arg (ren (extr ρ)) arg)
-        ≡ sub-arg (ren (extr ρ) ⨟ (ext τ)) arg
-   IH = ren-sub-arg{ext τ}{extr ρ}
-   
-   G : sub-arg (ext τ) (sub-arg (ext (ren ρ)) arg) ≡
-       sub-arg (ext (ren ρ ⨟ τ)) arg
-   G = begin
-        sub-arg (ext τ) (sub-arg (ext (ren ρ)) arg) ≡⟨ cong (λ X → sub-arg (ext τ) (sub-arg X arg)) ext-ren ⟩
-        sub-arg (ext τ) (sub-arg (ren (extr ρ)) arg) ≡⟨ IH ⟩
-        sub-arg (ren (extr ρ) ⨟ (ext τ)) arg ≡⟨ cong (λ X → sub-arg (X ⨟ (ext τ)) arg) (sym ext-ren) ⟩
-        sub-arg (ext (ren ρ) ⨟ (ext τ)) arg ≡⟨ cong (λ X → sub-arg X arg) ext-seq ⟩
-        sub-arg (ext (ren ρ ⨟ τ)) arg ∎
-         
+ren-sub-arg {τ} {ρ} {.(ν _)} {bind arg} = cong bind (ren-sub-arg{ext τ}{extr ρ})
 ren-sub-args {τ} {ρ} {.[]} {nil} = refl
 ren-sub-args {τ} {ρ} {.(_ ∷ _)} {cons arg args} =
    cong₂ cons ren-sub-arg ren-sub-args
+{-# REWRITE ren-sub #-}
+
+ren-suc-extr : ∀{ρ} → ren suc ⨟ ren (extr ρ) ≡ ren ρ ⨟ ren suc
+ren-suc-extr {ρ} = extensionality aux
+    where
+    aux : ∀ x → (ren suc ⨟ ren (extr ρ)) x ≡ (ren ρ ⨟ ren suc) x
+    aux zero = refl
+    aux (suc x) = refl
+{-# REWRITE ren-suc-extr #-}
+
+ext-sub-ren : ∀ {σ ρ} → ext σ ⨟ ext (ren ρ) ≡ ext (σ ⨟ ren ρ)
+ext-sub-ren {σ}{ρ} = extensionality (aux{σ}{ρ})
+    where
+    aux : ∀ {σ ρ} → ∀ x → (ext σ ⨟ ext (ren ρ)) x ≡ (ext (σ ⨟ ren ρ)) x
+    aux {σ} {ρ} zero = refl
+    aux {σ} {ρ} (suc x) = refl
+
+sub-ren : ∀{ρ σ M} → sub (ren ρ) (sub σ M) ≡ sub (σ ⨟ ren ρ) M
+sub-ren-arg : ∀{ρ σ b}{arg : Arg b} → sub-arg (ren ρ) (sub-arg σ arg) ≡ sub-arg (σ ⨟ ren ρ) arg
+sub-ren-args : ∀{ρ σ bs}{args : Args bs} → sub-args (ren ρ) (sub-args σ args) ≡ sub-args (σ ⨟ ren ρ) args
+sub-ren {ρ} {σ} {` x} = refl
+sub-ren {ρ} {σ} {op ⦅ args ⦆} = cong (λ X → op ⦅ X ⦆) sub-ren-args
+sub-ren-arg {ρ} {σ} {.■} {ast M} = cong ast (sub-ren{ρ}{σ}{M})
+sub-ren-arg {ρ} {σ} {.(ν _)} {bind arg} = cong bind sub-ren-arg
+sub-ren-args {ρ} {σ} {.[]} {nil} = refl
+sub-ren-args {ρ} {σ} {.(_ ∷ _)} {cons arg args} = cong₂ cons sub-ren-arg sub-ren-args
+{-# REWRITE sub-ren #-}
 
 {----------------------------------------------------------------------------
  Free variables
