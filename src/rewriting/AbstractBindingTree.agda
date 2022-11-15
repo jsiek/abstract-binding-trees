@@ -82,8 +82,8 @@ _•_ : ABT → Subst → Subst
 ⟰ : Subst → Subst
 ⟰ σ x = rename suc (σ x)
 
-ext : Subst → Subst
-ext σ = ` 0 • ⟰ σ
+exts : Subst → Subst
+exts σ = ` 0 • ⟰ σ
 
 sub : Subst → ABT → ABT
 sub-arg : Subst → {b : Sig} → Arg b → Arg b
@@ -92,7 +92,7 @@ sub-args : Subst → {bs : List Sig} → Args bs → Args bs
 sub σ (` x) = σ x
 sub σ (op ⦅ args ⦆) = op ⦅ sub-args σ args ⦆
 sub-arg σ (ast M) = ast (sub σ M)
-sub-arg σ (bind M) = bind (sub-arg (ext σ) M)
+sub-arg σ (bind M) = bind (sub-arg (exts σ) M)
 sub-args σ nil = nil
 sub-args σ (cons arg args) = cons (sub-arg σ arg) (sub-args σ args)
 
@@ -137,7 +137,7 @@ cons-seq σ τ M = extensionality aux
 ext-ren : ∀{ρ} → (` 0) • ⟰ (ren ρ) ≡ ren (extr ρ)
 ext-ren {ρ} = extensionality aux
     where
-    aux : ∀{ρ} → ∀ x → ext (ren ρ) x ≡ ren (extr ρ) x
+    aux : ∀{ρ} → ∀ x → exts (ren ρ) x ≡ ren (extr ρ) x
     aux {ρ} zero = refl
     aux {ρ} (suc x) = refl
 {-# REWRITE ext-ren #-}
@@ -156,19 +156,20 @@ rename-ren-args {ρ} {.(_ ∷ _)} {cons arg args} =
     cong₂ cons rename-ren-arg rename-ren-args
 {-# REWRITE rename-ren #-}
 
+{-
 shift-ren-seq : ∀ {ρ τ} → ⟰ (ren ρ ⨟ τ) ≡ ⟰ (ren ρ) ⨟ (` 0 • ⟰ τ)
 shift-ren-seq {ρ}{τ} = extensionality (aux {ρ}{τ})
     where
     aux : ∀ {ρ τ} → ∀ x → ⟰ (ren ρ ⨟ τ) x ≡  (⟰ (ren ρ) ⨟ (` 0 • ⟰ τ)) x
     aux zero = refl
     aux (suc x) = refl
-
 shift-seq-ren : ∀ {ρ} → ren suc ⨟ ` 0 • ⟰ (ren ρ) ≡ ren (⟰ᵣ ρ)
 shift-seq-ren {ρ} = extensionality aux
     where
     aux : ∀ {ρ} → ∀ x → (ren suc ⨟ ` 0 • ⟰ (ren ρ)) x ≡ ren (⟰ᵣ ρ) x
     aux {ρ} zero = refl
     aux {ρ} (suc x) = refl
+-}
 
 sub-tail : ∀{σ M} → ren suc ⨟ M • σ ≡ σ
 sub-tail {σ}{M} = extensionality (aux{σ}{M})
@@ -186,10 +187,10 @@ sub-tail2 {σ}{M} = extensionality (aux{σ}{M})
     aux {σ} {M} (suc x) = refl
 {-{-# REWRITE sub-tail2 #-}-}
 
-ext-ren-sub : ∀ {ρ}{τ} → ext (ren ρ) ⨟ ext τ ≡ ext (ren ρ ⨟ τ)
+ext-ren-sub : ∀ {ρ}{τ} → exts (ren ρ) ⨟ exts τ ≡ exts (ren ρ ⨟ τ)
 ext-ren-sub {ρ}{τ} = extensionality (aux{ρ}{τ})
     where
-    aux : ∀{ρ}{τ} → ∀ x → (ext (ren ρ) ⨟ ext τ) x ≡ ext (ren ρ ⨟ τ) x
+    aux : ∀{ρ}{τ} → ∀ x → (exts (ren ρ) ⨟ exts τ) x ≡ exts (ren ρ ⨟ τ) x
     aux {ρ} {τ} zero = refl
     aux {ρ} {τ} (suc x) = refl
 {-# REWRITE ext-ren-sub #-}
@@ -202,26 +203,27 @@ ren-sub-args : ∀ {τ ρ bs}{args : Args bs}
 ren-sub {τ} {ρ} {` x} = refl
 ren-sub {τ} {ρ} {op ⦅ args ⦆} = cong ((λ X → op ⦅ X ⦆)) ren-sub-args
 ren-sub-arg {τ} {ρ} {.■} {ast M} = cong ast (ren-sub{τ}{ρ}{M})
-ren-sub-arg {τ} {ρ} {.(ν _)} {bind arg} = cong bind (ren-sub-arg{ext τ}{extr ρ})
+ren-sub-arg {τ} {ρ} {.(ν _)} {bind arg} = cong bind (ren-sub-arg{exts τ}{extr ρ})
 ren-sub-args {τ} {ρ} {.[]} {nil} = refl
 ren-sub-args {τ} {ρ} {.(_ ∷ _)} {cons arg args} =
    cong₂ cons ren-sub-arg ren-sub-args
 {-# REWRITE ren-sub #-}
 
+{-
 ren-suc-extr : ∀{ρ} → ren suc ⨟ ren (extr ρ) ≡ ren ρ ⨟ ren suc
 ren-suc-extr {ρ} = extensionality aux
     where
     aux : ∀ x → (ren suc ⨟ ren (extr ρ)) x ≡ (ren ρ ⨟ ren suc) x
     aux zero = refl
     aux (suc x) = refl
-{-# REWRITE ren-suc-extr #-}
 
-ext-sub-ren : ∀ {σ ρ} → ext σ ⨟ ext (ren ρ) ≡ ext (σ ⨟ ren ρ)
+ext-sub-ren : ∀ {σ ρ} → exts σ ⨟ exts (ren ρ) ≡ exts (σ ⨟ ren ρ)
 ext-sub-ren {σ}{ρ} = extensionality (aux{σ}{ρ})
     where
-    aux : ∀ {σ ρ} → ∀ x → (ext σ ⨟ ext (ren ρ)) x ≡ (ext (σ ⨟ ren ρ)) x
+    aux : ∀ {σ ρ} → ∀ x → (exts σ ⨟ exts (ren ρ)) x ≡ (exts (σ ⨟ ren ρ)) x
     aux {σ} {ρ} zero = refl
     aux {σ} {ρ} (suc x) = refl
+-}
 
 sub-ren : ∀{ρ σ M} → sub (ren ρ) (sub σ M) ≡ sub (σ ⨟ ren ρ) M
 sub-ren-arg : ∀{ρ σ b}{arg : Arg b} → sub-arg (ren ρ) (sub-arg σ arg) ≡ sub-arg (σ ⨟ ren ρ) arg
@@ -262,7 +264,7 @@ extr-id = extensionality aux
 id : Subst
 id x = ` x
 
-ext-id : ext id ≡ id
+ext-id : exts id ≡ id
 ext-id = refl
 
 sub-id : ∀ {M} → sub id M ≡ M
@@ -275,6 +277,17 @@ sub-arg-id {.(ν _)} {bind arg} = cong bind sub-arg-id
 sub-args-id {.[]} {nil} = refl
 sub-args-id {.(_ ∷ _)} {cons arg args} = cong₂ cons sub-arg-id sub-args-id
 {-# REWRITE sub-id #-}
+
+
+{----------------------------------------------------------------------------
+ Public Interface
+----------------------------------------------------------------------------}
+
+↑ : Subst
+↑ = ren suc
+
+ext : Subst → Subst
+ext σ = ` 0 • (σ ⨟ ↑)
 
 _[_] : ABT → ABT → ABT
 N [ M ] =  sub (M • id) N
