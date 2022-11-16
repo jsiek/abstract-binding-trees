@@ -36,7 +36,13 @@ private
     Γ : List I
     M : ABT
 
-data _⊢_⦂_ : List I → ABT → I → Set (levelOfType I)
+{- changing
+   Set (levelOfType I)
+   to
+   Set
+   in _⊢_⦂_ triggers an internal error when processing the Lambda example.
+-}
+data _⊢_⦂_ : List I → ABT → I → Set
 data _∣_∣_⊢ₐ_⦂_ : (b : Sig) → List I → BType I b → Arg b → I
    → Set (levelOfType I)
 data _∣_∣_⊢₊_⦂_ : (bs : List Sig) → List I → BTypes I bs → Args bs
