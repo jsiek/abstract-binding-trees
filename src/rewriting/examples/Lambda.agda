@@ -1,10 +1,8 @@
 {-# OPTIONS --without-K --rewriting #-}
 {-
-
   This is an example of using Abstract Binding Trees to define the
   simply-typed lambda calculus and prove type safety via progress and
   preservation.
-
 -}
 
 open import Data.List using (List; []; _∷_; length)
