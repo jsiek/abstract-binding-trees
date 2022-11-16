@@ -40,16 +40,8 @@ Term = ABT
 sub-app : ∀ (L M : Term) (σ : Subst) → ⟪ σ ⟫ (L · M) ≡ (⟪ σ ⟫ L) · (⟪ σ ⟫ M)
 sub-app = λ L M σ → refl
 
-sub-lam : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ ` 0 • ⟰ σ ⟫ N)
-sub-lam N σ = refl 
-
-sub-lam2 : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ ` 0 • (σ ⨟ ↑) ⟫ N)
-sub-lam2 N σ = {!!} 
-
-{-
-ren-lam : ∀ (N : Term) (ρ : Rename) → ⟪ ren ρ ⟫ (ƛ N) ≡ ƛ (⟪ ren (0 •ᵣ ⟰ᵣ ρ) ⟫ N)
-ren-lam N σ = refl
--}
+sub-lam : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ ` 0 • (σ ⨟ ↑) ⟫ N)
+sub-lam N σ = refl
 
 _ : ∀ (M L : Term) → (M • L • id) 0 ≡ M
 _ = λ M L → refl
@@ -120,11 +112,12 @@ open import Var
 
 open import rewriting.ABTPredicate Op sig 𝑉 𝑃
 
+{-------------      Type System Rules    -------------}
+
 pattern ⊢` ∋x = var-p ∋x refl
 pattern ⊢ƛ ⊢N eq = op-p {op = op-lam} (cons-p (bind-p (ast-p ⊢N)) nil-p) eq
 pattern ⊢· ⊢L ⊢M eq = op-p {op = op-app}
                            (cons-p (ast-p ⊢L) (cons-p (ast-p ⊢M) nil-p)) eq
-
 
 {-------------      Proof of Progress    -------------}
 

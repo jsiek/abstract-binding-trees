@@ -106,28 +106,32 @@ module SubstPreserve
     pres-args {[]} {args = nil} nil-p ρ⦂ = nil-p
     pres-args {b ∷ bs} {args = cons arg args} (cons-p ⊢arg ⊢args) ρ⦂ =
         cons-p (pres-arg ⊢arg ρ⦂) (pres-args ⊢args ρ⦂)
-  
+
+  module LocalRewrites where
+    {-# REWRITE seq-up-rename-suc #-}
+  open LocalRewrites
+      
   ext-pres : ∀ {σ : Subst} {Γ Δ : List I} {A : I}
     → σ     ⦂ Γ       ⇒ Δ
     → ext σ ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
   ext-pres {σ = σ} σ⦂ {zero} refl = var-p refl (𝑉-refl refl)
   ext-pres {σ = σ} σ⦂ {suc x} ∋x =
-      let ⊢σx = σ⦂ ∋x in
-      rename-preserve{ρ = suc} (σ x) ⊢σx (λ {y} ∋y Vy → var-p ∋y (𝑉-suc Vy))
+      rename-preserve {ρ = suc} (σ x) (σ⦂ ∋x)
+          (λ {y} ∋y Vy → var-p ∋y (𝑉-suc Vy))
 
   sub-preserve : ∀ {Γ Δ}{σ} (M : ABT)
      → Γ ⊢ M ⦂ A
      → σ ⦂ Γ ⇒ Δ
-     → Δ ⊢ sub σ M ⦂ A
+     → Δ ⊢ ⟪ σ ⟫ M ⦂ A
   sub-preserve (` x) (var-p ∋x Vx) σ⦂ = 𝑉-subsump Vx (σ⦂ ∋x)
   sub-preserve (op ⦅ args ⦆) (op-p ⊢args Pop) σ⦂ = op-p (pres-args ⊢args σ⦂) Pop
     where
     pres-arg : ∀{b Γ Δ}{arg : Arg b}{A σ Bs}
        → b ∣ Γ ∣ Bs ⊢ₐ arg ⦂ A → σ ⦂ Γ ⇒ Δ
-       → b ∣ Δ ∣ Bs ⊢ₐ sub-arg σ {b} arg ⦂ A
+       → b ∣ Δ ∣ Bs ⊢ₐ ⟪ σ ⟫ₐ {b} arg ⦂ A
     pres-args : ∀{bs Γ Δ}{args : Args bs}{As σ Bss}
        → bs ∣ Γ ∣ Bss ⊢₊ args ⦂ As → σ ⦂ Γ ⇒ Δ
-       → bs ∣ Δ ∣ Bss ⊢₊ sub-args σ {bs} args ⦂ As
+       → bs ∣ Δ ∣ Bss ⊢₊ ⟪ σ ⟫₊ {bs} args ⦂ As
     pres-arg {b} {arg = ast M} (ast-p ⊢M) σ⦂ =
         ast-p (sub-preserve M ⊢M σ⦂)
     pres-arg {ν b}{Γ}{Δ}{bind arg}{σ = σ} (bind-p {B = B}{A = A} ⊢arg) σ⦂ =
