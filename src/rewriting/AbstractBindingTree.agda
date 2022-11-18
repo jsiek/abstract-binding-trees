@@ -330,8 +330,8 @@ abstract
   cons-zero-up = refl
   {-# REWRITE cons-zero-up #-}  
 
-  seq-up-rename-suc : ∀ σ x → (σ ⨟ ↑) x ≡ rename suc (σ x)
-  seq-up-rename-suc σ x = refl
+  seq-up-ren-suc : ∀ σ x → (σ ⨟ ↑) x ≡ Private.sub (Private.ren suc) (σ x)  
+  seq-up-ren-suc σ x = refl
 
 _[_] : ABT → ABT → ABT
 N [ M ] =  ⟪ M • id ⟫ N

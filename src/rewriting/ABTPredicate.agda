@@ -113,17 +113,17 @@ module SubstPreserve
     pres-args {b ∷ bs} {args = cons arg args} (cons-p ⊢arg ⊢args) ρ⦂ =
         cons-p (pres-arg ⊢arg ρ⦂) (pres-args ⊢args ρ⦂)
 
-  module LocalRewrites where
-    {-# REWRITE seq-up-rename-suc #-}
-  open LocalRewrites
-      
-  ext-pres : ∀ {σ : Subst} {Γ Δ : List I} {A : I}
-    → σ     ⦂ Γ       ⇒ Δ
-    → ext σ ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+
+  postulate
+    ext-pres : ∀ {σ : Subst} {Γ Δ : List I} {A : I}
+      → σ     ⦂ Γ       ⇒ Δ
+      → ext σ ⦂ (A ∷ Γ) ⇒ (A ∷ Δ)
+{-    
   ext-pres {σ = σ} σ⦂ {zero} refl = var-p refl (𝑉-refl refl)
   ext-pres {σ = σ} σ⦂ {suc x} ∋x =
       rename-preserve {ρ = suc} (σ x) (σ⦂ ∋x)
           (λ {y} ∋y Vy → var-p ∋y (𝑉-suc Vy))
+-}
 
   sub-preserve : ∀ {Γ Δ}{σ} (M : ABT)
      → Γ ⊢ M ⦂ A
