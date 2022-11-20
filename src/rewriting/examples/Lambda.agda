@@ -150,7 +150,8 @@ progress (⊢· ⊢L ⊢M _)
 
 {-------------      Proof of Preservation    -------------}
 
-open SubstPreserve (λ x → refl) (λ x → x) (λ x → x) (λ x → x) (λ {refl ⊢M → ⊢M})
+open SubstPreserve (λ _ → refl) (λ {refl refl → refl}) refl (λ z → z) (λ z → z)
+  (λ {refl ⊢M → ⊢M}) 
   using (preserve-substitution)
 
 preserve : ∀ {Γ M N A}

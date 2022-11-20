@@ -227,9 +227,13 @@ module Private where
  Public
 ----------------------------------------------------------------------------}
 
+ren : Rename → Subst
+ren = Private.ren
+
 abstract
+  
   ↑ : Subst
-  ↑ = Private.ren suc
+  ↑ = ren suc
 
   infixr 5 _⨟_
   _⨟_ : Subst → Subst → Subst
@@ -329,6 +333,12 @@ abstract
   cons-zero-up : ` 0 • ↑ ≡ id
   cons-zero-up = refl
   {-# REWRITE cons-zero-up #-}  
+
+  seq-def : ∀ σ τ x → (σ ⨟ τ) x ≡ ⟪ τ ⟫ (σ x)
+  seq-def σ τ x = refl
+
+  up-def : ∀ x → ↑ x ≡ ` suc x
+  up-def x = refl
 
   seq-up-ren-suc : ∀ σ x → (σ ⨟ ↑) x ≡ Private.sub (Private.ren suc) (σ x)  
   seq-up-ren-suc σ x = refl
