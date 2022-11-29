@@ -105,6 +105,7 @@ module Private where
   sub-args σ nil = nil
   sub-args σ (cons arg args) = cons (sub-arg σ arg) (sub-args σ args)
 
+  {- TODO: make ren abstract -}
   ren : Rename → Subst
   ren ρ x = ` ρ x
 
@@ -227,13 +228,20 @@ module Private where
  Public
 ----------------------------------------------------------------------------}
 
-ren : Rename → Subst
-ren = Private.ren
+abstract {- experimenting with making ren abstract -Jeremy -}
+  ren : Rename → Subst
+  ren = Private.ren
+
+  ren-def : ∀ ρ x → ren ρ x ≡ ` ρ x
+  ren-def ρ x = refl
 
 abstract
   
   ↑ : Subst
   ↑ = ren suc
+
+  up-def : ↑ ≡ ren suc
+  up-def = refl
 
   infixr 5 _⨟_
   _⨟_ : Subst → Subst → Subst
@@ -259,9 +267,9 @@ abstract
   id-var {x} = refl
   {-# REWRITE id-var #-}
   
-  sub-var : ∀{σ x} → ⟪ σ ⟫ (` x) ≡ σ x
-  sub-var {σ}{x} = refl
-  {-# REWRITE sub-var #-}
+  sub-var : ∀ σ x → ⟪ σ ⟫ (` x) ≡ σ x
+  sub-var σ x = refl
+  {- REWRITE sub-var -}
   
   sub-op : ∀{σ : Subst}{op : Op}{args : Args (sig op)}
      → ⟪ σ ⟫ (op ⦅ args ⦆) ≡ op ⦅ ⟪ σ ⟫₊ args ⦆
@@ -288,7 +296,7 @@ abstract
 
   sub-head : ∀ σ M → ⟪ M • σ ⟫ (` 0) ≡ M
   sub-head σ M = refl
-  {- dont' make this a rewrite, instead sub-var -}
+  {-# REWRITE sub-head #-}
 
   sub-tail : ∀ σ M → ↑ ⨟ M • σ ≡ σ
   sub-tail σ M = extensionality (aux{σ}{M})
@@ -326,9 +334,9 @@ abstract
   cons-seq σ τ M = refl
   {-# REWRITE cons-seq #-}  
 
-  sub-twice-seq : ∀ σ τ M → ⟪ τ ⟫ (⟪ σ ⟫ M) ≡ ⟪ σ ⨟ τ ⟫ M
-  sub-twice-seq σ τ M = refl
-  {-# REWRITE sub-twice-seq #-}  
+  compose-sub : ∀ σ τ M → ⟪ τ ⟫ (⟪ σ ⟫ M) ≡ ⟪ σ ⨟ τ ⟫ M
+  compose-sub σ τ M = refl
+  {-# REWRITE compose-sub #-}  
 
   cons-zero-up : ` 0 • ↑ ≡ id
   cons-zero-up = refl
@@ -337,11 +345,31 @@ abstract
   seq-def : ∀ σ τ x → (σ ⨟ τ) x ≡ ⟪ τ ⟫ (σ x)
   seq-def σ τ x = refl
 
-  up-def : ∀ x → ↑ x ≡ ` suc x
-  up-def x = refl
+  up-var : ∀ x → ↑ x ≡ ` suc x
+  up-var x = refl
+
+  ext-ren-extr : ∀ ρ → (` 0) • (ren ρ ⨟ ↑) ≡ ren (extr ρ)
+  ext-ren-extr ρ = refl
+  {- REWRITE ext-ren-extr -}
+  
+  ren-extr-def : ∀ ρ → ren (extr ρ) ≡ ` 0 • (ren ρ ⨟ ↑)
+  ren-extr-def ρ = refl
+  {-# REWRITE ren-extr-def #-}
+
+  ren-extr-zero : ∀ ρ → ren (extr ρ) 0 ≡ ` 0
+  ren-extr-zero ρ = refl
+  {- REWRITE ren-extr-zero -}
+
+  ren-extr-suc : ∀ ρ x → ren (extr ρ) (suc x) ≡ ` suc (ρ x)
+  ren-extr-suc ρ x = refl
+  {- REWRITE ren-extr-suc -}
 
   seq-up-ren-suc : ∀ σ x → (σ ⨟ ↑) x ≡ Private.sub (Private.ren suc) (σ x)  
   seq-up-ren-suc σ x = refl
+
+  ren-seq-up : ∀ ρ x → (ren ρ ⨟ ↑) x ≡ ` suc (ρ x)
+  ren-seq-up ρ x = refl
+  {- REWRITE ren-seq-up -}
 
 _[_] : ABT → ABT → ABT
 N [ M ] =  ⟪ M • id ⟫ N

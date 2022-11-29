@@ -53,6 +53,8 @@ _ = λ M L → refl
 _ : ∀ (M L : Term) → (M • L • id) 3 ≡ ` 1
 _ = λ M L → refl
 
+{-# REWRITE sub-var #-}
+
 _ : ∀ (M L : Term) → ⟪ M • L • id ⟫ (` 1 · ` 0) ≡ L · M
 _ = λ M L → refl
 
@@ -101,18 +103,15 @@ data Type : Set where
 
 open import Var
 
-𝑉 : List Type → Var → Type → Type → Set
-𝑉 Γ x A B = A ≡ B
-
 𝑃 : (op : Op) → Vec Type (length (sig op)) → BTypes Type (sig op) → Type → Set
 𝑃 op-lam (B ∷̌ []̌) ⟨ ⟨ A , tt ⟩ , tt ⟩ A→B = A→B ≡ A ⇒ B
 𝑃 op-app (A→B ∷̌ A ∷̌ []̌) ⟨ tt , ⟨ tt , tt ⟩ ⟩ B = A→B ≡ A ⇒ B
 
-open import rewriting.ABTPredicate Op sig 𝑉 𝑃
+open import rewriting.ABTPredicate Op sig 𝑃
 
 {-------------      Type System Rules    -------------}
 
-pattern ⊢` ∋x = var-p ∋x refl
+pattern ⊢` ∋x = var-p ∋x
 pattern ⊢ƛ ⊢N eq = op-p {op = op-lam} (cons-p (bind-p (ast-p ⊢N)) nil-p) eq
 pattern ⊢· ⊢L ⊢M eq = op-p {op = op-app}
                            (cons-p (ast-p ⊢L) (cons-p (ast-p ⊢M) nil-p)) eq
@@ -150,10 +149,6 @@ progress (⊢· ⊢L ⊢M _)
 
 {-------------      Proof of Preservation    -------------}
 
-open SubstPreserve (λ _ → refl) (λ {refl refl → refl}) refl (λ z → z) (λ z → z)
-  (λ {refl ⊢M → ⊢M}) 
-  using (preserve-substitution)
-
 preserve : ∀ {Γ M N A}
   → Γ ⊢ M ⦂ A
   → M —→ N
@@ -165,3 +160,4 @@ preserve (⊢ƛ ⊢M refl) (ξ-ƛ M—→N) = ⊢ƛ (preserve ⊢M M—→N) ref
 preserve {Γ}{(ƛ N) · M}{_}{B} (⊢· (⊢ƛ ⊢N refl) ⊢M refl) β-ƛ =
     preserve-substitution N M ⊢N ⊢M
 
+{- TODO: Add confluence proof to show off the substitution lemma. -}
