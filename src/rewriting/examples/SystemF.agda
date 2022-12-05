@@ -14,37 +14,20 @@ open import Sig
 
 module rewriting.examples.SystemF where
 
-data Op : Set where
-  op-nat : ℕ → Op
-  op-lam : Op
-  op-app : Op
-  op-tyabs : Op
-  op-tyapp : Op
+{-------------      Types    -------------}
+
+
+data TypeOp : Set where
   op-fun : Op
   op-all : Op
   op-nat-ty : Op
 
-sig : Op → List Sig
-sig (op-nat n) = []
-sig op-lam = (ν ■) ∷ []
-sig op-app = ■ ∷ ■ ∷ []
-sig op-tyabs = (ν ■) ∷ []
-sig op-tyapp = ■ ∷ ■ ∷ []
-sig op-fun = ■ ∷ ■ ∷ []
-sig op-all = (ν ■) ∷ []
-sig op-nat-ty = []
+type-sig : Op → List Sig
+type-sig op-fun = ■ ∷ ■ ∷ []
+type-sig op-all = (ν ■) ∷ []
+type-sig op-nat-ty = []
 
-open import rewriting.AbstractBindingTree Op sig
-
-pattern $ n = (op-nat n) ⦅ nil ⦆
-pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
-pattern Λ N  = op-tyabs ⦅ cons (bind (ast N)) nil ⦆
-
-infixl 7  _·_
-pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
-
-infixl 7  _․_
-pattern _․_ L A = op-tyapp ⦅ cons (ast L) (cons (ast A) nil) ⦆
+open import rewriting.AbstractBindingTree Op sig renaming (ABT to Type)
 
 pattern Nat = op-nat-ty ⦅ nil ⦆
 
@@ -53,11 +36,35 @@ pattern _⇒_ A B = op-fun ⦅ cons (ast A) (cons (ast B) nil) ⦆
 
 pattern Π A = op-all ⦅ cons (bind (ast A)) nil ⦆
 
-Term : Set
-Term = ABT
+{-------------      Terms    -------------}
 
-Type : Set
-Type = ABT
+data Op : Set where
+  op-nat : ℕ → Op
+  op-lam : Op
+  op-app : Op
+  op-tyabs : Op
+  op-tyapp : Op
+  op-nu : Op
+
+sig : Op → List Sig
+sig (op-nat n) = []
+sig op-lam = (ν ■) ∷ []
+sig op-app = ■ ∷ ■ ∷ []
+sig op-tyabs = (ν ■) ∷ []
+sig (op-tyapp B) = ■ ∷ ■ ∷ []
+sig (op-nu B) = ■ ∷ (ν ■) ∷ []
+
+open import rewriting.AbstractBindingTree Op sig renaming (ABT to Term)
+
+pattern $ n = (op-nat n) ⦅ nil ⦆
+pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
+infixl 7  _·_
+pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
+pattern Λ N  = op-tyabs ⦅ cons (bind (ast N)) nil ⦆
+infixl 7  _․_
+pattern _․_ L A = op-tyapp ⦅ cons (ast L) (cons (ast A) nil) ⦆
+pattern ν A N  = op-nu A ⦅ cons (ast A) (cons (bind (ast N)) nil) ⦆
+
 
 {-------------      Reduction Semantics    -------------}
 
@@ -106,8 +113,8 @@ data _—→_ : Term → Term → Set where
     → L ․ A —→ L′ ․ A
     
   β-Λ : ∀ {N : Term} {A : Type}
-      ------------------------
-    → (Λ N) ․ A —→ N [ A ]
+      ------------------
+    → (Λ N) ․ A —→ ν A N
 
 {-------------      Type System    -------------}
 
@@ -149,6 +156,14 @@ data 𝑃 : (op : Op) → Vec Cat (length (sig op)) → BTypes Cat (sig op) → 
 -}
   𝑃-tyapp : ∀{A B}
      → 𝑃 op-tyapp (trm (Π A) ∷̌ typ B ∷̌ []̌) ⟨ tt , ⟨ tt , tt ⟩ ⟩ (trm (A [ B ]))
+{-
+   Γ , typ ⊢ N : trm A
+   Γ ⊢ B : typ B
+   -----------------
+   Γ ⊢ nu B N ⦂ trm A [ B ]
+-}
+  𝑃-nu : ∀{A B}
+     → 𝑃 op-nu (trm (Π A) ∷̌ typ B ∷̌ []̌) ⟨ tt , ⟨ tt , tt ⟩ ⟩ (trm (A [ B ]))
 {-
   Γ ⊢ A ⦂ typ A
   Γ ⊢ B ⦂ typ B
