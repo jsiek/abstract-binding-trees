@@ -123,6 +123,12 @@ data _—→_ : Term → Term → Set where
       ----------------------------
     → (μ V) · W —→ (V [ μ V ]) · W
 
+{---  Values don't reduce ----}
+
+Value-irred : ∀{V N} → Value V → V —→ N → ⊥
+Value-irred V-lit ()
+Value-irred V-ƛ ()
+Value-irred (V-μ v) ()
 
 {---  Reflexive and transitive closure ----}
 
@@ -147,6 +153,11 @@ begin_ : ∀ {M N}
     ------
   → M —↠ N
 begin M—↠N = M—↠N
+
+Value-multi-step : ∀{V N} → Value V → V —↠ N → V ≡ N
+Value-multi-step V-lit (.($ _) ∎) = refl
+Value-multi-step V-ƛ (.(ƛ _) ∎) = refl
+Value-multi-step (V-μ v) (.(μ _) ∎) = refl
 
 {----------------- Type System ------------------------}
 
@@ -334,8 +345,8 @@ irred M = ¬ (∃[ N ](M —→ N))
 𝓥⟦ `ℕ ⟧ (L · M) k = ⊥
 
 𝓔⟦ A ⟧ M k =
-  ∀ j → j < k → ∀ N → (M—↠N : M —↠ N) → len M—↠N ≡ j → 
-       𝓥⟦ A ⟧ N (k ∸ j) ⊎ ∃[ N′ ] (N —→ N′)
+  ∀ N → (M—↠N : M —↠ N) → len M—↠N < k → 
+       𝓥⟦ A ⟧ N (k ∸ len M—↠N) ⊎ ∃[ N′ ] (N —→ N′)
 
 {- 𝓥 implies value -}
 
@@ -377,8 +388,57 @@ safe M = ∀ N → (M —↠ N) → Value N ⊎ ∃[ N′ ]( N —→ N′ )
 
 safety : ∀ M A → [] ⊨ M ⦂ A → safe M
 safety M A ⊨M⦂A N M—↠N
-   with ⊨M⦂A (suc (len M—↠N)) id tt (len M—↠N) (≤-pred (s≤s (s≤s ≤-refl)))
-             N M—↠N refl 
+   with ⊨M⦂A (suc (len M—↠N)) id tt N M—↠N (≤-pred (s≤s (s≤s ≤-refl))) 
 ... | inj₁ 𝓥 = inj₁ (𝓥⇒Value N 𝓥)
 ... | inj₂ ⟨ N′ , red ⟩ = inj₂ ⟨ N′ , red ⟩
 
+{- Auxilliary Lemmas -}
+
+𝓥-monotone* : ∀ A V k → 𝓥⟦ A ⟧ V k → ∀ j → j ≤ k → 𝓥⟦ A ⟧ V (k ∸ j)
+𝓥-monotone* A V k 𝓥V j j≤k = {!!}
+
+𝓖-monotone* : ∀ Γ (γ : Subst) k → 𝓖⟦ Γ ⟧ γ k → ∀ j → j ≤ k → 𝓖⟦ Γ ⟧ γ j
+𝓖-monotone* = {!!}
+
+less-sub : ∀ m n k → m ≤ n ∸ k → m ≤ n
+less-sub m n zero m≤n∸k = m≤n∸k
+less-sub m zero (suc k) m≤n∸k = m≤n∸k
+less-sub m (suc n) (suc k) m≤n∸k =
+   let IH = less-sub m n k m≤n∸k in
+   ≤-step (less-sub m n k m≤n∸k)
+
+{- Fundamental Property -}
+
+fundamental : ∀ {Γ A}
+  → (M : Term)
+  → (Γ ⊢ M ⦂ A)
+  → (Γ ⊨ M ⦂ A)
+fundamentalⱽ : ∀ {Γ W A}
+  → (Γ ⊢ W ⦂ A)
+  → Value W
+  → (Γ ⊨ⱽ W ⦂ A)
+
+fundamental {A = A}(` x) (⊢` {Γ = Γ} ∋x) k γ 𝓖γ N M—↠N (s≤s M—↠N<k)
+    with Value-multi-step {N = N} (𝓥⇒Value (γ x) (lemma-𝓖 Γ γ k 𝓖γ ∋x)) M—↠N
+... | refl = inj₁ (𝓥-monotone* A (γ x) k (lemma-𝓖 Γ γ k 𝓖γ ∋x) (len M—↠N)
+                                (≤-step M—↠N<k ))
+fundamental ($ n) (⊢$) k γ x N M—↠N len<k
+    with Value-multi-step {N = N} (V-lit{k = n}) M—↠N
+... | refl = inj₁ tt
+fundamental {Γ}{A ⇒ B} (ƛ N) (⊢ƛ{B = B} ⊢N) k γ 𝓖γk N₁ M—↠N len<k
+    with Value-multi-step {N = N₁} (V-ƛ) M—↠N
+... | refl =
+    inj₁ G
+    where
+    G : (j : ℕ) → j < k ∸ len M—↠N → (V : Term) → 𝓥⟦ A ⟧ V j
+       → 𝓔⟦ B ⟧ (⟪ V • γ ⟫ N) j
+    G j j<k-len V 𝓥V =
+       let j<k = less-sub (suc j) k (len M—↠N) j<k-len in
+       let 𝓖γj = 𝓖-monotone* Γ γ k 𝓖γk j (<⇒≤ j<k)  in
+       fundamental N ⊢N j (V • γ) ⟨ 𝓖γj , 𝓥V ⟩
+fundamental (L · M) (⊢· ⊢L ⊢M) k γ 𝓖γ N L·M—↠N len<k =
+  let ⊨L = fundamental L ⊢L in
+  let ⊨M = fundamental M ⊢M in
+  {!!}
+fundamental (μ V) (⊢μ v ⊢V) = {!!}
+fundamentalⱽ ⊢W w = {!!}
