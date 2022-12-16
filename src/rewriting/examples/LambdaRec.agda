@@ -12,7 +12,7 @@ open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; sym; cong; subst)
+  using (_≡_; refl; sym; cong; subst; trans)
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Sig
 open import Var
@@ -418,35 +418,51 @@ less-sub m (suc n) (suc k) m≤n∸k =
    let IH = less-sub m n k m≤n∸k in
    ≤-step (less-sub m n k m≤n∸k)
 
+sub-less-eq : ∀ m n → m ∸ n ≤ m
+sub-less-eq m zero = ≤-refl
+sub-less-eq zero (suc n) = ≤-refl
+sub-less-eq (suc m) (suc n) = ≤-step (sub-less-eq m n)
+
 app-multi-inv : ∀{L M N}
   → (r1 : L · M —↠ N)
   → (∃[ L′ ] (Σ[ r2 ∈ (L —↠ L′) ] (N ≡ L′ · M × len r1 ≡ len r2)))
-    ⊎ (∃[ V ] ∃[ M′ ] (L —↠ V) × Value V × (M —↠ M′) × N ≡ V · M′)
-    ⊎ (∃[ V ] ∃[ W ] (L —↠ V) × Value V × (M —↠ W) × Value W × (V · W —↠ N))
+    ⊎ (∃[ V ] ∃[ M′ ] Σ[ r2 ∈ (L —↠ V) ] (Value V × Σ[ r3 ∈ (M —↠ M′) ]
+        (N ≡ V · M′ × len r1 ≡ len r2 + len r3)))
+    ⊎ (∃[ V ] ∃[ W ] Σ[ r2 ∈ (L —↠ V) ] (Value V × Σ[ r3 ∈ (M —↠ W) ]
+        (Value W × Σ[ r4 ∈ (V · W —↠ N) ] len r1 ≡ len r2 + len r3 + len r4)))
 app-multi-inv {L}{M}{N} (L·M ∎)= inj₁ (L , (_ ∎) , refl , refl)
 app-multi-inv {L} {M} {N} (.(L · M) —→⟨ ξ-·₁ {L′ = L′} L—→L′ ⟩ L′·M—↠N) 
     with app-multi-inv L′·M—↠N
 ... | inj₁ (L″ , L′→L″ , refl , eq) =
       inj₁ (L″ , (L —→⟨ L—→L′ ⟩ L′→L″) , refl , cong suc eq)
-... | inj₂ (inj₁ (V , M′ , L′→V , v , M→M′ , refl)) =
-      inj₂ (inj₁ (V , M′ , (L —→⟨ L—→L′ ⟩ L′→V) , v , M→M′ , refl))
-... | inj₂ (inj₂ (V , W , L′→V , v , M→W , w , →N)) =
-      inj₂ (inj₂ (V , W , (L —→⟨ L—→L′ ⟩ L′→V) , v , M→W , w , →N))
+... | inj₂ (inj₁ (V , M′ , L′→V , v , M→M′ , refl , eq)) =
+     inj₂ (inj₁ (V , M′ , (L —→⟨ L—→L′ ⟩ L′→V) , v , M→M′ , refl , cong suc eq))
+... | inj₂ (inj₂ (V , W , L′→V , v , M→W , w , →N , eq)) =
+      inj₂ (inj₂ (V , W , (L —→⟨ L—→L′ ⟩ L′→V) , v , M→W , w , →N , cong suc eq))
 app-multi-inv {V} {M} {N} (.(V · M) —→⟨ ξ-·₂ {M′ = M′} v M→M′ ⟩ V·M′—↠N)
     with app-multi-inv V·M′—↠N
 ... | inj₁ (L′ , V→L′ , refl , eq)
     with Value-multi-step v V→L′
-... | refl = inj₂ (inj₁ (V , M′ , V→L′ , v , (M —→⟨ M→M′ ⟩ M′ ∎) , refl ))
+... | refl = inj₂ (inj₁ (V , M′ , V→L′ , v , (M —→⟨ M→M′ ⟩ M′ ∎) , refl , EQ))
+    where EQ : suc (len V·M′—↠N) ≡ len V→L′ + 1
+          EQ = trans (cong suc eq) (sym (trans (+-suc _ _) (+-identityʳ _)))
 app-multi-inv {V} {M} {N} (.(V · M) —→⟨ ξ-·₂ v M→M′ ⟩ V·M′—↠N)
-    | inj₂ (inj₁ (V′ , M″ , V→V′ , v′ , M′→M″ , refl)) =
-      inj₂ (inj₁ (V′ , M″ , V→V′ , v′ , (M —→⟨ M→M′ ⟩ M′→M″) , refl))
+    | inj₂ (inj₁ (V′ , M″ , V→V′ , v′ , M′→M″ , refl , eq)) =
+      inj₂ (inj₁ (V′ , M″ , V→V′ , v′ , (M —→⟨ M→M′ ⟩ M′→M″) , refl , EQ))
+    where EQ : suc (len V·M′—↠N) ≡ len V→V′ + suc (len M′→M″)
+          EQ rewrite eq = sym (+-suc _ _)
+
 app-multi-inv {V} {M} {N} (.(V · M) —→⟨ ξ-·₂ v M→M′ ⟩ V·M′—↠N)
-    | inj₂ (inj₂ (V′ , W , V→V′ , v′ , M′→W , w , V′·W→N)) =
-      inj₂ (inj₂ (V′ , W , V→V′ , v′ , (M —→⟨ M→M′ ⟩ M′→W) , w , V′·W→N)) 
+    | inj₂ (inj₂ (V′ , W , V→V′ , v′ , M′→W , w , V′·W→N , eq )) =
+      inj₂ (inj₂ (V′ , W , V→V′ , v′ , (M —→⟨ M→M′ ⟩ M′→W) , w , V′·W→N , EQ))
+    where EQ : suc (len V·M′—↠N) ≡ len V→V′ + suc (len M′→W) + len V′·W→N
+          EQ = trans (cong suc eq) (sym (cong (λ X → X + len V′·W→N)
+                                       (+-suc (len V→V′) (len M′→W))))
 app-multi-inv {ƛ N₁} {M} {N} (.(ƛ _ · M) —→⟨ β-ƛ v ⟩ M′—↠N) =
-  inj₂ (inj₂ (ƛ N₁ , M , (_ ∎) , V-ƛ , (M ∎) , v , (_ —→⟨ β-ƛ v ⟩ M′—↠N)))
+  inj₂ (inj₂ (ƛ N₁ , M , (_ ∎) , V-ƛ , (M ∎) , v , (_ —→⟨ β-ƛ v ⟩ M′—↠N) , refl))
 app-multi-inv {μ V} {M} {N} (.(μ _ · M) —→⟨ β-μ v w ⟩ M′—↠N) =
-  inj₂ (inj₂ (μ V , M , (_ ∎) , V-μ v , (M ∎) , w , (_ —→⟨ β-μ v w ⟩ M′—↠N)))
+  inj₂ (inj₂ (μ V , M , (_ ∎) , V-μ v , (M ∎) , w , (_ —→⟨ β-μ v w ⟩ M′—↠N) ,
+             refl))
 
 {-
 canonical-fun : ∀{Γ V A B}
@@ -456,6 +472,13 @@ canonical-fun : ∀{Γ V A B}
 canonical-fun ⊢V V-ƛ = inj₁ (_ , refl)
 canonical-fun (⊢μ w ⊢V) (V-μ v) = inj₂ (_ , refl , w)
 -}
+
+len-aux1 : ∀ {a b c k}
+    → a ≡ b + c
+    → suc a ≤ k
+    → c < k
+len-aux1 {a}{b} refl lt = m+n≤o⇒n≤o b (≤-trans (≤-reflexive (+-suc _ _)) lt)
+
 
 {- Fundamental Property -}
 
@@ -511,24 +534,30 @@ fundamental {Γ} (L · M) (⊢·{A = A}{B} ⊢L ⊢M) k γ 𝓖γ N L·M—↠N 
     | inj₂ (L″ , L′→L″) = inj₂ ((L″ · ⟪ γ ⟫ M) , ξ-·₁ L′→L″)
 fundamental {Γ} (L · M) (⊢·{A = A}{B} ⊢L ⊢M) k γ 𝓖γ N L·M—↠N len<k
     {- Inversion Case 2 -}
-    | inj₂ (inj₁ (V , M′ , L→V , v , M→M′ , refl)) 
-    with fundamental M ⊢M k γ 𝓖γ _ M→M′ {!!}
+    | inj₂ (inj₁ (V , M′ , L→V , v , M→M′ , refl , eq)) 
+    with fundamental M ⊢M k γ 𝓖γ _ M→M′ (len-aux1 eq len<k)
 ... | inj₂ (M″ , M′→M″) = inj₂ (_ , ξ-·₂ v M′→M″) 
 ... | inj₁ 𝓥M′
     with v
 ... | V-ƛ = inj₂ (_ , β-ƛ (𝓥⇒Value _ 𝓥M′))
 ... | V-μ v₁ = inj₂ (_ , β-μ v₁ (𝓥⇒Value _ 𝓥M′) )
 ... | V-lit
-    with fundamental L ⊢L k γ 𝓖γ _ L→V {!!}
+    with fundamental L ⊢L k γ 𝓖γ _ L→V
+                       (len-aux1 (trans eq (+-comm (len L→V) (len M→M′))) len<k)
 ... | inj₁ ()
 ... | inj₂ (_ , ())
 fundamental {Γ} (L · M) (⊢·{A = A}{B} ⊢L ⊢M) k γ 𝓖γ N L·M—↠N len<k
     {- Inversion Case 3 -}
-    | inj₂ (inj₂ (V , W , L→V , v , M→W , w , V·W→N)) 
-    with fundamental L ⊢L k γ 𝓖γ _ L→V {!!}
+    | inj₂ (inj₂ (V , W , L→V , v , M→W , w , V·W→N , eq)) 
+    with fundamental L ⊢L k γ 𝓖γ _ L→V
+                (len-aux1 (trans eq (trans (+-assoc (len L→V) (len M→W) _)
+                               (+-comm (len L→V) (len M→W + len V·W→N)))) len<k)
 ... | inj₂ (_ , V→) = ⊥-elim (Value-irred v V→)
 ... | inj₁ 𝓥V
-    with fundamental M ⊢M k γ 𝓖γ _ M→W {!!} 
+    with fundamental M ⊢M k γ 𝓖γ _ M→W
+           (len-aux1 (trans eq (trans (+-comm (len L→V + len M→W) (len V·W→N))
+            (trans (sym (+-assoc (len V·W→N) (len L→V) (len M→W)))
+            (cong (λ X → X + len M→W) (+-comm (len V·W→N) (len L→V)))))) len<k)
 ... | inj₂ (_ , W→) = ⊥-elim (Value-irred w W→)
 ... | inj₁ 𝓥W
     with 𝓥⇒Value V 𝓥V
@@ -537,12 +566,28 @@ fundamental {Γ} (L · M) (⊢·{A = A}{B} ⊢L ⊢M) k γ 𝓖γ N L·M—↠N 
     with V·W→N
 ... | _ ∎ = inj₂ (_ , β-ƛ w)
 ... | _ —→⟨ ξ-·₂ x r₁ ⟩ r₂ = ⊥-elim (Value-irred w r₁)
-... | _ —→⟨ β-ƛ x ⟩ r₂
-    with 𝓥V {!!} {!!} W 𝓥W N r₂ {!!}
-... | inj₂ (_ , r) = inj₂ (_ , r)    
-... | inj₁ 𝓥N =
-      inj₁ (𝓥-monotone*-alt B N (k ∸ len M→W ∸ len r₂) 𝓥N (k ∸ len L·M—↠N)
-            {!!})
+... | _ —→⟨ β-ƛ x ⟩ N₁[W]—↠N =
+     {-   ⟪ γ ⟫ L · ⟪ γ ⟫ M  —↠  (ƛ N₁) · W  —→  N₁[W] —↠  N    -}
+     let k′ = k ∸ (len L→V + len M→W) in
+     let 𝓥W′ = (𝓥-monotone*-alt A W (k ∸ len M→W) 𝓥W (k′ ∸ 1) LT4) in
+     let 𝓥V′ = 𝓥-monotone*-alt (A ⇒ B) V (k ∸ len L→V) 𝓥V k′ LT3 in
+     let 𝓔N₁[W] = 𝓥V′ (k ∸ (len L→V + len M→W) ∸ 1) LT2 W 𝓥W′ in
+     let xx = 𝓔N₁[W] N N₁[W]—↠N LT1 in
+     subst (λ X → 𝓥⟦ B ⟧ N X ⊎ Data.Product.Σ Term (_—→_ N)) EQ1 xx
+     where EQ1 : k ∸ (len L→V + len M→W) ∸ 1 ∸ len N₁[W]—↠N ≡ k ∸ len L·M—↠N
+           EQ1 = {!!}
+           LT1 : len N₁[W]—↠N < k ∸ (len L→V + len M→W) ∸ 1
+           LT1 = {!!}
+           LT2 : k ∸ (len L→V + len M→W) ∸ 1 < k ∸ (len L→V + len M→W)
+           LT2 = {!!}
+           LT3 : k ∸ (len L→V + len M→W) ≤ k ∸ len L→V
+           LT3 = {!!}
+           LT4 : k ∸ (len L→V + len M→W) ∸ 1 ≤ k ∸ len M→W
+           LT4 = {!!}
+
+
+
+
 
 fundamental (μ V) (⊢μ v ⊢V) = {!!}
 fundamentalⱽ ⊢W w = {!!}

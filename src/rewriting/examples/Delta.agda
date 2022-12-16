@@ -1,23 +1,20 @@
 {-# OPTIONS --without-K --rewriting #-}
 {-
-  This is an example of using Abstract Binding Trees to define the
-  simply-typed lambda calculus and prove type safety via progress and
-  preservation.
+  This is a language without lexical scoping, but otherwise similar to the lambda calculus.
 -}
 
-open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax; Σ-syntax)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 open import Sig
 
-module rewriting.examples.Lambda where
+module rewriting.examples.Delta where
 
 data Op : Set where
-  op-lam : Op
+  op-delta : Op
   op-app : Op
   op-lit : ℕ → Op
   op-cons : Op
@@ -25,18 +22,18 @@ data Op : Set where
   op-snd : Op
 
 sig : Op → List Sig
-sig op-lam = (ν ■) ∷ []
+sig op-delta = ν ■ ∷ []
 sig op-app = ■ ∷ ■ ∷ []
 sig (op-lit k) = []
 sig op-cons = ■ ∷ ■ ∷ []
 sig op-fst = ■ ∷ []
 sig op-snd = ■ ∷ []
 
-open import rewriting.AbstractBindingTree Op sig renaming (ABT to Term)
+open import rewriting.AbstractBindingTree Op sig
 
 pattern $ k  = op-lit k ⦅ nil ⦆
 
-pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
+pattern δ N  = op-delta ⦅ cons (bind (ast N)) nil ⦆
 
 infixl 7  _·_
 pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
@@ -48,13 +45,16 @@ pattern fst L = op-fst ⦅ (cons (ast L) nil) ⦆
 
 pattern snd L = op-snd ⦅ (cons (ast L) nil) ⦆
 
+Term : Set
+Term = ABT
+
 {-------------      Examples regarding substitution   -------------}
 
 sub-app : ∀ (L M : Term) (σ : Subst) → ⟪ σ ⟫ (L · M) ≡ (⟪ σ ⟫ L) · (⟪ σ ⟫ M)
 sub-app = λ L M σ → refl
 
-sub-lam : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (ƛ N) ≡ ƛ (⟪ ` 0 • (σ ⨟ ↑) ⟫ N)
-sub-lam N σ = refl
+sub-delta : ∀ (N : Term) (σ : Subst) → ⟪ σ ⟫ (δ N) ≡ δ (⟪ ` 0 • (σ ⨟ ↑) ⟫ N)
+sub-delta N σ = refl
 
 _ : ∀ (M L : Term) → (M • L • id) 0 ≡ M
 _ = λ M L → refl
@@ -87,9 +87,9 @@ data Value : Term → Set where
       ---------------------------
     → Value ($ k)
 
-  V-ƛ : ∀ {N : Term}
+  V-δ : ∀ {N : Term}
       ---------------------------
-    → Value (ƛ N)
+    → Value (δ N)
 
   V-cons : ∀ {M N : Term}
     → Value M
@@ -113,10 +113,10 @@ data _—→_ : Term → Term → Set where
       ---------------
     → V · M —→ V · M′
 
-  β-ƛ : ∀ {N W : Term}
+  β-δ : ∀ {N W : Term}
     → Value W
       --------------------
-    → (ƛ N) · W —→ N [ W ]
+    → (δ N) · W —→ N [ W ]
 
   ξ-cons₁ : ∀ {L L′ M : Term}
     → L —→ L′
@@ -162,7 +162,7 @@ data Type : Set where
 open import Var
 
 𝑃 : (op : Op) → Vec Type (length (sig op)) → BTypes Type (sig op) → Type → Set
-𝑃 op-lam (B ∷̌ []̌) ( ( A , tt ) , tt ) A→B = A→B ≡ A ⇒ B
+𝑃 op-delta (B ∷̌ []̌) ( ( A , tt ) , tt ) A→B = A→B ≡ A ⇒ B
 𝑃 op-app (A→B ∷̌ A ∷̌ []̌) ( tt , ( tt , tt )) B = A→B ≡ A ⇒ B
 𝑃 (op-lit k) []̌ tt A = A ≡ Nat
 𝑃 op-cons (A ∷̌ B ∷̌ []̌) ( tt , ( tt , tt )) C = C ≡ A `× B
@@ -175,7 +175,7 @@ open import rewriting.ABTPredicate Op sig 𝑃
 
 pattern ⊢` ∋x = var-p ∋x
 pattern ⊢$ k eq = op-p {op = (op-lit k)} nil-p eq
-pattern ⊢ƛ ⊢N eq = op-p {op = op-lam} (cons-p (bind-p (ast-p ⊢N)) nil-p) eq
+pattern ⊢δ ⊢N eq = op-p {op = op-delta} (cons-p (bind-p (ast-p ⊢N)) nil-p) eq
 pattern ⊢· ⊢L ⊢M eq = op-p {op = op-app}
                            (cons-p (ast-p ⊢L) (cons-p (ast-p ⊢M) nil-p)) eq
 pattern ⊢cons ⊢L ⊢M eq = op-p {op = op-cons}
@@ -206,15 +206,15 @@ progress (⊢` ())
 
 progress (⊢$ k _)                           =  done V-$
 
-progress (⊢ƛ ⊢N _)                          =  done V-ƛ
+progress (⊢δ ⊢N _)                          =  done V-δ
 
 progress (⊢· ⊢L ⊢M eq)
     with progress ⊢L
 ... | step L—→L′                            =  step (ξ-·₁ L—→L′)
-... | done V-ƛ
+... | done V-δ
     with progress ⊢M
-... | step M—→M′                            =  step (ξ-·₂ V-ƛ M—→M′)
-... | done v                                =  step (β-ƛ v)
+... | step M—→M′                            =  step (ξ-·₂ V-δ M—→M′)
+... | done v                                =  step (β-δ v)
 progress (⊢· ⊢L ⊢M eq)
     | done (V-cons v w)
     with ⊢L | eq
@@ -237,9 +237,9 @@ progress (⊢fst ⊢L eq)
 ... | step L—→L′                            =  step (ξ-fst L—→L′)
 ... | done (V-cons v w)                     =  step (β-fst v w)
 progress (⊢fst ⊢L eq)
-    | done V-ƛ
+    | done V-δ
     with ⊢L | eq
-... | ⊢ƛ ⊢N refl | ()
+... | ⊢δ ⊢N refl | ()
 progress (⊢fst ⊢L eq)
     | done V-$
     with ⊢L | eq
@@ -250,9 +250,9 @@ progress (⊢snd ⊢L eq)
 ... | step L—→L′                            =  step (ξ-snd L—→L′)
 ... | done (V-cons v w)                     =  step (β-snd v w)
 progress (⊢snd ⊢L eq)
-    | done V-ƛ
+    | done V-δ
     with ⊢L | eq
-... | ⊢ƛ ⊢N refl | ()
+... | ⊢δ ⊢N refl | ()
 progress (⊢snd ⊢L eq)
     | done V-$
     with ⊢L | eq
@@ -268,7 +268,7 @@ preserve : ∀ {Γ M N A}
   → Γ ⊢ N ⦂ A
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L—→L′) ⊢M refl
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₂ v M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′) refl
-preserve {Γ}{(ƛ N) · M}{_}{B} (⊢· (⊢ƛ ⊢N refl) ⊢M refl) (β-ƛ {N = N} v) =
+preserve {Γ}{(δ N) · M}{_}{B} (⊢· (⊢δ ⊢N refl) ⊢M refl) (β-δ {N = N} v) =
     preserve-substitution N M ⊢N ⊢M
 preserve {Γ} {.(⟨ _ , _ ⟩)} {_} {B} (⊢cons ⊢M ⊢N refl) (ξ-cons₁ red) =
     ⊢cons (preserve ⊢M red) ⊢N refl
@@ -284,55 +284,4 @@ preserve {Γ} {.(snd ⟨ _ , _ ⟩)} {_} {B} (⊢snd (⊢cons ⊢V ⊢W refl) (_
 {- TODO: Add confluence proof to show off the substitution lemma. -}
 
 {-------------      Denotational Semantics    -------------}
-
-data Val : Set where
-  lit : ℕ → Val
-  _↦_ : List Val → Val → Val
-  pair : Val → Val → Val
-
-D : Set₁
-D = Val → Set
-
-mem : List Val → Val → Set
-mem [] x = ⊥
-mem (x ∷ ls) y = (x ≡ y)
-
-{- Application Operator -}
-infixl 7 _●_
-_●_ : D → D → D
-_●_ D₁ D₂ w = Σ[ V ∈ List Val ] D₁ (V ↦ w) × (∀ v → mem V v → D₂ v)
-
-{- Abstraction Operator -}
-Λ : (D → D) → D
-Λ F (lit k) = ⊥
-Λ F (V ↦ w) = F (mem V) w
-Λ F (pair v w) = ⊥
-
-{- Pair operator -}
-⦅_,_⦆ : D → D → D
-⦅ D₁ , D₂ ⦆ (lit k) = ⊥
-⦅ D₁ , D₂ ⦆ (v ↦ w) = ⊥
-⦅ D₁ , D₂ ⦆ (pair v w) = D₁ v × D₂ w
-
-{- Fst operator -}
-π₁ : D → D
-π₁ D v = Σ[ w ∈ Val ] D (pair v w) 
-
-{- Send operator -}
-π₂ : D → D
-π₂ D w = Σ[ v ∈ Val ] D (pair v w) 
-
-extend : D → (Var → D) → (Var → D)
-extend d ρ zero = d
-extend d ρ (suc x) = ρ x
-
-{- Denotations of Terms -}
-⟦_⟧ : Term → (Var → D) → D
-⟦ ` x ⟧ ρ = ρ x
-⟦ $ k ⟧ ρ v = (v ≡ lit k)
-⟦ ƛ N ⟧ ρ = Λ (λ d → ⟦ N ⟧ (extend d ρ))
-⟦ L · M ⟧ ρ = ⟦ L ⟧ ρ ● ⟦ M ⟧ ρ 
-⟦ ⟨ L , M ⟩ ⟧ ρ =  ⦅ ⟦ L ⟧ ρ , ⟦ M ⟧ ρ ⦆
-⟦ fst L ⟧ ρ = π₁ (⟦ L ⟧ ρ)
-⟦ snd L ⟧ ρ = π₂ (⟦ L ⟧ ρ)
 
