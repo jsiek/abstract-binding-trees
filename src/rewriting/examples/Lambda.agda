@@ -6,6 +6,7 @@
 -}
 
 open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List.Membership.Propositional
 open import Data.List using (List; []; _∷_; length)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax; Σ-syntax)
@@ -13,6 +14,8 @@ open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 open import Sig
+open import Var
+open import rewriting.examples.Denot
 
 module rewriting.examples.Lambda where
 
@@ -32,7 +35,9 @@ sig op-cons = ■ ∷ ■ ∷ []
 sig op-fst = ■ ∷ []
 sig op-snd = ■ ∷ []
 
-open import rewriting.AbstractBindingTree Op sig renaming (ABT to Term)
+open import rewriting.AbstractBindingTree Op sig hiding (`_)
+open import rewriting.AbstractBindingTree Op sig
+  using (`_) renaming (ABT to Term) public
 
 pattern $ k  = op-lit k ⦅ nil ⦆
 
@@ -269,7 +274,7 @@ preserve : ∀ {Γ M N A}
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L—→L′) ⊢M refl
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₂ v M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′) refl
 preserve {Γ}{(ƛ N) · M}{_}{B} (⊢· (⊢ƛ ⊢N refl) ⊢M refl) (β-ƛ {N = N} v) =
-    preserve-substitution N M ⊢N ⊢M
+    preserve-substitution ⊢N ⊢M
 preserve {Γ} {.(⟨ _ , _ ⟩)} {_} {B} (⊢cons ⊢M ⊢N refl) (ξ-cons₁ red) =
     ⊢cons (preserve ⊢M red) ⊢N refl
 preserve {Γ} {.(⟨ _ , _ ⟩)} {_} {B} (⊢cons ⊢M ⊢N refl) (ξ-cons₂ v red) =
@@ -285,46 +290,6 @@ preserve {Γ} {.(snd ⟨ _ , _ ⟩)} {_} {B} (⊢snd (⊢cons ⊢V ⊢W refl) (_
 
 {-------------      Denotational Semantics    -------------}
 
-data Val : Set where
-  lit : ℕ → Val
-  _↦_ : List Val → Val → Val
-  pair : Val → Val → Val
-
-D : Set₁
-D = Val → Set
-
-mem : List Val → Val → Set
-mem [] x = ⊥
-mem (x ∷ ls) y = (x ≡ y)
-
-{- Application Operator -}
-infixl 7 _●_
-_●_ : D → D → D
-_●_ D₁ D₂ w = Σ[ V ∈ List Val ] D₁ (V ↦ w) × (∀ v → mem V v → D₂ v)
-
-{- Abstraction Operator -}
-Λ : (D → D) → D
-Λ F (lit k) = ⊥
-Λ F (V ↦ w) = F (mem V) w
-Λ F (pair v w) = ⊥
-
-{- Pair operator -}
-⦅_,_⦆ : D → D → D
-⦅ D₁ , D₂ ⦆ (lit k) = ⊥
-⦅ D₁ , D₂ ⦆ (v ↦ w) = ⊥
-⦅ D₁ , D₂ ⦆ (pair v w) = D₁ v × D₂ w
-
-{- Fst operator -}
-π₁ : D → D
-π₁ D v = Σ[ w ∈ Val ] D (pair v w) 
-
-{- Send operator -}
-π₂ : D → D
-π₂ D w = Σ[ v ∈ Val ] D (pair v w) 
-
-extend : D → (Var → D) → (Var → D)
-extend d ρ zero = d
-extend d ρ (suc x) = ρ x
 
 {- Denotations of Terms -}
 ⟦_⟧ : Term → (Var → D) → D

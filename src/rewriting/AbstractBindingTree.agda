@@ -24,6 +24,7 @@ open import Agda.Builtin.Equality.Rewrite
 
 module rewriting.AbstractBindingTree (Op : Set) (sig : Op → List Sig) where
 
+
 data Args : List Sig → Set
 
 data ABT : Set where

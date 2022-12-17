@@ -10,6 +10,7 @@ open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 open import Sig
+open import rewriting.examples.Denot
 
 module rewriting.examples.Delta where
 
@@ -29,7 +30,9 @@ sig op-cons = ■ ∷ ■ ∷ []
 sig op-fst = ■ ∷ []
 sig op-snd = ■ ∷ []
 
+open import rewriting.AbstractBindingTree Op sig hiding (`_)
 open import rewriting.AbstractBindingTree Op sig
+  using (`_) renaming (ABT to Term) public
 
 pattern $ k  = op-lit k ⦅ nil ⦆
 
@@ -44,9 +47,6 @@ pattern ⟨_,_⟩ L M = op-cons ⦅ cons (ast L) (cons (ast M) nil) ⦆
 pattern fst L = op-fst ⦅ (cons (ast L) nil) ⦆
 
 pattern snd L = op-snd ⦅ (cons (ast L) nil) ⦆
-
-Term : Set
-Term = ABT
 
 {-------------      Examples regarding substitution   -------------}
 
@@ -258,7 +258,6 @@ progress (⊢snd ⊢L eq)
     with ⊢L | eq
 ... | ⊢$ k refl | ()
 
-
 {-------------      Proof of Preservation    -------------}
 
 preserve : ∀ {Γ M N A}
@@ -269,7 +268,7 @@ preserve : ∀ {Γ M N A}
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₁ L—→L′) = ⊢· (preserve ⊢L L—→L′) ⊢M refl
 preserve (⊢· ⊢L ⊢M refl) (ξ-·₂ v M—→M′) = ⊢· ⊢L (preserve ⊢M M—→M′) refl
 preserve {Γ}{(δ N) · M}{_}{B} (⊢· (⊢δ ⊢N refl) ⊢M refl) (β-δ {N = N} v) =
-    preserve-substitution N M ⊢N ⊢M
+    preserve-substitution ⊢N ⊢M
 preserve {Γ} {.(⟨ _ , _ ⟩)} {_} {B} (⊢cons ⊢M ⊢N refl) (ξ-cons₁ red) =
     ⊢cons (preserve ⊢M red) ⊢N refl
 preserve {Γ} {.(⟨ _ , _ ⟩)} {_} {B} (⊢cons ⊢M ⊢N refl) (ξ-cons₂ v red) =
@@ -281,7 +280,15 @@ preserve {Γ} {.(snd _)} {_} {B} (⊢snd ⊢L (A , refl)) (ξ-snd red) =
 preserve {Γ} {.(fst ⟨ _ , _ ⟩)} {_} {B} (⊢fst (⊢cons ⊢V ⊢W refl) (_ , refl)) (β-fst v w) = ⊢V
 preserve {Γ} {.(snd ⟨ _ , _ ⟩)} {_} {B} (⊢snd (⊢cons ⊢V ⊢W refl) (_ , refl)) (β-snd v w) = ⊢W
 
-{- TODO: Add confluence proof to show off the substitution lemma. -}
-
 {-------------      Denotational Semantics    -------------}
+
+{- Denotations of Terms -}
+⟦_⟧ : Term → (List D) → D
+⟦ ` x ⟧ ρ = nth x ρ ⊥′
+⟦ $ k ⟧ ρ v = (v ≡ lit k)
+⟦ δ N ⟧ ρ = Λ (λ D₀ → Λ (λ D₁ → ⟦ N ⟧ (D₀ ∷ D₁ ∷ [])))
+⟦ L · M ⟧ ρ = ⟦ L ⟧ ρ ● ⟦ M ⟧ ρ 
+⟦ ⟨ L , M ⟩ ⟧ ρ =  ⦅ ⟦ L ⟧ ρ , ⟦ M ⟧ ρ ⦆
+⟦ fst L ⟧ ρ = π₁ (⟦ L ⟧ ρ)
+⟦ snd L ⟧ ρ = π₂ (⟦ L ⟧ ρ)
 

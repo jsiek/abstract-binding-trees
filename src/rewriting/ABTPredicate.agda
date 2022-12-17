@@ -140,10 +140,10 @@ sub-preserve (op ⦅ args ⦆) (op-p ⊢args Pop) σ⦂ = op-p (pres-args ⊢arg
   pres-args {b ∷ bs} {args = cons arg args} (cons-p ⊢arg ⊢args) σ⦂ =
       cons-p (pres-arg ⊢arg σ⦂) (pres-args ⊢args σ⦂)
 
-preserve-substitution : ∀{Γ : List I}{A B : I} (N M : ABT)
+preserve-substitution : ∀{Γ : List I}{A B : I} {N M : ABT}
   → (A ∷ Γ) ⊢ N ⦂ B
   → Γ ⊢ M ⦂ A
   → Γ ⊢ N [ M ] ⦂ B
-preserve-substitution {Γ}{A} N M ⊢N ⊢M =
+preserve-substitution {Γ}{A}{B}{N}{M} ⊢N ⊢M =
     sub-preserve {σ = M • id} N ⊢N
         λ { {0}{A} refl → ⊢M ; {suc x}{A} ∋x → var-p ∋x }
