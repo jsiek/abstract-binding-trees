@@ -7,6 +7,7 @@ open import Data.List using (List; []; _∷_; length)
 open import Data.Nat using (ℕ; zero; suc; _≟_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.List.Membership.Propositional
+open import Data.List.Relation.Unary.Any
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
@@ -55,9 +56,13 @@ data _∼_ : Val → Val → Set where
 
 data _≈_ where
   ≈-nil : [] ≈ []
-
+  ≈-cons : ∀ {v w}{vs ws}
+    → v ∼ w
+    → vs ≈ ws
+    → (v ∷ vs) ≈ (w ∷ ws)
+  
 C-fwd : ∀ M ρ d₁ → ⟦ M ⟧₁ ρ d₁ → ∃[ d₂ ] ⟦ C M ⟧₂ ρ d₂ × d₁ ∼ d₂
-C-fwd (` x) ρ d₁ d₁∈M = {!!}
+C-fwd (` x) ρ d₁ d₁∈M = {!!} , ({!!} , {!!})
 C-fwd ($₁ k) ρ d₁ refl = (lit k) , refl , {!!}
 C-fwd (γ N M) ρ (V ↦ w) ((d , d∈M) , w∈⟦N⟧) 
     with C-fwd M ρ d d∈M
@@ -66,7 +71,8 @@ C-fwd (γ N M) ρ (V ↦ w) ((d , d∈M) , w∈⟦N⟧)
 ... | d₂ , d₂∈CN , ∼d₂
     with continuous₂ (C N) d₂∈CN
 ... | V′ , d₂∈CN′ = 
-    (pair {!!} {!!}) , (({!!} , {!!}) , {!!})
+    (pair ({!!} ↦ ({!!} ↦ d₂) ∷ []) {!!}) ,
+      (({!!} , {!!}) , fun-rel ∼d₂ {!!} (here refl))
 C-fwd (L ·₁ M) ρ w ((v , v∈M) , (V , (Vw∈L , v∈V→v∈M)))
     with C-fwd L ρ (V ↦ w) Vw∈L
 ... | d′ , d′∈CL , fun-rel {F = F} w∼w′ V≈V″ ∈F =

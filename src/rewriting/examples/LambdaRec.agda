@@ -584,10 +584,20 @@ fundamental {Γ} (L · M) (⊢·{A = A}{B} ⊢L ⊢M) k γ 𝓖γ N L·M—↠N 
            LT3 = {!!}
            LT4 : k ∸ (len L→V + len M→W) ∸ 1 ≤ k ∸ len M→W
            LT4 = {!!}
+fundamental (μ V) (⊢μ {Γ}{V}{A}{B} v ⊢V) k γ 𝓖γk N μV—↠N len<k
+    with Value-multi-step {N = N} (V-μ (sub-value {σ = (` zero) • (γ ⨟ ↑)} v))
+                                  μV—↠N
+... | refl
+    with k ∸ len μV—↠N in eq
+... | zero = inj₁ (sub-value {σ = (` zero) • (γ ⨟ ↑)} v)
+... | suc j =
+      let IH = fundamental V ⊢V {!!} {!!} {!!} {!!} in
+      inj₁ (sub-value {σ = (` zero) • (γ ⨟ ↑)} v , {!!})
+      where
+      IHV : ((A ⇒ B) ∷ Γ) ⊨ V ⦂ (A ⇒ B)
+      IHV = fundamental V ⊢V
+      γ′ = (` 0) • (γ ⨟ ↑)
+      G : 𝓥⟦ A ⇒ B ⟧ (⟪ γ′ ⟫ V [ μ (⟪ γ′ ⟫ V) ]) j
+      G = {!!}
 
-
-
-
-
-fundamental (μ V) (⊢μ v ⊢V) = {!!}
 fundamentalⱽ ⊢W w = {!!}
