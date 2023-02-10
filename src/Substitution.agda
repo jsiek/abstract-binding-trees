@@ -4,7 +4,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (+-comm)
 open import Function using (_∘_)
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; sym; cong; cong₂)
+open Eq using (_≡_; refl; sym; cong; cong₂; trans)
 open Eq.≡-Reasoning
 open import Sig
 open import Var 
@@ -253,3 +253,6 @@ module ABTOps (Op : Set) (sig : Op → List Sig)  where
       → (∀ x → σ x ≡ τ x)
       → ⟪ σ ⟫ M ≡ ⟪ τ ⟫ M
   subst-cong {M} {σ} {τ} eq = map-cong M eq ext-cong
+
+  ext-id : ∀ x → (ext id) x ≡ id x
+  ext-id x = trans refl (sub-η id x)

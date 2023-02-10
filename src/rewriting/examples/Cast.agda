@@ -347,31 +347,38 @@ ExpPred = Term → Set
 SafePred : Set₁
 SafePred = (A : Type) → ValPred × ExpPred
 
-Safe-step : (n : ℕ) → <-Rec (λ i → SafePred) n → SafePred
-Safe-step zero rec A = (λ v → ⊤) , (λ M → ⊤)
-Safe-step (suc n) rec A = 𝕍 A , 𝔼
-  where
-  𝕍 : Type → ValPred
-  𝔼 : ExpPred
-  
-  𝕍 ★ (ƛ̬ N) = ⊥
-  𝕍 ★ ($̬ k) = ⊥
-  𝕍 ★ {(V ⟨ G ⇒ ★ ⟩)} (v 〈 g 〉) = (proj₁ (rec n (n<1+n n) G)) v
-  𝕍 ($ₜ ι) (ƛ̬ N) = ⊥
-  𝕍 ($ₜ ι) ($̬ k) = ⊤
-  𝕍 ($ₜ ι) (v 〈 g 〉) = ⊥
-  𝕍 (A ⇒ B) {.(ƛ N)} (ƛ̬ N) =
-     ∀ {V} (v : Value V) (j : ℕ) → (lt : j < n)
-       → (proj₁ (rec j (≤-step lt) A)) v
-       → (proj₂ (rec j (≤-step lt) B)) (N [ V ])
-  𝕍 (A ⇒ B) ($̬ k) = ⊥
-  𝕍 (A ⇒ B) (v 〈 g 〉) = ⊥
+𝕍 : (n : ℕ) → <-Rec (λ i → SafePred) n → Type → ValPred
+𝔼 : (n : ℕ) → <-Rec (λ i → SafePred) n → Type → ExpPred
 
-  {- the following is an experiment in that it does not relate the step
-     index n to the number of reduction steps -}
-  𝔼 M = ∀ N → (M→N : M —↠ N)
-             → (Σ[ v ∈ Value N ] (proj₁ (rec n (s≤s ≤-refl) A)) v)
-               ⊎ (∃[ N′ ] (N —→ N′))
+𝕍 n rec ★ (ƛ̬ N) = ⊥
+𝕍 n rec ★ ($̬ k) = ⊥
+𝕍 0 rec ★ {(V ⟨ G ⇒ ★ ⟩)} (v 〈 g 〉) = ⊤
+𝕍 (suc n) rec ★ {(V ⟨ G ⇒ ★ ⟩)} (v 〈 g 〉) = (proj₁ (rec n (n<1+n n) G)) v
+
+𝕍 n rec ($ₜ ι) (ƛ̬ N) = ⊥
+𝕍 n rec ($ₜ ι) ($̬_ {ι′} k) = ι ≡ ι′
+𝕍 n rec ($ₜ ι) (v 〈 g 〉) = ⊥
+
+𝕍 0 rec (A ⇒ B) {.(ƛ N)} (ƛ̬ N) = ⊤
+𝕍 (suc n) rec (A ⇒ B) {.(ƛ N)} (ƛ̬ N) =
+   ∀ {V} (v : Value V) (j : ℕ) → (lt : j ≤ n)
+     → (proj₁ (rec j (s≤s lt) A)) v
+     → (proj₂ (rec j (s≤s lt) B)) (N [ V ])
+𝕍 n rec (A ⇒ B) ($̬ k) = ⊥
+𝕍 n rec (A ⇒ B) (v 〈 g 〉) = ⊥
+
+{- the following is an experiment in that it does not relate the step
+   index n to the number of reduction steps -}
+𝔼 0 rec A M = ⊤
+-- 𝔼 (suc n) rec A M = ∀ N → (M→N : M —↠ N)
+--            → (Σ[ v ∈ Value N ] (proj₁ (rec n (s≤s ≤-refl) A)) v)
+--              ⊎ (∃[ N′ ] (N —→ N′))
+𝔼 (suc n) rec A M = ∀ N → (M→N : M —↠ N)
+           → (Σ[ v ∈ Value N ] 𝕍 (suc n) rec A v)
+             ⊎ (∃[ N′ ] (N —→ N′))
+
+Safe-step : (n : ℕ) → <-Rec (λ i → SafePred) n → SafePred
+Safe-step n rec A = 𝕍 n rec A , 𝔼 n rec A
 
 abstract
   Safe : ℕ → SafePred
@@ -395,18 +402,28 @@ abstract
 
 {- Equations of the logical relation -}
 
+{-
 V-zero : ∀{A}{V} (v : Value V) → 𝓥⟦ A ⟧ v 0 ≡ ⊤
 V-zero v rewrite unfold-Safe 0 = refl
+-}
 
-V-base : ∀{n}{ι}{k : rep ι} → 𝓥⟦ $ₜ ι ⟧ ($̬ k)  (suc n) ≡ ⊤
-V-base {n} rewrite unfold-Safe (suc n) = refl
+V-base : ∀{n}{ι}{ι′}{k : rep ι′} → 𝓥⟦ $ₜ ι ⟧ ($̬ k) n ≡ (ι ≡ ι′)
+V-base {n} rewrite unfold-Safe n = refl
+
+V-dyn-zero : ∀{G}{V}{v : Value V}{g}
+ → 𝓥⟦ ★ ⟧ {V ⟨ G ⇒ ★ ⟩} (v 〈 g 〉) 0 ≡ ⊤
+V-dyn-zero rewrite unfold-Safe 0 = refl 
 
 V-dyn : ∀{n}{G}{V}{v : Value V}{g}
  → 𝓥⟦ ★ ⟧ {V ⟨ G ⇒ ★ ⟩} (v 〈 g 〉) (suc n) ≡ 𝓥⟦ G ⟧ v n
 V-dyn {n} rewrite unfold-Safe (suc n) | sym (unfold-Safe n) = refl
 
+V-fun-zero : ∀{A B}{N}
+  → 𝓥⟦ A ⇒ B ⟧ (ƛ̬ N) 0 ≡ ⊤
+V-fun-zero {n} rewrite unfold-Safe 0 = refl
+
 V-fun : ∀{n}{A B}{N}
-  → 𝓥⟦ A ⇒ B ⟧ (ƛ̬ N) (suc n) ≡ ∀ {V} (v : Value V) (j : ℕ) → (lt : j < n)
+  → 𝓥⟦ A ⇒ B ⟧ (ƛ̬ N) (suc n) ≡ ∀ {V} (v : Value V) (j : ℕ) → (lt : j ≤ n)
                                 → 𝓥⟦ A ⟧ v j → 𝓔⟦ B ⟧ (N [ V ]) j
 V-fun {n} rewrite unfold-Safe (suc n) | sym (unfold-Safe n) = refl
 
@@ -420,9 +437,34 @@ E-suc : (A : Type)
    → (k : ℕ)
    → 𝓔⟦ A ⟧ M (suc k) ≡
        ∀ N → (M→N : M —↠ N)
-             → (Σ[ v ∈ Value N ] 𝓥⟦ A ⟧ v k)
+             → (Σ[ v ∈ Value N ] 𝓥⟦ A ⟧ v (suc k))
                ⊎ (∃[ N′ ] (N —→ N′))   
 E-suc A M k rewrite unfold-Safe (suc k) = refl
+
+data Fun : Term → Set where
+  λᶠ : (N : Term) → Fun (ƛ N)
+
+V-fun-inv : ∀{n}{A}{B}{V} (v : Value V) → 𝓥⟦ A ⇒ B ⟧ v n →  Fun V
+V-fun-inv {zero} {A} {B} {.(ƛ N)} (ƛ̬ N) vV = λᶠ N
+V-fun-inv {suc n} {A} {B} {.(ƛ N)} (ƛ̬ N) vV = λᶠ N
+V-fun-inv {zero} {A} {B} {.($ k)} ($̬ k) vV rewrite unfold-Safe 0 = ⊥-elim vV
+V-fun-inv {suc n} {A} {B} {.($ k)} ($̬ k) vV rewrite unfold-Safe (suc n) =
+    ⊥-elim vV
+V-fun-inv {zero} {A} {B} {.(_ ⟨ _ ⇒ ★ ⟩)} (v 〈 g 〉) vV rewrite unfold-Safe 0 =
+    ⊥-elim vV
+V-fun-inv {suc n} {A} {B} {.(_ ⟨ _ ⇒ ★ ⟩)} (v 〈 g 〉) vV
+    rewrite unfold-Safe (suc n) = ⊥-elim vV
+
+data FunVal : ∀{V : Term} → Value V → Set where
+  fun : ∀{N : Term} → FunVal (ƛ̬ N)
+
+V-funval-inv : ∀{n}{A}{B}{V} (v : Value V) → 𝓥⟦ A ⇒ B ⟧ v n →  FunVal v
+V-funval-inv {zero} {A} {B} {.(ƛ N)} (ƛ̬ N) Vv = fun
+V-funval-inv {zero} {A} {B} {.($ k)} ($̬ k) Vv rewrite unfold-Safe 0 = ⊥-elim Vv
+V-funval-inv {zero} {A} {B} {.(_ ⟨ _ ⇒ ★ ⟩)} (v 〈 g 〉) Vv rewrite unfold-Safe 0 = ⊥-elim Vv
+V-funval-inv {suc n} {A} {B} {.(ƛ N)} (ƛ̬ N) Vv = fun
+V-funval-inv {suc n} {A} {B} {.($ k)} ($̬ k) Vv rewrite unfold-Safe (suc n) = ⊥-elim Vv
+V-funval-inv {suc n} {A} {B} {.(_ ⟨ _ ⇒ ★ ⟩)} (v 〈 g 〉) Vv rewrite unfold-Safe (suc n) = ⊥-elim Vv
 
 {- Type Safety -}
 
@@ -450,13 +492,22 @@ _⊨_⦂_ : List Type → Term → Type → Set
 _⊨ⱽ_⦂_ : List Type → {V : Term} → Value V → Type → Set
 Γ ⊨ⱽ v ⦂ A = ∀ k (γ : ValSubst) → 𝓖⟦ Γ ⟧ γ k → 𝓥⟦ A ⟧ (sub-val (proj₁ γ) v) k
 
+mono-𝕍 : ∀ j k A {V}
+    (reck : <-Rec (λ i → SafePred) k)
+    (recj : <-Rec (λ i → SafePred) j)
+    (v : Value V)
+   → j ≤′ k
+   → 𝕍 k reck A v
+   → 𝕍 j recj A v
+mono-𝕍 j k A reck recj v lt Vk = {!!}
+
 mono-SafeVal : ∀ j k A {V} (v : Value V)
    → j ≤′ k
    → 𝓥⟦ A ⟧ v k
    → 𝓥⟦ A ⟧ v j
 mono-SafeVal j .j A v ≤′-refl Vv = Vv
 mono-SafeVal zero (suc k) A (ƛ̬ N) (≤′-step lt) Vv
-    rewrite unfold-Safe 0 = tt
+    rewrite unfold-Safe 0 = {!!}
 mono-SafeVal (suc j) (suc k) ★ (ƛ̬ N) (≤′-step lt) Vv
     rewrite unfold-Safe (suc k)
     with Vv
@@ -466,26 +517,27 @@ mono-SafeVal (suc j) (suc k) ($ₜ ι) (ƛ̬ N) (≤′-step lt) Vv
     with Vv
 ... | ()
 mono-SafeVal (suc j) (suc k) (A ⇒ B) {ƛ N} (ƛ̬ _) (≤′-step lt) Vv
-    rewrite unfold-Safe (suc j) | unfold-Safe (suc k) = G
+    rewrite unfold-Safe (suc j) | unfold-Safe (suc k) = {!!}
     where
     G : ∀ {V} (v : Value V) (j₁ : ℕ) (lt₁ : suc j₁ ≤ j)
         → proj₁ (Safe j₁ A) v → proj₂ (Safe j₁ B) (⟪ V • id ⟫ N)
     G {V} v j′ j′≤j Vvj′ =
-        Vv v j′ (≤-trans j′≤j (≤-trans (n≤1+n j) (≤′⇒≤ lt))) Vvj′ 
+        -- (≤-trans j′≤j (≤-trans (n≤1+n j) (≤′⇒≤ lt)))
+        Vv v j′ {!!} Vvj′ 
 mono-SafeVal zero (suc k) A ($̬ c) (≤′-step lt) Vv
-    rewrite unfold-Safe 0 = tt
+    rewrite unfold-Safe 0 = {!!}
 mono-SafeVal (suc j) (suc k) ★ ($̬ c) (≤′-step lt) Vv 
     rewrite unfold-Safe (suc k)
     with Vv
 ... | ()
 mono-SafeVal (suc j) (suc k) ($ₜ ι) ($̬ c) (≤′-step lt) Vv
-    rewrite unfold-Safe (suc j) = tt
+    rewrite unfold-Safe (suc j) = {!!}
 mono-SafeVal (suc j) (suc k) (A ⇒ B) ($̬ c) (≤′-step lt) Vv
     rewrite unfold-Safe (suc k)
     with Vv
 ... | ()
 mono-SafeVal zero (suc k) A (v 〈 g 〉) (≤′-step lt) Vv
-    rewrite unfold-Safe 0 = tt
+    rewrite unfold-Safe 0 = {!!}
 mono-SafeVal (suc j) (suc k) ★ {V ⟨ G ⇒ ★ ⟩} (v 〈 g 〉) (≤′-step lt) Vv
     rewrite unfold-Safe (suc j) | unfold-Safe (suc k) =
     mono-SafeVal j k G v (≤′-trans (≤⇒≤′ (n≤1+n j)) lt) Vv
@@ -508,13 +560,13 @@ mono-SafeExp (suc j) (suc k) A M (≤′-step j≤k) EM
   rewrite unfold-Safe (suc j) | unfold-Safe (suc k) = G
   where
   G : (N : Term) → M —↠ N →
-      Data.Product.Σ (Value N) (proj₁ (Safe j A))
+      Data.Product.Σ (Value N) (𝕍 (suc j) (λ n′ _ → Safe n′) A)
       ⊎ Data.Product.Σ Term (_—→_ N)
   G N M→N
       with EM N M→N  
   ... | inj₂ (N′ , N—→N′) = inj₂ (N′ , N—→N′)
   ... | inj₁ (v , Vk) =
-        inj₁ (v , mono-SafeVal j k A v (≤′-trans (≤⇒≤′ (n≤1+n j)) j≤k) Vk)
+        inj₁ (v , mono-𝕍 (suc j) (suc k) A (λ n′ _ → Safe n′) (λ n′ _ → Safe n′) v (≤′-step j≤k) Vk)
 
 mono-SafeEnv : ∀ j k {Γ} (γ : ValSubst)
    → j ≤′ k
@@ -528,10 +580,9 @@ Val⇒Exp : ∀{A}{V : Term}{v : Value V} (k : ℕ)
 Val⇒Exp zero Vv rewrite unfold-Safe 0 = tt
 Val⇒Exp {A}{V}{v} (suc k) Vv rewrite E-suc A V k =  G
   where G : (N : Term) → V —↠ N →
-                Data.Product.Σ (Value N) (proj₁ (Safe k A)) ⊎
+                Data.Product.Σ (Value N) (proj₁ (Safe (suc k) A)) ⊎
                 Data.Product.Σ Term (_—→_ N)
-        G N V→N rewrite value—↠ v V→N =
-          inj₁ (v , mono-SafeVal k (suc k) A v (≤′-step ≤′-refl) Vv)
+        G N V→N rewrite value—↠ v V→N = inj₁ (v , Vv)
 
 {-# REWRITE sub-var #-}
 
@@ -550,15 +601,14 @@ fundamental {Γ}{A} (` x) (⊢` ∋x) k γ 𝓖Γγk  =
 fundamental ($ c) (⊢$ ι) k γ 𝓖Γγk = Val⇒Exp {v = $̬ c} k (Vc k)
   where
   Vc : ∀ k → 𝓥⟦ $ₜ ι ⟧ ($̬ c) k
-  Vc zero rewrite V-zero {$ₜ ι} ($̬ c) = tt
-  Vc (suc k) rewrite V-base {k}{ι}{c} = tt
+  Vc k rewrite V-base {k}{ι}{ι}{c} = refl
 fundamental (L · M) (⊢· {A = A}{B} ⊢L ⊢M) 0 γ 𝓖Γγk
     rewrite E-zero B (⟪ proj₁ γ ⟫ (L · M)) = tt
 fundamental (L · M) (⊢· {A = A}{B} ⊢L ⊢M) (suc k) γ 𝓖Γγk
   rewrite E-suc B (⟪ proj₁ γ ⟫ (L · M)) k = G
   where
   G : (N : Term) → ⟪ proj₁ γ ⟫ L · ⟪ proj₁ γ ⟫ M —↠ N →
-       Data.Product.Σ (Value N) (proj₁ (Safe k B)) ⊎
+       Data.Product.Σ (Value N) (proj₁ (Safe (suc k) B)) ⊎
        Data.Product.Σ Term (_—→_ N)
   G N γLM—↠N
       with fundamental L ⊢L (suc k) γ 𝓖Γγk
@@ -566,28 +616,59 @@ fundamental (L · M) (⊢· {A = A}{B} ⊢L ⊢M) (suc k) γ 𝓖Γγk
       with fundamental M ⊢M (suc k) γ 𝓖Γγk
   ... | 𝓔γM rewrite E-suc A (⟪ proj₁ γ ⟫ M) k
       with app-multi-inv γLM—↠N
-  ... | inj₂ (inj₁ (V , M′ , γL→V , v , γM→M′ , refl , eq)) = {!!}
-  G N γLM—↠N | 𝓔γL | 𝓔γM | inj₂ (inj₂ (V , W , γL→V , v , γM→W , w , VW→N , eq)) = {!!}
-  G N γLM—↠N | 𝓔γL | 𝓔γM | inj₁ (L′ , L→L′ , refl , eq)
-      with 𝓔γL L′ L→L′
-  ... | inj₂ (L″ , L′→L″) =
-        inj₂ ((L″ · ⟪ proj₁ γ ⟫ M) , (ξ (□· ⟪ proj₁ γ ⟫ M) L′→L″))
-  ... | inj₁ (vL′ , VL′) = {!!}
+  {- Case 1: γ L —↠ L′ -}
+  ... | inj₁ (L′ , γL→L′ , refl , eq)
+      with 𝓔γL L′ γL→L′
+  ... | inj₂ (L″ , L′→L″) =            inj₂ (_ , ξ (□· _) L′→L″)
+  ... | inj₁ (vL′ , VvA→B)
+      with 𝓔γM (⟪ proj₁ γ ⟫ M) (_ ∎)
+  ... | inj₂ (M′ , γM→M′) =            inj₂ (_ , ξ (vL′ ·□) γM→M′)
+  ... | inj₁ (vγM , VvγM)
+      with V-fun-inv vL′ VvA→B
+  ... | λᶠ N =                          inj₂ (_ , β vγM)
+  {- Case 2: γ L —↠ V and γ M —↠ M′ -}
+  G N γLM—↠N | 𝓔γL | 𝓔γM
+      | inj₂ (inj₁ (V , M′ , γL→V , v , γM→M′ , refl , eq))
+      with 𝓔γM M′ γM→M′
+  ... | inj₂ (M″ , M′→M″) =            inj₂ (_ , ξ (v ·□) M′→M″)
+  ... | inj₁ (vM′ , VvM′)
+      with 𝓔γL V γL→V
+  ... | inj₂ (V′ , V→V′) =             ⊥-elim (value-irreducible v V→V′)
+  ... | inj₁ (v′ , Vv)
+      with V-fun-inv v′ Vv
+  ... | λᶠ N =                          inj₂ (_ , β vM′)
+  {- Case 3: γ L —↠ V and γ M —↠ W and V · W —↠ N -}
+  G N γLM—↠N | 𝓔γL | 𝓔γM
+      | inj₂ (inj₂ (V , W , γL→V , v , γM→W , w , VW→N , eq))
+      with 𝓔γL V γL→V
+  ... | inj₂ (V′ , V→V′) =             ⊥-elim (value-irreducible v V→V′)
+  ... | inj₁ (v′ , Vv)
+      with V-funval-inv v′ Vv
+  ... | fun{N′} rewrite V-fun {k}{A}{B}{N′} 
+      with 𝓔γM W γM→W
+  ... | inj₂ (W′ , W→W′) =             ⊥-elim (value-irreducible w W→W′)
+  ... | inj₁ (w′ , Vw) = 
+      let 𝓔N′k : 𝓔⟦ B ⟧ (⟪ W • id ⟫ N′) k
+          𝓔N′k = Vv w′ _ ≤-refl (mono-SafeVal k _ A w′ (≤′-step ≤′-refl) Vw) in
+          {- Now we're stuck because k could be zero. -}
+        {!!}
+
 fundamental {Γ}{A = A ⇒ B}(ƛ N) (⊢ƛ ⊢N) k γ 𝓖Γγk =
   Val⇒Exp {V = ⟪ proj₁ γ ⟫ (ƛ N)}{ƛ̬ ⟪ ext (proj₁ γ) ⟫ N} k (G k 𝓖Γγk)
   where
     G : ∀ k → 𝓖⟦ Γ ⟧ γ k → 𝓥⟦ A ⇒ B ⟧ (ƛ̬ ⟪ ext (proj₁ γ) ⟫ N) k
-    G zero 𝓖Γγk rewrite V-zero {A ⇒ B} (ƛ̬ ⟪ ext (proj₁ γ) ⟫ N) = tt
+    G zero 𝓖Γγk rewrite V-fun-zero {A}{B}{⟪ ext (proj₁ γ) ⟫ N} = tt
     G (suc k) 𝓖Γγk rewrite V-fun {k}{A}{B}{⟪ ext (proj₁ γ) ⟫ N} = H
       where
-      H : ∀ {V} (v : Value V) (j : ℕ) → suc j ≤ k
+      H : ∀ {V} (v : Value V) (j : ℕ) → j ≤ k
         → 𝓥⟦ A ⟧ v j
         → 𝓔⟦ B ⟧ ((⟪ ext (proj₁ γ) ⟫ N) [ V ]) j
       H {V} v j lt Vvj =
         fundamental N ⊢N j γ′ (mono-SafeEnv j (suc k) _ lt2 𝓖Γγk , Vvj)
         where γ′ = (V • proj₁ γ , λ { zero → v ; (suc x) → proj₂ γ x})
-              lt2 = (≤⇒≤′ (≤-trans (n≤1+n j) (≤-trans lt (n≤1+n k))))
+              lt2 = (≤⇒≤′ (≤-trans lt (n≤1+n k)))
 fundamental (M ⟨ A ⇒ B ⟩) (⊢⟨⇒⟩ ⊢M) = {!!}
 fundamental blame ⊢blame = {!!}
 
 fundamentalⱽ w ⊢W = {!!}
+
