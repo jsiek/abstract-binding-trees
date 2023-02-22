@@ -743,14 +743,14 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk
     Goal N L·M→N (s≤s {n = n} <k)
         with app-multi-inv L·M→N
         {-
-           Case 1:    L —↠ L′
+           Case 1:    L · M —↠ L′ · M
          -}
     ... | inj₁ (L′ , L→L′ , refl , eq)
         with ⊨L k γ 𝓖Γγk | ⊨M k γ 𝓖Γγk
     ... | EL | EM = inj₂ (inj₁ (E-app EL L→L′ LT  EM (_ ∎) z≤n))
         where LT = (≤-trans (≤-reflexive (sym eq)) <k)
         {-
-           Case 2:    L —↠ V    M —↠ M′
+           Case 2:    L · M —↠ V · M′
          -}
     Goal N L·M→N (s≤s {n = n} <k)
         | inj₂ (inj₁ (V , M′ , L→V , v′ , M→M′ , refl , eq))
@@ -759,12 +759,47 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk
         where LT1 = (≤-trans (≤-trans (m≤m+n (len L→V) (len M→M′)) (≤-reflexive (sym eq))) <k)
               LT2 = (≤-trans (≤-trans (m≤n+m (len M→M′) (len L→V)) (≤-reflexive (sym eq))) <k)
         {-
-           Case 3:    L —↠ V    M —↠ W     V · W —↠ N
+           Case 3:    L · M —↠ V · W —↠ N
          -}
-    Goal N L·M→N <k
+    Goal N L·M→N (s≤s {n = n} <k)
         | inj₂ (inj₂ (V , W , L→V , v′ , M→W , w , VW→N , eq))
         with ⊨L k γ 𝓖Γγk |  ⊨M k γ 𝓖Γγk
-    ... | EL | EM = {!!}
+    ... | EL | EM
+        rewrite E-def (A ⇒ B) (⟪ proj₁ γ ⟫ L) (suc n)
+                | E-def A (⟪ proj₁ γ ⟫ M) (suc n)
+        with EL V L→V (s≤s (≤-trans (≤-trans (≤-trans (m≤m+n (len L→V) _)
+                             (≤-reflexive (sym (+-assoc (len L→V) _ _))))
+                             (≤-reflexive (sym eq))) <k))
+    ... | inj₂ (inj₂ beq) = ⊥-elim (blame-not-value v′ beq)
+    ... | inj₂ (inj₁ (V′ , V→V′)) = ⊥-elim (value-irreducible v′ V→V′)
+    ... | inj₁ (v′ , Vv′)
+        with EM W M→W (s≤s (≤-trans (≤-trans (≤-trans (m≤n+m (len M→W) (len L→V + len VW→N)) (≤-reflexive (trans (+-assoc (len L→V) (len VW→N) (len M→W)) (trans (cong (λ X → len L→V + X) (+-comm (len VW→N) (len M→W))) (sym (+-assoc (len L→V) (len M→W) (len VW→N))))))) (≤-reflexive (sym eq))) <k))
+    ... | inj₂ (inj₂ beq) = ⊥-elim (blame-not-value w beq)
+    ... | inj₂ (inj₁ (W′ , W→W′)) = ⊥-elim (value-irreducible w W→W′)
+    ... | inj₁ (w′ , Vw′)
+        with v′
+    ... | $̬ c rewrite unfold-Safe (suc n ∸ len L→V , suc (size A ⊔ size B)) = ⊥-elim Vv′
+    ... | v 〈 g 〉 rewrite unfold-Safe (suc n ∸ len L→V , suc (size A ⊔ size B)) = ⊥-elim Vv′
+    ... | ƛ̬ N′
+        with VW→N
+    ... | _ ∎ = inj₂ (inj₁ (_ , β w))
+    ... | _ —→⟨ ξ (_ ·□) r₁ ⟩ r₂ = ⊥-elim (value-irreducible w r₁)
+    ... | _ —→⟨ ξ (□· _) r₁ ⟩ r₂ = ⊥-elim (value-irreducible v′ r₁)
+    ... | _ —→⟨ ξ-blame (_ ·□) ⟩ r₂ = ⊥-elim (blame-not-value w refl)
+    ... | _ —→⟨ β w″ ⟩ N[W]—↠N
+        with mono-𝓥 {k ∸ (len L→V + len M→W)} {!!} Vv′
+           | mono-𝓥 {k ∸ (len L→V + len M→W)} {!!} Vw′ 
+    ... | Vv″ | Vw″ rewrite V-fun {suc n ∸ (len L→V + len M→W)}{A}{B}{N′} 
+        with Vv″ w′ _ ≤-refl Vw″
+    ... | EN
+        rewrite E-def B (⟪ W • id ⟫ N′) (suc n ∸ (len L→V + len M→W)) 
+        with EN N N[W]—↠N {!!}
+    ... | inj₁ (vN , VN) = inj₁ (vN , subst (λ X → 𝓥⟦ B ⟧ vN X) EQ VN)
+        where EQ : suc n ∸ (len L→V + len M→W) ∸ len N[W]—↠N ≡ suc n ∸ len L·M→N
+              EQ = {!!}
+    ... | inj₂ (inj₁ (N″ , N→)) = inj₂ (inj₁ (N″ , N→))
+    ... | inj₂ (inj₂ refl) = inj₂ (inj₂ refl)
+
 
 
 compatible-fun : ∀{Γ}{A}{B}{N}
