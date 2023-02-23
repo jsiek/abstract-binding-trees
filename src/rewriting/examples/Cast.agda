@@ -416,13 +416,6 @@ inject-multi-inv (.(_ ⟨ _ !⟩) —→⟨ ξξ-blame □⟨ g !⟩ x ⟩ red)
     with blame—↠ red
 ... | refl = inj₂ (inj₂ refl)
 
-project-multi-inv : ∀{M N}{G}{g : Ground G}
-  → (red : M ⟨ g ?⟩ —↠ N)
-  → (∃[ M′ ] (M —↠ M′) × N ≡ M′ ⟨ g ?⟩)
-    ⊎ (∃[ V ] (M —↠ V) × Value V × (V ⟨ g ?⟩ —↠ N))
-    ⊎ N ≡ blame
-project-multi-inv red = {!!}
-
 project-multi-inv2 : ∀{M N}{G}{g : Ground G}
   → (red : M ⟨ g ?⟩ —↠ N)
   → (∃[ M′ ] Σ[ r1 ∈ M —↠ M′ ] (N ≡ M′ ⟨ g ?⟩ × len r1 ≡ len red))
