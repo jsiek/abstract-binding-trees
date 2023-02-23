@@ -88,6 +88,14 @@ E-app {A}{B}{L}{L′}{M}{M′}{n} EL L→L′ lt1 EM M→M′ lt2
 ... | v 〈 g 〉 = ⊥-elim Vv′
 ... | ƛ̬ N = (_ , β w)
 
+lemma6 : ∀ n x y w z
+   → (<k : x ≤ n)
+   → (eq : x ≡ y + w + z)
+   → suc w ≤ suc n
+lemma6 n x y w z <k eq = (s≤s (≤-trans (≤-trans (≤-trans (m≤n+m w (y + z))
+         (≤-reflexive (trans (+-assoc y z w) (trans (cong (λ X → y + X) (+-comm z w))
+         (sym (+-assoc y w z)))))) (≤-reflexive (sym eq))) <k))
+
 compatible-app : ∀{Γ}{A}{B}{L}{M}
     → Γ ⊨ L ⦂ (A ⇒ B)
     → Γ ⊨ M ⦂ A
@@ -130,12 +138,12 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk
         with EL V L→V (s≤s (≤-trans (≤-trans (≤-trans (m≤m+n (len L→V) _)
                              (≤-reflexive (sym (+-assoc (len L→V) _ _))))
                              (≤-reflexive (sym eq))) <k))
-    ... | inj₂ (inj₂ beq) = ⊥-elim (blame-not-value v′ beq)
-    ... | inj₂ (inj₁ (V′ , V→V′)) = ⊥-elim (value-irreducible v′ V→V′)
+    ... | inj₂ (inj₂ beq) =                                 ⊥-elim (blame-not-value v′ beq)
+    ... | inj₂ (inj₁ (V′ , V→V′)) =                         ⊥-elim (value-irreducible v′ V→V′)
     ... | inj₁ (v′ , Vv′)
-        with EM W M→W (s≤s (≤-trans (≤-trans (≤-trans (m≤n+m (len M→W) (len L→V + len VW→N)) (≤-reflexive (trans (+-assoc (len L→V) (len VW→N) (len M→W)) (trans (cong (λ X → len L→V + X) (+-comm (len VW→N) (len M→W))) (sym (+-assoc (len L→V) (len M→W) (len VW→N))))))) (≤-reflexive (sym eq))) <k))
-    ... | inj₂ (inj₂ beq) = ⊥-elim (blame-not-value w beq)
-    ... | inj₂ (inj₁ (W′ , W→W′)) = ⊥-elim (value-irreducible w W→W′)
+        with EM W M→W (lemma6 n (len L·M→N) (len L→V) (len M→W) (len VW→N) <k eq)
+    ... | inj₂ (inj₂ beq) =                                 ⊥-elim (blame-not-value w beq)
+    ... | inj₂ (inj₁ (W′ , W→W′)) =                         ⊥-elim (value-irreducible w W→W′)
     ... | inj₁ (w′ , Vw′)
         with v′
     ... | $̬ c rewrite unfold-Safe (suc n ∸ len L→V , suc (size A ⊔ size B)) = ⊥-elim Vv′
@@ -143,21 +151,27 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk
     ... | ƛ̬ N′
         with VW→N
     ... | _ END = inj₂ (inj₁ (_ , β w))
-    ... | _ —→⟨ ξ (_ ·□) r₁ ⟩ r₂ = ⊥-elim (value-irreducible w r₁)
-    ... | _ —→⟨ ξ (□· _) r₁ ⟩ r₂ = ⊥-elim (value-irreducible v′ r₁)
-    ... | _ —→⟨ ξ-blame (_ ·□) ⟩ r₂ = ⊥-elim (blame-not-value w refl)
+    ... | _ —→⟨ ξ (_ ·□) r₁ ⟩ r₂ =                          ⊥-elim (value-irreducible w r₁)
+    ... | _ —→⟨ ξ (□· _) r₁ ⟩ r₂ =                          ⊥-elim (value-irreducible v′ r₁)
+    ... | _ —→⟨ ξ-blame (_ ·□) ⟩ r₂ =                       ⊥-elim (blame-not-value w refl)
     ... | _ —→⟨ β w″ ⟩ N[W]—↠N
+        {-
+          Subcase: (ƛ N′) · W —→ N′ [ W ] —↠ N
+        -}
         with mono-𝓥 {k ∸ (len L→V + len M→W)} (≤⇒≤′ (∸-monoʳ-≤ {len L→V}{len L→V + len M→W} (suc n) (m≤m+n (len L→V) (len M→W)))) Vv′
            | mono-𝓥 {k ∸ (len L→V + len M→W)} (≤⇒≤′ (∸-monoʳ-≤ {len M→W}{len L→V + len M→W} (suc n) (m≤n+m _ _))) Vw′ 
     ... | Vv″ | Vw″ rewrite V-fun {suc n ∸ (len L→V + len M→W)}{A}{B}{N′} 
         with Vv″ w′ _ ≤-refl Vw″
     ... | EN
         rewrite E-def B (⟪ W • id ⟫ N′) (suc n ∸ (len L→V + len M→W)) 
-        with EN N N[W]—↠N (≤-trans (s≤s (≤-trans (≤-trans (lemma5 (len N[W]—↠N) (len L→V) (len M→W)) (≤-reflexive (cong (λ X → X ∸ (len L→V + len M→W)) (sym eq)))) (∸-monoˡ-≤ (len L→V + len M→W) <k))) (≤-reflexive (sym (1+m∸n n (len L→V + len M→W) (≤-trans (≤-trans (m≤m+n (len L→V + len M→W) (suc (len N[W]—↠N))) (≤-reflexive (sym eq))) <k)))))
-    ... | inj₁ (vN , VN) = inj₁ (vN , mono-𝓥 (≤⇒≤′ (≤-trans (≤-reflexive (sym EQ)) LT)) VN)
+        with EN N N[W]—↠N ((≤-trans (s≤s (≤-trans (≤-trans (lemma5 (len N[W]—↠N) (len L→V) (len M→W))
+                      (≤-reflexive (cong (λ X → X ∸ (len L→V + len M→W)) (sym eq))))
+                      (∸-monoˡ-≤ (len L→V + len M→W) <k))) (≤-reflexive (sym (1+m∸n n (len L→V + len M→W)
+                      (≤-trans (≤-trans (m≤m+n (len L→V + len M→W) (suc (len N[W]—↠N))) (≤-reflexive (sym eq))) <k))))))
+    ... | inj₁ (vN , VN) = inj₁ (vN , mono-𝓥 (≤⇒≤′ (≤-trans (≤-reflexive (sym EQ)) LT2)) VN)
         where
-          LT : n ∸ (len L→V + len M→W + len N[W]—↠N) ≤ (suc n ∸ (len L→V + len M→W)) ∸ len N[W]—↠N
-          LT = ≤-trans (∸-monoˡ-≤ (len L→V + len M→W + len N[W]—↠N) (≤-step ≤-refl))
+          LT2 : n ∸ (len L→V + len M→W + len N[W]—↠N) ≤ (suc n ∸ (len L→V + len M→W)) ∸ len N[W]—↠N
+          LT2 = ≤-trans (∸-monoˡ-≤ (len L→V + len M→W + len N[W]—↠N) (≤-step ≤-refl))
                        (≤-reflexive (sym (∸-+-assoc (suc n) (len L→V + len M→W) (len N[W]—↠N))))
 
           open Eq.≡-Reasoning
