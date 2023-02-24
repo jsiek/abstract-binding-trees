@@ -96,6 +96,15 @@ lemma6 n x y w z <k eq = (s≤s (≤-trans (≤-trans (≤-trans (m≤n+m w (y +
          (≤-reflexive (trans (+-assoc y z w) (trans (cong (λ X → y + X) (+-comm z w))
          (sym (+-assoc y w z)))))) (≤-reflexive (sym eq))) <k))
 
+lemma7 : ∀ n w x y z 
+   → (<k : w ≤ n)
+   → (eq : w ≡ y + z + suc x)
+   → suc x ≤ suc n ∸ (y + z)
+lemma7 n w x y z <k eq = (≤-trans (s≤s (≤-trans (≤-trans (lemma5 (x) (y) (z))
+             (≤-reflexive (cong (λ X → X ∸ (y + z)) (sym eq))))
+             (∸-monoˡ-≤ (y + z) <k))) (≤-reflexive (sym (1+m∸n n (y + z)
+             (≤-trans (≤-trans (m≤m+n (y + z) (suc (x))) (≤-reflexive (sym eq))) <k)))))
+
 compatible-app : ∀{Γ}{A}{B}{L}{M}
     → Γ ⊨ L ⦂ (A ⇒ B)
     → Γ ⊨ M ⦂ A
@@ -164,10 +173,7 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk
         with Vv″ w′ _ ≤-refl Vw″
     ... | EN
         rewrite E-def B (⟪ W • id ⟫ N′) (suc n ∸ (len L→V + len M→W)) 
-        with EN N N[W]—↠N ((≤-trans (s≤s (≤-trans (≤-trans (lemma5 (len N[W]—↠N) (len L→V) (len M→W))
-                      (≤-reflexive (cong (λ X → X ∸ (len L→V + len M→W)) (sym eq))))
-                      (∸-monoˡ-≤ (len L→V + len M→W) <k))) (≤-reflexive (sym (1+m∸n n (len L→V + len M→W)
-                      (≤-trans (≤-trans (m≤m+n (len L→V + len M→W) (suc (len N[W]—↠N))) (≤-reflexive (sym eq))) <k))))))
+        with EN N N[W]—↠N (lemma7 n (len L·M→N) (len N[W]—↠N) (len L→V) (len M→W) <k eq)
     ... | inj₁ (vN , VN) = inj₁ (vN , mono-𝓥 (≤⇒≤′ (≤-trans (≤-reflexive (sym EQ)) LT2)) VN)
         where
           LT2 : n ∸ (len L→V + len M→W + len N[W]—↠N) ≤ (suc n ∸ (len L→V + len M→W)) ∸ len N[W]—↠N

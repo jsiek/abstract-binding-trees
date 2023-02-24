@@ -1,5 +1,5 @@
 {-# OPTIONS --without-K --rewriting --allow-unsolved-metas #-}
-module rewriting.examples.CastLogRel where
+module rewriting.examples.CastLogRel2 where
 
 open import Agda.Primitive using (lzero)
 open import Data.List using (List; []; _∷_; length)
@@ -48,14 +48,8 @@ open WF.All <₂-wellFounded renaming (wfRec to <₂-rec)
 
 {- Logical Relation for Type Safety -}
 
-ValPred : Set₁
-ValPred = {V : Term} → Value V → Set
-
-ExpPred : Set₁
-ExpPred = Term → Set
-
-SafePred : ℕ × ℕ → Set₁
-SafePred (k , s) = (A : Type) → (s ≡ size A) → ValPred × ExpPred
+ValPred : ℕ × ℕ → Set₁
+ValPred (k , s) = (A : Type) → (s ≡ size A) → {V : Term} → Value V → Set
 
 {- This is already proved somewhere in the stdlib but I failed to figure out how to get to it. -}
 <₂-trans : ∀{p q r} → p <₂ q → q <₂ r → p <₂ r
@@ -77,77 +71,62 @@ SafePred (k , s) = (A : Type) → (s ≡ size A) → ValPred × ExpPred
 <₂-Rec-subtract {P} {suc k} {zero} Pk = Pk
 <₂-Rec-subtract {P} {suc k} {suc j} Pk = <₂-Rec-down (inj₁ (s≤s (m∸n≤m k j))) Pk
 
-𝕍 : (k : ℕ) → (s : ℕ) → <₂-Rec SafePred (k , s)
-   → (A : Type) → (s ≡ size A) → ValPred
-   
-𝕍 k .(size ★) rec ★ refl (ƛ̬ N) = ⊥
-𝕍 k .(size ★) rec ★ refl ($̬ c) = ⊥
-𝕍 zero .(size ★) rec ★ refl (v 〈 g 〉) = ⊤
-𝕍 (suc k) .(size ★) rec ★ refl {V ⟨ g !⟩} (_〈_〉 {V}{G} v g) =
-    proj₁ (rec (k , _) (inj₁ ≤-refl) G refl) v
+V-step : (p : ℕ × ℕ) → (<₂-Rec ValPred p) → ValPred p
+V-step (k , .(size ★)) rec ★ refl {.(ƛ N)} (ƛ̬ N) = ⊥
+V-step (k , .(size ★)) rec ★ refl {.($ c)} ($̬ c) = ⊥
+V-step (zero , .(size ★)) rec ★ refl {.(_ ⟨ g !⟩)} (v 〈 g 〉) = ⊤
+V-step (suc k , .(size ★)) rec ★ refl {.(_ ⟨ g !⟩)} (_〈_〉 {V}{G} v g) =
+  V-step (k , size G) (<₂-Rec-down (inj₁ (s≤s ≤-refl)) rec) G refl v 
 
-𝕍 k .(size ($ₜ ι)) rec ($ₜ ι) refl (ƛ̬ N) = ⊥
-𝕍 k .(size ($ₜ ι)) rec ($ₜ ι) refl ($̬_ {ι′} c) = ι ≡ ι′
-𝕍 k .(size ($ₜ ι)) rec ($ₜ ι) refl (v 〈 g 〉) = ⊥
+V-step (k , .(size ($ₜ ι))) rec ($ₜ ι) refl {.(ƛ N)} (ƛ̬ N) = ⊥
+V-step (k , .(size ($ₜ ι))) rec ($ₜ ι) refl {.($ c)} ($̬_ {ι′} c) = ι ≡ ι′
+V-step (k , .(size ($ₜ ι))) rec ($ₜ ι) refl {.(_ ⟨ g !⟩)} (v 〈 g 〉) = ⊥
 
-𝕍 k .(size (A ⇒ B)) rec (A ⇒ B) refl (ƛ̬ N) =
-   ∀ {V} (v : Value V) (j : ℕ) → (lt : j ≤ k)
-    → proj₁ (rec (j , size A) (less-eq-less lt (s≤s (m≤m⊔n (size A) (size B)))) A refl) v
-    → proj₂ (rec (j , size B) (less-eq-less lt (s≤s (m≤n⊔m (size A) (size B)))) B refl) (N [ V ])
-𝕍 k .(size (A ⇒ B)) rec (A ⇒ B) refl ($̬ c) = ⊥
-𝕍 k .(size (A ⇒ B)) rec (A ⇒ B) refl (v 〈 g 〉) = ⊥
-
-𝔼 : (k : ℕ) → (s : ℕ) → <₂-Rec SafePred (k , s)
-   → (A : Type) → (s ≡ size A) → ExpPred
-𝔼 k s rec A refl M = ∀ N → (M→N : M —↠ N) → (len M→N < k)
-                     → (Σ[ v ∈ Value N ] 𝕍 (k ∸ len M→N) (size A) (<₂-Rec-subtract{j = len M→N} rec) A refl v)
-                       ⊎ (∃[ N′ ] (N —→ N′))
-                       ⊎ N ≡ blame
-
-Safe-step : (p : ℕ × ℕ) → (<₂-Rec SafePred p) → SafePred p
-Safe-step (k , s) rec A refl = 𝕍 k s rec A refl , 𝔼 k s rec A refl
+V-step (k , .(size (A ⇒ B))) rec (A ⇒ B) refl {V} v =
+   ∀ {W} (w : Value W) (j : ℕ) → (lt : j ≤ k)
+         → rec (j , size A) (less-eq-less lt (s≤s (m≤m⊔n (size A) (size B)))) A refl w
+         → ∀ N → (VW→N : V · W —↠ N) → (len VW→N < j)
+         → (Σ[ v ∈ Value N ]
+              rec (j ∸ len VW→N , size B) (less-eq-less (≤-trans (m∸n≤m j (len VW→N)) lt) (s≤s (m≤n⊔m (size A) (size B)))) B refl v)
+           ⊎ (∃[ N′ ] (N —→ N′))
+           ⊎ N ≡ blame
 
 abstract
-  {- Safe is abstract to hide the complexity of the
-     well-founded recursion, which is needed to
-     make it possible to use the below unfold-Safe
-     lemma to perform rewriting. -}
-  Safe : (p : ℕ × ℕ) → SafePred p
-  Safe = <₂-rec _ (λ i → SafePred i) Safe-step
+  SafeVal : (p : ℕ × ℕ) → ValPred p
+  SafeVal = <₂-rec _ (λ i → ValPred i) V-step
 
 𝓥⟦_⟧ : (A : Type) → {V : Term} → Value V → ℕ → Set
-𝓥⟦ A ⟧ v k = proj₁ (Safe (k , size A) A refl) v
+𝓥⟦ A ⟧ v k = SafeVal (k , size A) A refl v
 
 𝓔⟦_⟧ : Type → Term → ℕ → Set
-𝓔⟦ A ⟧ M k = proj₂ (Safe (k , size A) A refl) M
+𝓔⟦ A ⟧ M k = ∀ N → (M→N : M —↠ N) → (len M→N < k)
+              → (Σ[ v ∈ Value N ] 𝓥⟦ A ⟧ v (k ∸ len M→N))
+                ⊎ (∃[ N′ ] (N —→ N′))
+                ⊎ N ≡ blame               
 
 postulate
-  Safe-step-ext : (x : ℕ × ℕ) → ∀ {IH IH′}
+  V-step-ext : (x : ℕ × ℕ) → ∀ {IH IH′}
       → (∀{y} (y<x : y <₂ x) → IH y y<x ≡ IH′ y y<x)
-      → Safe-step x IH ≡ Safe-step x IH′
+      → V-step x IH ≡ V-step x IH′
 
 abstract
-  unfold-Safe : ∀ n → Safe n ≡ Safe-step n (λ n′ _ → Safe n′)
-  unfold-Safe n = FixPoint.unfold-wfRec <₂-wellFounded (λ i → SafePred i)
-                     Safe-step Safe-step-ext {n}
-
-𝕍-equal-𝓥 : ∀{A}{k}{s}{V}{v : Value V}{rec}{p : s ≡ size A}
-   → 𝕍 k s rec A p v ≡ 𝓥⟦ A ⟧ v k
-𝕍-equal-𝓥 {A}{k}{s}{V}{v}{rec}{refl} rewrite unfold-Safe (k , size A) = {!!}
+  unfold-SafeVal : ∀ i → SafeVal i ≡ V-step i (λ i′ _ → SafeVal i′)
+  unfold-SafeVal i = FixPoint.unfold-wfRec <₂-wellFounded (λ i → ValPred i)
+                     V-step V-step-ext {i}
 
 {- Equations for the Logical Relattion -}
 
 V-base : ∀{n}{ι}{ι′}{c : rep ι′} → 𝓥⟦ $ₜ ι ⟧ ($̬ c) n ≡ (ι ≡ ι′)
-V-base {n} rewrite unfold-Safe (n , 0) = refl
+V-base {n} rewrite unfold-SafeVal (n , 0) = refl
 
 V-dyn-zero : ∀{G}{V}{v : Value V}{g : Ground G}
    → 𝓥⟦ ★ ⟧ {V ⟨ g !⟩} (v 〈 g 〉) 0 ≡ ⊤
-V-dyn-zero rewrite unfold-Safe (0 , size ★) = refl
+V-dyn-zero rewrite unfold-SafeVal (0 , size ★) = refl
 
 V-dyn : ∀{n}{G}{V}{v : Value V}{g : Ground G}
      → 𝓥⟦ ★ ⟧ {V ⟨ g !⟩} (v 〈 g 〉) (suc n) ≡ 𝓥⟦ G ⟧ v n
-V-dyn {n}{G} rewrite unfold-Safe (suc n , size ★)
-                   | sym (unfold-Safe (n , size G))
+V-dyn {n}{G} rewrite unfold-SafeVal (suc n , size ★)
+                   | sym (unfold-SafeVal (n , size G))
     = refl
 
 V-intro : ∀{n}{G}{V}{v : Value V}{g}
@@ -155,37 +134,20 @@ V-intro : ∀{n}{G}{V}{v : Value V}{g}
      → 𝓥⟦ ★ ⟧ {V ⟨ g !⟩} (v 〈 g 〉) (suc n)
 V-intro {n}{G}{V}{v}{g} Vv rewrite V-dyn {n}{G}{V}{v}{g} = Vv
 
-V-dyn-inv : ∀{V}{v : Value V}{n}
-     → 𝓥⟦ ★ ⟧ {V} v (suc n)
-     → ∃[ V′ ] ∃[ G ] Σ[ g ∈ Ground G ] (V ≡ V′ ⟨ g !⟩) × Value V′
-V-dyn-inv {.(ƛ N)} {ƛ̬ N} {n} Vv rewrite unfold-Safe (suc n , size ★) = ⊥-elim Vv
-V-dyn-inv {.($ k)} {$̬ k} {n} Vv rewrite unfold-Safe (suc n , size ★) = ⊥-elim Vv
-V-dyn-inv {(V′ ⟨ g !⟩)} {v 〈 g 〉} {n} Vv rewrite unfold-Safe (suc n , size ★) =
-    V′ , _ , g , refl , v
-
 V-dyn-inv2 : ∀{V}{v : Value V}{n}
      → 𝓥⟦ ★ ⟧ {V} v (suc n)
      → ∃[ V′ ] ∃[ G ] Σ[ g ∈ Ground G ] (V ≡ V′ ⟨ g !⟩) × Σ[ v′ ∈ Value V′ ] 𝓥⟦ G ⟧ {V′} v′ n
-V-dyn-inv2 {.(ƛ N)} {ƛ̬ N} {n} Vv rewrite unfold-Safe (suc n , size ★) = ⊥-elim Vv
-V-dyn-inv2 {.($ k)} {$̬ k} {n} Vv rewrite unfold-Safe (suc n , size ★) = ⊥-elim Vv
-V-dyn-inv2 {(V′ ⟨ g !⟩)} {v 〈 g 〉} {n} Vv rewrite unfold-Safe (suc n , size ★) =
+V-dyn-inv2 {.(ƛ N)} {ƛ̬ N} {n} Vv rewrite unfold-SafeVal (suc n , size ★) = ⊥-elim Vv
+V-dyn-inv2 {.($ k)} {$̬ k} {n} Vv rewrite unfold-SafeVal (suc n , size ★) = ⊥-elim Vv
+V-dyn-inv2 {(V′ ⟨ g !⟩)} {_〈_〉 {G = G} v g } {n} Vv
+    rewrite unfold-SafeVal (suc n , size ★) | sym (unfold-SafeVal (n , size G)) =
     V′ , _ , g , refl , v , Vv
 
-V-fun : ∀{n}{A B}{N}
-  → 𝓥⟦ A ⇒ B ⟧ (ƛ̬ N) n ≡ ∀ {V} (v : Value V) (j : ℕ) → (lt : j ≤ n)
-                          → 𝓥⟦ A ⟧ v j → 𝓔⟦ B ⟧ (N [ V ]) j
-V-fun {n}{A}{B} rewrite unfold-Safe (n , size (A ⇒ B)) = refl
-
-E-def : (A : Type) → (M : Term) → (k : ℕ)
-   → 𝓔⟦ A ⟧ M k ≡
-       ∀ N → (M→N : M —↠ N) → (len M→N < k)
-             → (Σ[ v ∈ Value N ] 𝓥⟦ A ⟧ v (k ∸ len M→N))
-               ⊎ (∃[ N′ ] (N —→ N′))
-               ⊎ N ≡ blame               
-E-def A M k rewrite unfold-Safe (k , size A)
-  --| unfold-Safe (k ∸ len M→N , size A)
-  = {!!}
-
+V-fun : ∀{n}{A B}{N₁}
+  → 𝓥⟦ A ⇒ B ⟧ (ƛ̬ N₁) n ≡ ∀ {W} (w : Value W) (j : ℕ) → (lt : j ≤ n)
+                          → 𝓥⟦ A ⟧ w j
+                          → 𝓔⟦ B ⟧ ((ƛ N₁) · W) j
+V-fun {n}{A}{B} rewrite unfold-SafeVal (n , size (A ⇒ B)) = refl
 
 {- Type Safety -}
 
@@ -214,10 +176,18 @@ _⊨_⦂_ : List Type → Term → Type → Set
 _⊨ⱽ_⦂_ : List Type → {V : Term} → Value V → Type → Set
 Γ ⊨ⱽ v ⦂ A = ∀ k (γ : ValSubst) → 𝓖⟦ Γ ⟧ γ k → 𝓥⟦ A ⟧ (sub-val (proj₁ γ) v) k
 
+mono-𝓥 : ∀ {j}{k}{A} {V}{v : Value V}
+   → j ≤′ k
+   → 𝓥⟦ A ⟧ v k
+   → 𝓥⟦ A ⟧ v j
+mono-𝓥 j≤k Vvk = {!!}
+
 Val⇒Exp : ∀{A}{V : Term}{v : Value V} (k : ℕ)
    → 𝓥⟦ A ⟧ v k
    → 𝓔⟦ A ⟧ V k
-Val⇒Exp Vv = {!!}
+Val⇒Exp {v = v} k Vv N M→N <k
+    with value—↠ v M→N
+... | refl  = inj₁ (v , mono-𝓥 (≤⇒≤′ (m∸n≤m k (len M→N))) Vv)
 
 dyn? : (A : Type) → A ≡ ★ ⊎ A ≢ ★
 dyn? ★ = inj₁ refl
@@ -247,17 +217,12 @@ ground-match? {.(★ ⇒ ★)} ★⇒★ ★ Bnd = ⊥-elim (Bnd refl)
 ground-match? {.(★ ⇒ ★)} ★⇒★ ($ₜ ι) Bnd = inj₂ ($ₜ ι , $ᵍ ι , gnd-base , λ ())
 ground-match? {.(★ ⇒ ★)} ★⇒★ (B ⇒ B′) Bnd = inj₁ gnd-fun
 
-mono-𝓥 : ∀ {j}{k}{A} {V}{v : Value V}
-   → j ≤′ k
-   → 𝓥⟦ A ⟧ v k
-   → 𝓥⟦ A ⟧ v j
-mono-𝓥 j≤k Vvk = {!!}
-
 mono-SafeEnv : ∀ j k {Γ} (γ : ValSubst)
    → j ≤′ k
    → 𝓖⟦ Γ ⟧ γ k
      -----------
    → 𝓖⟦ Γ ⟧ γ j
 mono-SafeEnv = {!!}
+
 
 
