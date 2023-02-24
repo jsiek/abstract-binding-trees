@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K --rewriting --allow-unsolved-metas #-}
+{-# OPTIONS --without-K --rewriting  --allow-unsolved-metas #-}
 {-
    Cast Calculus partly based on a version 
    by Jeremy, Phil Wadler, and Peter Thiemann.

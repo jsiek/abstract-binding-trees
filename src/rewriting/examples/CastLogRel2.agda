@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K --rewriting --allow-unsolved-metas #-}
+{-# OPTIONS --without-K --rewriting #-}
 module rewriting.examples.CastLogRel2 where
 
 open import Agda.Primitive using (lzero)
