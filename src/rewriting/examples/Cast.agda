@@ -1,6 +1,6 @@
-{-# OPTIONS --without-K --rewriting  --allow-unsolved-metas #-}
+{-# OPTIONS --without-K --rewriting #-}
 {-
-   Cast Calculus partly based on a version 
+   A simple blame calculus partly based on a version 
    by Jeremy, Phil Wadler, and Peter Thiemann.
 -}
 
@@ -399,7 +399,45 @@ app-multi-inv : ∀{L M N}
         (N ≡ V · M′ × len r1 ≡ len r2 + len r3)))
     ⊎ (∃[ V ] ∃[ W ] Σ[ r2 ∈ (L —↠ V) ] (Value V × Σ[ r3 ∈ (M —↠ W) ]
         (Value W × Σ[ r4 ∈ (V · W —↠ N) ] len r1 ≡ len r2 + len r3 + len r4)))
-app-multi-inv = {!!}
+    ⊎ N ≡ blame
+app-multi-inv {L}{M}{N} ((L · M) END) = inj₁ (L , (_ END) , refl , refl)
+app-multi-inv {L} {M} {N} (.(L · M) —→⟨ ξξ {L}{L′} (□· _) refl refl L—→L′ ⟩ rs)
+    with app-multi-inv rs
+... | inj₁ (L″ , L′→L″ , refl , eq) = inj₁ (L″ , (L —→⟨ L—→L′ ⟩ L′→L″) , refl , cong suc eq)
+... | inj₂ (inj₁ (V , M′ , L′→V , v , M→M′ , refl , eq)) =
+      inj₂ (inj₁ (V , M′ , (L —→⟨ L—→L′ ⟩ L′→V) , v , M→M′ , refl , cong suc eq))
+... | inj₂ (inj₂ (inj₁ (V , W , L′→V , v , M→W , w , →N , eq))) =
+      inj₂ (inj₂ (inj₁ (V , W , (L —→⟨ L—→L′ ⟩ L′→V) , v , M→W , w , →N , cong suc eq)))
+... | inj₂ (inj₂ (inj₂ refl)) = inj₂ (inj₂ (inj₂ refl))
+app-multi-inv {V} {M} {N} (.(V · M) —→⟨ ξξ {N = M′} (v ·□) refl refl M—→M′ ⟩ V·M′—↠N)
+    with app-multi-inv V·M′—↠N
+... | inj₁ (L′ , V→L′ , refl , eq)
+    with value—↠ v V→L′
+... | refl =
+    inj₂ (inj₁ (V , M′ , V→L′ , v , (M —→⟨ M—→M′ ⟩ M′ END) , refl , EQ))
+    where EQ : suc (len V·M′—↠N) ≡ len V→L′ + 1
+          EQ = trans (cong suc eq) (sym (trans (+-suc _ _) (+-identityʳ _)))
+app-multi-inv {V} {M} {N} (.(V · M) —→⟨ ξξ (v ·□) refl refl M—→M′ ⟩ V·M′—↠N)
+    | inj₂ (inj₁ (V′ , M″ , V→V′ , v′ , M′→M″ , refl , eq)) =
+      inj₂ (inj₁ (V′ , M″ , V→V′ , v′ , (M —→⟨ M—→M′ ⟩ M′→M″) , refl , EQ))
+    where EQ : suc (len V·M′—↠N) ≡ len V→V′ + suc (len M′→M″)
+          EQ rewrite eq = sym (+-suc _ _)
+app-multi-inv {V} {M} {N} (.(V · M) —→⟨ ξξ (v ·□) refl refl M—→M′ ⟩ V·M′—↠N)
+    | inj₂ (inj₂ (inj₁ (V′ , W , V→V′ , v′ , M′→W , w , V′·W→N , eq ))) =
+      inj₂ (inj₂ (inj₁ (V′ , W , V→V′ , v′ , (M —→⟨ M—→M′ ⟩ M′→W) , w , V′·W→N , EQ)))
+    where EQ : suc (len V·M′—↠N) ≡ len V→V′ + suc (len M′→W) + len V′·W→N
+          EQ = trans (cong suc eq) (sym (cong (λ X → X + len V′·W→N)
+                                       (+-suc (len V→V′) (len M′→W))))
+app-multi-inv {V} {M} {N} (.(V · M) —→⟨ ξξ (v ·□) refl refl M—→M′ ⟩ V·M′—↠N)
+    | inj₂ (inj₂ (inj₂ refl)) = inj₂ (inj₂ (inj₂ refl))
+app-multi-inv {L} {M} {N} (.(L · M) —→⟨ ξξ-blame (□· _) refl ⟩ rs)
+    with blame—↠ rs
+... | refl = inj₂ (inj₂ (inj₂ refl))
+app-multi-inv {L} {M} {N} (.(L · M) —→⟨ ξξ-blame (v ·□) refl ⟩ rs)
+    with blame—↠ rs
+... | refl = inj₂ (inj₂ (inj₂ refl))
+app-multi-inv {.(ƛ _)} {M} {N} (.(ƛ _ · M) —→⟨ β v ⟩ M′—↠N) =
+  inj₂ (inj₂ (inj₁ (ƛ _ , M , (_ END) , ƛ̬ _ , (M END) , v , (_ —→⟨ β v ⟩ M′—↠N) , refl)))
 
 inject-multi-inv : ∀{M N}{G}{g : Ground G}
   → (red : M ⟨ g !⟩ —↠ N)
@@ -421,5 +459,17 @@ project-multi-inv2 : ∀{M N}{G}{g : Ground G}
   → (∃[ M′ ] Σ[ r1 ∈ M —↠ M′ ] (N ≡ M′ ⟨ g ?⟩ × len r1 ≡ len red))
     ⊎ (∃[ V ] Σ[ r1 ∈ M —↠ V ] Value V × Σ[ r2 ∈ V ⟨ g ?⟩ —↠ N ] len red ≡ len r1 + len r2)
     ⊎ N ≡ blame
-project-multi-inv2 red = {!!}
+project-multi-inv2 (.(_ ⟨ _ ?⟩) END) = inj₁ (_ , (_ END) , refl , refl)
+project-multi-inv2 (.(_ ⟨ _ ?⟩) —→⟨ ξξ □⟨ h ?⟩ refl refl r ⟩ rs)
+    with project-multi-inv2 rs
+... | inj₁ (M′ , M→M′ , refl , eq) = inj₁ (M′ , (_ —→⟨ r ⟩ M→M′) , refl , cong suc eq)
+... | inj₂ (inj₁ (V , M→V , v , Vg→N , eq)) = inj₂ (inj₁ (V , (_ —→⟨ r ⟩ M→V ) , v , Vg→N , cong suc eq))
+... | inj₂ (inj₂ refl) = inj₂ (inj₂ refl)
+project-multi-inv2 (.(_ ⟨ _ ?⟩) —→⟨ ξξ-blame □⟨ h ?⟩ refl ⟩ rs)
+    with blame—↠ rs
+... | refl = inj₂ (inj₂ refl)
+project-multi-inv2 (.(_ ⟨ _ ?⟩) —→⟨ collapse v g h refl ⟩ rs) =
+    inj₂ (inj₁ ((_ ⟨ g !⟩) , (_ END) , (v 〈 g 〉) , (_ —→⟨ collapse v g h refl ⟩ rs) , refl))
+project-multi-inv2 (.(_ ⟨ _ ?⟩) —→⟨ collide v g h neq refl ⟩ rs) =
+    inj₂ (inj₁ ((_ ⟨ g !⟩) , (_ END) , (v 〈 g 〉) , (_ —→⟨ collide v g h neq refl ⟩ rs) , refl))
 
