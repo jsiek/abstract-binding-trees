@@ -214,7 +214,7 @@ V-base-elim{ι}{blame}{j} Vv rewrite unfold-SafeVal (j , 0) = ⊥-elim Vv
 𝓥⇒Value {A ⇒ B} {k} blame Vv rewrite unfold-SafeVal (k , size (A ⇒ B)) = ⊥-elim Vv
 
 
-{- Type Safety -}
+{- Semantic Type Safety -}
 
 𝓖⟦_⟧ : (Γ : List Type) → Subst → ℕ → Set
 𝓖⟦ [] ⟧ σ k = ⊤
@@ -230,6 +230,8 @@ lemma-𝓖 (A ∷ Γ) γ k (𝓖γ , 𝓥γ0) {B} {suc y} ∋y =
 
 _⊨_⦂_ : List Type → Term → Type → Set
 Γ ⊨ M ⦂ A = ∀ k (γ : Subst) → 𝓖⟦ Γ ⟧ γ k → 𝓔⟦ A ⟧ (⟪ γ ⟫ M) k
+
+{- Monotonicity of the Logical Relation -}
 
 mono-𝓥 : ∀ {j}{k}{A} {V}
    → j ≤′ k
@@ -273,13 +275,23 @@ mono-𝓥 {j} {suc k} {A ⇒ B} {V ⟨ g !⟩} (≤′-step j≤k) Vvk rewrite u
 mono-𝓥 {j} {suc k} {A ⇒ B} {V ⟨ h ?⟩} (≤′-step j≤k) Vvk rewrite unfold-SafeVal (suc k , size (A ⇒ B)) = ⊥-elim Vvk
 mono-𝓥 {j} {suc k} {A ⇒ B} {blame} (≤′-step j≤k) Vvk rewrite unfold-SafeVal (suc k , size (A ⇒ B)) = ⊥-elim Vvk
 
-
 Val⇒Exp : ∀{A}{V : Term} (k : ℕ)
    → 𝓥⟦ A ⟧ V k
    → 𝓔⟦ A ⟧ V k
 Val⇒Exp {A}{V} k Vv N M→N <k
     with value—↠ (𝓥⇒Value V Vv) M→N
 ... | refl  = inj₁ (mono-𝓥 (≤⇒≤′ (m∸n≤m k (len M→N))) Vv)
+
+mono-SafeEnv : ∀ j k {Γ} (γ : Subst)
+   → j ≤′ k
+   → 𝓖⟦ Γ ⟧ γ k
+     -----------
+   → 𝓖⟦ Γ ⟧ γ j
+mono-SafeEnv j k {[]} γ j≤k 𝓖γ = tt
+mono-SafeEnv j k {A ∷ Γ} γ j≤k (𝓖γ , 𝓥γ0) = (mono-SafeEnv j k (λ z → γ (suc z)) j≤k 𝓖γ) , (mono-𝓥 j≤k 𝓥γ0)
+
+
+{- Miscellaneous Lemmas -}
 
 dyn? : (A : Type) → A ≡ ★ ⊎ A ≢ ★
 dyn? ★ = inj₁ refl
@@ -308,14 +320,6 @@ ground-match? {.($ₜ ι)} ($ᵍ ι) (B ⇒ B′) Bnd = inj₂ (★ ⇒ ★ , �
 ground-match? {.(★ ⇒ ★)} ★⇒★ ★ Bnd = ⊥-elim (Bnd refl)
 ground-match? {.(★ ⇒ ★)} ★⇒★ ($ₜ ι) Bnd = inj₂ ($ₜ ι , $ᵍ ι , gnd-base , λ ())
 ground-match? {.(★ ⇒ ★)} ★⇒★ (B ⇒ B′) Bnd = inj₁ gnd-fun
-
-mono-SafeEnv : ∀ j k {Γ} (γ : Subst)
-   → j ≤′ k
-   → 𝓖⟦ Γ ⟧ γ k
-     -----------
-   → 𝓖⟦ Γ ⟧ γ j
-mono-SafeEnv j k {[]} γ j≤k 𝓖γ = tt
-mono-SafeEnv j k {A ∷ Γ} γ j≤k (𝓖γ , 𝓥γ0) = (mono-SafeEnv j k (λ z → γ (suc z)) j≤k 𝓖γ) , (mono-𝓥 j≤k 𝓥γ0)
 
 
 
