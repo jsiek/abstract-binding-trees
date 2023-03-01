@@ -123,6 +123,47 @@ lemma8 k′ x y z w eq lt =
             (≤-reflexive (sym (+-assoc (y) _ _))))
             (≤-reflexive (sym eq))) lt))
 
+
+{-
+ x = suc k′
+ y = len L→V
+ z = len M→W
+ -}
+lemma9 : ∀ x y z
+   → x ∸ (y + z) ≤ x ∸ y
+lemma9 x y z = (∸-monoʳ-≤ {y}{y + z} x (m≤m+n y z))
+
+lemma10 : ∀ x y z
+   → x ∸ (y + z) ≤ x ∸ z
+lemma10 x y z = (∸-monoʳ-≤ {z}{y + z} x (m≤n+m _ _))
+
+Safe×Value⇒𝓥 : ∀ {A N k}
+  → (𝓥⟦ A ⟧ N k  ⊎  (∃[ N′ ] (N —→ N′))  ⊎  N ≡ blame)
+  → Value N
+    -----------
+  → 𝓥⟦ A ⟧ N k
+Safe×Value⇒𝓥 {A} {N} {k} (inj₁ Vv) v = Vv
+Safe×Value⇒𝓥 {A} {N} {k} (inj₂ (inj₁ (N′ , N→N′))) v = ⊥-elim (value-irreducible v N→N′)
+Safe×Value⇒𝓥 {A} {N} {k} (inj₂ (inj₂ refl)) v = ⊥-elim (blame-not-value v refl)
+
+𝓥[A⇒B]⇒ƛN : ∀{A B V k}
+  → 𝓥⟦ A ⇒ B ⟧ V k
+    --------------
+  → ∃[ N ] V ≡ ƛ N
+𝓥[A⇒B]⇒ƛN {A}{B}{` x}{k} 𝓥V
+    rewrite unfold-SafeVal (k , size (A ⇒ B)) = ⊥-elim 𝓥V
+𝓥[A⇒B]⇒ƛN {A}{B}{$ c}{k} 𝓥V
+    rewrite unfold-SafeVal (k , size (A ⇒ B)) = ⊥-elim 𝓥V
+𝓥[A⇒B]⇒ƛN {A}{B}{L · M}{k} 𝓥V
+    rewrite unfold-SafeVal (k , size (A ⇒ B)) = ⊥-elim 𝓥V
+𝓥[A⇒B]⇒ƛN {A}{B}{ƛ N}{k} 𝓥V = N , refl
+𝓥[A⇒B]⇒ƛN {A}{B}{M ⟨ g !⟩}{k} 𝓥V
+    rewrite unfold-SafeVal (k , size (A ⇒ B)) = ⊥-elim 𝓥V
+𝓥[A⇒B]⇒ƛN {A}{B}{M ⟨ h ?⟩}{k} 𝓥V
+    rewrite unfold-SafeVal (k , size (A ⇒ B)) = ⊥-elim 𝓥V
+𝓥[A⇒B]⇒ƛN {A}{B}{blame}{k} 𝓥V
+    rewrite unfold-SafeVal (k , size (A ⇒ B)) = ⊥-elim 𝓥V
+
 compatible-app : ∀{Γ}{A}{B}{L}{M}
     → Γ ⊨ L ⦂ (A ⇒ B)
     → Γ ⊨ M ⦂ A
@@ -163,20 +204,13 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk = Goal
          -}
     Goal N L·M→N (s≤s {n = k′} len[L·M→N]≤k′)
         | inj₂ (inj₂ (inj₁ (V , W , L→V , v′ , M→W , w , VW→N , len[L·M→N]≡len[L→V]+len[M→W]+len[VW→N])))
-        with ⊨L k γ 𝓖Γγk V L→V (lemma8 k′ (len L·M→N) (len L→V) (len M→W) (len VW→N)
-                                           len[L·M→N]≡len[L→V]+len[M→W]+len[VW→N] len[L·M→N]≤k′)
-    ... | inj₂ (inj₂ beq) =                                 ⊥-elim (blame-not-value v′ beq)
-    ... | inj₂ (inj₁ (V′ , V→V′)) =                         ⊥-elim (value-irreducible v′ V→V′)
-    ... | inj₁ Vv′
-        with ⊨M k γ 𝓖Γγk W M→W (lemma6 k′ (len L·M→N) (len L→V) (len M→W) (len VW→N)
-                                          len[L·M→N]≤k′ len[L·M→N]≡len[L→V]+len[M→W]+len[VW→N])
-    ... | inj₂ (inj₂ beq) =                                 ⊥-elim (blame-not-value w beq)
-    ... | inj₂ (inj₁ (W′ , W→W′)) =                         ⊥-elim (value-irreducible w W→W′)
-    ... | inj₁ Vw′
-        with v′
-    ... | $̬ c rewrite unfold-SafeVal (suc k′ ∸ len L→V , suc (size A ⊔ size B)) = ⊥-elim Vv′
-    ... | v 〈 g 〉 rewrite unfold-SafeVal (suc k′ ∸ len L→V , suc (size A ⊔ size B)) = ⊥-elim Vv′
-    ... | ƛ̬ N′
+        with Safe×Value⇒𝓥 (⊨L k γ 𝓖Γγk V L→V (lemma8 k′ (len L·M→N) (len L→V) (len M→W) (len VW→N)
+                                                 len[L·M→N]≡len[L→V]+len[M→W]+len[VW→N] len[L·M→N]≤k′)) v′
+           | Safe×Value⇒𝓥 (⊨M k γ 𝓖Γγk W M→W (lemma6 k′ (len L·M→N) (len L→V) (len M→W) (len VW→N)
+                                                 len[L·M→N]≤k′ len[L·M→N]≡len[L→V]+len[M→W]+len[VW→N])) w
+    ... | 𝓥V | Vw′
+        with 𝓥[A⇒B]⇒ƛN 𝓥V
+    ... | (N′ , refl)
         with VW→N
     ... | _ END = inj₂ (inj₁ (_ , β w))
     ... | _ —→⟨ ξ (_ ·□) r₁ ⟩ r₂ =                          ⊥-elim (value-irreducible w r₁)
@@ -186,11 +220,13 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk = Goal
         {-
           Subcase: (ƛ N′) · W —→ N′ [ W ] —↠ N
         -}
-        with mono-𝓥 {k ∸ (len L→V + len M→W)} (≤⇒≤′ (∸-monoʳ-≤ {len L→V}{len L→V + len M→W} (suc k′) (m≤m+n (len L→V) (len M→W)))) Vv′
-           | mono-𝓥 {k ∸ (len L→V + len M→W)} (≤⇒≤′ (∸-monoʳ-≤ {len M→W}{len L→V + len M→W} (suc k′) (m≤n+m _ _))) Vw′ 
+        with mono-𝓥 (≤⇒≤′ (lemma9 (suc k′) (len L→V) (len M→W))) 𝓥V
+           | mono-𝓥 (≤⇒≤′ (lemma10 (suc k′) (len L→V) (len M→W))) Vw′ 
     ... | Vv″ | Vw″ rewrite V-fun {suc k′ ∸ (len L→V + len M→W)}{A}{B}{N′} 
-        with Vv″ W _ ≤-refl Vw″ N N[W]—↠N (lemma7 k′ (len L·M→N) (len N[W]—↠N) (len L→V) (len M→W) len[L·M→N]≤k′ len[L·M→N]≡len[L→V]+len[M→W]+len[VW→N])
-    ... | inj₁ VN = inj₁ (mono-𝓥 (≤⇒≤′ (≤-trans (≤-reflexive (sym EQ)) LT2)) VN)
+        with Vv″ W _ ≤-refl Vw″ N N[W]—↠N (lemma7 k′ (len L·M→N) (len N[W]—↠N) (len L→V) (len M→W)
+                                             len[L·M→N]≤k′ len[L·M→N]≡len[L→V]+len[M→W]+len[VW→N])
+    ... | inj₁ VN =
+          inj₁ (mono-𝓥 (≤⇒≤′ (≤-trans (≤-reflexive (sym EQ)) LT2)) VN)
         where
           LT2 : k′ ∸ (len L→V + len M→W + len N[W]—↠N) ≤ (suc k′ ∸ (len L→V + len M→W)) ∸ len N[W]—↠N
           LT2 = ≤-trans (∸-monoˡ-≤ (len L→V + len M→W + len N[W]—↠N) (≤-step ≤-refl))
@@ -237,21 +273,22 @@ compatible-inject{Γ}{G}{g}{M} ⊨M k γ 𝓖Γγk = H
                ⊎ N ≡ blame               
   H N red (s≤s {n = n} <k)
       with inject-multi-inv red
-  ... | inj₂ (inj₂ refl) = inj₂ (inj₂ refl)
-  ... | inj₁ (M′ , →M′ , refl , eqlen)
+  ... | inj₂ (inj₂ refl) =         inj₂ (inj₂ refl)
+  ... | inj₁ (M′ , γM—↠M′ , refl , eqlen)
       with ⊨M k γ 𝓖Γγk
   ... | EM 
-      with EM M′ →M′ (s≤s (≤-trans (≤-reflexive eqlen) <k))
-  ... | inj₂ (inj₁ (M″ , M′→)) = inj₂ (inj₁ (_ , ξ □⟨ g !⟩ M′→))
-  ... | inj₂ (inj₂ refl) = inj₂ (inj₁ (_ , ξ-blame □⟨ g !⟩))
-  ... | inj₁ Vv′ = inj₁ Goal
+      with EM M′ γM—↠M′ (s≤s (≤-trans (≤-reflexive eqlen) <k))
+  ... | inj₂ (inj₁ (M″ , M′→M″)) = inj₂ (inj₁ (_ , ξ □⟨ g !⟩ M′→M″))
+  ... | inj₂ (inj₂ refl) =         inj₂ (inj₁ (_ , ξ-blame □⟨ g !⟩))
+  ... | inj₁ Vv′ =                 inj₁ Goal
       where
-        lt : n ∸ len red ≤ suc n ∸ len →M′
-        lt = ≤-trans (≤-reflexive (cong (λ X → n ∸ X) (sym eqlen) ))
+        LT : n ∸ len red ≤ suc n ∸ len γM—↠M′
+        LT = ≤-trans (≤-reflexive (cong (λ X → n ∸ X) (sym eqlen) ))
                      (≤-trans (n≤1+n _)
                         (≤-reflexive (sym (1+m∸n n _ (subst (λ X → X ≤ n) (sym eqlen) <k))) ))
-        Goal : (SafeVal (suc n ∸ len red , 0) ★ refl) (M′ ⟨ g !⟩)
-        Goal rewrite 1+m∸n n (len red) <k = V-intro (mono-𝓥 (≤⇒≤′ lt) Vv′)
+                        
+        Goal : 𝓥⟦ ★ ⟧ (M′ ⟨ g !⟩) (suc n ∸ len red)
+        Goal rewrite 1+m∸n n (len red) <k = V-intro (mono-𝓥 (≤⇒≤′ LT) Vv′)
             
   H N red (s≤s {n = n} <k)
       | inj₂ (inj₁ (V , →V , v , →N , eq))
