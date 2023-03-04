@@ -342,6 +342,9 @@ _—↠⟨_⟩_ : (L : Term) {M N : Term}
   → L —↠ N
 L —↠⟨ L—↠M ⟩ M—↠N  =  L—↠M ++ M—↠N
 
+irred : (M : Term) → Set
+irred M = ¬ (∃[ N ] (M —→ N))
+
 len : ∀{M N : Term} → (M→N : M —↠ N) → ℕ
 len (_ END) = 0
 len (_ —→⟨ x ⟩ red) = suc (len red)
@@ -372,6 +375,9 @@ value-irreducible v V—→M = nope V—→M v
    nope (ξ □⟨ g !⟩ V→M) (v 〈 g 〉) = nope V→M v
    nope (ξ-blame □⟨ _ !⟩) (() 〈 g 〉)
 
+value-irred : ∀{V : Term} → Value V → irred V
+value-irred {V} v (N , V→N) = value-irreducible v V→N
+
 value—↠ : ∀{V N : Term}
     → Value V
     → V —↠ N
@@ -391,6 +397,16 @@ blame—↠ {N} (.blame —→⟨ ξξ-blame (□· M) () ⟩ red)
 blame—↠ {N} (.blame —→⟨ ξξ-blame (v ·□) () ⟩ red)
 blame—↠ {N} (.blame —→⟨ ξξ-blame □⟨ g !⟩ () ⟩ red)
 blame—↠ {N} (.blame —→⟨ ξξ-blame □⟨ h ?⟩ () ⟩ red)
+
+blame-irreducible : ∀{M} → ¬ (blame —→ M)
+blame-irreducible {M} (ξξ (□· M₁) () x₁ blame→M)
+blame-irreducible {M} (ξξ (v ·□) () x₁ blame→M)
+blame-irreducible {M} (ξξ □⟨ g !⟩ () x₁ blame→M)
+blame-irreducible {M} (ξξ □⟨ h ?⟩ () x₁ blame→M)
+blame-irreducible {.blame} (ξξ-blame (□· M) ())
+blame-irreducible {.blame} (ξξ-blame (v ·□) ())
+blame-irreducible {.blame} (ξξ-blame □⟨ g !⟩ ())
+blame-irreducible {.blame} (ξξ-blame □⟨ h ?⟩ ())
 
 app-multi-inv : ∀{L M N}
   → (r1 : L · M —↠ N)

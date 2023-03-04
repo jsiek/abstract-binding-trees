@@ -171,23 +171,28 @@ compatible-app : ∀{Γ}{A}{B}{L}{M}
     → Γ ⊨ L · M ⦂ B
 compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk = Goal
     where
+    𝓔L : 𝓔⟦ A ⇒ B ⟧ (⟪ γ ⟫ L ) k
+    𝓔L = ⊨L k γ 𝓖Γγk
+
+    𝓔M : 𝓔⟦ A ⟧ (⟪ γ ⟫ M ) k
+    𝓔M = ⊨M k γ 𝓖Γγk
+    
     Goal : 𝓔⟦ B ⟧ (⟪ γ ⟫ (L · M)) k
     Goal N L·M→N (s≤s {n = k′} <k)
         with app-multi-inv L·M→N
         {-
            Case 1:    L · M —↠ L′ · M
          -}
-    ... | inj₁ (L′ , L→L′ , refl , len[L·M→N]≡len[L→L′])
-        with ⊨L k γ 𝓖Γγk | ⊨M k γ 𝓖Γγk
-    ... | EL | EM = inj₂ (inj₁ (E-app EL L→L′ LT EM (_ END) z≤n))
-        where LT : len L→L′ ≤ k′
-              LT = (≤-trans (≤-reflexive (sym len[L·M→N]≡len[L→L′])) <k)
+    ... | inj₁ (L′ , L→L′ , refl , len[L·M→N]≡len[L→L′]) =
+          inj₂ (inj₁ (E-app 𝓔L L→L′ LT 𝓔M (_ END) z≤n))
+          where LT : len L→L′ ≤ k′
+                LT = (≤-trans (≤-reflexive (sym len[L·M→N]≡len[L→L′])) <k)
         {-
            Case 2:    L · M —↠ V · M′
          -}
     Goal N L·M→N (s≤s {n = k′} len[L·M→N]≤k′)
         | inj₂ (inj₁ (V , M′ , L→V , v′ , M→M′ , refl , len[L·M→N]≡len[L→V]+len[M→M′])) =
-          inj₂ (inj₁ (E-app (⊨L k γ 𝓖Γγk) L→V LT1 (⊨M k γ 𝓖Γγk) M→M′ LT2))
+          inj₂ (inj₁ (E-app 𝓔L L→V LT1 𝓔M M→M′ LT2))
         where LT1 : len L→V ≤ k′
               LT1 = (≤-trans (≤-trans (m≤m+n (len L→V) (len M→M′))
                                       (≤-reflexive (sym len[L·M→N]≡len[L→V]+len[M→M′]))) len[L·M→N]≤k′)
@@ -204,9 +209,9 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk = Goal
          -}
     Goal N L·M→N (s≤s {n = k′} len[L·M→N]≤k′)
         | inj₂ (inj₂ (inj₁ (V , W , L→V , v′ , M→W , w , VW→N , len[L·M→N]≡len[L→V]+len[M→W]+len[VW→N])))
-        with Safe×Value⇒𝓥 (⊨L k γ 𝓖Γγk V L→V (lemma8 k′ (len L·M→N) (len L→V) (len M→W) (len VW→N)
+        with Safe×Value⇒𝓥 (𝓔L V L→V (lemma8 k′ (len L·M→N) (len L→V) (len M→W) (len VW→N)
                                                  len[L·M→N]≡len[L→V]+len[M→W]+len[VW→N] len[L·M→N]≤k′)) v′
-           | Safe×Value⇒𝓥 (⊨M k γ 𝓖Γγk W M→W (lemma6 k′ (len L·M→N) (len L→V) (len M→W) (len VW→N)
+           | Safe×Value⇒𝓥 (𝓔M W M→W (lemma6 k′ (len L·M→N) (len L→V) (len M→W) (len VW→N)
                                                  len[L·M→N]≤k′ len[L·M→N]≡len[L→V]+len[M→W]+len[VW→N])) w
     ... | 𝓥V | Vw′
         with 𝓥[A⇒B]⇒ƛN 𝓥V
@@ -222,11 +227,11 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk = Goal
         -}
         with mono-𝓥 (≤⇒≤′ (lemma9 (suc k′) (len L→V) (len M→W))) 𝓥V
            | mono-𝓥 (≤⇒≤′ (lemma10 (suc k′) (len L→V) (len M→W))) Vw′ 
-    ... | Vv″ | Vw″ rewrite V-fun {suc k′ ∸ (len L→V + len M→W)}{A}{B}{N′} 
-        with Vv″ W _ ≤-refl Vw″ N N[W]—↠N (lemma7 k′ (len L·M→N) (len N[W]—↠N) (len L→V) (len M→W)
+    ... | 𝓥λN′ | Vw″ rewrite V-fun {suc k′ ∸ (len L→V + len M→W)}{A}{B}{N′} 
+        with 𝓥λN′ W _ ≤-refl Vw″ N N[W]—↠N (lemma7 k′ (len L·M→N) (len N[W]—↠N) (len L→V) (len M→W)
                                              len[L·M→N]≤k′ len[L·M→N]≡len[L→V]+len[M→W]+len[VW→N])
-    ... | inj₁ VN =
-          inj₁ (mono-𝓥 (≤⇒≤′ (≤-trans (≤-reflexive (sym EQ)) LT2)) VN)
+    ... | inj₁ 𝓥N =
+          inj₁ (mono-𝓥 (≤⇒≤′ (≤-trans (≤-reflexive (sym EQ)) LT2)) 𝓥N)
         where
           LT2 : k′ ∸ (len L→V + len M→W + len N[W]—↠N) ≤ (suc k′ ∸ (len L→V + len M→W)) ∸ len N[W]—↠N
           LT2 = ≤-trans (∸-monoˡ-≤ (len L→V + len M→W + len N[W]—↠N) (≤-step ≤-refl))
@@ -273,11 +278,15 @@ compatible-inject{Γ}{G}{g}{M} ⊨M k γ 𝓖Γγk = H
                ⊎ N ≡ blame               
   H N red (s≤s {n = n} <k)
       with inject-multi-inv red
+      {-
+        Case 1:  M ⟨ g !⟩ —↠ blame ≡ N
+       -}
   ... | inj₂ (inj₂ refl) =         inj₂ (inj₂ refl)
+      {-
+        Case 2:  M ⟨ g !⟩ —↠ M′ ⟨ g !⟩ ≡ N
+       -}
   ... | inj₁ (M′ , γM—↠M′ , refl , eqlen)
-      with ⊨M k γ 𝓖Γγk
-  ... | EM 
-      with EM M′ γM—↠M′ (s≤s (≤-trans (≤-reflexive eqlen) <k))
+      with (⊨M k γ 𝓖Γγk) M′ γM—↠M′ (s≤s (≤-trans (≤-reflexive eqlen) <k))
   ... | inj₂ (inj₁ (M″ , M′→M″)) = inj₂ (inj₁ (_ , ξ □⟨ g !⟩ M′→M″))
   ... | inj₂ (inj₂ refl) =         inj₂ (inj₁ (_ , ξ-blame □⟨ g !⟩))
   ... | inj₁ Vv′ =                 inj₁ Goal
@@ -291,24 +300,25 @@ compatible-inject{Γ}{G}{g}{M} ⊨M k γ 𝓖Γγk = H
         Goal rewrite 1+m∸n n (len red) <k = V-intro (mono-𝓥 (≤⇒≤′ LT) Vv′)
             
   H N red (s≤s {n = n} <k)
-      | inj₂ (inj₁ (V , →V , v , →N , eq))
-      with ⊨M k γ 𝓖Γγk
-  ... | EM
-      with EM V →V (s≤s (≤-trans (subst (λ X → len →V ≤ X) (sym eq) (m≤m+n _ _)) <k))
+      {-
+        Case 3:  M ⟨ g !⟩ —↠ V ⟨ g !⟩ —↠ N
+       -}
+      | inj₂ (inj₁ (V , M→V , v , →N , eq))
+      with (⊨M k γ 𝓖Γγk) V M→V (s≤s (≤-trans (subst (λ X → len M→V ≤ X) (sym eq) (m≤m+n _ _)) <k))
   ... | inj₁ Vv′
       with value—↠ (v 〈 g 〉) →N
   ... | refl rewrite 1+m∸n n (len red) <k =      
         inj₁ (V-intro (mono-𝓥 (≤⇒≤′ LT) Vv′))
-      where →V≤red : len →V ≤ len red
-            →V≤red = ≤-trans (m≤m+n (len →V) (len →N)) (≤-reflexive (sym eq))
-            LT′ : n ∸ len red ≤ n ∸ len →V
-            LT′ = ∸-monoʳ-≤{len →V}{len red} n →V≤red
-            LT : n ∸ len red ≤ suc n ∸ len →V
-            LT = ≤-trans (≤-step LT′) (≤-reflexive (sym (1+m∸n n (len →V) (≤-trans →V≤red <k))))
+      where →V≤red : len M→V ≤ len red
+            →V≤red = ≤-trans (m≤m+n (len M→V) (len →N)) (≤-reflexive (sym eq))
+            LT′ : n ∸ len red ≤ n ∸ len M→V
+            LT′ = ∸-monoʳ-≤{len M→V}{len red} n →V≤red
+            LT : n ∸ len red ≤ suc n ∸ len M→V
+            LT = ≤-trans (≤-step LT′) (≤-reflexive (sym (1+m∸n n (len M→V) (≤-trans →V≤red <k))))
         
-  H N red (s≤s {n = n} <k) | inj₂ (inj₁ (V , →V , v , →N , eq)) | EM
+  H N red (s≤s {n = n} <k) | inj₂ (inj₁ (V , →V , v , →N , eq))
       | inj₂ (inj₁ (V′ , →V′)) = ⊥-elim (value-irreducible v →V′)
-  H N red (s≤s {n = n} <k) | inj₂ (inj₁ (V , →V , v , →N , eq)) | EM      
+  H N red (s≤s {n = n} <k) | inj₂ (inj₁ (V , →V , v , →N , eq))
       | inj₂ (inj₂ refl)
       with v
   ... | ()
@@ -343,9 +353,7 @@ compatible-project {Γ}{H}{h}{M} ⊨M k γ 𝓖Γγk = aux
   ... | inj₂ (inj₂ refl) = inj₂ (inj₂ refl)
   {- Case 2 -}      
   ... | inj₁ (M′ , →M′ , refl , eq)
-      with ⊨M k γ 𝓖Γγk
-  ... | EM 
-      with EM M′ →M′ (s≤s (≤-trans (≤-reflexive eq) <k))
+      with (⊨M k γ 𝓖Γγk) M′ →M′ (s≤s (≤-trans (≤-reflexive eq) <k))
   ... | inj₂ (inj₁ (M″ , M′→)) = inj₂ (inj₁ (_ , ξ □⟨ h ?⟩ M′→))
   ... | inj₂ (inj₂ refl) = inj₂ (inj₁ (_ , ξ-blame □⟨ h ?⟩))
   ... | inj₁ Vv′
@@ -358,9 +366,7 @@ compatible-project {Γ}{H}{h}{M} ⊨M k γ 𝓖Γγk = aux
   {- Case 3 -}        
   aux N red (s≤s <k)
       | inj₂ (inj₁ (V , →V , v , →N , eq))
-      with ⊨M k γ 𝓖Γγk
-  ... | EM 
-      with EM V →V (s≤s (≤-trans (≤-trans (m≤m+n (len →V) (len →N)) (≤-reflexive (sym eq))) <k))
+      with (⊨M k γ 𝓖Γγk) V →V (s≤s (≤-trans (≤-trans (m≤m+n (len →V) (len →N)) (≤-reflexive (sym eq))) <k))
   ... | inj₂ (inj₁ (V′ , V→)) = ⊥-elim (value-irreducible v V→)
   ... | inj₂ (inj₂ refl)
       with blame-project →N refl
@@ -368,7 +374,7 @@ compatible-project {Γ}{H}{h}{M} ⊨M k γ 𝓖Γγk = aux
   ... | inj₁ refl
       with v
   ... | ()
-  aux N red (s≤s {n = n} <k) | inj₂ (inj₁ (V , →V , v , →N , eq)) | EM
+  aux N red (s≤s {n = n} <k) | inj₂ (inj₁ (V , →V , v , →N , eq))
       | inj₁ Vv′
       rewrite 1+m∸n n (len →V) (≤-trans (≤-trans (m≤m+n (len →V) (len →N)) (≤-reflexive (sym eq))) <k)
       with V-dyn-inv2 V Vv′
@@ -386,7 +392,7 @@ compatible-project {Γ}{H}{h}{M} ⊨M k γ 𝓖Γγk = aux
   ... | _ —→⟨ collide x g₁ .h x₁ refl ⟩ r2
       with blame—↠ r2
   ... | refl = inj₂ (inj₂ refl)
-  aux N red (s≤s {n = n} <k) | inj₂ (inj₁ (V , →V , v , →N , eq)) | EM
+  aux N red (s≤s {n = n} <k) | inj₂ (inj₁ (V , →V , v , →N , eq))
       | inj₁ Vv′
       | (V′ , G , g , refl , Vv″)
       | _ —→⟨ collapse _ g₁ .h refl ⟩ r2
