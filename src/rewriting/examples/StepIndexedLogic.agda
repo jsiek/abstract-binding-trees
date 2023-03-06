@@ -1,4 +1,9 @@
 {-# OPTIONS --without-K --rewriting #-}
+
+{-
+ Based on the development of Logical step-indexed logical relation
+ by Philip Wadler (June 1, 2022)
+-}
 module rewriting.examples.StepIndexedLogic where
 
 open import Data.Empty using (⊥; ⊥-elim)
@@ -29,15 +34,18 @@ Setᵒ = ℕ → Set
 _×ᵒ_ : Setᵒ → Setᵒ → Setᵒ
 (P ×ᵒ Q) n  =  (P n) × (Q n)
 
+infixr 7 _⊎ᵒ_
 _⊎ᵒ_ : Setᵒ → Setᵒ → Setᵒ
 (P ⊎ᵒ Q) n  =  (P n) ⊎ (Q n)
 
+infixr 6 _→ᵒ_
 _→ᵒ_ : Setᵒ → Setᵒ → Setᵒ
 (P →ᵒ Q) n  =  ∀ k → k ≤ n → P k → Q k
 
 ∀ᵒ : ∀{A} → (A → Setᵒ) → Setᵒ
 ∀ᵒ {A} F n = ∀ (v : A) → F v n
 
+infixr 8 _ᵒ
 _ᵒ  : Set → Setᵒ
 (p ᵒ) zero = ⊤
 (p ᵒ) (suc n) = p
@@ -45,6 +53,22 @@ _ᵒ  : Set → Setᵒ
 ▷ᵒ_ : Setᵒ → Setᵒ
 (▷ᵒ P) zero     =  ⊤
 (▷ᵒ P) (suc n)  =  P n
+
+iter : ∀ {ℓ} {A : Set ℓ} → ℕ → (A → A) → (A → A)
+iter zero    F  =  id
+iter (suc n) F  =  F ∘ iter n F
+
+Predᵒ : Set → Set₁
+Predᵒ A = A → Setᵒ
+
+⊤ᵖ : ∀{A} → Predᵒ A
+⊤ᵖ x = ⊤ᵒ
+
+⊥ᵖ : ∀{A} → Predᵒ A
+⊥ᵖ x = ⊥ᵒ
+
+μᵖ : ∀ {A} → (Predᵒ A → Predᵒ A) → Predᵒ A
+(μᵖ F) x n  = iter n F ⊥ᵖ x n
 
 ee : Setᵒ → Set
 ee P  =  P zero
@@ -103,6 +127,11 @@ dc-Pᵒ : (P : Set)
 dc-Pᵒ P n Pn zero k≤n = tt
 dc-Pᵒ P (suc n) Pn (suc k) (s≤s k≤n) = Pn
 
+
+
+
+{- Experiment: attaching downward closedness and eventually zero -}
+
 record Setₖ : Set₁ where
   field
     val : Setᵒ
@@ -158,18 +187,14 @@ Predₖ A = A → Setₖ
 ⊥ᴾ : ∀{A} → Predₖ A
 ⊥ᴾ x = ⊥ₖ
 
-iter : ∀ {ℓ} {A : Set ℓ} → ℕ → (A → A) → (A → A)
-iter zero    F  =  id
-iter (suc n) F  =  F ∘ iter n F
-
-monotonic : ∀{A} (F : Predₖ A → Predₖ A) → Set₁
-monotonic F = ∀ P Q x i → (val (P x) i → val (Q x) i)
+monotonicₖ : ∀{A} (F : Predₖ A → Predₖ A) → Set₁
+monotonicₖ F = ∀ P Q x i → (val (P x) i → val (Q x) i)
                         → (val (F P x) i → val (F Q x) i)
 
 record Functional (A : Set) : Set₁ where
   field
     fun : Predₖ A → Predₖ A
-    mono : monotonic fun
+    mono : monotonicₖ fun
 open Functional    
 
 dc-iter-index : ∀{i j k : ℕ}{A}{F : Functional A}{x : A}
