@@ -68,7 +68,7 @@ Predᵒ A = A → Setᵒ
 ⊥ᵖ x = ⊥ᵒ
 
 μᵖ : ∀ {A} → (Predᵒ A → Predᵒ A) → Predᵒ A
-(μᵖ F) x n  = iter n F ⊥ᵖ x n
+(μᵖ F) x n  = iter n F ⊤ᵖ x n
 
 ee : Setᵒ → Set
 ee P  =  P zero
@@ -127,10 +127,60 @@ dc-Pᵒ : (P : Set)
 dc-Pᵒ P n Pn zero k≤n = tt
 dc-Pᵒ P (suc n) Pn (suc k) (s≤s k≤n) = Pn
 
+monotonic : ∀{A} (F : Predᵒ A → Predᵒ A) → Set₁
+monotonic F = ∀ {P}{Q}{x}{i} → ((P x) i → (Q x) i)
+                           → ((F P x) i → (F Q x) i)
 
+eeᵖ : ∀{A} → Predᵒ A → Set
+eeᵖ P = ∀ x → P x 0
 
+dcᵖ : ∀{A} → Predᵒ A → Set
+dcᵖ P = ∀ n x → P x n → ∀ k → k ≤ n → P x k
 
-{- Experiment: attaching downward closedness and eventually zero -}
+ee-iter : ∀{A}
+    (i : ℕ)
+  → (F : Predᵒ A → Predᵒ A)
+  → (∀ p → eeᵖ p → eeᵖ (F p)) 
+  → eeᵖ (iter i F ⊤ᵖ)
+ee-iter zero F eeF x = tt
+ee-iter (suc i) F eeF =
+  eeF (iter i F (λ x x₁ → ⊤)) (ee-iter i F eeF)
+
+dc-iter-aux : ∀(i : ℕ){A}
+   → (F : Predᵒ A → Predᵒ A)
+   → (∀ p → dcᵖ p → dcᵖ (F p))
+   → dcᵖ (iter i F ⊤ᵖ)
+dc-iter-aux zero F dcF = λ n x _ k _ → tt
+dc-iter-aux (suc i) F dcF =
+  let IH = dc-iter-aux i F dcF in
+  dcF (iter i F ⊤ᵖ) IH
+
+dc-iter : ∀(i j k : ℕ){A}{F : Predᵒ A → Predᵒ A}{x}
+   → j ≤ k
+   → iter k F ⊤ᵖ x i
+   → monotonic F
+   → iter j F ⊤ᵖ x i
+dc-iter i j k j≤k iter-k mF = lemma′ i j k (≤⇒≤′ j≤k) iter-k mF
+   where
+   lemma′ : ∀(i j k : ℕ){A}{F : Predᵒ A → Predᵒ A}{x}
+      → j ≤′ k → iter k F ⊤ᵖ x i → monotonic F → iter j F ⊤ᵖ x i
+   lemma′ i j .j _≤′_.≤′-refl iter-k mF = iter-k
+   lemma′ i zero (suc k) (≤′-step j≤k) iter-k mF = tt
+   lemma′ i (suc j) (suc k) (≤′-step j≤k) iter-k mF =
+     mF (λ Fjxi → lemma′ i j k (≤⇒≤′ (≤-trans (n≤1+n j) (≤′⇒≤ j≤k))) Fjxi mF)
+        iter-k
+
+dc-μ : ∀{A}{F : Predᵒ A → Predᵒ A}
+   → monotonic F
+   → (∀ p → dcᵖ p → dcᵖ (F p))
+   → dcᵖ (μᵖ F) 
+dc-μ {A}{F} mF dcF n x μFxn k k≤n =
+  let iternk = dc-iter-aux n F dcF n x μFxn k k≤n in
+  dc-iter k k n k≤n iternk mF
+
+{-------------------------------------------------------------------------------
+  Experiment: attaching downward closedness and eventually zero
+ ------------------------------------------------------------------------------}
 
 record Setₖ : Set₁ where
   field
@@ -197,33 +247,33 @@ record Functional (A : Set) : Set₁ where
     mono : monotonicₖ fun
 open Functional    
 
-dc-iter-index : ∀{i j k : ℕ}{A}{F : Functional A}{x : A}
-   → j ≤ k
-   → val (iter i (fun F) ⊤ᴾ x) k
-   → val (iter i (fun F) ⊤ᴾ x) j
-dc-iter-index {zero} {j} {k} j≤k iterFk = tt
-dc-iter-index {suc i} {j} {k}{A}{F}{x} j≤k iterFk =
-   let dcF = dcl (fun F (iter i (fun F) ⊤ᴾ) x) in
-   dcF k iterFk j j≤k
+-- dc-iter-index : ∀{i j k : ℕ}{A}{F : Functional A}{x : A}
+--    → j ≤ k
+--    → val (iter i (fun F) ⊤ᴾ x) k
+--    → val (iter i (fun F) ⊤ᴾ x) j
+-- dc-iter-index {zero} {j} {k} j≤k iterFk = tt
+-- dc-iter-index {suc i} {j} {k}{A}{F}{x} j≤k iterFk =
+--    let dcF = dcl (fun F (iter i (fun F) ⊤ᴾ) x) in
+--    dcF k iterFk j j≤k
 
-dc-iter-depth : ∀(i j k : ℕ){A}{F : Functional A}{x : A}
-   → j ≤′ k
-   → val (iter k (fun F) ⊤ᴾ x) i
-   → val (iter j (fun F) ⊤ᴾ x) i
-dc-iter-depth i j .j _≤′_.≤′-refl iterkF = iterkF
-dc-iter-depth i zero (suc k) (≤′-step j≤k) iterkF = tt
-dc-iter-depth i (suc j) (suc k) {A}{F}{x} (≤′-step j≤k) FiterkFi =
-  mono F (iter k (fun F) ⊤ᴾ) (iter j (fun F) ⊤ᴾ) x i
-                  (λ iterkFi → dc-iter-depth i j k {A}{F}
-                      (≤⇒≤′ (≤-trans (n≤1+n _) (≤′⇒≤ j≤k))) iterkFi) FiterkFi
+-- dc-iter-depth : ∀(i j k : ℕ){A}{F : Functional A}{x : A}
+--    → j ≤′ k
+--    → val (iter k (fun F) ⊤ᴾ x) i
+--    → val (iter j (fun F) ⊤ᴾ x) i
+-- dc-iter-depth i j .j _≤′_.≤′-refl iterkF = iterkF
+-- dc-iter-depth i zero (suc k) (≤′-step j≤k) iterkF = tt
+-- dc-iter-depth i (suc j) (suc k) {A}{F}{x} (≤′-step j≤k) FiterkFi =
+--   mono F (iter k (fun F) ⊤ᴾ) (iter j (fun F) ⊤ᴾ) x i
+--                   (λ iterkFi → dc-iter-depth i j k {A}{F}
+--                       (≤⇒≤′ (≤-trans (n≤1+n _) (≤′⇒≤ j≤k))) iterkFi) FiterkFi
 
-μᴾ : ∀{A} → (F : Functional A) → Predₖ A
-(μᴾ {A} F) x = record
-  { val = (λ k → val (iter k (fun F) ⊤ᴾ x) k) 
-  ; dcl = (λ n Fnxn k k≤n →
-             let Fnxk = dc-iter-index{n}{k}{n}{A}{F}{x} k≤n Fnxn in
-             dc-iter-depth k k n {F = F}{x = x} (≤⇒≤′ k≤n) Fnxk)
-  ; ez = tt }
+-- μᴾ : ∀{A} → (F : Functional A) → Predₖ A
+-- (μᴾ {A} F) x = record
+--   { val = (λ k → val (iter k (fun F) ⊤ᴾ x) k) 
+--   ; dcl = (λ n Fnxn k k≤n →
+--              let Fnxk = dc-iter-index{n}{k}{n}{A}{F}{x} k≤n Fnxn in
+--              dc-iter-depth k k n {F = F}{x = x} (≤⇒≤′ k≤n) Fnxk)
+--   ; ez = tt }
 
 Lobᵒ : ∀{P : Setᵒ}
    → (∀ k → (▷ᵒ P) k → P k)

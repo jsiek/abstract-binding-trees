@@ -292,12 +292,12 @@ preserve {Γ} {.(snd ⟨ _ , _ ⟩)} {_} {B} (⊢snd (⊢cons ⊢V ⊢W refl) (_
 
 
 {- Denotations of Terms -}
-⟦_⟧ : Term → (Var → D) → D
-⟦ ` x ⟧ ρ = ρ x
-⟦ $ k ⟧ ρ v = (v ≡ lit k)
-⟦ ƛ N ⟧ ρ = Λ (λ d → ⟦ N ⟧ (extend d ρ))
-⟦ L · M ⟧ ρ = ⟦ L ⟧ ρ ● ⟦ M ⟧ ρ 
-⟦ ⟨ L , M ⟩ ⟧ ρ =  ⦅ ⟦ L ⟧ ρ , ⟦ M ⟧ ρ ⦆
-⟦ fst L ⟧ ρ = π₁ (⟦ L ⟧ ρ)
-⟦ snd L ⟧ ρ = π₂ (⟦ L ⟧ ρ)
+-- ⟦_⟧ : Term → (Var → D) → D
+-- ⟦ ` x ⟧ ρ = ρ x
+-- ⟦ $ k ⟧ ρ v = (v ≡ lit k)
+-- ⟦ ƛ N ⟧ ρ = Λ (λ d → ⟦ N ⟧ (ext d ρ))
+-- ⟦ L · M ⟧ ρ = ⟦ L ⟧ ρ ● ⟦ M ⟧ ρ 
+-- ⟦ ⟨ L , M ⟩ ⟧ ρ =  ⦅ ⟦ L ⟧ ρ , ⟦ M ⟧ ρ ⦆
+-- ⟦ fst L ⟧ ρ = π₁ (⟦ L ⟧ ρ)
+-- ⟦ snd L ⟧ ρ = π₂ (⟦ L ⟧ ρ)
 

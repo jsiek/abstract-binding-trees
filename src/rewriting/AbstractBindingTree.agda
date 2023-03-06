@@ -255,9 +255,11 @@ ext : Subst → Subst
 ext σ = ` 0 • (σ ⨟ ↑)
 
 abstract
+  -- Phil: you're using semicolon, so this should be postfix
   ⟪_⟫ : Subst → ABT → ABT
   ⟪ σ ⟫ M = Private.sub σ M
 
+  -- Phil: try switching + to *
   ⟪_⟫₊ : Subst → {bs : List Sig} → Args bs → Args bs
   ⟪ σ ⟫₊ args = Private.sub-args σ args
 
@@ -351,7 +353,7 @@ abstract
 
   ext-ren-extr : ∀ ρ → (` 0) • (ren ρ ⨟ ↑) ≡ ren (extr ρ)
   ext-ren-extr ρ = refl
-  {- REWRITE ext-ren-extr -}
+  -- {-# REWRITE ext-ren-extr #-}
   
   ren-extr-def : ∀ ρ → ren (extr ρ) ≡ ` 0 • (ren ρ ⨟ ↑)
   ren-extr-def ρ = refl

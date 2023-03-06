@@ -18,16 +18,16 @@ module rewriting.examples.SystemF where
 
 
 data TypeOp : Set where
-  op-fun : Op
-  op-all : Op
-  op-nat-ty : Op
+  op-fun : TypeOp
+  op-all : TypeOp
+  op-nat-ty : TypeOp
 
-type-sig : Op → List Sig
+type-sig : TypeOp → List Sig
 type-sig op-fun = ■ ∷ ■ ∷ []
 type-sig op-all = (ν ■) ∷ []
 type-sig op-nat-ty = []
 
-open import rewriting.AbstractBindingTree Op sig renaming (ABT to Type)
+open import rewriting.AbstractBindingTree TypeOp type-sig renaming (ABT to Type)
 
 pattern Nat = op-nat-ty ⦅ nil ⦆
 

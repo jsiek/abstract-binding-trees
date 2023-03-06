@@ -322,6 +322,7 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk = Goal
         with 𝓔M M′ M→M′ (lemma11 k′ _ _ _ eq2
                (≤-trans (≤-trans (m≤n+m _ _) (≤-reflexive (sym eq))) <k)) irM′
     ... | inj₂ refl = inj₂ (frame-blame{𝓥⇒Value L′ 𝓥L′ ·□} L′M′→N refl irN)
+        {---- Subcase:  𝓥⟦ A ⟧ M′  -----}
     ... | inj₁ 𝓥M′
         with 𝓥[A⇒B]⇒ƛN 𝓥L′
     ... | (N′ , refl)
