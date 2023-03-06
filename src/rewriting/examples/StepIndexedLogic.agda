@@ -23,14 +23,14 @@ Setᵒ = ℕ → Set
 ⊥ᵒ zero     =  ⊤
 ⊥ᵒ (suc n)  =  ⊥
 
-_⊎ᵒ_ : Setᵒ → Setᵒ → Setᵒ
-(P ⊎ᵒ Q) n  =  (P n) ⊎ (Q n)
-
 ⊤ᵒ : Setᵒ
 ⊤ᵒ n  =  ⊤
 
 _×ᵒ_ : Setᵒ → Setᵒ → Setᵒ
 (P ×ᵒ Q) n  =  (P n) × (Q n)
+
+_⊎ᵒ_ : Setᵒ → Setᵒ → Setᵒ
+(P ⊎ᵒ Q) n  =  (P n) ⊎ (Q n)
 
 _→ᵒ_ : Setᵒ → Setᵒ → Setᵒ
 (P →ᵒ Q) n  =  ∀ k → k ≤ n → P k → Q k
@@ -58,6 +58,9 @@ ee-⊤ = tt
 ee-× : ∀ {P Q} → ee P → ee Q → ee (P ×ᵒ Q)
 ee-× P0 Q0 = (P0 , Q0)
 
+ee-⊎ : ∀ {P Q} → ee P → ee Q → ee (P ⊎ᵒ Q)
+ee-⊎ P0 Q0  =  inj₁ P0    -- or `inj₂ Q0`
+
 ee-→ : ∀ {P Q} → ee Q → ee (P →ᵒ Q)
 ee-→ Q0 zero z≤n P0 = Q0
 
@@ -77,15 +80,15 @@ dc-⊥ : dc ⊥ᵒ
 dc-⊥ zero tt k z≤n  =   tt
 dc-⊥ (suc n) ()
 
-dc-⊎ : ∀ {P Q} → dc P → dc Q → dc (P ⊎ᵒ Q)
-dc-⊎ dcP dcQ n (inj₁ Pn) k k≤n  =  inj₁ (dcP n Pn k k≤n)
-dc-⊎ dcP dcQ n (inj₂ Qn) k k≤n  =  inj₂ (dcQ n Qn k k≤n)
-
 dc-⊤ : dc ⊤ᵒ
 dc-⊤  =  λ n ⊤ᵒn k k≤n → tt
 
 dc-× : ∀ {P Q} → dc P → dc Q → dc (P ×ᵒ Q)
 dc-× dcP dcQ n (Pn , Qn) k k≤n  =  dcP n Pn k k≤n , dcQ n Qn k k≤n
+
+dc-⊎ : ∀ {P Q} → dc P → dc Q → dc (P ⊎ᵒ Q)
+dc-⊎ dcP dcQ n (inj₁ Pn) k k≤n  =  inj₁ (dcP n Pn k k≤n)
+dc-⊎ dcP dcQ n (inj₂ Qn) k k≤n  =  inj₂ (dcQ n Qn k k≤n)
 
 dc-→ᵒ : ∀ {P Q} → dc P → dc Q → dc (P →ᵒ Q)
 dc-→ᵒ dcP dcQ n [P→ᵒQ]n k k≤n i i≤k Pi = [P→ᵒQ]n i (≤-trans i≤k k≤n) Pi
@@ -105,7 +108,7 @@ record Setₖ : Set₁ where
     val : Setᵒ
     dcl : dc val
     ez : ee val
-open Setₖ
+open Setₖ public
 
 _ₖ : Set → Setₖ
 P ₖ = record { val = (P ᵒ) ; dcl = dc-Pᵒ P ; ez = ee-Pᵒ P }
@@ -120,6 +123,11 @@ _×ₖ_ : Setₖ → Setₖ → Setₖ
 (P ×ₖ Q) = record { val = (val P ×ᵒ val Q)
                   ; dcl = dc-× (dcl P) (dcl Q)
                   ; ez = ee-× {val P}{val Q} (ez P) (ez Q) }
+
+_⊎ₖ_ : Setₖ → Setₖ → Setₖ
+(P ⊎ₖ Q) = record { val = (val P ⊎ᵒ val Q)
+                  ; dcl = dc-⊎ (dcl P) (dcl Q)
+                  ; ez = ee-⊎ {val P}{val Q} (ez P) (ez Q) }
 
 _→ₖ_ : Setₖ → Setₖ → Setₖ
 (P →ₖ Q) = record { val = (λ k → ∀ j → j ≤ k → val P j → val Q j)
@@ -191,6 +199,13 @@ dc-iter-depth i (suc j) (suc k) {A}{F}{x} (≤′-step j≤k) FiterkFi =
              let Fnxk = dc-iter-index{n}{k}{n}{A}{F}{x} k≤n Fnxn in
              dc-iter-depth k k n {F = F}{x = x} (≤⇒≤′ k≤n) Fnxk)
   ; ez = tt }
+
+Lobᵒ : ∀{P : Setᵒ}
+   → (∀ k → (▷ᵒ P) k → P k)
+     ----------------------
+   → ∀ k → P k
+Lobᵒ {P} ▷P→P zero = ▷P→P zero tt
+Lobᵒ {P} ▷P→P (suc k) = ▷P→P (suc k) (Lobᵒ ▷P→P k)
 
 Lob : ∀{P : Setₖ}
    → (∀ k → val (▷ P) k → val P k)
