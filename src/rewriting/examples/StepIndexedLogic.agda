@@ -128,8 +128,8 @@ dc-Pᵒ P n Pn zero k≤n = tt
 dc-Pᵒ P (suc n) Pn (suc k) (s≤s k≤n) = Pn
 
 monotonic : ∀{A} (F : Predᵒ A → Predᵒ A) → Set₁
-monotonic F = ∀ {P}{Q}{x}{i} → ((P x) i → (Q x) i)
-                           → ((F P x) i → (F Q x) i)
+monotonic F = ∀ {P}{Q} → (∀ x i → (P x) i → (Q x) i)
+                       → (∀ x i → (F P x) i → (F Q x) i)
 
 eeᵖ : ∀{A} → Predᵒ A → Set
 eeᵖ P = ∀ x → P x 0
@@ -160,16 +160,17 @@ dc-iter : ∀(i j k : ℕ){A}{F : Predᵒ A → Predᵒ A}{x}
    → iter k F ⊤ᵖ x i
    → monotonic F
    → iter j F ⊤ᵖ x i
-dc-iter i j k j≤k iter-k mF = lemma′ i j k (≤⇒≤′ j≤k) iter-k mF
+dc-iter i j k {A}{F}{x} j≤k iter-k mF = lemma′ i j k (≤⇒≤′ j≤k) iter-k mF
    where
    lemma′ : ∀(i j k : ℕ){A}{F : Predᵒ A → Predᵒ A}{x}
       → j ≤′ k → iter k F ⊤ᵖ x i → monotonic F → iter j F ⊤ᵖ x i
    lemma′ i j .j _≤′_.≤′-refl iter-k mF = iter-k
    lemma′ i zero (suc k) (≤′-step j≤k) iter-k mF = tt
-   lemma′ i (suc j) (suc k) (≤′-step j≤k) iter-k mF =
-     mF (λ Fjxi → lemma′ i j k (≤⇒≤′ (≤-trans (n≤1+n j) (≤′⇒≤ j≤k))) Fjxi mF)
-        iter-k
-
+   lemma′ i (suc j) (suc k) {A}{F}{x} (≤′-step j≤k) iter-k mF =
+     mF (λ x′ i′ iterki′ → lemma′ i′ j k
+           (≤⇒≤′ (≤-trans (n≤1+n j) (≤′⇒≤ j≤k))) iterki′ mF)
+        x i iter-k
+        
 dc-μ : ∀{A}{F : Predᵒ A → Predᵒ A}
    → monotonic F
    → (∀ p → dcᵖ p → dcᵖ (F p))

@@ -60,8 +60,53 @@ pre-𝓥 𝓥 (A ⇒ B , blame) = ⊥ᵒ
 𝓥⟦_⟧ : (A : Type) → Term → Setᵒ
 𝓥⟦ A ⟧ V = μᵖ pre-𝓥 (A , V)
 
+mono-pre-𝓥 : monotonic pre-𝓥
+mono-pre-𝓥 {P} {Q} P→Q (★ , ` x) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q (★ , $ c) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q (★ , L · M) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q (★ , ƛ N) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q (★ , V ⟨ g !⟩) i p𝓥 = P→Q (_ , V) i p𝓥
+mono-pre-𝓥 {P} {Q} P→Q (★ , V ⟨ h ?⟩) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q (★ , blame) i p𝓥 = p𝓥
+
+mono-pre-𝓥 {P} {Q} P→Q ($ₜ ι , ` x) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q ($ₜ ι , $ c) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q ($ₜ ι , L · M) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q ($ₜ ι , ƛ N) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q ($ₜ ι , V ⟨ g !⟩) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q ($ₜ ι , V ⟨ h ?⟩) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q ($ₜ ι , blame) i p𝓥 = p𝓥
+
+mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , ` x) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , $ c) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , L · M) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , ƛ N) i p𝓥 = {!!}
+mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , V ⟨ g !⟩) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , V ⟨ h ?⟩) i p𝓥 = p𝓥
+mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , blame) i p𝓥 = p𝓥
+
+dc-pre-𝓥 :
+     (𝓥 : Type × Term → ℕ → Set)
+   → dcᵖ 𝓥
+   → dcᵖ (pre-𝓥 𝓥)
+dc-pre-𝓥 𝓥 dc𝓥 n (★ , ` x) pre𝓥AMn k k≤n = {!!}
+dc-pre-𝓥 𝓥 dc𝓥 n (★ , $ c) pre𝓥AMn k k≤n = {!!}
+dc-pre-𝓥 𝓥 dc𝓥 n (★ , L · M) pre𝓥AMn k k≤n = {!!}
+dc-pre-𝓥 𝓥 dc𝓥 n (★ , ƛ N) pre𝓥AMn k k≤n = {!!}
+dc-pre-𝓥 𝓥 dc𝓥 n (★ , M ⟨ g !⟩) pre𝓥AMn k k≤n = {!!}
+dc-pre-𝓥 𝓥 dc𝓥 n (★ , M ⟨ h ?⟩) pre𝓥AMn k k≤n = {!!}
+dc-pre-𝓥 𝓥 dc𝓥 n (★ , blame) pre𝓥AMn k k≤n = {!!}
+dc-pre-𝓥 𝓥 dc𝓥 n ($ₜ ι , M) pre𝓥AMn k k≤n = {!!}
+dc-pre-𝓥 𝓥 dc𝓥 n (A ⇒ B , M) pre𝓥AMn k k≤n = {!!}
+
+dc-𝓥 : ∀{A : Type}{V}
+   → dc (𝓥⟦ A ⟧ V)
+dc-𝓥 {A}{V} =
+  let xx = dc-μ {Type × Term}{pre-𝓥} (λ{P}{Q} → mono-pre-𝓥{P}{Q}) {!!} in
+  {!!}
+
 𝓔⟦_⟧ : (A : Type) → Term → Setᵒ
-𝓔⟦ A ⟧ V = ∀ᵒ(λ N → (M —↠ N)ᵒ →ᵒ (irred N)ᵒ →ᵒ (𝓥⟦ A ⟧ N) ⊎ᵒ (N ≡ blame)ᵒ)
+𝓔⟦ A ⟧ M = ∀ᵒ(λ N → (M —↠ N)ᵒ →ᵒ (irred N)ᵒ →ᵒ (𝓥⟦ A ⟧ N) ⊎ᵒ (N ≡ blame)ᵒ)
 
 -- pre-𝓥 : (A : Type) → Term → (Type → Term → Setᵒ) → (Type → Term → Setᵒ) → Setᵒ
 -- pre-𝓥 ★ (op-inject {G} g ⦅ cons (ast V) nil ⦆) ▷𝓥 ▷𝓔 =  ▷𝓥 G V
