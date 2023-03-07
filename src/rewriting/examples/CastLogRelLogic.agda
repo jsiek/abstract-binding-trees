@@ -29,7 +29,8 @@ open import rewriting.examples.Cast
 open import rewriting.examples.StepIndexedLogic
 
 pre-𝓔 : Predᵒ (Type × Term) → Predᵒ (Type × Term)
-pre-𝓔 𝓥 (A , M) = ∀ᵒ(λ N → (M —↠ N)ᵒ →ᵒ (irred N)ᵒ →ᵒ (𝓥 (A , N) ⊎ᵒ (N ≡ blame)ᵒ))
+pre-𝓔 𝓥 (A , M) = ∀ᵒ(λ N → (M —↠ N)ᵒ →ᵒ (irred N)ᵒ
+                      →ᵒ (𝓥 (A , N) ⊎ᵒ (N ≡ blame)ᵒ))
 
 pre-𝓥 : Predᵒ (Type × Term) → Predᵒ (Type × Term)
 pre-𝓥 𝓥 (★ , (op-inject {G} g ⦅ cons (ast V) nil ⦆)) = 𝓥 (G , V)
@@ -80,7 +81,15 @@ mono-pre-𝓥 {P} {Q} P→Q ($ₜ ι , blame) i p𝓥 = p𝓥
 mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , ` x) i p𝓥 = p𝓥
 mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , $ c) i p𝓥 = p𝓥
 mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , L · M) i p𝓥 = p𝓥
-mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , ƛ N) i p𝓥 = {!!}
+mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , ƛ N) i p𝓥 = Goal
+  where
+  Goal : ∀ᵒ (λ W → Q (A , W) →ᵒ pre-𝓔 Q (A , (N [ W ]))) i
+  Goal V k k≤i Qk N′ l l≤k N[V]→N′l m m≤l irNm 
+     with p𝓥 V k k≤i {!!} N′ l l≤k N[V]→N′l m m≤l irNm -- stuck! need Q→P
+  ... | inj₁ PN′ = inj₁ (P→Q (A , N′) m PN′)
+  ... | inj₂ Pblamem = inj₂ Pblamem
+
+  
 mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , V ⟨ g !⟩) i p𝓥 = p𝓥
 mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , V ⟨ h ?⟩) i p𝓥 = p𝓥
 mono-pre-𝓥 {P} {Q} P→Q (A ⇒ B , blame) i p𝓥 = p𝓥
