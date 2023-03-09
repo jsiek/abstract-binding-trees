@@ -14,7 +14,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat
    using (ℕ; zero; suc; _≤_; _<_; _+_; _∸_; z≤n; s≤s; _≤′_; ≤′-step)
 open import Data.Nat.Properties
-   using (≤-refl; ≤-antisym; ≤-trans; ≤-step; ≤⇒≤′; ≤′⇒≤; n≤1+n)
+   using (≤-refl; ≤-antisym; ≤-trans; ≤-step; s≤s-injective; ≤⇒≤′; ≤′⇒≤; n≤1+n)
 open import Data.Product
    using (_×_; _,_; proj₁; proj₂; Σ; ∃; Σ-syntax; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -34,16 +34,18 @@ Setᵒ = ℕ → Set
 ⊤ᵒ : Setᵒ
 ⊤ᵒ n  =  ⊤
 
+infixr 7 _×ᵒ_
 _×ᵒ_ : Setᵒ → Setᵒ → Setᵒ
-(P ×ᵒ Q) n  =  (P n) × (Q n)
+(P ×ᵒ Q) n  = ∀ k → k < n → (P k) × (Q k)
 
 infixr 7 _⊎ᵒ_
 _⊎ᵒ_ : Setᵒ → Setᵒ → Setᵒ
-(P ⊎ᵒ Q) n  =  (P n) ⊎ (Q n)
+(P ⊎ᵒ Q) n  = ∀ k → k < n → (P k) ⊎ (Q k)
 
 infixr 6 _→ᵒ_
 _→ᵒ_ : Setᵒ → Setᵒ → Setᵒ
-(P →ᵒ Q) n  =  ∀ k → k ≤ n → P k → Q k
+(P →ᵒ Q) n  =  ∀ k → k < n → P k → Q k
+    {- k < n so that →ᵒ is wellfounded (and not k ≤ n) -}
 
 ∀ᵒ : ∀{A} → (A → Setᵒ) → Setᵒ
 ∀ᵒ {A} F n = ∀ (v : A) → F v n
@@ -82,6 +84,13 @@ Predᵒ A = A → Setᵒ
 μᵖ : ∀ {A} → (Predᵒ A → Predᵒ A) → Predᵒ A
 (μᵖ F) x k  = iter (suc k) F ⊤ᵖ x k
 
+Lobᵒ : ∀{P : Setᵒ}
+   → (∀ k → (▷ᵒ P) k → P k)
+     ----------------------
+   → ∀ k → P k
+Lobᵒ {P} ▷P→P zero = ▷P→P zero tt
+Lobᵒ {P} ▷P→P (suc k) = ▷P→P (suc k) (Lobᵒ ▷P→P k)
+
 {------------------- Eventually true at 0 --------------------}
 
 ee : Setᵒ → Set
@@ -94,13 +103,13 @@ ee-⊤ : ee ⊤ᵒ
 ee-⊤ = tt
 
 ee-× : ∀ {P Q} → ee P → ee Q → ee (P ×ᵒ Q)
-ee-× P0 Q0 = (P0 , Q0)
+ee-× P0 Q0 k ()
 
 ee-⊎ : ∀ {P Q} → ee P → ee Q → ee (P ⊎ᵒ Q)
-ee-⊎ P0 Q0  =  inj₁ P0    -- or `inj₂ Q0`
+ee-⊎ P0 Q0 k ()
 
-ee-→ : ∀ {P Q} → ee Q → ee (P →ᵒ Q)
-ee-→ Q0 zero z≤n P0 = Q0
+ee-→ : ∀ {P Q} → ee (P →ᵒ Q)
+ee-→ k ()
 
 ee-∀ : ∀{A F}
    → (∀ v → ee (F v))
@@ -142,11 +151,10 @@ dc-⊤ : dc ⊤ᵒ
 dc-⊤  =  λ n ⊤ᵒn k k≤n → tt
 
 dc-× : ∀ {P Q} → dc P → dc Q → dc (P ×ᵒ Q)
-dc-× dcP dcQ n (Pn , Qn) k k≤n  =  dcP n Pn k k≤n , dcQ n Qn k k≤n
+dc-× dcP dcQ n P×Q k x₁ j x₂ = P×Q j (≤-trans x₂ x₁) 
 
 dc-⊎ : ∀ {P Q} → dc P → dc Q → dc (P ⊎ᵒ Q)
-dc-⊎ dcP dcQ n (inj₁ Pn) k k≤n  =  inj₁ (dcP n Pn k k≤n)
-dc-⊎ dcP dcQ n (inj₂ Qn) k k≤n  =  inj₂ (dcQ n Qn k k≤n)
+dc-⊎ dcP dcQ n P⊎Q k x j y = P⊎Q j (≤-trans y x)
 
 dc-→ᵒ : ∀ {P Q} → dc (P →ᵒ Q)
 dc-→ᵒ n [P→ᵒQ]n k k≤n i i≤k Pi = [P→ᵒQ]n i (≤-trans i≤k k≤n) Pi
@@ -272,6 +280,22 @@ S ≡ᵒ T = ∀ i → S i ⇔ T i
 ↓ᵖ : ℕ → ∀{A} → Predᵒ A → Predᵒ A
 ↓ᵖ k P x = ↓ᵒ k (P x)
 
+infixr 7 _×ᵖ_
+_×ᵖ_ : ∀{A} → Predᵒ A → Predᵒ A → Predᵒ A
+(P ×ᵖ Q) v  =  (P v) ×ᵒ (Q v)
+
+infixr 7 _⊎ᵖ_
+_⊎ᵖ_ : ∀{A} → Predᵒ A → Predᵒ A → Predᵒ A
+(P ⊎ᵖ Q) v  =  (P v) ⊎ᵒ (Q v)
+
+infixr 6 _→ᵖ_
+_→ᵖ_ : ∀{A} → Predᵒ A → Predᵒ A → Predᵒ A
+(P →ᵖ Q) v = P v →ᵒ Q v
+
+∀ᵖ : ∀{A : Set}{B} → (A → Predᵒ B) → Predᵒ B
+∀ᵖ {A} F x = ∀ᵒ(λ v → F v x)
+
+infix 2 _≡ᵖ_
 _≡ᵖ_ : ∀{A} → Predᵒ A → Predᵒ A → Set
 P ≡ᵖ Q = ∀ x → P x ≡ᵒ Q x
 
@@ -551,6 +575,205 @@ wellfounded⇒nonexpansive F wfF extF P (suc k) =
     ↓ᵖ (suc k) (F (↓ᵖ (suc k) P))
     QEDᵖ
 
+cong-→ᵖ : ∀{A}{P P′ Q Q′ : Predᵒ A}
+   → P ≡ᵖ P′
+   → Q ≡ᵖ Q′
+   → P →ᵖ Q  ≡ᵖ  P′ →ᵖ Q′
+cong-→ᵖ PP′ QQ′ v k = (λ P→Q j j<k P′vj → let Pvj = proj₂ (PP′ v j) P′vj in
+                                          let Qvj = P→Q j j<k Pvj in
+                                          let Q′vj = proj₁ (QQ′ v j) Qvj in
+                                          Q′vj)
+                   , (λ P′→Q′ j j<k Pvj → let P′vj = proj₁ (PP′ v j) Pvj in
+                                          let Q′vj = P′→Q′ j j<k P′vj in
+                                          let Qvj = proj₂ (QQ′ v j) Q′vj in
+                                          Qvj)
+
+wellfounded-→ : ∀{A}{F G : Predᵒ A → Predᵒ A}
+   → nonexpansive F
+   → nonexpansive G
+   → wellfounded (λ P → F P →ᵖ G P)
+wellfounded-→ {A}{F}{G} neF neG P k =
+    ↓ᵖ (suc k) (F P →ᵖ G P)                              ≡ᵖ⟨ EQ1 ⟩
+    ↓ᵖ (suc k) (↓ᵖ k (F P) →ᵖ ↓ᵖ k (G P))                ≡ᵖ⟨ ext-↓ (suc k) (cong-→ᵖ (neF _ k) (neG _ k)) ⟩
+    ↓ᵖ (suc k) (↓ᵖ k (F (↓ᵖ k P)) →ᵖ ↓ᵖ k (G (↓ᵖ k P)))  ≡ᵖ⟨ ≡ᵖ-sym EQ1 ⟩
+    ↓ᵖ (suc k) (F (↓ᵖ k P) →ᵖ G (↓ᵖ k P))
+    QEDᵖ
+    where
+    EQ1 : ∀{P}{Q}{k} → ↓ᵖ (suc k) (P →ᵖ Q) ≡ᵖ ↓ᵖ (suc k) ((↓ᵖ k P) →ᵖ (↓ᵖ k Q))
+    EQ1 {P}{Q}{k} x i = (λ {(s≤s a , b) → s≤s a , (λ j x₁ x₂ → (≤-trans x₁ a) , b j x₁ (proj₂ x₂))})
+                      , λ {(s≤s a , b) → (s≤s a) , (λ i x₁ x₂ → let xx = b i x₁ ((≤-trans x₁ a) , x₂) in proj₂ xx)}
+
+
+cong-×ᵖ : ∀{A}{P P′ Q Q′ : Predᵒ A}
+   → P ≡ᵖ P′
+   → Q ≡ᵖ Q′
+   → P ×ᵖ Q  ≡ᵖ  P′ ×ᵖ Q′
+cong-×ᵖ PP′ QQ′ v k = (λ {x k₁ x₁ → (proj₁ (PP′ v k₁) (proj₁ (x k₁ x₁)))
+                                  , (proj₁ (QQ′ v k₁) (proj₂ (x k₁ x₁)))})
+                    , (λ {x k₁ x₁ → (proj₂ (PP′ v k₁) (proj₁ (x k₁ x₁)))
+                                  , (proj₂ (QQ′ v k₁) (proj₂ (x k₁ x₁)))})
+
+wellfounded-× : ∀{A}{F G : Predᵒ A → Predᵒ A}
+   → nonexpansive F
+   → nonexpansive G
+   → wellfounded (λ P → F P ×ᵖ G P)
+wellfounded-× {A}{F}{G} neF neG P k =
+    ↓ᵖ (suc k) (F P ×ᵖ G P)                              ≡ᵖ⟨ EQ1 ⟩
+    ↓ᵖ (suc k) (↓ᵖ k (F P) ×ᵖ ↓ᵖ k (G P))                ≡ᵖ⟨ ext-↓ (suc k) (cong-×ᵖ (neF _ k) (neG _ k)) ⟩
+    ↓ᵖ (suc k) (↓ᵖ k (F (↓ᵖ k P)) ×ᵖ ↓ᵖ k (G (↓ᵖ k P)))  ≡ᵖ⟨ ≡ᵖ-sym EQ1 ⟩
+    ↓ᵖ (suc k) (F (↓ᵖ k P) ×ᵖ G (↓ᵖ k P))
+    QEDᵖ
+    where
+    EQ1 : ∀{P}{Q}{k} → ↓ᵖ (suc k) (P ×ᵖ Q) ≡ᵖ ↓ᵖ (suc k) ((↓ᵖ k P) ×ᵖ (↓ᵖ k Q))
+    EQ1 {P}{Q}{k} x i = (λ {(s≤s a , b) → s≤s a , λ j x₁ → (≤-trans x₁ a , (proj₁ (b j x₁))) , (≤-trans x₁ a , (proj₂ (b j x₁)))})
+                      , λ {(s≤s a , b) → (s≤s a) , (λ j x₁ → (proj₂ (proj₁ (b j x₁))) , (proj₂ (proj₂ (b j x₁))))}
+
+cong-⊎ᵖ : ∀{A}{P P′ Q Q′ : Predᵒ A}
+   → P ≡ᵖ P′
+   → Q ≡ᵖ Q′
+   → P ⊎ᵖ Q  ≡ᵖ  P′ ⊎ᵖ Q′
+cong-⊎ᵖ {A}{P}{P′}{Q}{Q′} PP′ QQ′ v k = to , fro
+  where
+  to : (P ⊎ᵖ Q) v k → (P′ ⊎ᵖ Q′) v k
+  to PQ j j<k
+      with PQ j j<k
+  ... | inj₁ Pvj = inj₁ (proj₁ (PP′ v j) Pvj)
+  ... | inj₂ Qvj = inj₂ (proj₁ (QQ′ v j) Qvj)
+  fro : (P′ ⊎ᵖ Q′) v k → (P ⊎ᵖ Q) v k
+  fro PQ′ j j<k
+      with PQ′ j j<k
+  ... | inj₁ P′vj = inj₁ (proj₂ (PP′ v j) P′vj)
+  ... | inj₂ Q′vj = inj₂ (proj₂ (QQ′ v j) Q′vj)
+      
+wellfounded-⊎ : ∀{A}{F G : Predᵒ A → Predᵒ A}
+   → nonexpansive F
+   → nonexpansive G
+   → wellfounded (λ P → F P ⊎ᵖ G P)
+wellfounded-⊎ {A}{F}{G} neF neG P k =
+    ↓ᵖ (suc k) (F P ⊎ᵖ G P)                              ≡ᵖ⟨ EQ1 ⟩
+    ↓ᵖ (suc k) (↓ᵖ k (F P) ⊎ᵖ ↓ᵖ k (G P))                ≡ᵖ⟨ ext-↓ (suc k) (cong-⊎ᵖ (neF _ k) (neG _ k)) ⟩
+    ↓ᵖ (suc k) (↓ᵖ k (F (↓ᵖ k P)) ⊎ᵖ ↓ᵖ k (G (↓ᵖ k P)))  ≡ᵖ⟨ ≡ᵖ-sym EQ1 ⟩
+    ↓ᵖ (suc k) (F (↓ᵖ k P) ⊎ᵖ G (↓ᵖ k P))
+    QEDᵖ
+    where
+    to : ∀{P}{Q}{k} → (x : A) (i : ℕ) → ↓ᵖ (suc k) (P ⊎ᵖ Q) x i → ↓ᵖ (suc k) (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q) x i
+    to {P} {Q} {k} x i (s≤s i≤k , P⊎Q) = s≤s i≤k , Goal
+        where
+        Goal : (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q) x i
+        Goal j j<i
+            with P⊎Q j j<i
+        ... | inj₁ Pj = inj₁ ((≤-trans j<i i≤k) , Pj)
+        ... | inj₂ Qj = inj₂ (≤-trans j<i i≤k , Qj)
+
+    fro : ∀{P}{Q}{k} → (x : A) (i : ℕ) → ↓ᵖ (suc k) (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q) x i → ↓ᵖ (suc k) (P ⊎ᵖ Q) x i
+    fro {P} {Q} {k} x i (s≤s i≤k , P⊎Q) = s≤s i≤k , Goal
+        where
+        Goal : (P ⊎ᵖ Q) x i
+        Goal j j<i
+            with P⊎Q j j<i
+        ... | inj₁ Pj = inj₁ (proj₂ Pj)
+        ... | inj₂ Qj = inj₂ (proj₂ Qj)
+
+    EQ1 : ∀{P}{Q}{k} → ↓ᵖ (suc k) (P ⊎ᵖ Q) ≡ᵖ ↓ᵖ (suc k) ((↓ᵖ k P) ⊎ᵖ (↓ᵖ k Q))
+    EQ1 {P}{Q}{k} x i = to{P}{Q} x i , fro{P}{Q} x i
+
+extensional-id : ∀{A} → extensionalᵖ{A} (λ P → P)
+extensional-id {A} PQ x i = proj₁ (PQ x i) , proj₂ (PQ x i)
+
+extensional-→ : ∀{A}{F G : Predᵒ A → Predᵒ A}
+   → extensionalᵖ{A} F
+   → extensionalᵖ{A} G
+   → extensionalᵖ{A} (λ P → F P →ᵖ G P)
+extensional-→ {A} extF extG PQ x i =
+  (λ FP→GP k x₂ x₃ → proj₁ (extG PQ x k) (FP→GP k x₂ (proj₂ (extF PQ x k) x₃)))
+  , (λ z k z₁ z₂ → proj₂ (extG PQ x k) (z k z₁ (proj₁ (extF PQ x k) z₂)))
+
+extensional-× : ∀{A}{F G : Predᵒ A → Predᵒ A}
+   → extensionalᵖ{A} F
+   → extensionalᵖ{A} G
+   → extensionalᵖ{A} (λ P → F P ×ᵖ G P)
+extensional-× {A} extF extG PQ x i =
+  (λ x₁ k x₂ → (proj₁ (extF PQ x k) (proj₁ (x₁ k x₂)))
+             , (proj₁ (extG PQ x k) (proj₂ (x₁ k x₂))))
+  , (λ x₁ k x₂ → (proj₂ (extF PQ x k) (proj₁ (x₁ k x₂)))
+               , (proj₂ (extG PQ x k) (proj₂ (x₁ k x₂))))
+
+extensional-⊎ : ∀{A}{F G : Predᵒ A → Predᵒ A}
+   → extensionalᵖ{A} F
+   → extensionalᵖ{A} G
+   → extensionalᵖ{A} (λ P → F P ⊎ᵖ G P)
+extensional-⊎ {A}{F}{G} extF extG {P}{Q} PQ x i = to , fro
+  where
+  to : (F P ⊎ᵖ G P) x i → (F Q ⊎ᵖ G Q) x i
+  to FP⊎GP k k<i
+      with FP⊎GP k k<i
+  ... | inj₁ FP = inj₁ (proj₁ (extF PQ x k) FP)
+  ... | inj₂ GP = inj₂ (proj₁ (extG PQ x k) GP)
+
+  fro : (F Q ⊎ᵖ G Q) x i → (F P ⊎ᵖ G P) x i
+  fro FP⊎GP k k<i
+      with FP⊎GP k k<i
+  ... | inj₁ FP = inj₁ (proj₂ (extF PQ x k) FP)
+  ... | inj₂ GP = inj₂ (proj₂ (extG PQ x k) GP)
+
+
+{-------------------------------------------------------------------------------
+     Step Indexed Logic
+-------------------------------------------------------------------------------}
+
+record NE (A : Set) : Set₁ where
+  field
+    fun : Predᵒ A → Predᵒ A
+    ne : nonexpansive fun
+    ext : extensionalᵖ fun
+open NE
+
+record WF (A : Set) : Set₁ where
+  field
+    fun : Predᵒ A → Predᵒ A
+    wf : wellfounded fun
+    ext : extensionalᵖ fun
+open WF
+
+idₖ : ∀{A} → NE A
+idₖ = record { fun = λ P → P ; ne = nonexpansive-id ; ext = extensional-id }
+
+infixr 6 _→ₖ_
+_→ₖ_ : ∀{A} → NE A → NE A → WF A
+F →ₖ G = record { fun = λ P → (fun F) P →ᵖ (fun G) P
+                ; wf = wellfounded-→ (ne F) (ne G)
+                ; ext = extensional-→ (ext F) (ext G) }
+
+infixr 7 _×ₖ_
+_×ₖ_ : ∀{A} → NE A → NE A → WF A
+(F ×ₖ G) = record { fun = (λ P → (fun F) P ×ᵖ (fun G) P)
+                  ; wf = wellfounded-× (ne F) (ne G)
+                  ; ext = extensional-× (ext F) (ext G) }
+
+infixr 7 _⊎ₖ_
+_⊎ₖ_ : ∀{A} → NE A → NE A → WF A
+(F ⊎ₖ G) = record { fun = (λ P → (fun F) P ⊎ᵖ (fun G) P)
+                  ; wf = wellfounded-⊎ (ne F) (ne G)
+                  ; ext = extensional-⊎ (ext F) (ext G) }
+
+WF⇒NE : ∀{A} → WF A → NE A
+WF⇒NE F = record { fun = fun F
+                 ; ne = wellfounded⇒nonexpansive (fun F) (wf F) (ext F)
+                 ; ext = ext F }
+
+_ₖ : ∀{A} → Predᵒ A → NE A
+(P)ₖ = record { fun = λ Q → P
+              ; ne = nonexpansive-const{P = P}
+              ; ext = λ _ x i → (λ x₁ → x₁) , (λ x₁ → x₁) }
+
+μₖ : ∀{A} → WF A → Predᵒ A
+μₖ F = μᵖ (fun F)
+
+fixpoint  : ∀{A}
+  → (F : WF A)
+  → μₖ F ≡ᵖ fun F (μₖ F)
+fixpoint F = theorem20 (fun F) (wf F) (ext F)
+
 
 
 {------------------- Monotonic --------------------}
@@ -578,110 +801,105 @@ Goal: G Q x k
   Experiment: attach all the good properties
  ------------------------------------------------------------------------------}
 
-record Setₖ : Set₁ where
-  field
-    val : Setᵒ
-    dcl : dc val
-    ez : ee val
-open Setₖ public
+-- record Setₖ : Set₁ where
+--   field
+--     val : Setᵒ
+--     dcl : dc val
+--     ez : ee val
+-- open Setₖ public
 
-_ₖ : Set → Setₖ
-P ₖ = record { val = (P ᵒ) ; dcl = dc-Pᵒ P ; ez = ee-Pᵒ P }
+-- _ₖ : Set → Setₖ
+-- P ₖ = record { val = (P ᵒ) ; dcl = dc-Pᵒ P ; ez = ee-Pᵒ P }
 
-⊥ₖ : Setₖ
-⊥ₖ = record { val = ⊥ᵒ ; dcl = dc-⊥ ; ez = ee-⊥ }
+-- ⊥ₖ : Setₖ
+-- ⊥ₖ = record { val = ⊥ᵒ ; dcl = dc-⊥ ; ez = ee-⊥ }
 
-⊤ₖ : Setₖ
-⊤ₖ  = record { val = ⊤ᵒ ; dcl = dc-⊤ ; ez = ee-⊤ }
+-- ⊤ₖ : Setₖ
+-- ⊤ₖ  = record { val = ⊤ᵒ ; dcl = dc-⊤ ; ez = ee-⊤ }
 
-_×ₖ_ : Setₖ → Setₖ → Setₖ
-(P ×ₖ Q) = record { val = (val P ×ᵒ val Q)
-                  ; dcl = dc-× (dcl P) (dcl Q)
-                  ; ez = ee-× {val P}{val Q} (ez P) (ez Q) }
+-- _×ₖ_ : Setₖ → Setₖ → Setₖ
+-- (P ×ₖ Q) = record { val = (val P ×ᵒ val Q)
+--                   ; dcl = dc-× (dcl P) (dcl Q)
+--                   ; ez = ee-× {val P}{val Q} (ez P) (ez Q) }
 
-_⊎ₖ_ : Setₖ → Setₖ → Setₖ
-(P ⊎ₖ Q) = record { val = (val P ⊎ᵒ val Q)
-                  ; dcl = dc-⊎ (dcl P) (dcl Q)
-                  ; ez = ee-⊎ {val P}{val Q} (ez P) (ez Q) }
+-- _⊎ₖ_ : Setₖ → Setₖ → Setₖ
+-- (P ⊎ₖ Q) = record { val = (val P ⊎ᵒ val Q)
+--                   ; dcl = dc-⊎ (dcl P) (dcl Q)
+--                   ; ez = ee-⊎ {val P}{val Q} (ez P) (ez Q) }
 
-_→ₖ_ : Setₖ → Setₖ → Setₖ
-(P →ₖ Q) = record { val = (λ k → ∀ j → j ≤ k → val P j → val Q j)
-                  ; dcl = dc-→ᵒ 
-                  ; ez = (ee-→ (ez Q)) }
+-- _→ₖ_ : Setₖ → Setₖ → Setₖ
+-- (P →ₖ Q) = record { val = (λ k → ∀ j → j < k → val P j → val Q j)
+--                   ; dcl = dc-→ᵒ
+--                   ; ez = ee-→
+--                   }
 
-∀ₖ : ∀{A} → (A → Setₖ) → Setₖ
-∀ₖ {A} P = record { val = (λ k → ∀ (v : A) → val (P v) k)
-                  ; dcl = (λ n f k k≤n v → dcl (P v) n (f v) k k≤n)
-                  ; ez = ee-∀ {F = λ x → val (P x)} λ v → ez (P v) }
+-- ∀ₖ : ∀{A} → (A → Setₖ) → Setₖ
+-- ∀ₖ {A} P = record { val = (λ k → ∀ (v : A) → val (P v) k)
+--                   ; dcl = (λ n f k k≤n v → dcl (P v) n (f v) k k≤n)
+--                   ; ez = ee-∀ {F = λ x → val (P x)} λ v → ez (P v) }
 
-▷_ : Setₖ → Setₖ
-▷ P = record { val = ▷ᵒ (val P) ; dcl = G ; ez = H }
-  where
-  G : dc (▷ᵒ (val P))
-  G n x zero k≤n = tt
-  G (suc n) Pn (suc k) (s≤s k≤n) = (dcl P) n Pn k k≤n
+-- ▷_ : Setₖ → Setₖ
+-- ▷ P = record { val = ▷ᵒ (val P) ; dcl = G ; ez = H }
+--   where
+--   G : dc (▷ᵒ (val P))
+--   G n x zero k≤n = tt
+--   G (suc n) Pn (suc k) (s≤s k≤n) = (dcl P) n Pn k k≤n
 
-  H : ee (▷ᵒ (val P))
-  H = tt
+--   H : ee (▷ᵒ (val P))
+--   H = tt
 
-Predₖ : Set → Set₁
-Predₖ A = A → Setₖ
+-- Predₖ : Set → Set₁
+-- Predₖ A = A → Setₖ
 
-⊤ᴾ : ∀{A} → Predₖ A
-⊤ᴾ x = ⊤ₖ
+-- ⊤ᴾ : ∀{A} → Predₖ A
+-- ⊤ᴾ x = ⊤ₖ
 
-⊥ᴾ : ∀{A} → Predₖ A
-⊥ᴾ x = ⊥ₖ
+-- ⊥ᴾ : ∀{A} → Predₖ A
+-- ⊥ᴾ x = ⊥ₖ
 
-monotonicₖ : ∀{A} (F : Predₖ A → Predₖ A) → Set₁
-monotonicₖ F = ∀ P Q x i → (val (P x) i → val (Q x) i)
-                        → (val (F P x) i → val (F Q x) i)
+-- monotonicₖ : ∀{A} (F : Predₖ A → Predₖ A) → Set₁
+-- monotonicₖ F = ∀ P Q x i → (val (P x) i → val (Q x) i)
+--                         → (val (F P x) i → val (F Q x) i)
 
-record Functional (A : Set) : Set₁ where
-  field
-    fun : Predₖ A → Predₖ A
-    mono : monotonicₖ fun
-open Functional    
+-- record Functional (A : Set) : Set₁ where
+--   field
+--     fun : Predₖ A → Predₖ A
+--     mono : monotonicₖ fun
+-- open Functional    
 
--- dc-iter-index : ∀{i j k : ℕ}{A}{F : Functional A}{x : A}
---    → j ≤ k
---    → val (iter i (fun F) ⊤ᴾ x) k
---    → val (iter i (fun F) ⊤ᴾ x) j
--- dc-iter-index {zero} {j} {k} j≤k iterFk = tt
--- dc-iter-index {suc i} {j} {k}{A}{F}{x} j≤k iterFk =
---    let dcF = dcl (fun F (iter i (fun F) ⊤ᴾ) x) in
---    dcF k iterFk j j≤k
+-- -- dc-iter-index : ∀{i j k : ℕ}{A}{F : Functional A}{x : A}
+-- --    → j ≤ k
+-- --    → val (iter i (fun F) ⊤ᴾ x) k
+-- --    → val (iter i (fun F) ⊤ᴾ x) j
+-- -- dc-iter-index {zero} {j} {k} j≤k iterFk = tt
+-- -- dc-iter-index {suc i} {j} {k}{A}{F}{x} j≤k iterFk =
+-- --    let dcF = dcl (fun F (iter i (fun F) ⊤ᴾ) x) in
+-- --    dcF k iterFk j j≤k
 
--- dc-iter-depth : ∀(i j k : ℕ){A}{F : Functional A}{x : A}
---    → j ≤′ k
---    → val (iter k (fun F) ⊤ᴾ x) i
---    → val (iter j (fun F) ⊤ᴾ x) i
--- dc-iter-depth i j .j _≤′_.≤′-refl iterkF = iterkF
--- dc-iter-depth i zero (suc k) (≤′-step j≤k) iterkF = tt
--- dc-iter-depth i (suc j) (suc k) {A}{F}{x} (≤′-step j≤k) FiterkFi =
---   mono F (iter k (fun F) ⊤ᴾ) (iter j (fun F) ⊤ᴾ) x i
---                   (λ iterkFi → dc-iter-depth i j k {A}{F}
---                       (≤⇒≤′ (≤-trans (n≤1+n _) (≤′⇒≤ j≤k))) iterkFi) FiterkFi
+-- -- dc-iter-depth : ∀(i j k : ℕ){A}{F : Functional A}{x : A}
+-- --    → j ≤′ k
+-- --    → val (iter k (fun F) ⊤ᴾ x) i
+-- --    → val (iter j (fun F) ⊤ᴾ x) i
+-- -- dc-iter-depth i j .j _≤′_.≤′-refl iterkF = iterkF
+-- -- dc-iter-depth i zero (suc k) (≤′-step j≤k) iterkF = tt
+-- -- dc-iter-depth i (suc j) (suc k) {A}{F}{x} (≤′-step j≤k) FiterkFi =
+-- --   mono F (iter k (fun F) ⊤ᴾ) (iter j (fun F) ⊤ᴾ) x i
+-- --                   (λ iterkFi → dc-iter-depth i j k {A}{F}
+-- --                       (≤⇒≤′ (≤-trans (n≤1+n _) (≤′⇒≤ j≤k))) iterkFi) FiterkFi
 
--- μᴾ : ∀{A} → (F : Functional A) → Predₖ A
--- (μᴾ {A} F) x = record
---   { val = (λ k → val (iter k (fun F) ⊤ᴾ x) k) 
---   ; dcl = (λ n Fnxn k k≤n →
---              let Fnxk = dc-iter-index{n}{k}{n}{A}{F}{x} k≤n Fnxn in
---              dc-iter-depth k k n {F = F}{x = x} (≤⇒≤′ k≤n) Fnxk)
---   ; ez = tt }
+-- -- μᴾ : ∀{A} → (F : Functional A) → Predₖ A
+-- -- (μᴾ {A} F) x = record
+-- --   { val = (λ k → val (iter k (fun F) ⊤ᴾ x) k) 
+-- --   ; dcl = (λ n Fnxn k k≤n →
+-- --              let Fnxk = dc-iter-index{n}{k}{n}{A}{F}{x} k≤n Fnxn in
+-- --              dc-iter-depth k k n {F = F}{x = x} (≤⇒≤′ k≤n) Fnxk)
+-- --   ; ez = tt }
 
-Lobᵒ : ∀{P : Setᵒ}
-   → (∀ k → (▷ᵒ P) k → P k)
-     ----------------------
-   → ∀ k → P k
-Lobᵒ {P} ▷P→P zero = ▷P→P zero tt
-Lobᵒ {P} ▷P→P (suc k) = ▷P→P (suc k) (Lobᵒ ▷P→P k)
 
-Lob : ∀{P : Setₖ}
-   → (∀ k → val (▷ P) k → val P k)
-     -----------------------------
-   → ∀ k → val P k
-Lob ▷P→P zero = ▷P→P zero tt
-Lob {P} ▷P→P (suc k) = ▷P→P (suc k) (Lob{P} ▷P→P k)
+-- Lob : ∀{P : Setₖ}
+--    → (∀ k → val (▷ P) k → val P k)
+--      -----------------------------
+--    → ∀ k → val P k
+-- Lob ▷P→P zero = ▷P→P zero tt
+-- Lob {P} ▷P→P (suc k) = ▷P→P (suc k) (Lob{P} ▷P→P k)
 
