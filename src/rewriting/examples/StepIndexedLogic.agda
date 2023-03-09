@@ -3,6 +3,9 @@
 {-
  Based on the development of Logical step-indexed logical relation
  by Philip Wadler (June 1, 2022)
+
+ Also based on "An Indexed Model of Recursive Types"
+ by Appel and McAllester.
 -}
 module rewriting.examples.StepIndexedLogic where
 
@@ -158,8 +161,41 @@ dc-Pᵒ : (P : Set)
 dc-Pᵒ P n Pn zero k≤n = tt
 dc-Pᵒ P (suc n) Pn (suc k) (s≤s k≤n) = Pn
 
-_iff_ : Set → Set → Set
-P iff Q = (P → Q) × (Q → P)
+_⇔_ : Set → Set → Set
+P ⇔ Q = (P → Q) × (Q → P)
+
+⇔-trans : ∀{P Q R : Set}
+  → P ⇔ Q
+  → Q ⇔ R
+    ------
+  → P ⇔ R
+⇔-trans PQ QR =
+    (λ z → proj₁ QR (proj₁ PQ z)) , (λ z → proj₂ PQ (proj₂ QR z))  
+
+infixr 2 _⇔⟨_⟩_
+infix  3 _QED
+  
+_⇔⟨_⟩_ : 
+    (P : Set)
+  → ∀{Q} → P ⇔ Q
+  → ∀{R} → Q ⇔ R
+    -------------
+  → P ⇔ R
+P ⇔⟨ PQ ⟩ QR = ⇔-trans PQ QR
+
+_QED :
+    (P : Set)
+    ---------
+  → P ⇔ P
+P QED = (λ x → x) , (λ x → x)
+
+×-cong-⇔ : ∀{S S′ T T′}
+   → S ⇔ S′
+   → T ⇔ T′
+     -------------------
+   → (S × T) ⇔ (S′ × T′)
+×-cong-⇔ SS′ TT′ = (λ x → (proj₁ SS′ (proj₁ x)) , (proj₁ TT′ (proj₂ x)))
+                  , (λ x → (proj₂ SS′ (proj₁ x)) , (proj₂ TT′ (proj₂ x)))
 
 monotonic : ∀{A} (F : Predᵒ A → Predᵒ A) → Set₁
 monotonic F = ∀ {P}{Q} → (∀ x i → (P x) i → (Q x) i)
@@ -214,7 +250,7 @@ dc-iter i {A}{F}{x} mf k Fki j j≤k = lemma′ i j k mf (≤⇒≤′ j≤k) Fk
 ↓ᵒ k S j = j < k  ×  S j
 
 _≡ᵒ_ : Setᵒ → Setᵒ → Set
-S ≡ᵒ T = ∀ i → S i iff T i
+S ≡ᵒ T = ∀ i → S i ⇔ T i
 
 ≡ᵒ-refl : ∀{S T : Setᵒ}
   → S ≡ T
@@ -255,6 +291,21 @@ P ≡ᵖ Q = ∀ x → P x ≡ᵒ Q x
   → P ≡ᵖ R
 ≡ᵖ-trans{A}{P}{Q}{R} PQ QP x = ≡ᵒ-trans{T = Q x} (PQ x) (QP x)
 
+infixr 2 _≡ᵖ⟨_⟩_
+infix  3 _QEDᵖ
+  
+_≡ᵖ⟨_⟩_ : ∀{A}
+  → (P : Predᵒ A)
+  → ∀{Q} → P ≡ᵖ Q
+  → ∀{R} → Q ≡ᵖ R
+  → P ≡ᵖ R
+P ≡ᵖ⟨ P≡Q ⟩ Q≡R = ≡ᵖ-trans P≡Q Q≡R
+
+_QEDᵖ : ∀{A}
+  → (P : Predᵒ A)
+  → P ≡ᵖ P
+P QEDᵖ = ≡ᵖ-refl refl
+
 extensionalᵖ : ∀{A} (F : Predᵒ A → Predᵒ A) → Set₁
 extensionalᵖ F = ∀{P}{Q} → P ≡ᵖ Q → F P ≡ᵖ F Q
 
@@ -271,8 +322,10 @@ ext-↓ k PQ x i = (λ { (fst , snd) → fst , proj₁ (PQ x i) snd})
                 , λ { (fst , snd) → fst , proj₂ (PQ x i) snd}
 
 {-
-  Only need k on input to get k on output.
-  Related to continuity.
+
+Nonexpansive means that you only need k steps of the input to get k
+steps of the output. This is related to continuity.
+
 -}
 nonexpansive : ∀{A} → (Predᵒ A → Predᵒ A) → Set₁
 nonexpansive F = ∀ P k → (↓ᵖ k (F P)) ≡ᵖ (↓ᵖ k (F (↓ᵖ k P)))
@@ -280,9 +333,67 @@ nonexpansive F = ∀ P k → (↓ᵖ k (F P)) ≡ᵖ (↓ᵖ k (F (↓ᵖ k P)))
 wellfounded : ∀{A} → (Predᵒ A → Predᵒ A) → Set₁
 wellfounded F = ∀ P k → (↓ᵖ (suc k) (F P)) ≡ᵖ (↓ᵖ (suc k) (F (↓ᵖ k P)))
 
+down-eq : ∀{A}{P : Predᵒ A}{x}
+   → (i : ℕ)
+   → (↓ᵖ (suc i) P x i) ⇔ (P x i)
+down-eq {A}{P}{x} zero = (λ x₁ → proj₂ x₁) , (λ x₁ → s≤s z≤n , x₁)
+down-eq {A}{P}{x} (suc i) = (λ x₁ → proj₂ x₁) , (λ x₁ → s≤s (s≤s ≤-refl) , x₁)
+
+equiv-down : ∀{A}{P Q : Predᵒ A}
+   → (∀ k → ↓ᵖ k P ≡ᵖ ↓ᵖ k Q)
+   → P ≡ᵖ Q
+equiv-down{A}{P}{Q} dPQ x i =
+    (λ Pxi → let dP→dQ = proj₁ (dPQ (suc i) x i) in
+             let dQ = dP→dQ (proj₂ (down-eq{A}{P} i) Pxi) in
+             let Qxi = proj₁ (down-eq{A}{Q} i) dQ in
+             Qxi)
+   , (λ Qxi → let dQ→dP = proj₂ (dPQ (suc i) x i) in
+             let dP = dQ→dP (proj₂ (down-eq{A}{Q} i) Qxi) in
+             let Pxi = proj₁ (down-eq{A}{P} i) dP in
+             Pxi)
+
+down-equiv : ∀{A}{P Q : Predᵒ A}
+  → P ≡ᵖ Q
+  → (∀ k → ↓ᵖ k P ≡ᵖ ↓ᵖ k Q)
+down-equiv P≡Q k x i = (λ { (fst , snd) → fst , proj₁ (P≡Q x i) snd})
+    , λ { (fst , snd) → fst , proj₂ (P≡Q x i) snd}
+
 {-
   Does wellfounded imply extensional?
+  I don't think so.
 -}
+-- wff⇒ext : ∀{A}
+--    → (F : Predᵒ A → Predᵒ A)
+--    → wellfounded F
+--    → extensionalᵖ F
+-- wff⇒ext{A} F wfF {P}{Q} P≡Q = equiv-down {!!}
+--   where
+--   Goal : (k : ℕ) → ↓ᵖ k (F P) ≡ᵖ ↓ᵖ k (F Q)
+--   Goal zero x i = (λ { ()}) , λ { ()}
+--   Goal (suc k) = {!!}
+--     where
+--     IH : ↓ᵖ k (F P) ≡ᵖ ↓ᵖ k (F Q)
+--     IH = Goal k
+--     X : ↓ᵖ (suc k) (F P) ≡ᵖ ↓ᵖ (suc k) (F (↓ᵖ k P))
+--     X = wfF P k
+--     Ya : (↓ᵖ k P) ≡ᵖ (↓ᵖ k Q)
+--     Ya = down-equiv P≡Q k
+--     Y : ↓ᵖ (suc k) (F (↓ᵖ k P)) ≡ᵖ ↓ᵖ (suc k) (F (↓ᵖ k Q))
+--     Y = {!!}
+
+  {- wellfounded F = ∀ P k → (↓ᵖ (suc k) (F P)) ≡ᵖ (↓ᵖ (suc k) (F (↓ᵖ k P)))
+  
+    ↓ᵖ (suc k) (F P)
+    =  wfF
+    (↓ᵖ (suc k) (F (↓ᵖ k P)))
+    = doh, need extensionality for this step
+    (↓ᵖ (suc k) (F (↓ᵖ k Q)))
+    = wfF
+    ↓ᵖ (suc k) (F Q)
+
+   Goal: ↓ᵖ (suc k) (F P) ≡ᵖ ↓ᵖ (suc k) (F Q)
+   -}
+
 
 lemma15a : ∀{A}{P Q : Predᵒ A}{j}
   → (F : Predᵒ A → Predᵒ A)
@@ -291,19 +402,14 @@ lemma15a : ∀{A}{P Q : Predᵒ A}{j}
   → ↓ᵖ j (iter j F P) ≡ᵖ ↓ᵖ j (iter j F Q)
 lemma15a {A} {P} {Q} {zero} F wfF extF x i = (λ { ()}) , λ { ()}
 lemma15a {A} {P} {Q} {suc j} F wfF extF =
-  ≡ᵖ-trans X (≡ᵖ-trans Y Z)
-  where
-  X : ↓ᵖ (suc j) (F (iter j F P))
-       ≡ᵖ ↓ᵖ (suc j) (F (↓ᵖ j (iter j F P)))
-  X = wfF (iter j F P) j 
-  IH : ↓ᵖ j (iter j F P) ≡ᵖ ↓ᵖ j (iter j F Q)
-  IH = lemma15a{A}{P}{Q} {j = j} F wfF extF
-  Y : ↓ᵖ (suc j) (F (↓ᵖ j (iter j F P)))
-       ≡ᵖ ↓ᵖ (suc j) (F (↓ᵖ j (iter j F Q)))
-  Y = ext-↓ {A} (suc j) (extF IH)
-  Z : ↓ᵖ (suc j) (F (↓ᵖ j (iter j F Q)))
-      ≡ᵖ ↓ᵖ (suc j) (F (iter j F Q))
-  Z = ≡ᵖ-sym (wfF (iter j F Q) j)
+    ↓ᵖ (suc j) (F (iter j F P))
+  ≡ᵖ⟨ wfF (iter j F P) j  ⟩ 
+    ↓ᵖ (suc j) (F (↓ᵖ j (iter j F P)))
+  ≡ᵖ⟨ ext-↓ {A} (suc j) (extF (lemma15a{A}{P}{Q} {j = j} F wfF extF)) ⟩
+    ↓ᵖ (suc j) (F (↓ᵖ j (iter j F Q)))
+  ≡ᵖ⟨ ≡ᵖ-sym (wfF (iter j F Q) j) ⟩
+    ↓ᵖ (suc j) (F (iter j F Q))
+  QEDᵖ
 
 lemma15b : ∀{A}{P : Predᵒ A}{j k}
   → (F : Predᵒ A → Predᵒ A)
@@ -344,7 +450,109 @@ dc-μ {A}{F} wfF extF dcF k v μFvk j j≤k = T
        in substᵖ (≡ᵖ-sym eq) j Z
    T : (iter (suc j) F ⊤ᵖ) v j
    T = proj₂ W
-   
+
+{- ↓ᵖ is idempotent -}
+lemma17 : ∀{A}{P : Predᵒ A}
+   → (k : ℕ)
+   → ↓ᵖ k (↓ᵖ (suc k) P) ≡ᵖ ↓ᵖ k P
+lemma17{A}{P} k x i =
+    (λ { (fst , snd) → fst , proj₂ snd})
+    , λ { (fst , snd) → fst , ((≤-trans fst (n≤1+n k)) , snd)}
+
+lemma18a : ∀{A}
+   → (k : ℕ)
+   → (F : Predᵒ A → Predᵒ A)
+   → wellfounded F
+   → extensionalᵖ F
+   → ↓ᵖ k (μᵖ F) ≡ᵖ ↓ᵖ k (iter k F ⊤ᵖ)
+lemma18a zero F wfF extF x i = (λ { (() , b)}) , (λ { (() , b)})
+lemma18a (suc k′) F wfF extF v j =
+      let k = suc k′ in
+      ↓ᵖ k (μᵖ F) v j                                ⇔⟨ EQ1 ⟩ 
+      (j < k  ×  μᵖ F v j)                           ⇔⟨ EQ2 ⟩ 
+      (j < k  ×  iter (suc j) F ⊤ᵖ v j)              ⇔⟨ EQ3 ⟩ 
+      (j < k  ×  ↓ᵖ (suc j) (iter (suc j) F ⊤ᵖ) v j) ⇔⟨ EQ4 ⟩
+      (j < k  ×  ↓ᵖ (suc j) (iter k F ⊤ᵖ) v j)       ⇔⟨ EQ5 ⟩
+      (j < k  ×  iter k F ⊤ᵖ v j)                    ⇔⟨ EQ6 ⟩ 
+      ↓ᵖ k (iter k F ⊤ᵖ) v j
+    QED
+    where
+      EQ1 = (λ {(a , b) → a , b}) , (λ {(a , b) → a , b})
+      EQ2 = (λ {(a , b) → a , b}) , (λ {(a , b) → a , b})
+      EQ3 = (λ {(a , b) → a , ≤-refl , b})
+          , (λ {(s≤s a , (b , c)) → s≤s a , c})
+      EQ4 = (λ{(a , b) → a ,
+              proj₁ (lemma15b {j = suc j}{k = suc k′} F wfF extF a v j) b})
+          , (λ{(a , b) → a ,
+              proj₂ (lemma15b {j = suc j}{k = suc k′} F wfF extF a v j) b})
+      EQ5 = (λ {(a , b) → a , (proj₂ b)}) , λ {(a , b) → a , (≤-refl , b)}
+      EQ6 = (λ {(a , b) → a , b}) , λ z → z
+
+lemma18b : ∀{A}
+   → (k : ℕ)
+   → (F : Predᵒ A → Predᵒ A)
+   → wellfounded F
+   → extensionalᵖ F
+   → ↓ᵖ (suc k) (F (μᵖ F)) ≡ᵖ ↓ᵖ (suc k) (iter (suc k) F ⊤ᵖ)
+lemma18b {A} k F wfF extF =
+      ↓ᵖ (suc k) (F (μᵖ F))                ≡ᵖ⟨ wfF _ k ⟩
+      ↓ᵖ (suc k) (F (↓ᵖ k (μᵖ F)))         ≡ᵖ⟨ ext-↓ (suc k)
+                                               (extF (lemma18a k F wfF extF)) ⟩
+      ↓ᵖ (suc k) (F (↓ᵖ k (iter k F ⊤ᵖ)))  ≡ᵖ⟨ ≡ᵖ-sym (wfF _ k) ⟩
+      ↓ᵖ (suc k) (F (iter k F ⊤ᵖ))         ≡ᵖ⟨ ≡ᵖ-refl refl ⟩
+      ↓ᵖ (suc k) (iter (suc k) F ⊤ᵖ)
+    QEDᵖ
+
+lemma19 : ∀{A}
+   → (k : ℕ)
+   → (F : Predᵒ A → Predᵒ A)
+   → wellfounded F
+   → extensionalᵖ F
+   → ↓ᵖ k (μᵖ F) ≡ᵖ ↓ᵖ k (F (μᵖ F))
+lemma19 {A} k F wfF extF =
+      ↓ᵖ k (μᵖ F)                    ≡ᵖ⟨ lemma18a k F wfF extF ⟩
+      ↓ᵖ k (iter k F ⊤ᵖ)             ≡ᵖ⟨ lemma15b{j = k}{suc k} F wfF extF
+                                              (n≤1+n k) ⟩
+      ↓ᵖ k (iter (suc k) F ⊤ᵖ)              ≡ᵖ⟨ ≡ᵖ-sym (lemma17 {P = iter (suc k) F ⊤ᵖ} k) ⟩
+      ↓ᵖ k (↓ᵖ (suc k) (iter (suc k) F ⊤ᵖ)) ≡ᵖ⟨ ext-↓ k (≡ᵖ-sym (lemma18b k F wfF extF)) ⟩
+      ↓ᵖ k (↓ᵖ (suc k) (F (μᵖ F)))          ≡ᵖ⟨ lemma17 k ⟩
+      ↓ᵖ k (F (μᵖ F))
+    QEDᵖ
+
+theorem20 : ∀{A}
+   → (F : Predᵒ A → Predᵒ A)
+   → wellfounded F
+   → extensionalᵖ F
+   → μᵖ F ≡ᵖ F (μᵖ F)
+theorem20 F wfF extF = equiv-down (λ k → lemma19 k F wfF extF)
+
+
+nonexpansive-id : ∀{A}
+   → nonexpansive{A} (λ P → P)
+nonexpansive-id{A} Q k x i =
+    (λ { (fst , snd) → fst , fst , snd})
+    , (λ { (fst , snd) → fst , proj₂ snd})
+
+nonexpansive-const : ∀{A}{P : Predᵒ A}
+   → nonexpansive{A} (λ Q → P)
+nonexpansive-const {A}{P} Q k = ≡ᵖ-refl refl
+
+wellfounded⇒nonexpansive : ∀{A}
+   → (F : Predᵒ A → Predᵒ A)
+   → wellfounded F
+   → extensionalᵖ F
+   → nonexpansive F
+wellfounded⇒nonexpansive F wfF extF P zero v i = (λ {()}) , λ { ()}
+wellfounded⇒nonexpansive F wfF extF P (suc k) =
+    ↓ᵖ (suc k) (F P)                       ≡ᵖ⟨ wfF _ k ⟩
+    ↓ᵖ (suc k) (F (↓ᵖ k P))                ≡ᵖ⟨ ext-↓ (suc k) (extF (≡ᵖ-sym
+                                                                 (lemma17 k))) ⟩
+    ↓ᵖ (suc k) (F (↓ᵖ k (↓ᵖ (suc k) P)))   ≡ᵖ⟨ ≡ᵖ-sym (wfF _ k) ⟩
+    ↓ᵖ (suc k) (F (↓ᵖ (suc k) P))
+    QEDᵖ
+
+
+
 {------------------- Monotonic --------------------}
 
 -- mono-→ᵒ : ∀{A}
@@ -367,7 +575,7 @@ Goal: G Q x k
 
 
 {-------------------------------------------------------------------------------
-  Experiment: attaching downward closedness and eventually zero
+  Experiment: attach all the good properties
  ------------------------------------------------------------------------------}
 
 record Setₖ : Set₁ where
