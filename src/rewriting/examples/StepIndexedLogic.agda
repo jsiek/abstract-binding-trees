@@ -167,6 +167,11 @@ dc-Pᵒ : (P : Set)
 dc-Pᵒ P n Pn zero k≤n = tt
 dc-Pᵒ P (suc n) Pn (suc k) (s≤s k≤n) = Pn
 
+dc-▷ : ∀{P}
+   → dc P
+   → dc (▷ᵒ P)
+dc-▷ dcP n ▷Pn k k≤n j j<k = ▷Pn j (≤-trans j<k k≤n)
+
 _⇔_ : Set → Set → Set
 P ⇔ Q = (P → Q) × (Q → P)
 
@@ -829,13 +834,16 @@ record Fun (A B : Set) (κ : Kind) : Set₁ where
     fun : Predᵒ A → Predᵒ B
     good : goodness κ fun
     ext : extensionalᵖ fun
+    down : ∀ P → dcᵖ P → dcᵖ (fun P)
     {- TODO: add downward closed and eventually zero -}
 open Fun
 
 idᶠ : ∀{A} → Fun A A Continuous
 idᶠ = record { fun = λ P → P
              ; good = continuous-id
-             ; ext = extensional-id }
+             ; ext = extensional-id
+             ; down = λ P dcP → dcP
+             }
 
 choose : Kind → Kind → Kind
 choose Continuous Continuous = Continuous
@@ -861,7 +869,9 @@ infixr 6 _→ᶠ_
 _→ᶠ_ : ∀{A B}{kF kG} → Fun A B kF → Fun A B kG → Fun A B (choose kF kG)
 F →ᶠ G = record { fun = λ P → (fun F) P →ᵖ (fun G) P
         ; good = goodness-→ (kind F) (kind G) (good F) (ext F) (good G) (ext G)
-        ; ext = extensional-→ (ext F) (ext G) }
+        ; ext = extensional-→ (ext F) (ext G)
+        ; down = λ P dcP n x x₁ → dc-→ᵒ n x₁
+        }
 
 goodness-× : ∀ (kf kg : Kind) {A}{B}{F G : Predᵒ A → Predᵒ B}
    → goodness kf F
@@ -878,7 +888,9 @@ infixr 6 _×ᶠ_
 _×ᶠ_ : ∀{A}{B}{kF kG} → Fun A B kF → Fun A B kG → Fun A B (choose kF kG)
 F ×ᶠ G = record { fun = λ P → (fun F) P ×ᵖ (fun G) P
         ; good = goodness-× (kind F) (kind G) (good F) (ext F) (good G) (ext G)
-        ; ext = extensional-× (ext F) (ext G) }
+        ; ext = extensional-× (ext F) (ext G)
+        ; down = λ P dcP n x x₁ → dc-× (λ n → down F P dcP n x) (λ n → down G P dcP n x) n x₁
+        }
 
 goodness-⊎ : ∀ (kf kg : Kind) {A}{B}{F G : Predᵒ A → Predᵒ B}
    → goodness kf F
@@ -895,7 +907,9 @@ infixr 6 _⊎ᶠ_
 _⊎ᶠ_ : ∀{A}{B}{kF kG} → Fun A B kF → Fun A B kG → Fun A B (choose kF kG)
 F ⊎ᶠ G = record { fun = λ P → (fun F) P ⊎ᵖ (fun G) P
         ; good = goodness-⊎ (kind F) (kind G) (good F) (ext F) (good G) (ext G)
-        ; ext = extensional-⊎ (ext F) (ext G) }
+        ; ext = extensional-⊎ (ext F) (ext G)
+        ; down = λ P dcP n x x₁ → dc-⊎ (λ n → down F P dcP n x) (λ n → down G P dcP n x) n x₁
+        }
 
 goodness-∀ : ∀ (kf : Kind) {A B C}{F : Predᵒ B → Predᵒ (A × C)}
    → goodness kf F
@@ -906,7 +920,9 @@ goodness-∀ Wellfounded gf = wellfounded-∀ gf
 ∀ᶠ : ∀{A}{B}{C}{kF} → Fun B (A × C) kF → Fun B C kF
 ∀ᶠ F = record { fun = (λ P → ∀ᵖ λ a b → (fun F P) (a , b))
               ; good = goodness-∀ (kind F) (good F)
-              ; ext = extensional-∀ (ext F) }
+              ; ext = extensional-∀ (ext F)
+              ; down = λ P x n x₁ x₂ → dc-∀ (λ v n → down F P x n (v , x₁)) n x₂ 
+              }
 
 goodness-▷ : ∀ (k : Kind) → ∀{A}{B}{F : Predᵒ A → Predᵒ B}
   → goodness k F
@@ -919,7 +935,9 @@ goodness-▷ Wellfounded {A}{B}{F} gf extF =
 ▷ᶠ : ∀{A}{B}{kF} → Fun A B kF → Fun A B Wellfounded
 ▷ᶠ F = record { fun = (λ P → ▷ᵖ ((fun F) P))
               ; good = goodness-▷ (kind F) (good F) (ext F)
-              ; ext = extensional-▷ (ext F) }
+              ; ext = extensional-▷ (ext F) 
+              ; down = λ P x n x₁ x₂ → dc-▷ (λ n → down F P x n x₁) n x₂
+              }
 
 μᶠ : ∀{A} → Fun A A Wellfounded → Predᵒ A
 μᶠ F = μᵖ (fun F)
