@@ -57,19 +57,6 @@ _ᵒ  : Set → Setᵒ
 ▷ᵒ_ : Setᵒ → Setᵒ
 (▷ᵒ P) n =  ∀ k → k < n → P k
 
-iter : ∀ {ℓ} {A : Set ℓ} → ℕ → (A → A) → (A → A)
-iter zero    F  =  id
-iter (suc n) F  =  F ∘ iter n F
-
-iter-subtract : ∀{ℓ}{A : Set ℓ}{P : A}
-  → (F : A → A)
-  → (j k : ℕ)
-  → j ≤ k
-  → iter j F (iter (k ∸ j) F P) ≡ iter k F P
-iter-subtract {A = A} {P} F .zero k z≤n = refl
-iter-subtract {A = A} {P} F (suc j) (suc k) (s≤s j≤k)
-  rewrite iter-subtract{A = A}{P} F j k j≤k = refl
-
 {------------------- Step Indexed Predicates --------------------}
 
 Predᵒ : Set → Set₁
@@ -104,6 +91,19 @@ _→ᵖ_ : ∀{A} → Predᵒ A → Predᵒ A → Predᵒ A
 
 ∀ᵖ : ∀{A : Set}{B} → (A → Predᵒ B) → Predᵒ B
 ∀ᵖ {A} F x = ∀ᵒ(λ v → F v x)
+
+iter : ∀ {ℓ} {A : Set ℓ} → ℕ → (A → A) → (A → A)
+iter zero    F  =  id
+iter (suc n) F  =  F ∘ iter n F
+
+iter-subtract : ∀{ℓ}{A : Set ℓ}{P : A}
+  → (F : A → A)
+  → (j k : ℕ)
+  → j ≤ k
+  → iter j F (iter (k ∸ j) F P) ≡ iter k F P
+iter-subtract {A = A} {P} F .zero k z≤n = refl
+iter-subtract {A = A} {P} F (suc j) (suc k) (s≤s j≤k)
+  rewrite iter-subtract{A = A}{P} F j k j≤k = refl
 
 μᵖ : ∀ {A} → (Predᵒ A → Predᵒ A) → Predᵒ A
 (μᵖ F) x k  = iter (suc k) F ⊤ᵖ x k
