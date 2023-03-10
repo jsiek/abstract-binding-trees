@@ -40,7 +40,7 @@ _×ᵒ_ : Setᵒ → Setᵒ → Setᵒ
 
 infixr 7 _⊎ᵒ_
 _⊎ᵒ_ : Setᵒ → Setᵒ → Setᵒ
-(P ⊎ᵒ Q) n  = ∀ k → k < n → (P k) ⊎ (Q k) {- TODO: change to k ≤ n -}
+(P ⊎ᵒ Q) n  = ∀ k → k ≤ n → (P k) ⊎ (Q k)
 
 infixr 6 _→ᵒ_
 _→ᵒ_ : Setᵒ → Setᵒ → Setᵒ
@@ -104,7 +104,7 @@ ee-× : ∀ {P Q} → ee P → ee Q → ee (P ×ᵒ Q)
 ee-× P0 Q0 .zero z≤n = P0 , Q0
 
 ee-⊎ : ∀ {P Q} → ee P → ee Q → ee (P ⊎ᵒ Q)
-ee-⊎ P0 Q0 k ()
+ee-⊎ P0 Q0 .zero z≤n = inj₁ P0
 
 ee-→ : ∀ {P Q} → ee Q → ee (P →ᵒ Q)
 ee-→ eeQ .zero z≤n Pz = eeQ
@@ -203,6 +203,8 @@ P QED = (λ x → x) , (λ x → x)
 ×-cong-⇔ SS′ TT′ = (λ x → (proj₁ SS′ (proj₁ x)) , (proj₁ TT′ (proj₂ x)))
                   , (λ x → (proj₂ SS′ (proj₁ x)) , (proj₂ TT′ (proj₂ x)))
 
+{- The following stuff about monotonic is obsolete -}
+
 monotonic : ∀{A} (F : Predᵒ A → Predᵒ A) → Set₁
 monotonic F = ∀ {P}{Q} → (∀ x i → (P x) i → (Q x) i)
                        → (∀ x i → (F P x) i → (F Q x) i)
@@ -250,8 +252,6 @@ dc-iter i {A}{F}{x} mf k Fki j j≤k = lemma′ i j k mf (≤⇒≤′ j≤k) Fk
   -- let iternk = dc-iter-aux n F dcF n x μFxn k k≤n in
   -- dc-iter k mF n iternk k k≤n
 
-{------------------- well founded and nonexpansive --------------------}
-
 ↓ᵒ : ℕ → Setᵒ → Setᵒ
 ↓ᵒ k S j = j < k  ×  S j
 
@@ -277,6 +277,12 @@ S ≡ᵒ T = ∀ i → S i ⇔ T i
 
 ↓ᵖ : ℕ → ∀{A} → Predᵒ A → Predᵒ A
 ↓ᵖ k P x = ↓ᵒ k (P x)
+
+fstᵖ : ∀{A}{B} (P : Predᵒ A) → Predᵒ (A × B)
+fstᵖ P (a , b) = P a
+
+sndᵖ : ∀{A}{B} (P : Predᵒ B) → Predᵒ (A × B)
+sndᵖ P (a , b) = P b
 
 infixr 7 _×ᵖ_
 _×ᵖ_ : ∀{A} → Predᵒ A → Predᵒ A → Predᵒ A
@@ -331,18 +337,12 @@ _QEDᵖ : ∀{A}
   → P ≡ᵖ P
 P QEDᵖ = ≡ᵖ-refl refl
 
-extensionalᵖ : ∀{A} (F : Predᵒ A → Predᵒ A) → Set₁
+extensionalᵖ : ∀{A}{B} (F : Predᵒ A → Predᵒ B) → Set₁
 extensionalᵖ F = ∀{P}{Q} → P ≡ᵖ Q → F P ≡ᵖ F Q
-
--- ≡ᵖ-cong : ∀{A}{P Q : Predᵒ A}
---   → (F : Predᵒ A → Predᵒ A)
---   → P ≡ᵖ Q
---   → F P ≡ᵖ F Q
--- ≡ᵖ-cong F PQ x i = (λ FP → {!!}) , λ FQ → {!!}
 
 ext-↓ : ∀{A}
     (k : ℕ)
-  → extensionalᵖ{A} (↓ᵖ k)
+  → extensionalᵖ{A}{A} (↓ᵖ k)
 ext-↓ k PQ x i = (λ { (fst , snd) → fst , proj₁ (PQ x i) snd})
                 , λ { (fst , snd) → fst , proj₂ (PQ x i) snd}
 
@@ -351,11 +351,13 @@ ext-↓ k PQ x i = (λ { (fst , snd) → fst , proj₁ (PQ x i) snd})
 Continuous means that you only need k steps of the input to get k
 steps of the output.
 
+(This is called nonexpansive in Appel and McAllester.)
+
 -}
-continuous : ∀{A} → (Predᵒ A → Predᵒ A) → Set₁
+continuous : ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
 continuous F = ∀ P k → (↓ᵖ k (F P)) ≡ᵖ (↓ᵖ k (F (↓ᵖ k P)))
 
-wellfounded : ∀{A} → (Predᵒ A → Predᵒ A) → Set₁
+wellfounded : ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
 wellfounded F = ∀ P k → (↓ᵖ (suc k) (F P)) ≡ᵖ (↓ᵖ (suc k) (F (↓ᵖ k P)))
 
 down-eq : ∀{A}{P : Predᵒ A}{x}
@@ -520,12 +522,20 @@ continuous-id{A} Q k x i =
     (λ { (fst , snd) → fst , fst , snd})
     , (λ { (fst , snd) → fst , proj₂ snd})
 
+continuous-fst : ∀{A}{B}
+  → continuous{A}{A × B} fstᵖ
+continuous-fst{A}{B} P k (a , b) i = (λ x₁ → proj₁ x₁ , x₁) , (λ x → proj₂ x)
+
+continuous-snd : ∀{A}{B}
+  → continuous{B}{A × B} sndᵖ
+continuous-snd{A}{B} P k (a , b) i = (λ x → (proj₁ x) , x) , (λ x → proj₂ x)
+
 continuous-const : ∀{A}{P : Predᵒ A}
    → continuous{A} (λ Q → P)
 continuous-const {A}{P} Q k = ≡ᵖ-refl refl
 
-wellfounded⇒continuous : ∀{A}
-   → (F : Predᵒ A → Predᵒ A)
+wellfounded⇒continuous : ∀{A}{B}
+   → (F : Predᵒ A → Predᵒ B)
    → wellfounded F
    → extensionalᵖ F
    → continuous F
@@ -559,22 +569,22 @@ down-fun {A}{P}{Q}{k} x i =
       , λ { (a , b) → a , (λ j x₁ Pxj →
                   let xx = b j x₁ (≤-trans (s≤s x₁) a , Pxj) in proj₂ xx)}
 
-continuous-→ : ∀{A}{F G : Predᵒ A → Predᵒ A}
+continuous-→ : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
    → continuous F
    → continuous G
    → continuous (λ P → F P →ᵖ G P)
-continuous-→ {A}{F}{G} neF neG P k =
+continuous-→ {A}{B}{F}{G} neF neG P k =
     ↓ᵖ k (F P →ᵖ G P)                              ≡ᵖ⟨ down-fun ⟩
     ↓ᵖ k (↓ᵖ k (F P) →ᵖ ↓ᵖ k (G P))  ≡ᵖ⟨ ext-↓ k (cong-→ᵖ (neF _ k) (neG _ k)) ⟩
     ↓ᵖ k (↓ᵖ k (F (↓ᵖ k P)) →ᵖ ↓ᵖ k (G (↓ᵖ k P)))  ≡ᵖ⟨ ≡ᵖ-sym down-fun ⟩
     ↓ᵖ k (F (↓ᵖ k P) →ᵖ G (↓ᵖ k P))
     QEDᵖ
 
-wellfounded-→ : ∀{A}{F G : Predᵒ A → Predᵒ A}
+wellfounded-→ : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
    → wellfounded F
    → wellfounded G
    → wellfounded (λ P → F P →ᵖ G P)
-wellfounded-→ {A}{F}{G} wfF wfG P k =
+wellfounded-→ {A}{B}{F}{G} wfF wfG P k =
     ↓ᵖ (suc k) (F P →ᵖ G P)                              ≡ᵖ⟨ down-fun ⟩
     ↓ᵖ (suc k) (↓ᵖ (suc k) (F P) →ᵖ ↓ᵖ (suc k) (G P))
                                ≡ᵖ⟨ ext-↓ (suc k) (cong-→ᵖ (wfF _ k) (wfG _ k)) ⟩
@@ -603,11 +613,11 @@ down-× {A}{P}{Q}{k} x i =
   λ {(i<k , PQxi) → i<k , (λ j j≤i → (proj₂ (proj₁ (PQxi j j≤i)))
                                    , (proj₂ (proj₂ (PQxi j j≤i))))}
 
-wellfounded-× : ∀{A}{F G : Predᵒ A → Predᵒ A}
+wellfounded-× : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
    → wellfounded F
    → wellfounded G
    → wellfounded (λ P → F P ×ᵖ G P)
-wellfounded-× {A}{F}{G} wfF wfG P k =
+wellfounded-× {A}{B}{F}{G} wfF wfG P k =
     ↓ᵖ (suc k) (F P ×ᵖ G P)                              ≡ᵖ⟨ down-× ⟩
     ↓ᵖ (suc k) (↓ᵖ (suc k) (F P) ×ᵖ ↓ᵖ (suc k) (G P))
          ≡ᵖ⟨ ext-↓ (suc k) (cong-×ᵖ (wfF _ k) (wfG _ k)) ⟩
@@ -616,11 +626,11 @@ wellfounded-× {A}{F}{G} wfF wfG P k =
     ↓ᵖ (suc k) (F (↓ᵖ k P) ×ᵖ G (↓ᵖ k P))
     QEDᵖ
 
-continuous-× : ∀{A}{F G : Predᵒ A → Predᵒ A}
+continuous-× : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
    → continuous F
    → continuous G
    → continuous (λ P → F P ×ᵖ G P)
-continuous-× {A}{F}{G} neF neG P k =
+continuous-× {A}{B}{F}{G} neF neG P k =
     ↓ᵖ k (F P ×ᵖ G P)                              ≡ᵖ⟨ down-× ⟩
     ↓ᵖ k (↓ᵖ k (F P) ×ᵖ ↓ᵖ k (G P))
          ≡ᵖ⟨ ext-↓ k (cong-×ᵖ (neF _ k) (neG _ k)) ⟩
@@ -646,64 +656,79 @@ cong-⊎ᵖ {A}{P}{P′}{Q}{Q′} PP′ QQ′ v k = to , fro
   ... | inj₁ P′vj = inj₁ (proj₂ (PP′ v j) P′vj)
   ... | inj₂ Q′vj = inj₂ (proj₂ (QQ′ v j) Q′vj)
       
-wellfounded-⊎ : ∀{A}{F G : Predᵒ A → Predᵒ A}
+down-⊎ : ∀{A}{P Q : Predᵒ A}{k}
+   → ↓ᵖ k (P ⊎ᵖ Q) ≡ᵖ ↓ᵖ k ((↓ᵖ k P) ⊎ᵖ (↓ᵖ k Q))
+down-⊎ {A}{P}{Q}{k} x i = to , fro
+  where
+  to : ↓ᵖ k (P ⊎ᵖ Q) x i → ↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q) x i
+  to (i<k , P⊎Qxi) = (i<k , Goal)
+    where
+    Goal : (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q) x i
+    Goal j j<
+        with P⊎Qxi j j<
+    ... | inj₁ Pxj = inj₁ ((≤-trans (s≤s j<) i<k) , Pxj)
+    ... | inj₂ Qxj = inj₂ ((≤-trans (s≤s j<) i<k) , Qxj)
+  fro : ↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q) x i → ↓ᵖ k (P ⊎ᵖ Q) x i
+  fro (i<k , P⊎Qxi) = (i<k , Goal)
+    where
+    Goal : (P ⊎ᵖ Q) x i
+    Goal j j<
+        with P⊎Qxi j j<
+    ... | inj₁ Pxj = inj₁ (proj₂ Pxj)
+    ... | inj₂ Qxj = inj₂ (proj₂ Qxj)
+
+continuous-⊎ : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
    → continuous F
    → continuous G
+   → continuous (λ P → F P ⊎ᵖ G P)
+continuous-⊎ {A}{B}{F}{G} neF neG P k =
+    ↓ᵖ k (F P ⊎ᵖ G P)                              ≡ᵖ⟨ down-⊎ ⟩
+    ↓ᵖ k (↓ᵖ k (F P) ⊎ᵖ ↓ᵖ k (G P))
+         ≡ᵖ⟨ ext-↓ k (cong-⊎ᵖ (neF _ k) (neG _ k)) ⟩
+    ↓ᵖ k (↓ᵖ k (F (↓ᵖ k P)) ⊎ᵖ ↓ᵖ k (G (↓ᵖ k P)))
+         ≡ᵖ⟨ ≡ᵖ-sym down-⊎ ⟩
+    ↓ᵖ k (F (↓ᵖ k P) ⊎ᵖ G (↓ᵖ k P))
+    QEDᵖ
+
+wellfounded-⊎ : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
+   → wellfounded F
+   → wellfounded G
    → wellfounded (λ P → F P ⊎ᵖ G P)
-wellfounded-⊎ {A}{F}{G} neF neG P k =
-    ↓ᵖ (suc k) (F P ⊎ᵖ G P)                              ≡ᵖ⟨ EQ1 ⟩
-    ↓ᵖ (suc k) (↓ᵖ k (F P) ⊎ᵖ ↓ᵖ k (G P))                ≡ᵖ⟨ ext-↓ (suc k) (cong-⊎ᵖ (neF _ k) (neG _ k)) ⟩
-    ↓ᵖ (suc k) (↓ᵖ k (F (↓ᵖ k P)) ⊎ᵖ ↓ᵖ k (G (↓ᵖ k P)))  ≡ᵖ⟨ ≡ᵖ-sym EQ1 ⟩
+wellfounded-⊎ {A}{B}{F}{G} wfF wfG P k =
+    ↓ᵖ (suc k) (F P ⊎ᵖ G P)                              ≡ᵖ⟨ down-⊎ ⟩
+    ↓ᵖ (suc k) (↓ᵖ (suc k) (F P) ⊎ᵖ ↓ᵖ (suc k) (G P))
+         ≡ᵖ⟨ ext-↓ (suc k) (cong-⊎ᵖ (wfF _ k) (wfG _ k)) ⟩
+    ↓ᵖ (suc k) (↓ᵖ (suc k) (F (↓ᵖ k P)) ⊎ᵖ ↓ᵖ (suc k) (G (↓ᵖ k P)))
+         ≡ᵖ⟨ ≡ᵖ-sym down-⊎ ⟩
     ↓ᵖ (suc k) (F (↓ᵖ k P) ⊎ᵖ G (↓ᵖ k P))
     QEDᵖ
-    where
-    to : ∀{P}{Q}{k} → (x : A) (i : ℕ) → ↓ᵖ (suc k) (P ⊎ᵖ Q) x i → ↓ᵖ (suc k) (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q) x i
-    to {P} {Q} {k} x i (s≤s i≤k , P⊎Q) = s≤s i≤k , Goal
-        where
-        Goal : (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q) x i
-        Goal j j<i
-            with P⊎Q j j<i
-        ... | inj₁ Pj = inj₁ ((≤-trans j<i i≤k) , Pj)
-        ... | inj₂ Qj = inj₂ (≤-trans j<i i≤k , Qj)
-
-    fro : ∀{P}{Q}{k} → (x : A) (i : ℕ) → ↓ᵖ (suc k) (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q) x i → ↓ᵖ (suc k) (P ⊎ᵖ Q) x i
-    fro {P} {Q} {k} x i (s≤s i≤k , P⊎Q) = s≤s i≤k , Goal
-        where
-        Goal : (P ⊎ᵖ Q) x i
-        Goal j j<i
-            with P⊎Q j j<i
-        ... | inj₁ Pj = inj₁ (proj₂ Pj)
-        ... | inj₂ Qj = inj₂ (proj₂ Qj)
-
-    EQ1 : ∀{P}{Q}{k} → ↓ᵖ (suc k) (P ⊎ᵖ Q) ≡ᵖ ↓ᵖ (suc k) ((↓ᵖ k P) ⊎ᵖ (↓ᵖ k Q))
-    EQ1 {P}{Q}{k} x i = to{P}{Q} x i , fro{P}{Q} x i
 
 extensional-id : ∀{A} → extensionalᵖ{A} (λ P → P)
 extensional-id {A} PQ x i = proj₁ (PQ x i) , proj₂ (PQ x i)
 
-extensional-→ : ∀{A}{F G : Predᵒ A → Predᵒ A}
-   → extensionalᵖ{A} F
-   → extensionalᵖ{A} G
-   → extensionalᵖ{A} (λ P → F P →ᵖ G P)
-extensional-→ {A} extF extG PQ x i =
+extensional-→ : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
+   → extensionalᵖ F
+   → extensionalᵖ G
+   → extensionalᵖ (λ P → F P →ᵖ G P)
+extensional-→ extF extG PQ x i =
   (λ FP→GP k x₂ x₃ → proj₁ (extG PQ x k) (FP→GP k x₂ (proj₂ (extF PQ x k) x₃)))
   , (λ z k z₁ z₂ → proj₂ (extG PQ x k) (z k z₁ (proj₁ (extF PQ x k) z₂)))
 
-extensional-× : ∀{A}{F G : Predᵒ A → Predᵒ A}
-   → extensionalᵖ{A} F
-   → extensionalᵖ{A} G
-   → extensionalᵖ{A} (λ P → F P ×ᵖ G P)
-extensional-× {A} extF extG PQ x i =
+extensional-× : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
+   → extensionalᵖ F
+   → extensionalᵖ G
+   → extensionalᵖ (λ P → F P ×ᵖ G P)
+extensional-× extF extG PQ x i =
   (λ x₁ k x₂ → (proj₁ (extF PQ x k) (proj₁ (x₁ k x₂)))
              , (proj₁ (extG PQ x k) (proj₂ (x₁ k x₂))))
   , (λ x₁ k x₂ → (proj₂ (extF PQ x k) (proj₁ (x₁ k x₂)))
                , (proj₂ (extG PQ x k) (proj₂ (x₁ k x₂))))
 
-extensional-⊎ : ∀{A}{F G : Predᵒ A → Predᵒ A}
-   → extensionalᵖ{A} F
-   → extensionalᵖ{A} G
-   → extensionalᵖ{A} (λ P → F P ⊎ᵖ G P)
-extensional-⊎ {A}{F}{G} extF extG {P}{Q} PQ x i = to , fro
+extensional-⊎ : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
+   → extensionalᵖ F
+   → extensionalᵖ G
+   → extensionalᵖ (λ P → F P ⊎ᵖ G P)
+extensional-⊎ {A}{B}{F}{G} extF extG {P}{Q} PQ x i = to , fro
   where
   to : (F P ⊎ᵖ G P) x i → (F Q ⊎ᵖ G Q) x i
   to FP⊎GP k k<i
@@ -723,105 +748,259 @@ cong-▷ᵖ : ∀{A}{P P′ : Predᵒ A}
 cong-▷ᵖ PP′ v k = (λ {▷Pvk j j<k → proj₁ (PP′ v j) (▷Pvk j j<k)})
                 , (λ ▷P′vk j j<k → proj₂ (PP′ v j) (▷P′vk j j<k))
 
-wellfounded-▷ : ∀{A}{F : Predᵒ A → Predᵒ A}
+wellfounded-▷ : ∀{A}{B}{F : Predᵒ A → Predᵒ B}
    → continuous F
    → wellfounded (λ P → ▷ᵖ (F P))
-wellfounded-▷ {A}{F} neF P k =
+wellfounded-▷ {A}{B}{F} neF P k =
     ↓ᵖ (suc k) (▷ᵖ (F P))                ≡ᵖ⟨ EQ1 ⟩
     ↓ᵖ (suc k) (▷ᵖ (↓ᵖ k (F P)))         ≡ᵖ⟨ ext-↓ (suc k) (cong-▷ᵖ (neF _ k)) ⟩
     ↓ᵖ (suc k) (▷ᵖ (↓ᵖ k (F (↓ᵖ k P))))  ≡ᵖ⟨ ≡ᵖ-sym EQ1 ⟩
     ↓ᵖ (suc k) (▷ᵖ (F (↓ᵖ k P)))
     QEDᵖ
   where
-  EQ1 : ∀{P : Predᵒ A}{k} → ↓ᵖ (suc k) (▷ᵖ P) ≡ᵖ ↓ᵖ (suc k) (▷ᵖ (↓ᵖ k P))
-  EQ1 {P}{k} x i = (λ {(s≤s i≤k , b) → s≤s i≤k ,
+  EQ1 : ∀{A}{P : Predᵒ A}{k} → ↓ᵖ (suc k) (▷ᵖ P) ≡ᵖ ↓ᵖ (suc k) (▷ᵖ (↓ᵖ k P))
+  EQ1 {A}{P}{k} x i = (λ {(s≤s i≤k , b) → s≤s i≤k ,
                       λ j j<i → (≤-trans j<i i≤k) , (b j j<i)})
                  , λ {(s≤s i≤k , b) → (s≤s i≤k) , (λ k z → proj₂ (b k z))}
 
-extensional-▷ : ∀{A}{F : Predᵒ A → Predᵒ A}
-   → extensionalᵖ{A} F
-   → extensionalᵖ{A} (λ P → ▷ᵖ (F P))
-extensional-▷ {A} extF PQ x i =
+extensional-▷ : ∀{A}{B}{F : Predᵒ A → Predᵒ B}
+   → extensionalᵖ F
+   → extensionalᵖ (λ P → ▷ᵖ (F P))
+extensional-▷ extF PQ x i =
       (λ x₁ k x₂ → proj₁ (extF PQ x k) (x₁ k x₂))
     , (λ x₁ k x₂ → proj₂ (extF PQ x k) (x₁ k x₂))
 
 {- TODO: ∀ᵖ extensional, wellfounded, continuous -}
 
+extensional-∀ : ∀{A B C}{F : Predᵒ B → Predᵒ (A × C)}
+   → extensionalᵖ{B}{A × C} F
+   → extensionalᵖ{B}{C} (λ P → ∀ᵖ λ a b → (F P) (a , b))
+extensional-∀ {A}{B}{C} extF PQ x i =
+    (λ ∀FPxi v → proj₁ (extF PQ (v , x) i) (∀FPxi v))
+  , (λ ∀FQxi v → proj₂ (extF PQ (v , x) i) (∀FQxi v))
+
+down-∀ : ∀{A B}{P : Predᵒ (A × B)}{k}
+   → ↓ᵖ k (∀ᵖ λ a b → P (a , b)) ≡ᵖ ↓ᵖ k (∀ᵖ λ a b → ↓ᵖ k P (a , b))
+down-∀ {A}{B}{F} x i = (λ {(i<k , ∀Fxi) → i<k , λ v → i<k , ∀Fxi v})
+                     , (λ {(i<k , ∀Fxi) → i<k , (λ x → proj₂ (∀Fxi x))})
+
+cong-∀ᵖ : ∀{A B}{P P′ : Predᵒ (A × B)}
+   → P ≡ᵖ P′
+   → ∀ᵖ (λ a b → P (a , b)) ≡ᵖ ∀ᵖ (λ a b → P′ (a , b))
+cong-∀ᵖ PP′ v k =
+    (λ z v′ → proj₁ (PP′ (v′ , v) k) (z v′))
+    , (λ z v′ → proj₂ (PP′ (v′ , v) k) (z v′))
+
+continuous-∀ :  ∀{A B C}{F : Predᵒ B → Predᵒ (A × C)}
+   → continuous F
+   → continuous (λ P → ∀ᵖ λ a b → (F P) (a , b))
+continuous-∀ {A}{B}{C}{F} cF P k =
+    ↓ᵖ k (∀ᵖ (λ a b → F P (a , b)))                ≡ᵖ⟨ down-∀ ⟩ 
+    ↓ᵖ k (∀ᵖ (λ a b → ↓ᵖ k (F P) (a , b)))         ≡ᵖ⟨ ext-↓ k (cong-∀ᵖ (cF _ _)) ⟩ 
+    ↓ᵖ k (∀ᵖ (λ a b → ↓ᵖ k (F (↓ᵖ k P)) (a , b)))  ≡ᵖ⟨ ≡ᵖ-sym down-∀ ⟩ 
+    ↓ᵖ k (∀ᵖ (λ a b → F (↓ᵖ k P) (a , b)))
+    QEDᵖ  
+
+wellfounded-∀ :  ∀{A B C}{F : Predᵒ B → Predᵒ (A × C)}
+   → wellfounded F
+   → wellfounded (λ P → ∀ᵖ λ a b → (F P) (a , b))
+wellfounded-∀ {A}{B}{C}{F} wfF P k =
+    ↓ᵖ (suc k) (∀ᵖ (λ a b → F P (a , b)))                      ≡ᵖ⟨ down-∀ ⟩ 
+    ↓ᵖ (suc k) (∀ᵖ (λ a b → ↓ᵖ (suc k) (F P) (a , b)))         ≡ᵖ⟨ ext-↓ _ (cong-∀ᵖ (wfF _ _)) ⟩ 
+    ↓ᵖ (suc k) (∀ᵖ (λ a b → ↓ᵖ (suc k) (F (↓ᵖ k P)) (a , b)))  ≡ᵖ⟨ ≡ᵖ-sym down-∀ ⟩ 
+    ↓ᵖ (suc k) (∀ᵖ (λ a b → F (↓ᵖ k P) (a , b)))
+    QEDᵖ  
+
+
 {-------------------------------------------------------------------------------
      Step Indexed Logic
 -------------------------------------------------------------------------------}
 
-record CT (A : Set) : Set₁ where
+data Kind : Set where
+  Continuous : Kind
+  Wellfounded : Kind
+
+goodness : Kind → ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
+goodness Continuous F = continuous F
+goodness Wellfounded F = wellfounded F
+
+record Fun (A B : Set) (κ : Kind) : Set₁ where
   field
-    fun : Predᵒ A → Predᵒ A
-    cont : continuous fun
+    fun : Predᵒ A → Predᵒ B
+    good : goodness κ fun
     ext : extensionalᵖ fun
-open CT
+    {- TODO: add downward closed and eventually zero -}
+open Fun
 
-record WF (A : Set) : Set₁ where
-  field
-    fun : Predᵒ A → Predᵒ A
-    wf : wellfounded fun
-    ext : extensionalᵖ fun
-open WF
+idᶠ : ∀{A} → Fun A A Continuous
+idᶠ = record { fun = λ P → P
+             ; good = continuous-id
+             ; ext = extensional-id }
 
-idᶜ : ∀{A} → CT A
-idᶜ = record { fun = λ P → P ; cont = continuous-id ; ext = extensional-id }
+choose : Kind → Kind → Kind
+choose Continuous Continuous = Continuous
+choose Continuous Wellfounded = Continuous
+choose Wellfounded Continuous = Continuous
+choose Wellfounded Wellfounded = Wellfounded
 
-infixr 6 _→ᶜ_
-_→ᶜ_ : ∀{A} → CT A → CT A → CT A
-F →ᶜ G = record { fun = λ P → (fun F) P →ᵖ (fun G) P
-                ; cont = continuous-→ (cont F) (cont G)
-                ; ext = extensional-→ (ext F) (ext G) }
+goodness-→ : ∀ (kf kg : Kind) {A}{B}{F G : Predᵒ A → Predᵒ B}
+   → goodness kf F
+   → extensionalᵖ F
+   → goodness kg G
+   → extensionalᵖ G
+   → goodness (choose kf kg) (λ P → F P →ᵖ G P)
+goodness-→ Continuous Continuous gf extF gg extG  = continuous-→ gf gg
+goodness-→ Continuous Wellfounded {G = G} gf extF gg extG = continuous-→ gf (wellfounded⇒continuous G gg extG)
+goodness-→ Wellfounded Continuous {F = F} gf extF gg extG = continuous-→ (wellfounded⇒continuous F gf extF) gg
+goodness-→ Wellfounded Wellfounded gf extF gg extG = wellfounded-→ gf gg
 
-infixr 6 _→ʷ_
-_→ʷ_ : ∀{A} → WF A → WF A → WF A
-F →ʷ G = record { fun = λ P → (fun F) P →ᵖ (fun G) P
-                ; wf = wellfounded-→ (wf F) (wf G)
-                ; ext = extensional-→ (ext F) (ext G) }
+kind : ∀{A}{B}{kF} → Fun A B kF → Kind
+kind {A}{B}{kF} F = kF
 
-infixr 7 _×ᶜ_
-_×ᶜ_ : ∀{A} → CT A → CT A → CT A
-(F ×ᶜ G) = record { fun = (λ P → (fun F) P ×ᵖ (fun G) P)
-                  ; cont = continuous-× (cont F) (cont G)
-                  ; ext = extensional-× (ext F) (ext G) }
+infixr 6 _→ᶠ_
+_→ᶠ_ : ∀{A B}{kF kG} → Fun A B kF → Fun A B kG → Fun A B (choose kF kG)
+F →ᶠ G = record { fun = λ P → (fun F) P →ᵖ (fun G) P
+        ; good = goodness-→ (kind F) (kind G) (good F) (ext F) (good G) (ext G)
+        ; ext = extensional-→ (ext F) (ext G) }
 
-infixr 7 _×ʷ_
-_×ʷ_ : ∀{A} → WF A → WF A → WF A
-(F ×ʷ G) = record { fun = (λ P → (fun F) P ×ᵖ (fun G) P)
-                  ; wf = wellfounded-× (wf F) (wf G)
-                  ; ext = extensional-× (ext F) (ext G) }
+goodness-× : ∀ (kf kg : Kind) {A}{B}{F G : Predᵒ A → Predᵒ B}
+   → goodness kf F
+   → extensionalᵖ F
+   → goodness kg G
+   → extensionalᵖ G
+   → goodness (choose kf kg) (λ P → F P ×ᵖ G P)
+goodness-× Continuous Continuous gf extF gg extG  = continuous-× gf gg
+goodness-× Continuous Wellfounded {G = G} gf extF gg extG = continuous-× gf (wellfounded⇒continuous G gg extG)
+goodness-× Wellfounded Continuous {F = F} gf extF gg extG = continuous-× (wellfounded⇒continuous F gf extF) gg
+goodness-× Wellfounded Wellfounded gf extF gg extG = wellfounded-× gf gg
 
-infixr 7 _⊎ᶜ_
-_⊎ᶜ_ : ∀{A} → CT A → CT A → WF A
-(F ⊎ᶜ G) = record { fun = (λ P → (fun F) P ⊎ᵖ (fun G) P)
-                  ; wf = wellfounded-⊎ (cont F) (cont G)
-                  ; ext = extensional-⊎ (ext F) (ext G) }
+infixr 6 _×ᶠ_
+_×ᶠ_ : ∀{A}{B}{kF kG} → Fun A B kF → Fun A B kG → Fun A B (choose kF kG)
+F ×ᶠ G = record { fun = λ P → (fun F) P ×ᵖ (fun G) P
+        ; good = goodness-× (kind F) (kind G) (good F) (ext F) (good G) (ext G)
+        ; ext = extensional-× (ext F) (ext G) }
 
-▷ʷ : ∀{A} → CT A → WF A
-▷ʷ F = record { fun = (λ P → ▷ᵖ ((fun F) P))
-              ; wf = wellfounded-▷ (cont F)
+goodness-⊎ : ∀ (kf kg : Kind) {A}{B}{F G : Predᵒ A → Predᵒ B}
+   → goodness kf F
+   → extensionalᵖ F
+   → goodness kg G
+   → extensionalᵖ G
+   → goodness (choose kf kg) (λ P → F P ⊎ᵖ G P)
+goodness-⊎ Continuous Continuous gf extF gg extG  = continuous-⊎ gf gg
+goodness-⊎ Continuous Wellfounded {G = G} gf extF gg extG = continuous-⊎ gf (wellfounded⇒continuous G gg extG)
+goodness-⊎ Wellfounded Continuous {F = F} gf extF gg extG = continuous-⊎ (wellfounded⇒continuous F gf extF) gg
+goodness-⊎ Wellfounded Wellfounded gf extF gg extG = wellfounded-⊎ gf gg
+
+infixr 6 _⊎ᶠ_
+_⊎ᶠ_ : ∀{A}{B}{kF kG} → Fun A B kF → Fun A B kG → Fun A B (choose kF kG)
+F ⊎ᶠ G = record { fun = λ P → (fun F) P ⊎ᵖ (fun G) P
+        ; good = goodness-⊎ (kind F) (kind G) (good F) (ext F) (good G) (ext G)
+        ; ext = extensional-⊎ (ext F) (ext G) }
+
+goodness-∀ : ∀ (kf : Kind) {A B C}{F : Predᵒ B → Predᵒ (A × C)}
+   → goodness kf F
+   → goodness kf (λ P → ∀ᵖ λ a b → (F P) (a , b))
+goodness-∀ Continuous gf = continuous-∀ gf 
+goodness-∀ Wellfounded gf = wellfounded-∀ gf 
+
+∀ᶠ : ∀{A}{B}{C}{kF} → Fun B (A × C) kF → Fun B C kF
+∀ᶠ F = record { fun = (λ P → ∀ᵖ λ a b → (fun F P) (a , b))
+              ; good = goodness-∀ (kind F) (good F)
+              ; ext = extensional-∀ (ext F) }
+
+goodness-▷ : ∀ (k : Kind) → ∀{A}{B}{F : Predᵒ A → Predᵒ B}
+  → goodness k F
+  → extensionalᵖ F
+  → wellfounded (λ P → ▷ᵖ (F P))
+goodness-▷ Continuous gf extF = wellfounded-▷ gf
+goodness-▷ Wellfounded {A}{B}{F} gf extF =
+    wellfounded-▷ (wellfounded⇒continuous F gf extF )
+
+▷ᶠ : ∀{A}{B}{kF} → Fun A B kF → Fun A B Wellfounded
+▷ᶠ F = record { fun = (λ P → ▷ᵖ ((fun F) P))
+              ; good = goodness-▷ (kind F) (good F) (ext F)
               ; ext = extensional-▷ (ext F) }
 
-WF⇒CT : ∀{A} → WF A → CT A
-WF⇒CT F = record { fun = fun F
-                 ; cont = wellfounded⇒continuous (fun F) (wf F) (ext F)
-                 ; ext = ext F }
+μᶠ : ∀{A} → Fun A A Wellfounded → Predᵒ A
+μᶠ F = μᵖ (fun F)
 
-_ᶜ : ∀{A} → Predᵒ A → CT A
-(P)ᶜ = record { fun = λ Q → P
-              ; cont = continuous-const{P = P}
-              ; ext = λ _ x i → (λ x₁ → x₁) , (λ x₁ → x₁) }
-
-μ : ∀{A} → WF A → Predᵒ A
-μ F = μᵖ (fun F)
-
-fixpoint  : ∀{A}
-  → (F : WF A)
-  → μ F ≡ᵖ fun F (μ F)
-fixpoint F = theorem20 (fun F) (wf F) (ext F)
+fixpointᶠ  : ∀{A}
+  → (F : Fun A A Wellfounded)
+  → μᶠ F ≡ᵖ fun F (μᶠ F)
+fixpointᶠ F = theorem20 (fun F) (good F) (ext F)
 
 
+-- OBSOLETE STUFF
+--
+-- record CT (A : Set) : Set₁ where
+--   field
+--     fun : Predᵒ A → Predᵒ A
+--     cont : continuous fun
+--     ext : extensionalᵖ fun
+-- open CT
+
+-- record WF (A : Set) : Set₁ where
+--   field
+--     fun : Predᵒ A → Predᵒ A
+--     wf : wellfounded fun
+--     ext : extensionalᵖ fun
+-- open WF
+
+-- idᶜ : ∀{A} → CT A
+-- idᶜ = record { fun = λ P → P ; cont = continuous-id ; ext = extensional-id }
+
+-- infixr 6 _→ᶜ_
+-- _→ᶜ_ : ∀{A} → CT A → CT A → CT A
+-- F →ᶜ G = record { fun = λ P → (fun F) P →ᵖ (fun G) P
+--                 ; cont = continuous-→ (cont F) (cont G)
+--                 ; ext = extensional-→ (ext F) (ext G) }
+
+-- infixr 6 _→ʷ_
+-- _→ʷ_ : ∀{A} → WF A → WF A → WF A
+-- F →ʷ G = record { fun = λ P → (fun F) P →ᵖ (fun G) P
+--                 ; wf = wellfounded-→ (wf F) (wf G)
+--                 ; ext = extensional-→ (ext F) (ext G) }
+
+-- infixr 7 _×ᶜ_
+-- _×ᶜ_ : ∀{A} → CT A → CT A → CT A
+-- (F ×ᶜ G) = record { fun = (λ P → (fun F) P ×ᵖ (fun G) P)
+--                   ; cont = continuous-× (cont F) (cont G)
+--                   ; ext = extensional-× (ext F) (ext G) }
+
+-- infixr 7 _×ʷ_
+-- _×ʷ_ : ∀{A} → WF A → WF A → WF A
+-- (F ×ʷ G) = record { fun = (λ P → (fun F) P ×ᵖ (fun G) P)
+--                   ; wf = wellfounded-× (wf F) (wf G)
+--                   ; ext = extensional-× (ext F) (ext G) }
+
+-- infixr 7 _⊎ᶜ_
+-- _⊎ᶜ_ : ∀{A} → WF A → WF A → WF A
+-- (F ⊎ᶜ G) = record { fun = (λ P → (fun F) P ⊎ᵖ (fun G) P)
+--                   ; wf = wellfounded-⊎ (wf F) (wf G)
+--                   ; ext = extensional-⊎ (ext F) (ext G) }
+
+-- ▷ʷ : ∀{A} → CT A → WF A
+-- ▷ʷ F = record { fun = (λ P → ▷ᵖ ((fun F) P))
+--               ; wf = wellfounded-▷ (cont F)
+--               ; ext = extensional-▷ (ext F) }
+
+-- WF⇒CT : ∀{A} → WF A → CT A
+-- WF⇒CT F = record { fun = fun F
+--                  ; cont = wellfounded⇒continuous (fun F) (wf F) (ext F)
+--                  ; ext = ext F }
+
+-- _ᶜ : ∀{A} → Predᵒ A → CT A
+-- (P)ᶜ = record { fun = λ Q → P
+--               ; cont = continuous-const{P = P}
+--               ; ext = λ _ x i → (λ x₁ → x₁) , (λ x₁ → x₁) }
+
+-- μʷ : ∀{A} → WF A → Predᵒ A
+-- μʷ F = μᵖ (fun F)
+
+-- fixpointʷ  : ∀{A}
+--   → (F : WF A)
+--   → μʷ F ≡ᵖ fun F (μʷ F)
+-- fixpointʷ F = theorem20 (fun F) (wf F) (ext F)
 
 {------------------- Monotonic --------------------}
 
