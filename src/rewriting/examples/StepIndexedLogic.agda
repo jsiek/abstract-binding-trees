@@ -749,8 +749,6 @@ wellfounded-⊎ {A}{B}{F}{G} wfF wfG P k =
     ↓ᵖ (suc k) (F (↓ᵖ k P) ⊎ᵖ G (↓ᵖ k P))
     QEDᵖ
 
-
-
 cong-▷ᵖ : ∀{A}{P P′ : Predᵒ A}
    → P ≡ᵖ P′
    → ▷ᵖ P ≡ᵖ ▷ᵖ P′
@@ -771,7 +769,6 @@ wellfounded-▷ {A}{B}{F} neF P k =
   EQ1 {A}{P}{k} x i = (λ {(s≤s i≤k , b) → s≤s i≤k ,
                       λ j j<i → (≤-trans j<i i≤k) , (b j j<i)})
                  , λ {(s≤s i≤k , b) → (s≤s i≤k) , (λ k z → proj₂ (b k z))}
-
 
 down-∀ : ∀{A B}{P : Predᵒ (A × B)}{k}
    → ↓ᵖ k (∀ᵖ λ a b → P (a , b)) ≡ᵖ ↓ᵖ k (∀ᵖ λ a b → ↓ᵖ k P (a , b))
