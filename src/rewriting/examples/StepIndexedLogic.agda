@@ -319,6 +319,16 @@ extensionalᵖ F = ∀{P}{Q} → P ≡ᵖ Q → F P ≡ᵖ F Q
 extensional-id : ∀{A} → extensionalᵖ{A} (λ P → P)
 extensional-id {A} PQ x i = proj₁ (PQ x i) , proj₂ (PQ x i)
 
+extensional-fst : ∀{A}{B}
+  → extensionalᵖ{A}{A × B} fstᵖ
+extensional-fst {A}{B} PQ (a , b) i =
+    (λ x₁ → proj₁ (PQ a i) x₁) , proj₂ (PQ a i)
+
+extensional-snd : ∀{A}{B}
+  → extensionalᵖ{B}{A × B} sndᵖ
+extensional-snd {A}{B} PQ (a , b) i =
+    proj₁ (PQ b i) , proj₂ (PQ b i)
+
 extensional-→ : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
    → extensionalᵖ F
    → extensionalᵖ G
@@ -369,16 +379,6 @@ extensional-∀ {A}{B}{C} extF PQ x i =
     (λ ∀FPxi v → proj₁ (extF PQ (v , x) i) (∀FPxi v))
   , (λ ∀FQxi v → proj₂ (extF PQ (v , x) i) (∀FQxi v))
 
-extensional-fst : ∀{A}{B}
-  → extensionalᵖ{A}{A × B} fstᵖ
-extensional-fst {A}{B} PQ (a , b) i =
-    (λ x₁ → proj₁ (PQ a i) x₁) , proj₂ (PQ a i)
-
-extensional-snd : ∀{A}{B}
-  → extensionalᵖ{B}{A × B} sndᵖ
-extensional-snd {A}{B} PQ (a , b) i =
-    proj₁ (PQ b i) , proj₂ (PQ b i)
-
 {------------ Continuous and Wellfounded Functions on Step Indexed Predicates -}
 
 ↓ᵒ : ℕ → Setᵒ → Setᵒ
@@ -394,12 +394,9 @@ ext-↓ k PQ x i = (λ { (fst , snd) → fst , proj₁ (PQ x i) snd})
                 , λ { (fst , snd) → fst , proj₂ (PQ x i) snd}
 
 {-
-
-Continuous means that you only need k steps of the input to get k
-steps of the output.
-
-(This is called nonexpansive in Appel and McAllester.)
-
+  Continuous means that you only need k steps of the input to get k
+  steps of the output.
+  (This is called nonexpansive in Appel and McAllester.)
 -}
 continuous : ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
 continuous F = ∀ P k → (↓ᵖ k (F P)) ≡ᵖ (↓ᵖ k (F (↓ᵖ k P)))
