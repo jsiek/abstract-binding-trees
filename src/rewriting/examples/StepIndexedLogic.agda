@@ -801,7 +801,7 @@ continuous-∀ :  ∀{A B C}{F : Predᵒ B → Predᵒ (A × C)}
    → continuous (λ P → ∀ᵖ λ a b → (F P) (a , b))
 continuous-∀ {A}{B}{C}{F} cF P k =
     ↓ᵖ k (∀ᵖ (λ a b → F P (a , b)))                ≡ᵖ⟨ down-∀ ⟩ 
-    ↓ᵖ k (∀ᵖ (λ a b → ↓ᵖ k (F P) (a , b)))         ≡ᵖ⟨ ext-↓ k (cong-∀ᵖ (cF _ _)) ⟩ 
+    ↓ᵖ k (∀ᵖ (λ a b → ↓ᵖ k (F P) (a , b)))     ≡ᵖ⟨ ext-↓ k (cong-∀ᵖ (cF _ _)) ⟩ 
     ↓ᵖ k (∀ᵖ (λ a b → ↓ᵖ k (F (↓ᵖ k P)) (a , b)))  ≡ᵖ⟨ ≡ᵖ-sym down-∀ ⟩ 
     ↓ᵖ k (∀ᵖ (λ a b → F (↓ᵖ k P) (a , b)))
     QEDᵖ  
@@ -810,9 +810,11 @@ wellfounded-∀ :  ∀{A B C}{F : Predᵒ B → Predᵒ (A × C)}
    → wellfounded F
    → wellfounded (λ P → ∀ᵖ λ a b → (F P) (a , b))
 wellfounded-∀ {A}{B}{C}{F} wfF P k =
-    ↓ᵖ (suc k) (∀ᵖ (λ a b → F P (a , b)))                      ≡ᵖ⟨ down-∀ ⟩ 
-    ↓ᵖ (suc k) (∀ᵖ (λ a b → ↓ᵖ (suc k) (F P) (a , b)))         ≡ᵖ⟨ ext-↓ _ (cong-∀ᵖ (wfF _ _)) ⟩ 
-    ↓ᵖ (suc k) (∀ᵖ (λ a b → ↓ᵖ (suc k) (F (↓ᵖ k P)) (a , b)))  ≡ᵖ⟨ ≡ᵖ-sym down-∀ ⟩ 
+    ↓ᵖ (suc k) (∀ᵖ (λ a b → F P (a , b)))                          ≡ᵖ⟨ down-∀ ⟩ 
+    ↓ᵖ (suc k) (∀ᵖ (λ a b → ↓ᵖ (suc k) (F P) (a , b)))
+                                              ≡ᵖ⟨ ext-↓ _ (cong-∀ᵖ (wfF _ _)) ⟩ 
+    ↓ᵖ (suc k) (∀ᵖ (λ a b → ↓ᵖ (suc k) (F (↓ᵖ k P)) (a , b)))
+                                                            ≡ᵖ⟨ ≡ᵖ-sym down-∀ ⟩ 
     ↓ᵖ (suc k) (∀ᵖ (λ a b → F (↓ᵖ k P) (a , b)))
     QEDᵖ  
 
@@ -835,7 +837,7 @@ record Fun (A B : Set) (κ : Kind) : Set₁ where
     good : goodness κ fun
     ext : extensionalᵖ fun
     down : ∀ P → dcᵖ P → dcᵖ (fun P)
-    {- TODO: add downward closed and eventually zero -}
+    {- TODO: add eventually zero -}
 open Fun
 
 idᶠ : ∀{A} → Fun A A Continuous
@@ -844,6 +846,8 @@ idᶠ = record { fun = λ P → P
              ; ext = extensional-id
              ; down = λ P dcP → dcP
              }
+
+{- TODO: add fst, snd -}
 
 choose : Kind → Kind → Kind
 choose Continuous Continuous = Continuous
@@ -858,8 +862,10 @@ goodness-→ : ∀ (kf kg : Kind) {A}{B}{F G : Predᵒ A → Predᵒ B}
    → extensionalᵖ G
    → goodness (choose kf kg) (λ P → F P →ᵖ G P)
 goodness-→ Continuous Continuous gf extF gg extG  = continuous-→ gf gg
-goodness-→ Continuous Wellfounded {G = G} gf extF gg extG = continuous-→ gf (wellfounded⇒continuous G gg extG)
-goodness-→ Wellfounded Continuous {F = F} gf extF gg extG = continuous-→ (wellfounded⇒continuous F gf extF) gg
+goodness-→ Continuous Wellfounded {G = G} gf extF gg extG =
+    continuous-→ gf (wellfounded⇒continuous G gg extG)
+goodness-→ Wellfounded Continuous {F = F} gf extF gg extG =
+    continuous-→ (wellfounded⇒continuous F gf extF) gg
 goodness-→ Wellfounded Wellfounded gf extF gg extG = wellfounded-→ gf gg
 
 kind : ∀{A}{B}{kF} → Fun A B kF → Kind
@@ -880,8 +886,10 @@ goodness-× : ∀ (kf kg : Kind) {A}{B}{F G : Predᵒ A → Predᵒ B}
    → extensionalᵖ G
    → goodness (choose kf kg) (λ P → F P ×ᵖ G P)
 goodness-× Continuous Continuous gf extF gg extG  = continuous-× gf gg
-goodness-× Continuous Wellfounded {G = G} gf extF gg extG = continuous-× gf (wellfounded⇒continuous G gg extG)
-goodness-× Wellfounded Continuous {F = F} gf extF gg extG = continuous-× (wellfounded⇒continuous F gf extF) gg
+goodness-× Continuous Wellfounded {G = G} gf extF gg extG =
+    continuous-× gf (wellfounded⇒continuous G gg extG)
+goodness-× Wellfounded Continuous {F = F} gf extF gg extG =
+    continuous-× (wellfounded⇒continuous F gf extF) gg
 goodness-× Wellfounded Wellfounded gf extF gg extG = wellfounded-× gf gg
 
 infixr 6 _×ᶠ_
@@ -889,7 +897,8 @@ _×ᶠ_ : ∀{A}{B}{kF kG} → Fun A B kF → Fun A B kG → Fun A B (choose kF 
 F ×ᶠ G = record { fun = λ P → (fun F) P ×ᵖ (fun G) P
         ; good = goodness-× (kind F) (kind G) (good F) (ext F) (good G) (ext G)
         ; ext = extensional-× (ext F) (ext G)
-        ; down = λ P dcP n x x₁ → dc-× (λ n → down F P dcP n x) (λ n → down G P dcP n x) n x₁
+        ; down = λ P dcP n x x₁ → dc-× (λ n → down F P dcP n x)
+                                       (λ n → down G P dcP n x) n x₁
         }
 
 goodness-⊎ : ∀ (kf kg : Kind) {A}{B}{F G : Predᵒ A → Predᵒ B}
@@ -899,8 +908,10 @@ goodness-⊎ : ∀ (kf kg : Kind) {A}{B}{F G : Predᵒ A → Predᵒ B}
    → extensionalᵖ G
    → goodness (choose kf kg) (λ P → F P ⊎ᵖ G P)
 goodness-⊎ Continuous Continuous gf extF gg extG  = continuous-⊎ gf gg
-goodness-⊎ Continuous Wellfounded {G = G} gf extF gg extG = continuous-⊎ gf (wellfounded⇒continuous G gg extG)
-goodness-⊎ Wellfounded Continuous {F = F} gf extF gg extG = continuous-⊎ (wellfounded⇒continuous F gf extF) gg
+goodness-⊎ Continuous Wellfounded {G = G} gf extF gg extG =
+    continuous-⊎ gf (wellfounded⇒continuous G gg extG)
+goodness-⊎ Wellfounded Continuous {F = F} gf extF gg extG =
+    continuous-⊎ (wellfounded⇒continuous F gf extF) gg
 goodness-⊎ Wellfounded Wellfounded gf extF gg extG = wellfounded-⊎ gf gg
 
 infixr 6 _⊎ᶠ_
@@ -908,7 +919,8 @@ _⊎ᶠ_ : ∀{A}{B}{kF kG} → Fun A B kF → Fun A B kG → Fun A B (choose kF
 F ⊎ᶠ G = record { fun = λ P → (fun F) P ⊎ᵖ (fun G) P
         ; good = goodness-⊎ (kind F) (kind G) (good F) (ext F) (good G) (ext G)
         ; ext = extensional-⊎ (ext F) (ext G)
-        ; down = λ P dcP n x x₁ → dc-⊎ (λ n → down F P dcP n x) (λ n → down G P dcP n x) n x₁
+        ; down = λ P dcP n x x₁ → dc-⊎ (λ n → down F P dcP n x)
+                                       (λ n → down G P dcP n x) n x₁
         }
 
 goodness-∀ : ∀ (kf : Kind) {A B C}{F : Predᵒ B → Predᵒ (A × C)}
@@ -921,7 +933,7 @@ goodness-∀ Wellfounded gf = wellfounded-∀ gf
 ∀ᶠ F = record { fun = (λ P → ∀ᵖ λ a b → (fun F P) (a , b))
               ; good = goodness-∀ (kind F) (good F)
               ; ext = extensional-∀ (ext F)
-              ; down = λ P x n x₁ x₂ → dc-∀ (λ v n → down F P x n (v , x₁)) n x₂ 
+              ; down = λ P x n x₁ x₂ → dc-∀ (λ v n → down F P x n (v , x₁)) n x₂
               }
 
 goodness-▷ : ∀ (k : Kind) → ∀{A}{B}{F : Predᵒ A → Predᵒ B}
@@ -947,6 +959,9 @@ fixpointᶠ  : ∀{A}
   → μᶠ F ≡ᵖ fun F (μᶠ F)
 fixpointᶠ F = theorem20 (fun F) (good F) (ext F)
 
+dc-μᶠ : ∀{A}{F : Fun A A Wellfounded}
+   → dcᵖ (μᶠ F)
+dc-μᶠ {A}{F} = dc-μ (good F) (ext F) (down F)
 
 -- OBSOLETE STUFF
 --
