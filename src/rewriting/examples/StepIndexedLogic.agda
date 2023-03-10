@@ -40,7 +40,7 @@ _×ᵒ_ : Setᵒ → Setᵒ → Setᵒ
 
 infixr 7 _⊎ᵒ_
 _⊎ᵒ_ : Setᵒ → Setᵒ → Setᵒ
-(P ⊎ᵒ Q) n  = ∀ k → k < n → (P k) ⊎ (Q k)
+(P ⊎ᵒ Q) n  = ∀ k → k < n → (P k) ⊎ (Q k) {- TODO: change to k ≤ n -}
 
 infixr 6 _→ᵒ_
 _→ᵒ_ : Setᵒ → Setᵒ → Setᵒ
@@ -348,12 +348,12 @@ ext-↓ k PQ x i = (λ { (fst , snd) → fst , proj₁ (PQ x i) snd})
 
 {-
 
-Nonexpansive means that you only need k steps of the input to get k
-steps of the output. This is related to continuity.
+Continuous means that you only need k steps of the input to get k
+steps of the output.
 
 -}
-nonexpansive : ∀{A} → (Predᵒ A → Predᵒ A) → Set₁
-nonexpansive F = ∀ P k → (↓ᵖ k (F P)) ≡ᵖ (↓ᵖ k (F (↓ᵖ k P)))
+continuous : ∀{A} → (Predᵒ A → Predᵒ A) → Set₁
+continuous F = ∀ P k → (↓ᵖ k (F P)) ≡ᵖ (↓ᵖ k (F (↓ᵖ k P)))
 
 wellfounded : ∀{A} → (Predᵒ A → Predᵒ A) → Set₁
 wellfounded F = ∀ P k → (↓ᵖ (suc k) (F P)) ≡ᵖ (↓ᵖ (suc k) (F (↓ᵖ k P)))
@@ -382,43 +382,6 @@ down-equiv : ∀{A}{P Q : Predᵒ A}
   → (∀ k → ↓ᵖ k P ≡ᵖ ↓ᵖ k Q)
 down-equiv P≡Q k x i = (λ { (fst , snd) → fst , proj₁ (P≡Q x i) snd})
     , λ { (fst , snd) → fst , proj₂ (P≡Q x i) snd}
-
-{-
-  Does wellfounded imply extensional?
-  I don't think so.
--}
--- wff⇒ext : ∀{A}
---    → (F : Predᵒ A → Predᵒ A)
---    → wellfounded F
---    → extensionalᵖ F
--- wff⇒ext{A} F wfF {P}{Q} P≡Q = equiv-down {!!}
---   where
---   Goal : (k : ℕ) → ↓ᵖ k (F P) ≡ᵖ ↓ᵖ k (F Q)
---   Goal zero x i = (λ { ()}) , λ { ()}
---   Goal (suc k) = {!!}
---     where
---     IH : ↓ᵖ k (F P) ≡ᵖ ↓ᵖ k (F Q)
---     IH = Goal k
---     X : ↓ᵖ (suc k) (F P) ≡ᵖ ↓ᵖ (suc k) (F (↓ᵖ k P))
---     X = wfF P k
---     Ya : (↓ᵖ k P) ≡ᵖ (↓ᵖ k Q)
---     Ya = down-equiv P≡Q k
---     Y : ↓ᵖ (suc k) (F (↓ᵖ k P)) ≡ᵖ ↓ᵖ (suc k) (F (↓ᵖ k Q))
---     Y = {!!}
-
-  {- wellfounded F = ∀ P k → (↓ᵖ (suc k) (F P)) ≡ᵖ (↓ᵖ (suc k) (F (↓ᵖ k P)))
-  
-    ↓ᵖ (suc k) (F P)
-    =  wfF
-    (↓ᵖ (suc k) (F (↓ᵖ k P)))
-    = doh, need extensionality for this step
-    (↓ᵖ (suc k) (F (↓ᵖ k Q)))
-    = wfF
-    ↓ᵖ (suc k) (F Q)
-
-   Goal: ↓ᵖ (suc k) (F P) ≡ᵖ ↓ᵖ (suc k) (F Q)
-   -}
-
 
 lemma15a : ∀{A}{P Q : Predᵒ A}{j}
   → (F : Predᵒ A → Predᵒ A)
@@ -551,24 +514,23 @@ theorem20 : ∀{A}
    → μᵖ F ≡ᵖ F (μᵖ F)
 theorem20 F wfF extF = equiv-down (λ k → lemma19 k F wfF extF)
 
-
-nonexpansive-id : ∀{A}
-   → nonexpansive{A} (λ P → P)
-nonexpansive-id{A} Q k x i =
+continuous-id : ∀{A}
+   → continuous{A} (λ P → P)
+continuous-id{A} Q k x i =
     (λ { (fst , snd) → fst , fst , snd})
     , (λ { (fst , snd) → fst , proj₂ snd})
 
-nonexpansive-const : ∀{A}{P : Predᵒ A}
-   → nonexpansive{A} (λ Q → P)
-nonexpansive-const {A}{P} Q k = ≡ᵖ-refl refl
+continuous-const : ∀{A}{P : Predᵒ A}
+   → continuous{A} (λ Q → P)
+continuous-const {A}{P} Q k = ≡ᵖ-refl refl
 
-wellfounded⇒nonexpansive : ∀{A}
+wellfounded⇒continuous : ∀{A}
    → (F : Predᵒ A → Predᵒ A)
    → wellfounded F
    → extensionalᵖ F
-   → nonexpansive F
-wellfounded⇒nonexpansive F wfF extF P zero v i = (λ {()}) , λ { ()}
-wellfounded⇒nonexpansive F wfF extF P (suc k) =
+   → continuous F
+wellfounded⇒continuous F wfF extF P zero v i = (λ {()}) , λ { ()}
+wellfounded⇒continuous F wfF extF P (suc k) =
     ↓ᵖ (suc k) (F P)                       ≡ᵖ⟨ wfF _ k ⟩
     ↓ᵖ (suc k) (F (↓ᵖ k P))                ≡ᵖ⟨ ext-↓ (suc k) (extF (≡ᵖ-sym
                                                                  (lemma17 k))) ⟩
@@ -597,11 +559,11 @@ down-fun {A}{P}{Q}{k} x i =
       , λ { (a , b) → a , (λ j x₁ Pxj →
                   let xx = b j x₁ (≤-trans (s≤s x₁) a , Pxj) in proj₂ xx)}
 
-nonexpansive-→ : ∀{A}{F G : Predᵒ A → Predᵒ A}
-   → nonexpansive F
-   → nonexpansive G
-   → nonexpansive (λ P → F P →ᵖ G P)
-nonexpansive-→ {A}{F}{G} neF neG P k =
+continuous-→ : ∀{A}{F G : Predᵒ A → Predᵒ A}
+   → continuous F
+   → continuous G
+   → continuous (λ P → F P →ᵖ G P)
+continuous-→ {A}{F}{G} neF neG P k =
     ↓ᵖ k (F P →ᵖ G P)                              ≡ᵖ⟨ down-fun ⟩
     ↓ᵖ k (↓ᵖ k (F P) →ᵖ ↓ᵖ k (G P))  ≡ᵖ⟨ ext-↓ k (cong-→ᵖ (neF _ k) (neG _ k)) ⟩
     ↓ᵖ k (↓ᵖ k (F (↓ᵖ k P)) →ᵖ ↓ᵖ k (G (↓ᵖ k P)))  ≡ᵖ⟨ ≡ᵖ-sym down-fun ⟩
@@ -654,11 +616,11 @@ wellfounded-× {A}{F}{G} wfF wfG P k =
     ↓ᵖ (suc k) (F (↓ᵖ k P) ×ᵖ G (↓ᵖ k P))
     QEDᵖ
 
-nonexpansive-× : ∀{A}{F G : Predᵒ A → Predᵒ A}
-   → nonexpansive F
-   → nonexpansive G
-   → nonexpansive (λ P → F P ×ᵖ G P)
-nonexpansive-× {A}{F}{G} neF neG P k =
+continuous-× : ∀{A}{F G : Predᵒ A → Predᵒ A}
+   → continuous F
+   → continuous G
+   → continuous (λ P → F P ×ᵖ G P)
+continuous-× {A}{F}{G} neF neG P k =
     ↓ᵖ k (F P ×ᵖ G P)                              ≡ᵖ⟨ down-× ⟩
     ↓ᵖ k (↓ᵖ k (F P) ×ᵖ ↓ᵖ k (G P))
          ≡ᵖ⟨ ext-↓ k (cong-×ᵖ (neF _ k) (neG _ k)) ⟩
@@ -685,8 +647,8 @@ cong-⊎ᵖ {A}{P}{P′}{Q}{Q′} PP′ QQ′ v k = to , fro
   ... | inj₂ Q′vj = inj₂ (proj₂ (QQ′ v j) Q′vj)
       
 wellfounded-⊎ : ∀{A}{F G : Predᵒ A → Predᵒ A}
-   → nonexpansive F
-   → nonexpansive G
+   → continuous F
+   → continuous G
    → wellfounded (λ P → F P ⊎ᵖ G P)
 wellfounded-⊎ {A}{F}{G} neF neG P k =
     ↓ᵖ (suc k) (F P ⊎ᵖ G P)                              ≡ᵖ⟨ EQ1 ⟩
@@ -762,7 +724,7 @@ cong-▷ᵖ PP′ v k = (λ {▷Pvk j j<k → proj₁ (PP′ v j) (▷Pvk j j<k)
                 , (λ ▷P′vk j j<k → proj₂ (PP′ v j) (▷P′vk j j<k))
 
 wellfounded-▷ : ∀{A}{F : Predᵒ A → Predᵒ A}
-   → nonexpansive F
+   → continuous F
    → wellfounded (λ P → ▷ᵖ (F P))
 wellfounded-▷ {A}{F} neF P k =
     ↓ᵖ (suc k) (▷ᵖ (F P))                ≡ᵖ⟨ EQ1 ⟩
@@ -783,16 +745,18 @@ extensional-▷ {A} extF PQ x i =
       (λ x₁ k x₂ → proj₁ (extF PQ x k) (x₁ k x₂))
     , (λ x₁ k x₂ → proj₂ (extF PQ x k) (x₁ k x₂))
 
+{- TODO: ∀ᵖ extensional, wellfounded, continuous -}
+
 {-------------------------------------------------------------------------------
      Step Indexed Logic
 -------------------------------------------------------------------------------}
 
-record NE (A : Set) : Set₁ where
+record CT (A : Set) : Set₁ where
   field
     fun : Predᵒ A → Predᵒ A
-    ne : nonexpansive fun
+    cont : continuous fun
     ext : extensionalᵖ fun
-open NE
+open CT
 
 record WF (A : Set) : Set₁ where
   field
@@ -801,13 +765,13 @@ record WF (A : Set) : Set₁ where
     ext : extensionalᵖ fun
 open WF
 
-idₖ : ∀{A} → NE A
-idₖ = record { fun = λ P → P ; ne = nonexpansive-id ; ext = extensional-id }
+idᶜ : ∀{A} → CT A
+idᶜ = record { fun = λ P → P ; cont = continuous-id ; ext = extensional-id }
 
-infixr 6 _→ₖ_
-_→ₖ_ : ∀{A} → NE A → NE A → NE A
-F →ₖ G = record { fun = λ P → (fun F) P →ᵖ (fun G) P
-                ; ne = nonexpansive-→ (ne F) (ne G)
+infixr 6 _→ᶜ_
+_→ᶜ_ : ∀{A} → CT A → CT A → CT A
+F →ᶜ G = record { fun = λ P → (fun F) P →ᵖ (fun G) P
+                ; cont = continuous-→ (cont F) (cont G)
                 ; ext = extensional-→ (ext F) (ext G) }
 
 infixr 6 _→ʷ_
@@ -816,10 +780,10 @@ F →ʷ G = record { fun = λ P → (fun F) P →ᵖ (fun G) P
                 ; wf = wellfounded-→ (wf F) (wf G)
                 ; ext = extensional-→ (ext F) (ext G) }
 
-infixr 7 _×ₖ_
-_×ₖ_ : ∀{A} → NE A → NE A → NE A
-(F ×ₖ G) = record { fun = (λ P → (fun F) P ×ᵖ (fun G) P)
-                  ; ne = nonexpansive-× (ne F) (ne G)
+infixr 7 _×ᶜ_
+_×ᶜ_ : ∀{A} → CT A → CT A → CT A
+(F ×ᶜ G) = record { fun = (λ P → (fun F) P ×ᵖ (fun G) P)
+                  ; cont = continuous-× (cont F) (cont G)
                   ; ext = extensional-× (ext F) (ext G) }
 
 infixr 7 _×ʷ_
@@ -828,33 +792,33 @@ _×ʷ_ : ∀{A} → WF A → WF A → WF A
                   ; wf = wellfounded-× (wf F) (wf G)
                   ; ext = extensional-× (ext F) (ext G) }
 
-infixr 7 _⊎ₖ_
-_⊎ₖ_ : ∀{A} → NE A → NE A → WF A
-(F ⊎ₖ G) = record { fun = (λ P → (fun F) P ⊎ᵖ (fun G) P)
-                  ; wf = wellfounded-⊎ (ne F) (ne G)
+infixr 7 _⊎ᶜ_
+_⊎ᶜ_ : ∀{A} → CT A → CT A → WF A
+(F ⊎ᶜ G) = record { fun = (λ P → (fun F) P ⊎ᵖ (fun G) P)
+                  ; wf = wellfounded-⊎ (cont F) (cont G)
                   ; ext = extensional-⊎ (ext F) (ext G) }
 
-▷ₖ : ∀{A} → NE A → WF A
-▷ₖ F = record { fun = (λ P → ▷ᵖ ((fun F) P))
-              ; wf = wellfounded-▷ (ne F)
+▷ʷ : ∀{A} → CT A → WF A
+▷ʷ F = record { fun = (λ P → ▷ᵖ ((fun F) P))
+              ; wf = wellfounded-▷ (cont F)
               ; ext = extensional-▷ (ext F) }
 
-WF⇒NE : ∀{A} → WF A → NE A
-WF⇒NE F = record { fun = fun F
-                 ; ne = wellfounded⇒nonexpansive (fun F) (wf F) (ext F)
+WF⇒CT : ∀{A} → WF A → CT A
+WF⇒CT F = record { fun = fun F
+                 ; cont = wellfounded⇒continuous (fun F) (wf F) (ext F)
                  ; ext = ext F }
 
-_ₖ : ∀{A} → Predᵒ A → NE A
-(P)ₖ = record { fun = λ Q → P
-              ; ne = nonexpansive-const{P = P}
+_ᶜ : ∀{A} → Predᵒ A → CT A
+(P)ᶜ = record { fun = λ Q → P
+              ; cont = continuous-const{P = P}
               ; ext = λ _ x i → (λ x₁ → x₁) , (λ x₁ → x₁) }
 
-μₖ : ∀{A} → WF A → Predᵒ A
-μₖ F = μᵖ (fun F)
+μ : ∀{A} → WF A → Predᵒ A
+μ F = μᵖ (fun F)
 
 fixpoint  : ∀{A}
   → (F : WF A)
-  → μₖ F ≡ᵖ fun F (μₖ F)
+  → μ F ≡ᵖ fun F (μ F)
 fixpoint F = theorem20 (fun F) (wf F) (ext F)
 
 
