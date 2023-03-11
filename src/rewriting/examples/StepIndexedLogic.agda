@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K --rewriting --allow-unsolved-metas #-}
+{-# OPTIONS --without-K --rewriting #-}
 
 {-
  Based on the development of Logical step-indexed logical relation
@@ -19,6 +19,7 @@ open import Data.Product
    using (_×_; _,_; proj₁; proj₂; Σ; ∃; Σ-syntax; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt; ⊤)
+open import Data.Unit.Polymorphic renaming (⊤ to topᵖ; tt to ttᵖ)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app; subst)
 open import Relation.Nullary using (¬_)
@@ -170,11 +171,11 @@ dc-⊥ (suc n) ()
 dc-⊤ : dc ⊤ᵒ
 dc-⊤  =  λ n ⊤ᵒn k k≤n → tt
 
-dc-× : ∀ {P Q} → dc P → dc Q → dc (P ×ᵒ Q)
-dc-× dcP dcQ n P×Q k x₁ j x₂ = P×Q j (≤-trans x₂ x₁) 
+dc-× : ∀ {P Q} → dc (P ×ᵒ Q)
+dc-× n P×Q k x₁ j x₂ = P×Q j (≤-trans x₂ x₁) 
 
-dc-⊎ : ∀ {P Q} → dc P → dc Q → dc (P ⊎ᵒ Q)
-dc-⊎ dcP dcQ n P⊎Q k x j y = P⊎Q j (≤-trans y x)
+dc-⊎ : ∀ {P Q} → dc (P ⊎ᵒ Q)
+dc-⊎ n P⊎Q k x j y = P⊎Q j (≤-trans y x)
 
 dc-→ᵒ : ∀ {P Q} → dc (P →ᵒ Q)
 dc-→ᵒ n [P→ᵒQ]n k k≤n i i≤k Pi = [P→ᵒQ]n i (≤-trans i≤k k≤n) Pi
@@ -571,20 +572,6 @@ theorem20 : ∀{A}
    → μᵖ F ≡ᵖ F (μᵖ F)
 theorem20 F wfF extF = equiv-down (λ k → lemma19 k F wfF extF)
 
-continuous-id : ∀{A}
-   → continuous{A} (λ P → P)
-continuous-id{A} Q k x i =
-    (λ { (fst , snd) → fst , fst , snd})
-    , (λ { (fst , snd) → fst , proj₂ snd})
-
-continuous-fst : ∀{A}{B}
-  → continuous{A}{A × B} fstᵖ
-continuous-fst{A}{B} P k (a , b) i = (λ x₁ → proj₁ x₁ , x₁) , (λ x → proj₂ x)
-
-continuous-snd : ∀{A}{B}
-  → continuous{B}{A × B} sndᵖ
-continuous-snd{A}{B} P k (a , b) i = (λ x → (proj₁ x) , x) , (λ x → proj₂ x)
-
 continuous-const : ∀{A}{B}{P : Predᵒ B}
    → continuous{A}{B} (λ Q → P)
 continuous-const {A}{P} Q k = ≡ᵖ-refl refl
@@ -799,31 +786,8 @@ cong-∀ᵖ PP′ v k =
     (λ z v′ → proj₁ (PP′ (v′ , v) k) (z v′))
     , (λ z v′ → proj₂ (PP′ (v′ , v) k) (z v′))
 
-continuous-∀ :  ∀{A B C}{F : Predᵒ B → Predᵒ (A × C)}
-   → continuous F
-   → continuous (λ P → ∀ᵖ λ a b → (F P) (a , b))
-continuous-∀ {A}{B}{C}{F} cF P k =
-    ↓ᵖ k (∀ᵖ (λ a b → F P (a , b)))                ≡ᵖ⟨ down-∀ ⟩ 
-    ↓ᵖ k (∀ᵖ (λ a b → ↓ᵖ k (F P) (a , b)))     ≡ᵖ⟨ ext-↓ k (cong-∀ᵖ (cF _ _)) ⟩ 
-    ↓ᵖ k (∀ᵖ (λ a b → ↓ᵖ k (F (↓ᵖ k P)) (a , b)))  ≡ᵖ⟨ ≡ᵖ-sym down-∀ ⟩ 
-    ↓ᵖ k (∀ᵖ (λ a b → F (↓ᵖ k P) (a , b)))
-    QEDᵖ  
-
-wellfounded-∀ :  ∀{A B C}{F : Predᵒ B → Predᵒ (A × C)}
-   → wellfounded F
-   → wellfounded (λ P → ∀ᵖ λ a b → (F P) (a , b))
-wellfounded-∀ {A}{B}{C}{F} wfF P k =
-    ↓ᵖ (suc k) (∀ᵖ (λ a b → F P (a , b)))                          ≡ᵖ⟨ down-∀ ⟩ 
-    ↓ᵖ (suc k) (∀ᵖ (λ a b → ↓ᵖ (suc k) (F P) (a , b)))
-                                              ≡ᵖ⟨ ext-↓ _ (cong-∀ᵖ (wfF _ _)) ⟩ 
-    ↓ᵖ (suc k) (∀ᵖ (λ a b → ↓ᵖ (suc k) (F (↓ᵖ k P)) (a , b)))
-                                                            ≡ᵖ⟨ ≡ᵖ-sym down-∀ ⟩ 
-    ↓ᵖ (suc k) (∀ᵖ (λ a b → F (↓ᵖ k P) (a , b)))
-    QEDᵖ  
-
-
 {-------------------------------------------------------------------------------
-     Step Indexed Logic Combinators
+     Step Indexed Logic
 -------------------------------------------------------------------------------}
 
 data Kind : Set where
@@ -834,39 +798,23 @@ goodness : Kind → ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
 goodness Continuous F = continuous F
 goodness Wellfounded F = wellfounded F
 
-record Fun (A B : Set) (κ : Kind) : Set₁ where
+data IsDownClosed : Set where
+  DownClosed : IsDownClosed
+  NotDownClosed : IsDownClosed
+
+closed : IsDownClosed → ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
+closed DownClosed F = ∀ P → dcᵖ P → dcᵖ (F P)
+closed NotDownClosed F = topᵖ
+
+record Fun (A B : Set) (κ : Kind) (DC : IsDownClosed) : Set₁ where
   field
     fun : Predᵒ A → Predᵒ B
     good : goodness κ fun
     ext : extensionalᵖ fun
-    down : ∀ P → dcᵖ P → dcᵖ (fun P)
+    down : closed DC fun
     ez : ∀ P → eeᵖ P → eeᵖ (fun P)
     {- TODO: add eventually zero -}
 open Fun public
-
-idᶠ : ∀{A} → Fun A A Continuous
-idᶠ = record { fun = λ P → P
-             ; good = continuous-id
-             ; ext = extensional-id
-             ; down = λ P dcP → dcP
-             ; ez = λ P eeP → eeP
-             }
-
-fstᶠ : ∀{A B} → Fun A (A × B) Continuous
-fstᶠ = record { fun = λ P → fstᵖ P
-              ; good = continuous-fst
-              ; ext = extensional-fst
-              ; down = λ P dcP → dc-fst dcP
-              ; ez = λ P eeP → ee-fst{P = P} eeP
-              }
-
-sndᶠ : ∀{A B} → Fun B (A × B) Continuous
-sndᶠ = record { fun = λ P → sndᵖ P
-              ; good = continuous-snd
-              ; ext = extensional-snd
-              ; down = λ P dcP → dc-snd dcP
-              ; ez = λ P eeP → ee-snd{P = P} eeP
-              }
 
 choose : Kind → Kind → Kind
 choose Continuous Continuous = Continuous
@@ -887,11 +835,14 @@ goodness-→ Wellfounded Continuous {F = F} gf extF gg extG =
     continuous-→ (wellfounded⇒continuous F gf extF) gg
 goodness-→ Wellfounded Wellfounded gf extF gg extG = wellfounded-→ gf gg
 
-kind : ∀{A}{B}{kF} → Fun A B kF → Kind
+kind : ∀{A}{B}{kF}{DC} → Fun A B kF DC → Kind
 kind {A}{B}{kF} F = kF
 
 infixr 6 _→ᶠ_
-_→ᶠ_ : ∀{A B}{kF kG} → Fun A B kF → Fun A B kG → Fun A B (choose kF kG)
+_→ᶠ_ : ∀{A B}{kF kG}{FDC}{GDC}
+   → Fun A B kF FDC
+   → Fun A B kG GDC
+   → Fun A B (choose kF kG) DownClosed
 F →ᶠ G = record { fun = λ P → (fun F) P →ᵖ (fun G) P
         ; good = goodness-→ (kind F) (kind G) (good F) (ext F) (good G) (ext G)
         ; ext = extensional-→ (ext F) (ext G)
@@ -913,12 +864,14 @@ goodness-× Wellfounded Continuous {F = F} gf extF gg extG =
 goodness-× Wellfounded Wellfounded gf extF gg extG = wellfounded-× gf gg
 
 infixr 6 _×ᶠ_
-_×ᶠ_ : ∀{A}{B}{kF kG} → Fun A B kF → Fun A B kG → Fun A B (choose kF kG)
+_×ᶠ_ : ∀{A}{B}{kF kG}{FDC GDC}
+   → Fun A B kF FDC
+   → Fun A B kG GDC
+   → Fun A B (choose kF kG) DownClosed
 F ×ᶠ G = record { fun = λ P → (fun F) P ×ᵖ (fun G) P
         ; good = goodness-× (kind F) (kind G) (good F) (ext F) (good G) (ext G)
         ; ext = extensional-× (ext F) (ext G)
-        ; down = λ P dcP n x x₁ → dc-× (λ n → down F P dcP n x)
-                                       (λ n → down G P dcP n x) n x₁
+        ; down = λ P dcP n x x₁ → dc-× n x₁
         ; ez = λ P x x₁ → ee-× (ez F P x x₁) (ez G P x x₁)
         }
 
@@ -936,23 +889,19 @@ goodness-⊎ Wellfounded Continuous {F = F} gf extF gg extG =
 goodness-⊎ Wellfounded Wellfounded gf extF gg extG = wellfounded-⊎ gf gg
 
 infixr 6 _⊎ᶠ_
-_⊎ᶠ_ : ∀{A}{B}{kF kG} → Fun A B kF → Fun A B kG → Fun A B (choose kF kG)
+_⊎ᶠ_ : ∀{A}{B}{kF kG}{FDC GDC}
+   → Fun A B kF FDC
+   → Fun A B kG GDC
+   → Fun A B (choose kF kG) DownClosed
 F ⊎ᶠ G = record { fun = λ P → (fun F) P ⊎ᵖ (fun G) P
         ; good = goodness-⊎ (kind F) (kind G) (good F) (ext F) (good G) (ext G)
         ; ext = extensional-⊎ (ext F) (ext G)
-        ; down = λ P dcP n x x₁ → dc-⊎ (λ n → down F P dcP n x)
-                                       (λ n → down G P dcP n x) n x₁
+        ; down = λ P dcP n x x₁ → dc-⊎ n x₁
         ; ez = λ P x x₁ → ee-⊎ (ez F P x x₁) (ez G P x x₁)
         }
 
-goodness-∀ : ∀ (kf : Kind) {A B C}{F : Predᵒ B → Predᵒ (A × C)}
-   → goodness kf F
-   → goodness kf (λ P → ∀ᵖ λ a b → (F P) (a , b))
-goodness-∀ Continuous gf = continuous-∀ gf 
-goodness-∀ Wellfounded gf = wellfounded-∀ gf 
-
 continuous-all : ∀{A B C}
-   → (F : A → Fun B C Continuous)
+   → (F : A → Fun B C Continuous DownClosed)
    → continuous (λ P → ∀ᵖ (λ a → fun (F a) P))
 continuous-all F P k x i =
     (λ { (i<k , ∀FP) →
@@ -963,7 +912,7 @@ continuous-all F P k x i =
                     proj₂ xx)})
 
 wellfounded-all : ∀{A B C}
-   → (F : A → Fun B C Wellfounded)
+   → (F : A → Fun B C Wellfounded DownClosed)
    → wellfounded (λ P → ∀ᵖ (λ a → fun (F a) P))
 wellfounded-all F P k x i =
     (λ{(s≤s i≤k , ∀FP) →
@@ -976,20 +925,20 @@ wellfounded-all F P k x i =
                  proj₂ xx)}
 
 goodness-all : ∀{A B C}{K}
-   → (F : A → Fun B C K)
+   → (F : A → Fun B C K DownClosed)
    → goodness K (λ P → ∀ᵖ (λ a → fun (F a) P))
 goodness-all {A} {B} {C} {Continuous} F = continuous-all F
 goodness-all {A} {B} {C} {Wellfounded} F = wellfounded-all F
 
 extensional-all : ∀{A B C}{K}
-   → (F : A → Fun B C K)
+   → (F : A → Fun B C K DownClosed)
    → extensionalᵖ (λ P → ∀ᵖ (λ a → fun (F a) P))
 extensional-all F {P}{Q} PQ c i =
   (λ ∀FP v → proj₁ (ext (F v) PQ c i) (∀FP v))
   , (λ ∀FQ v → proj₂ (ext (F v) PQ c i) (∀FQ v))
 
 dc-all : ∀{A B C}{K}
-   → (F : A → Fun B C K)
+   → (F : A → Fun B C K DownClosed)
    → (P : B → ℕ → Set)
    → dcᵖ P → dcᵖ (∀ᵖ (λ a → fun (F a) P))
 dc-all F P dcP =
@@ -999,26 +948,20 @@ dc-all F P dcP =
   dc-∀ᵖ dcFP
 
 ee-all : ∀{A B C}{K}
-   → (F : A → Fun B C K)
+   → (F : A → Fun B C K DownClosed)
    → (P : B → ℕ → Set)
    → eeᵖ P
    → eeᵖ (∀ᵖ (λ a → fun (F a) P))
 ee-all F P eeP x v = ez (F v) P eeP x
 
-∀ᵍ : ∀{A B C : Set}{K} → (A → Fun B C K) → Fun B C K
+∀ᵍ : ∀{A B C : Set}{K}
+   → (A → Fun B C K DownClosed)
+   → Fun B C K DownClosed
 ∀ᵍ {A}{B}{C} F = record { fun = λ P → ∀ᵖ {A} λ a → fun (F a) P
     ; good = goodness-all F
     ; ext = extensional-all F
     ; down = dc-all F
     ; ez = ee-all F }
-
-∀ᶠ : ∀{A}{B}{C}{kF} → Fun B (A × C) kF → Fun B C kF
-∀ᶠ F = record { fun = (λ P → ∀ᵖ λ a b → (fun F P) (a , b))
-              ; good = goodness-∀ (kind F) (good F)
-              ; ext = extensional-∀ (ext F)
-              ; down = λ P x n x₁ x₂ → dc-∀ (λ v n → down F P x n (v , x₁)) n x₂
-              ; ez = λ P eeP c a → ez F P eeP (a , c)
-              }
 
 goodness-▷ : ∀ (k : Kind) → ∀{A}{B}{F : Predᵒ A → Predᵒ B}
   → goodness k F
@@ -1028,62 +971,74 @@ goodness-▷ Continuous gf extF = wellfounded-▷ gf
 goodness-▷ Wellfounded {A}{B}{F} gf extF =
     wellfounded-▷ (wellfounded⇒continuous F gf extF )
 
-▷ᶠ : ∀{A}{B}{kF} → Fun A B kF → Fun A B Wellfounded
-▷ᶠ F = record { fun = (λ P → ▷ᵖ ((fun F) P))
+closed-▷ : ∀ (DC : IsDownClosed) → ∀{A}{B}{F : Predᵒ A → Predᵒ B}
+   → closed DC F
+   → closed DC (λ P → ▷ᵖ (F P))
+closed-▷ DownClosed cF P x n x₁ x₂ = dc-▷ (λ n → cF P x n x₁) n x₂              
+closed-▷ NotDownClosed cF = ttᵖ
+
+▷ᶠ : ∀{A}{B}{kF}{DC} → Fun A B kF DC → Fun A B Wellfounded DC
+▷ᶠ {DC = DC} F = record { fun = (λ P → ▷ᵖ ((fun F) P))
               ; good = goodness-▷ (kind F) (good F) (ext F)
               ; ext = extensional-▷ (ext F) 
-              ; down = λ P x n x₁ x₂ → dc-▷ (λ n → down F P x n x₁) n x₂
+              ; down = closed-▷ DC (down F)
               ; ez = λ P eeP v k → λ {()}
               }
 
-μᶠ : ∀{A} → Fun A A Wellfounded → Predᵒ A
+μᶠ : ∀{A} → Fun A A Wellfounded DownClosed → Predᵒ A
 μᶠ F = μᵖ (fun F)
 
-dc-μᶠ : ∀{A}{F : Fun A A Wellfounded}
+dc-μᶠ : ∀{A}{F : Fun A A Wellfounded DownClosed}
    → dcᵖ (μᶠ F)
 dc-μᶠ {A}{F} = dc-μ (good F) (ext F) (down F)
 
-ee-μᶠ : ∀{A}{F : Fun A A Wellfounded}
+ee-μᶠ : ∀{A}{F : Fun A A Wellfounded DownClosed}
    → eeᵖ (μᶠ F)
 ee-μᶠ {A}{F} = ee-μ{A}{fun F} (ez F)
 
 fixpointᶠ  : ∀{A}
-  → (F : Fun A A Wellfounded)
+  → (F : Fun A A Wellfounded DownClosed)
   → μᶠ F ≡ᵖ fun F (μᶠ F)
 fixpointᶠ F = theorem20 (fun F) (good F) (ext F)
 
-goodness-flip : ∀{A}{B}{K}
-  → (f : B → Fun A ⊤ K)
+goodness-flip : ∀{A}{B}{K}{DC}
+  → (f : B → Fun A ⊤ K DC)
   → goodness K (λ P b k → fun (f b) P tt k)
 goodness-flip {A} {B} {Continuous} f P k x = good (f x) P k tt
 goodness-flip {A} {B} {Wellfounded} f P k x = good (f x) P k tt
 
-extensional-flip : ∀{A}{B}{K}
-   → (f : B → Fun A ⊤ K)
+extensional-flip : ∀{A}{B}{K}{DC}
+   → (f : B → Fun A ⊤ K DC)
    → extensionalᵖ (λ P b k → fun (f b) P tt k)
 extensional-flip {A}{B}{K} f z x = ext (f x) z tt
 
 dc-flip : ∀{A}{B}{K}
-   → (f : B → Fun A ⊤ K)
+   → (f : B → Fun A ⊤ K DownClosed)
    → (P : A → ℕ → Set)
    → dcᵖ P
    → dcᵖ (λ b k → fun (f b) P tt k)
 dc-flip f P dcP n x = down (f x) P dcP n tt
 
-ee-flip : ∀{A}{B}{K}
-   → (f : B → Fun A ⊤ K)
+ee-flip : ∀{A}{B}{K}{DC}
+   → (f : B → Fun A ⊤ K DC)
    → (P : A → ℕ → Set)
    → eeᵖ P
    → eeᵖ (λ b k → fun (f b) P tt k)
 ee-flip {A}{B}{K} f P eeP x = ez (f x) P eeP tt
 
-flip : ∀{A}{B}{K}
-   → (B → Fun A ⊤ K)
-   → Fun A B K
+closed-flip : ∀{A}{B}{K}{DC}
+   → (f : B → Fun A ⊤ K DC)
+   → closed DC (λ P b k → fun (f b) P tt k)
+closed-flip {DC = DownClosed} f = dc-flip f
+closed-flip {DC = NotDownClosed} f = ttᵖ 
+
+flip : ∀{A}{B}{K}{DC}
+   → (B → Fun A ⊤ K DC)
+   → Fun A B K DC
 flip f = record { fun = λ P b k → fun (f b) P tt k
                 ; good = goodness-flip f
                 ; ext = extensional-flip f
-                ; down = dc-flip f
+                ; down = closed-flip f
                 ; ez = ee-flip f }
 
 continuous-recur : ∀{A}{B}
@@ -1110,21 +1065,61 @@ ee-recur : ∀{A}{B}
    → (P : A → ℕ → Set) → eeᵖ P → eeᵖ{B} (λ x → P a)
 ee-recur {A} a P eeP x = eeP a
 
+closed-recur : ∀{A}{B}{DC}
+   → (a : A)
+   → closed DC {A}{B} (λ P x → P a)
+closed-recur {DC = DownClosed} a = dc-recur a
+closed-recur {DC = NotDownClosed} a = ttᵖ
+
 recur : ∀{A}{B}
    → A
-   → Fun A B Continuous
+   → Fun A B Continuous DownClosed
 recur a = record { fun = λ P → λ x → P a
     ; good = continuous-recur a
     ; ext = extensional-recur a
     ; down = dc-recur a
     ; ez = ee-recur a }
 
+closed-set : ∀{A}{B}{DC}
+   → (S : Set)
+   → closed DC {A}{B} (λ P v → S ᵒ)
+closed-set {DC = DownClosed} S P dcP = dc-Pᵖ S
+closed-set {DC = NotDownClosed} S = ttᵖ
+
 _ᶠ : ∀{A}{B}
    → Set
-   → Fun A B Wellfounded
+   → Fun A B Wellfounded DownClosed
 (S)ᶠ = record { fun = λ P → (λ v → (S)ᵒ)
     ; good = wellfounded-const
     ; ext = extensional-const
     ; down = λ P dcP → dc-Pᵖ S
     ; ez = λ P eeP b → tt
     }
+
+_₀ : Setᵒ → Setᵒ
+(S ₀) zero = ⊤
+(S ₀) (suc k) = S (suc k)
+
+wellfounded-index : ∀{A}{B}{S : Setᵒ}
+   → wellfounded{A}{B} (λ P b → (S)₀)
+wellfounded-index P k b i =
+    (λ {(s≤s i≤k , Si) → (s≤s i≤k) , Si})
+    , λ {(s≤s i≤k , Si) → (s≤s i≤k) , Si}
+
+extensional-index : ∀{A}{B}{S : Setᵒ}
+   → extensionalᵖ{A}{B} (λ P b k → S k)
+extensional-index {A}{B}{S} PQ b i = (λ z → z) , (λ z → z)
+
+ee-zero :
+    (S : Setᵒ)
+  → ee ((S)₀)
+ee-zero S = tt
+
+index : ∀{A}{B}
+   → (S : Setᵒ)
+   → Fun A B Wellfounded NotDownClosed
+index S = record { fun = λ P b → (S)₀
+      ; good = wellfounded-index
+      ; ext = extensional-index
+      ; down = ttᵖ
+      ; ez = λ P x x₁ → tt }

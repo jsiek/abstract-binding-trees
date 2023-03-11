@@ -28,13 +28,12 @@ open import Structures using (extensionality)
 open import rewriting.examples.Cast
 open import rewriting.examples.StepIndexedLogic
 
-{- TODO: connect the reduction steps to the step index -}
+pre-𝓔 : (Type × Term) → Fun (Type × Term) ⊤ Wellfounded DownClosed
+pre-𝓔 (A , M) = ∀ᵍ λ N → (index (λ k → Σ[ r ∈ M —↠ N ] len r <  k))
+                        →ᶠ (irred N)ᶠ
+                        →ᶠ ((▷ᶠ (recur (A , N))) ⊎ᶠ (N ≡ blame)ᶠ)
 
-pre-𝓔 : (Type × Term) → Fun (Type × Term) ⊤ Wellfounded
-pre-𝓔 (A , M) = ∀ᵍ λ N → (M —↠ N)ᶠ →ᶠ (irred N)ᶠ →ᶠ
-                          (▷ᶠ (recur (A , N))) ⊎ᶠ (N ≡ blame)ᶠ
-
-pre-𝓥 : (Type × Term) → Fun (Type × Term) ⊤ Wellfounded
+pre-𝓥 : (Type × Term) → Fun (Type × Term) ⊤ Wellfounded DownClosed
 pre-𝓥 (★ , op-inject {G} g ⦅ cons (ast V) nil ⦆) =
     ▷ᶠ (recur (G , V))
 pre-𝓥 ($ₜ ι , op-lit {ι′} c ⦅ nil ⦆) = (ι ≡ ι′)ᶠ
