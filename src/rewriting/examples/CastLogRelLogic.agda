@@ -29,7 +29,7 @@ open import rewriting.examples.Cast
 open import rewriting.examples.StepIndexedLogic
 
 pre-𝓔 : (Type × Term) → Fun (Type × Term) ⊤ Wellfounded DownClosed
-pre-𝓔 (A , M) = ∀ᵍ λ N → (index (λ k → Σ[ r ∈ M —↠ N ] len r <  k))
+pre-𝓔 (A , M) = ∀ᵍ λ N → (index (λ k → Σ[ r ∈ M —↠ N ] len r < k))
                         →ᶠ (irred N)ᶠ
                         →ᶠ ((▷ᶠ (recur (A , N))) ⊎ᶠ (N ≡ blame)ᶠ)
 
