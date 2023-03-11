@@ -28,66 +28,45 @@ open import Structures using (extensionality)
 open import rewriting.examples.Cast
 open import rewriting.examples.StepIndexedLogic
 
+{- TODO: connect the reduction steps to the step index -}
+
+pre-𝓔 : (Type × Term) → Fun (Type × Term) ⊤ Wellfounded
+pre-𝓔 (A , M) = ∀ᵍ λ N → (M —↠ N)ᶠ →ᶠ (irred N)ᶠ →ᶠ
+                          (▷ᶠ (recur (A , N))) ⊎ᶠ (N ≡ blame)ᶠ
+
 pre-𝓥 : (Type × Term) → Fun (Type × Term) ⊤ Wellfounded
 pre-𝓥 (★ , op-inject {G} g ⦅ cons (ast V) nil ⦆) =
     ▷ᶠ (recur (G , V))
-pre-𝓥 ($ₜ ι , op-lit {ι′} c ⦅ nil ⦆) = {!!}
-pre-𝓥 (A ⇒ B , V) = {!!}
+pre-𝓥 ($ₜ ι , op-lit {ι′} c ⦅ nil ⦆) = (ι ≡ ι′)ᶠ
+pre-𝓥 (A ⇒ B , ƛ N) = ∀ᵍ λ W → (▷ᶠ (recur (A , W)) →ᶠ pre-𝓔 (A , N [ W ]))
 
 -- bogus cases for ★
-pre-𝓥 (★ , ` x) = {!!}
-pre-𝓥 (★ , $ c) = {!!}
-pre-𝓥 (★ , ƛ N) = {!!}
-pre-𝓥 (★ , L · M) = {!!}
-pre-𝓥 (★ , M ⟨ h ?⟩) = {!!}
-pre-𝓥 (★ , blame) = {!!}
+pre-𝓥 (★ , ` x) = (⊥)ᶠ
+pre-𝓥 (★ , $ c) = (⊥)ᶠ
+pre-𝓥 (★ , ƛ N) = (⊥)ᶠ
+pre-𝓥 (★ , L · M) = (⊥)ᶠ
+pre-𝓥 (★ , M ⟨ h ?⟩) = (⊥)ᶠ
+pre-𝓥 (★ , blame) = (⊥)ᶠ
 -- bogus cases for ι
-pre-𝓥 ($ₜ ι , ` x) = {!!}
-pre-𝓥 ($ₜ ι , ƛ N) = {!!}
-pre-𝓥 ($ₜ ι , L · M) = {!!}
-pre-𝓥 ($ₜ ι , M ⟨ g !⟩) = {!!}
-pre-𝓥 ($ₜ ι , M ⟨ h ?⟩) = {!!}
-pre-𝓥 ($ₜ ι , blame) = {!!}
-
+pre-𝓥 ($ₜ ι , ` x) = (⊥)ᶠ
+pre-𝓥 ($ₜ ι , ƛ N) = (⊥)ᶠ
+pre-𝓥 ($ₜ ι , L · M) = (⊥)ᶠ
+pre-𝓥 ($ₜ ι , M ⟨ g !⟩) = (⊥)ᶠ
+pre-𝓥 ($ₜ ι , M ⟨ h ?⟩) = (⊥)ᶠ
+pre-𝓥 ($ₜ ι , blame) = (⊥)ᶠ
+-- bogus cases for A ⇒ B
+pre-𝓥 (A ⇒ B , ` x) = (⊥)ᶠ
+pre-𝓥 (A ⇒ B , $ c) = (⊥)ᶠ
+pre-𝓥 (A ⇒ B , L · M) = (⊥)ᶠ
+pre-𝓥 (A ⇒ B , M ⟨ g !⟩) = (⊥)ᶠ
+pre-𝓥 (A ⇒ B , M ⟨ h ?⟩) = (⊥)ᶠ
+pre-𝓥 (A ⇒ B , blame) = (⊥)ᶠ
 
 𝓥⟦_⟧ : (A : Type) → Term → Setᵒ
 𝓥⟦ A ⟧ V = μᶠ (flip pre-𝓥) (A , V)
 
-
--- pre-𝓔 : Predᵒ (Type × Term) → Predᵒ (Type × Term)
--- pre-𝓔 𝓥 (A , M) = ∀ᵒ(λ N → (M —↠ N)ᵒ →ᵒ (irred N)ᵒ
---                       →ᵒ (𝓥 (A , N) ⊎ᵒ (N ≡ blame)ᵒ))
-
--- pre-𝓥 : Predᵒ (Type × Term) → Predᵒ (Type × Term)
--- pre-𝓥 𝓥 (★ , (op-inject {G} g ⦅ cons (ast V) nil ⦆)) = 𝓥 (G , V)
--- pre-𝓥 𝓥 ($ₜ ι , ((op-lit {ι′} c) ⦅ nil ⦆)) = (ι ≡ ι′)ᵒ
--- pre-𝓥 𝓥 (A ⇒ B , ƛ N) = ∀ᵒ(λ W → 𝓥 (A , W) →ᵒ pre-𝓔 𝓥 (A , N [ W ]))
--- -- bogus cases for ★
--- pre-𝓥 𝓥 (★ , ` x) = ⊥ᵒ
--- pre-𝓥 𝓥 (★ , $ c) = ⊥ᵒ
--- pre-𝓥 𝓥 (★ , ƛ N) = ⊥ᵒ
--- pre-𝓥 𝓥 (★ ,  L · M) = ⊥ᵒ
--- pre-𝓥 𝓥 (★ , M ⟨ h ?⟩) = ⊥ᵒ
--- pre-𝓥 𝓥 (★  , blame ) = ⊥ᵒ
--- -- bogus cases for $ₜ ι
--- pre-𝓥 𝓥 ($ₜ ι , ` x) = ⊥ᵒ
--- pre-𝓥 𝓥 ($ₜ ι , ƛ N) = ⊥ᵒ
--- pre-𝓥 𝓥 ($ₜ ι , L · M) = ⊥ᵒ
--- pre-𝓥 𝓥 ($ₜ ι , M ⟨ h ?⟩) = ⊥ᵒ
--- pre-𝓥 𝓥 ($ₜ ι , M ⟨ g !⟩) = ⊥ᵒ
--- pre-𝓥 𝓥 ($ₜ ι , blame) = ⊥ᵒ
--- -- bogus cases for A ⇒ B
--- pre-𝓥 𝓥 (A ⇒ B , ` x) = ⊥ᵒ
--- pre-𝓥 𝓥 (A ⇒ B , $ c) = ⊥ᵒ
--- pre-𝓥 𝓥 (A ⇒ B , L · M) = ⊥ᵒ
--- pre-𝓥 𝓥 (A ⇒ B , M ⟨ h ?⟩) = ⊥ᵒ
--- pre-𝓥 𝓥 (A ⇒ B , M ⟨ g !⟩) = ⊥ᵒ
--- pre-𝓥 𝓥 (A ⇒ B , blame) = ⊥ᵒ
-
--- 𝓥⟦_⟧ : (A : Type) → Term → Setᵒ
--- 𝓥⟦ A ⟧ V = μᵖ pre-𝓥 (A , V)
+𝓔⟦_⟧ : (A : Type) → Term → Setᵒ
+𝓔⟦ A ⟧ V = fun (pre-𝓔 (A , V)) (μᶠ (flip pre-𝓥)) tt
 
 
--- 𝓔⟦_⟧ : (A : Type) → Term → Setᵒ
--- 𝓔⟦ A ⟧ M = ∀ᵒ(λ N → (M —↠ N)ᵒ →ᵒ (irred N)ᵒ →ᵒ (𝓥⟦ A ⟧ N) ⊎ᵒ (N ≡ blame)ᵒ)
 

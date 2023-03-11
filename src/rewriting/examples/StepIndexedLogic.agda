@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K --rewriting #-}
+{-# OPTIONS --without-K --rewriting --allow-unsolved-metas #-}
 
 {-
  Based on the development of Logical step-indexed logical relation
@@ -196,6 +196,15 @@ dc-▷ dcP n ▷Pn k k≤n j j<k = ▷Pn j (≤-trans j<k k≤n)
 
 dcᵖ : ∀{A} → Predᵒ A → Set
 dcᵖ P = ∀ n x → P x n → ∀ k → k ≤ n → P x k
+
+dc-Pᵖ : ∀{A}(S : Set)
+   → dcᵖ{A} (λ v → (S)ᵒ)
+dc-Pᵖ S n x Sᵒn = dc-Pᵒ S n Sᵒn
+
+dc-∀ᵖ : ∀{A}{B}{F : A → Predᵒ B}
+   → (∀ a → dcᵖ (F a))
+   → dcᵖ (∀ᵖ F)
+dc-∀ᵖ {A}{B}{F} dcF n b ∀F k kn v = dcF v n b (∀F v) k kn
 
 dc-iter : ∀(i : ℕ){A}
    → (F : Predᵒ A → Predᵒ A)
@@ -576,9 +585,17 @@ continuous-snd : ∀{A}{B}
   → continuous{B}{A × B} sndᵖ
 continuous-snd{A}{B} P k (a , b) i = (λ x → (proj₁ x) , x) , (λ x → proj₂ x)
 
-continuous-const : ∀{A}{P : Predᵒ A}
-   → continuous{A} (λ Q → P)
+continuous-const : ∀{A}{B}{P : Predᵒ B}
+   → continuous{A}{B} (λ Q → P)
 continuous-const {A}{P} Q k = ≡ᵖ-refl refl
+
+wellfounded-const : ∀{A}{B}{P : Predᵒ B}
+   → wellfounded{A}{B} (λ Q → P)
+wellfounded-const {A}{P} Q k x i = (λ x → x) , (λ x → x)
+
+extensional-const : ∀{A}{B}{P : Predᵒ B}
+   → extensionalᵖ {A}{B} (λ Q → P)
+extensional-const {A}{P} Q k = ≡ᵒ-refl refl
 
 wellfounded⇒continuous : ∀{A}{B}
    → (F : Predᵒ A → Predᵒ B)
@@ -934,6 +951,67 @@ goodness-∀ : ∀ (kf : Kind) {A B C}{F : Predᵒ B → Predᵒ (A × C)}
 goodness-∀ Continuous gf = continuous-∀ gf 
 goodness-∀ Wellfounded gf = wellfounded-∀ gf 
 
+continuous-all : ∀{A B C}
+   → (F : A → Fun B C Continuous)
+   → continuous (λ P → ∀ᵖ (λ a → fun (F a) P))
+continuous-all F P k x i =
+    (λ { (i<k , ∀FP) →
+       i<k , (λ v → let xx = proj₁ (good (F v) P k x i) (i<k , (∀FP v)) in
+                    proj₂ xx)})
+  , (λ {(i<k , ∀F↓P) →
+       i<k , (λ v → let xx = proj₂ (good (F v) P k x i) (i<k , (∀F↓P v)) in
+                    proj₂ xx)})
+
+wellfounded-all : ∀{A B C}
+   → (F : A → Fun B C Wellfounded)
+   → wellfounded (λ P → ∀ᵖ (λ a → fun (F a) P))
+wellfounded-all F P k x i =
+    (λ{(s≤s i≤k , ∀FP) →
+        (s≤s i≤k)
+        , (λ v → let xx = proj₁ (good (F v) P k x i) ((s≤s i≤k) , (∀FP v)) in
+                 proj₂ xx)})
+    , λ {(s≤s i≤k , ∀F↓P) →
+        (s≤s i≤k)
+        , (λ v → let xx = proj₂ (good (F v) P k x i) ((s≤s i≤k) , (∀F↓P v)) in
+                 proj₂ xx)}
+
+goodness-all : ∀{A B C}{K}
+   → (F : A → Fun B C K)
+   → goodness K (λ P → ∀ᵖ (λ a → fun (F a) P))
+goodness-all {A} {B} {C} {Continuous} F = continuous-all F
+goodness-all {A} {B} {C} {Wellfounded} F = wellfounded-all F
+
+extensional-all : ∀{A B C}{K}
+   → (F : A → Fun B C K)
+   → extensionalᵖ (λ P → ∀ᵖ (λ a → fun (F a) P))
+extensional-all F {P}{Q} PQ c i =
+  (λ ∀FP v → proj₁ (ext (F v) PQ c i) (∀FP v))
+  , (λ ∀FQ v → proj₂ (ext (F v) PQ c i) (∀FQ v))
+
+dc-all : ∀{A B C}{K}
+   → (F : A → Fun B C K)
+   → (P : B → ℕ → Set)
+   → dcᵖ P → dcᵖ (∀ᵖ (λ a → fun (F a) P))
+dc-all F P dcP =
+  let dcFP : ∀ a → dcᵖ (fun (F a) P)
+      dcFP = λ a → down (F a) P dcP 
+  in  
+  dc-∀ᵖ dcFP
+
+ee-all : ∀{A B C}{K}
+   → (F : A → Fun B C K)
+   → (P : B → ℕ → Set)
+   → eeᵖ P
+   → eeᵖ (∀ᵖ (λ a → fun (F a) P))
+ee-all F P eeP x v = ez (F v) P eeP x
+
+∀ᵍ : ∀{A B C : Set}{K} → (A → Fun B C K) → Fun B C K
+∀ᵍ {A}{B}{C} F = record { fun = λ P → ∀ᵖ {A} λ a → fun (F a) P
+    ; good = goodness-all F
+    ; ext = extensional-all F
+    ; down = dc-all F
+    ; ez = ee-all F }
+
 ∀ᶠ : ∀{A}{B}{C}{kF} → Fun B (A × C) kF → Fun B C kF
 ∀ᶠ F = record { fun = (λ P → ∀ᵖ λ a b → (fun F P) (a , b))
               ; good = goodness-∀ (kind F) (good F)
@@ -1008,35 +1086,45 @@ flip f = record { fun = λ P b k → fun (f b) P tt k
                 ; down = dc-flip f
                 ; ez = ee-flip f }
 
-continuous-recur : ∀{A}
+continuous-recur : ∀{A}{B}
    → (a : A)
-   → continuous{A}{⊤} (λ P x → P a)
+   → continuous{A}{B} (λ P x → P a)
 continuous-recur a P k x i =
     (λ { (i<k , Pa) → i<k , i<k , Pa})
   , λ { (i<k , ↓kPa) → i<k , proj₂ ↓kPa}
 
-extensional-recur : ∀{A}
+extensional-recur : ∀{A}{B}
    → (a : A)
-   → extensionalᵖ{A}{⊤} (λ P x → P a)
-extensional-recur {A} a PQ tt i = PQ a i   
+   → extensionalᵖ{A}{B} (λ P x → P a)
+extensional-recur {A}{B} a PQ x i = PQ a i   
 
-dc-recur : ∀{A}
+dc-recur : ∀{A}{B}
    → (a : A)
    → (P : A → ℕ → Set)
    → dcᵖ P
-   → dcᵖ{⊤} (λ x → P a)
+   → dcᵖ{B} (λ x → P a)
 dc-recur {A} a P dcP n x = dcP n a
 
-ee-recur : ∀{A}
+ee-recur : ∀{A}{B}
    → (a : A)
-   → (P : A → ℕ → Set) → eeᵖ P → eeᵖ{⊤} (λ x → P a)
+   → (P : A → ℕ → Set) → eeᵖ P → eeᵖ{B} (λ x → P a)
 ee-recur {A} a P eeP x = eeP a
 
-recur : ∀{A}
+recur : ∀{A}{B}
    → A
-   → Fun A ⊤ Continuous
+   → Fun A B Continuous
 recur a = record { fun = λ P → λ x → P a
     ; good = continuous-recur a
     ; ext = extensional-recur a
     ; down = dc-recur a
     ; ez = ee-recur a }
+
+_ᶠ : ∀{A}{B}
+   → Set
+   → Fun A B Wellfounded
+(S)ᶠ = record { fun = λ P → (λ v → (S)ᵒ)
+    ; good = wellfounded-const
+    ; ext = extensional-const
+    ; down = λ P dcP → dc-Pᵖ S
+    ; ez = λ P eeP b → tt
+    }
