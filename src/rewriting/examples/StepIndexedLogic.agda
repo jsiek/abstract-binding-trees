@@ -825,7 +825,7 @@ record Fun (A B : Set) (κ : Kind) : Set₁ where
     down : ∀ P → dcᵖ P → dcᵖ (fun P)
     ez : ∀ P → eeᵖ P → eeᵖ (fun P)
     {- TODO: add eventually zero -}
-open Fun
+open Fun public
 
 idᶠ : ∀{A} → Fun A A Continuous
 idᶠ = record { fun = λ P → P
@@ -973,3 +973,70 @@ fixpointᶠ  : ∀{A}
   → (F : Fun A A Wellfounded)
   → μᶠ F ≡ᵖ fun F (μᶠ F)
 fixpointᶠ F = theorem20 (fun F) (good F) (ext F)
+
+goodness-flip : ∀{A}{B}{K}
+  → (f : B → Fun A ⊤ K)
+  → goodness K (λ P b k → fun (f b) P tt k)
+goodness-flip {A} {B} {Continuous} f P k x = good (f x) P k tt
+goodness-flip {A} {B} {Wellfounded} f P k x = good (f x) P k tt
+
+extensional-flip : ∀{A}{B}{K}
+   → (f : B → Fun A ⊤ K)
+   → extensionalᵖ (λ P b k → fun (f b) P tt k)
+extensional-flip {A}{B}{K} f z x = ext (f x) z tt
+
+dc-flip : ∀{A}{B}{K}
+   → (f : B → Fun A ⊤ K)
+   → (P : A → ℕ → Set)
+   → dcᵖ P
+   → dcᵖ (λ b k → fun (f b) P tt k)
+dc-flip f P dcP n x = down (f x) P dcP n tt
+
+ee-flip : ∀{A}{B}{K}
+   → (f : B → Fun A ⊤ K)
+   → (P : A → ℕ → Set)
+   → eeᵖ P
+   → eeᵖ (λ b k → fun (f b) P tt k)
+ee-flip {A}{B}{K} f P eeP x = ez (f x) P eeP tt
+
+flip : ∀{A}{B}{K}
+   → (B → Fun A ⊤ K)
+   → Fun A B K
+flip f = record { fun = λ P b k → fun (f b) P tt k
+                ; good = goodness-flip f
+                ; ext = extensional-flip f
+                ; down = dc-flip f
+                ; ez = ee-flip f }
+
+continuous-recur : ∀{A}
+   → (a : A)
+   → continuous{A}{⊤} (λ P x → P a)
+continuous-recur a P k x i =
+    (λ { (i<k , Pa) → i<k , i<k , Pa})
+  , λ { (i<k , ↓kPa) → i<k , proj₂ ↓kPa}
+
+extensional-recur : ∀{A}
+   → (a : A)
+   → extensionalᵖ{A}{⊤} (λ P x → P a)
+extensional-recur {A} a PQ tt i = PQ a i   
+
+dc-recur : ∀{A}
+   → (a : A)
+   → (P : A → ℕ → Set)
+   → dcᵖ P
+   → dcᵖ{⊤} (λ x → P a)
+dc-recur {A} a P dcP n x = dcP n a
+
+ee-recur : ∀{A}
+   → (a : A)
+   → (P : A → ℕ → Set) → eeᵖ P → eeᵖ{⊤} (λ x → P a)
+ee-recur {A} a P eeP x = eeP a
+
+recur : ∀{A}
+   → A
+   → Fun A ⊤ Continuous
+recur a = record { fun = λ P → λ x → P a
+    ; good = continuous-recur a
+    ; ext = extensional-recur a
+    ; down = dc-recur a
+    ; ez = ee-recur a }
