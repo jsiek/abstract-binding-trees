@@ -67,5 +67,35 @@ pre-𝓥 (A ⇒ B , blame) = (⊥)ᶠ
 𝓔⟦_⟧ : (A : Type) → Term → Setᵒ
 𝓔⟦ A ⟧ V = fun (pre-𝓔 (A , V)) (μᶠ (flip pre-𝓥)) tt
 
+{- Equations for the Logical Relation -}
 
+V-base : ∀{n}{ι}{ι′}{c : rep ι′}
+   → 𝓥⟦ $ₜ ι ⟧ ($ c) (suc n) ≡ (ι ≡ ι′)
+V-base {n} = refl
+
+V-dyn : ∀{G}{V}{g : Ground G}
+   → 𝓥⟦ ★ ⟧ (V ⟨ g !⟩) ≡ᵒ (▷ᵒ (𝓥⟦ G ⟧ V))
+V-dyn {G}{V}{g} =
+    𝓥⟦ ★ ⟧ (V ⟨ g !⟩)             ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
+    μᶠ (flip pre-𝓥) (★ , V ⟨ g !⟩)
+                              ≡ᵒ⟨ fixpointᵒ{v = (★ , V ⟨ g !⟩)} (flip pre-𝓥) ⟩
+    fun (flip pre-𝓥) (μᶠ (flip pre-𝓥)) (★ , V ⟨ g !⟩) ≡ᵒ⟨ {!!} ⟩
+    (▷ᵒ 𝓥⟦ G ⟧ V)
+    QEDᵒ 
+
+  -- let fix = fixpointᶠ (flip pre-𝓥) in
+  -- let xx = fix (G , V) in
+  -- {!!}
+  
+{-
+LHS:
+  (k : ℕ) →
+  suc k ≤ suc n →
+  fun (pre-𝓥 (G , V))
+  (iter n (λ P b → fun (pre-𝓥 b) P tt) (λ x n₁ → ⊤)) tt k
+RHS:
+  fun (pre-𝓥 (G , V))
+  (iter n (λ P b → fun (pre-𝓥 b) P tt) (λ x n₁ → ⊤)) tt n
+
+-}
 

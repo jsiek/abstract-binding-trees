@@ -286,6 +286,22 @@ S ≡ᵒ T = ∀ i → S i ⇔ T i
 ≡ᵒ-trans ST TR i = (λ z → proj₁ (TR i) (proj₁ (ST i) z))
                  , (λ z → proj₂ (ST i) (proj₂ (TR i) z))
 
+infixr 2 _≡ᵒ⟨_⟩_
+infix  3 _QEDᵒ
+  
+_≡ᵒ⟨_⟩_ : 
+    (P : Setᵒ)
+  → ∀{Q} → P ≡ᵒ Q
+  → ∀{R} → Q ≡ᵒ R
+  → P ≡ᵒ R
+P ≡ᵒ⟨ P≡Q ⟩ Q≡R = ≡ᵒ-trans P≡Q Q≡R
+
+_QEDᵒ :
+    (P : Setᵒ)
+  → P ≡ᵒ P
+P QEDᵒ = ≡ᵒ-refl refl
+
+
 infix 2 _≡ᵖ_
 _≡ᵖ_ : ∀{A} → Predᵒ A → Predᵒ A → Set
 P ≡ᵖ Q = ∀ x → P x ≡ᵒ Q x
@@ -1000,6 +1016,11 @@ fixpointᶠ  : ∀{A}
   → (F : Fun A A Wellfounded DownClosed)
   → μᶠ F ≡ᵖ fun F (μᶠ F)
 fixpointᶠ F = theorem20 (fun F) (good F) (ext F)
+
+fixpointᵒ  : ∀{A}{v : A}
+  → (F : Fun A A Wellfounded DownClosed)
+  → μᶠ F v ≡ᵒ fun F (μᶠ F) v
+fixpointᵒ {A}{v} F = fixpointᶠ F v
 
 goodness-flip : ∀{A}{B}{K}{DC}
   → (f : B → Fun A ⊤ K DC)
