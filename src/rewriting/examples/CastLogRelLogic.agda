@@ -79,23 +79,7 @@ V-dyn {G}{V}{g} =
     𝓥⟦ ★ ⟧ (V ⟨ g !⟩)             ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
     μᶠ (flip pre-𝓥) (★ , V ⟨ g !⟩)
                               ≡ᵒ⟨ fixpointᵒ{v = (★ , V ⟨ g !⟩)} (flip pre-𝓥) ⟩
-    fun (flip pre-𝓥) (μᶠ (flip pre-𝓥)) (★ , V ⟨ g !⟩) ≡ᵒ⟨ {!!} ⟩
+    fun (flip pre-𝓥) (μᶠ (flip pre-𝓥)) (★ , V ⟨ g !⟩) ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
     (▷ᵒ 𝓥⟦ G ⟧ V)
     QEDᵒ 
-
-  -- let fix = fixpointᶠ (flip pre-𝓥) in
-  -- let xx = fix (G , V) in
-  -- {!!}
-  
-{-
-LHS:
-  (k : ℕ) →
-  suc k ≤ suc n →
-  fun (pre-𝓥 (G , V))
-  (iter n (λ P b → fun (pre-𝓥 b) P tt) (λ x n₁ → ⊤)) tt k
-RHS:
-  fun (pre-𝓥 (G , V))
-  (iter n (λ P b → fun (pre-𝓥 b) P tt) (λ x n₁ → ⊤)) tt n
-
--}
 
