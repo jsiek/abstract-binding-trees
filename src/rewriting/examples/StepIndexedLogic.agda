@@ -37,7 +37,8 @@ Setᵒ = ℕ → Set
 
 infixr 7 _×ᵒ_
 _×ᵒ_ : Setᵒ → Setᵒ → Setᵒ
-(P ×ᵒ Q) n  = ∀ k → k ≤ n → (P k) × (Q k)
+-- (P ×ᵒ Q) n  = ∀ k → k ≤ n → (P k) × (Q k)
+(P ×ᵒ Q) n  = (P n) × (Q n)
 
 infixr 7 _⊎ᵒ_
 _⊎ᵒ_ : Setᵒ → Setᵒ → Setᵒ
@@ -121,7 +122,8 @@ ee-⊤ : ee ⊤ᵒ
 ee-⊤ = tt
 
 ee-× : ∀ {P Q} → ee P → ee Q → ee (P ×ᵒ Q)
-ee-× P0 Q0 .zero z≤n = P0 , Q0
+-- ee-× P0 Q0 .zero z≤n = P0 , Q0
+ee-× P0 Q0 = P0 , Q0
 
 ee-⊎ : ∀ {P Q} → ee P → ee Q → ee (P ⊎ᵒ Q)
 ee-⊎ P0 Q0 .zero z≤n = inj₁ P0
@@ -171,8 +173,11 @@ dc-⊥ (suc n) ()
 dc-⊤ : dc ⊤ᵒ
 dc-⊤  =  λ n ⊤ᵒn k k≤n → tt
 
-dc-× : ∀ {P Q} → dc (P ×ᵒ Q)
-dc-× n P×Q k x₁ j x₂ = P×Q j (≤-trans x₂ x₁) 
+-- dc-× : ∀ {P Q} → dc (P ×ᵒ Q)
+-- dc-× n P×Q k x₁ j x₂ = P×Q j (≤-trans x₂ x₁)
+dc-× : ∀ {P Q} → dc P → dc Q → dc (P ×ᵒ Q)
+dc-× dcP dcQ n (Pn , Qn) k k≤n = dcP n Pn k k≤n , dcQ n Qn k k≤n
+
 
 dc-⊎ : ∀ {P Q} → dc (P ⊎ᵒ Q)
 dc-⊎ n P⊎Q k x j y = P⊎Q j (≤-trans y x)
@@ -368,10 +373,19 @@ extensional-× : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
    → extensionalᵖ G
    → extensionalᵖ (λ P → F P ×ᵖ G P)
 extensional-× extF extG PQ x i =
-  (λ x₁ k x₂ → (proj₁ (extF PQ x k) (proj₁ (x₁ k x₂)))
-             , (proj₁ (extG PQ x k) (proj₂ (x₁ k x₂))))
-  , (λ x₁ k x₂ → (proj₂ (extF PQ x k) (proj₁ (x₁ k x₂)))
-               , (proj₂ (extG PQ x k) (proj₂ (x₁ k x₂))))
+  (λ {(FPxi , GPxi) →
+        let FPxi⇔FQxi = extF PQ x i in
+        let GPxi⇔GQxi = extG PQ x i in
+        proj₁ FPxi⇔FQxi FPxi , proj₁ GPxi⇔GQxi GPxi})
+  , (λ {(FQxi , GQxi) →
+        let FPxi⇔FQxi = extF PQ x i in
+        let GPxi⇔GQxi = extG PQ x i in
+        proj₂ FPxi⇔FQxi FQxi  , proj₂ GPxi⇔GQxi GQxi})
+-- extensional-× extF extG PQ x i =
+--   (λ x₁ k x₂ → (proj₁ (extF PQ x k) (proj₁ (x₁ k x₂)))
+--              , (proj₁ (extG PQ x k) (proj₂ (x₁ k x₂))))
+--   , (λ x₁ k x₂ → (proj₂ (extF PQ x k) (proj₁ (x₁ k x₂)))
+--                , (proj₂ (extG PQ x k) (proj₂ (x₁ k x₂))))
 
 extensional-⊎ : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
    → extensionalᵖ F
@@ -664,20 +678,27 @@ cong-×ᵖ : ∀{A}{P P′ Q Q′ : Predᵒ A}
    → P ≡ᵖ P′
    → Q ≡ᵖ Q′
    → P ×ᵖ Q  ≡ᵖ  P′ ×ᵖ Q′
-cong-×ᵖ PP′ QQ′ v k = (λ {x k₁ x₁ → (proj₁ (PP′ v k₁) (proj₁ (x k₁ x₁)))
-                                  , (proj₁ (QQ′ v k₁) (proj₂ (x k₁ x₁)))})
-                    , (λ {x k₁ x₁ → (proj₂ (PP′ v k₁) (proj₁ (x k₁ x₁)))
-                                  , (proj₂ (QQ′ v k₁) (proj₂ (x k₁ x₁)))})
+cong-×ᵖ PP′ QQ′ v k =
+    (λ {(Pvk , Qvk) → (proj₁ (PP′ v k) Pvk) , (proj₁ (QQ′ v k) Qvk)})
+    , λ {(P′vk , Q′vk) → (proj₂ (PP′ v k) P′vk) , (proj₂ (QQ′ v k) Q′vk)}
+-- cong-×ᵖ PP′ QQ′ v k = (λ {x k₁ x₁ → (proj₁ (PP′ v k₁) (proj₁ (x k₁ x₁)))
+--                                   , (proj₁ (QQ′ v k₁) (proj₂ (x k₁ x₁)))})
+--                     , (λ {x k₁ x₁ → (proj₂ (PP′ v k₁) (proj₁ (x k₁ x₁)))
+--                                   , (proj₂ (QQ′ v k₁) (proj₂ (x k₁ x₁)))})
 
 down-× : ∀{A}{P Q : Predᵒ A}{k}
    → ↓ᵖ k (P ×ᵖ Q) ≡ᵖ ↓ᵖ k ((↓ᵖ k P) ×ᵖ (↓ᵖ k Q))
 down-× {A}{P}{Q}{k} x i =
-  (λ { (i<k , PQxi) → i<k , (λ j j≤i → ((≤-trans (s≤s j≤i) i<k) ,
-             proj₁ (PQxi j j≤i)) , (≤-trans (s≤s j≤i) i<k)
-                        , (proj₂ (PQxi j j≤i)))})
-  ,
-  λ {(i<k , PQxi) → i<k , (λ j j≤i → (proj₂ (proj₁ (PQxi j j≤i)))
-                                   , (proj₂ (proj₂ (PQxi j j≤i))))}
+    (λ { (i<k , PQxi) → i<k , ((i<k , proj₁ PQxi) , (i<k , proj₂ PQxi))})
+    , λ {x₁ → (proj₁ x₁) , ((proj₂ (proj₁ (proj₂ x₁)))
+                         , (proj₂ (proj₂ (proj₂ x₁))))}
+-- down-× {A}{P}{Q}{k} x i =
+--   (λ { (i<k , PQxi) → i<k , (λ j j≤i → ((≤-trans (s≤s j≤i) i<k) ,
+--              proj₁ (PQxi j j≤i)) , (≤-trans (s≤s j≤i) i<k)
+--                         , (proj₂ (PQxi j j≤i)))})
+--   ,
+--   λ {(i<k , PQxi) → i<k , (λ j j≤i → (proj₂ (proj₁ (PQxi j j≤i)))
+--                                    , (proj₂ (proj₂ (PQxi j j≤i))))}
 
 wellfounded-× : ∀{A}{B}{F G : Predᵒ A → Predᵒ B}
    → wellfounded F
@@ -822,6 +843,12 @@ closed : IsDownClosed → ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
 closed DownClosed F = ∀ P → dcᵖ P → dcᵖ (F P)
 closed NotDownClosed F = topᵖ
 
+bothClosed : IsDownClosed → IsDownClosed → IsDownClosed
+bothClosed DownClosed DownClosed = DownClosed
+bothClosed NotDownClosed DownClosed = NotDownClosed
+bothClosed DownClosed NotDownClosed = NotDownClosed
+bothClosed NotDownClosed NotDownClosed = NotDownClosed
+
 record Fun (A B : Set) (κ : Kind) (DC : IsDownClosed) : Set₁ where
   field
     fun : Predᵒ A → Predᵒ B
@@ -879,16 +906,33 @@ goodness-× Wellfounded Continuous {F = F} gf extF gg extG =
     continuous-× (wellfounded⇒continuous F gf extF) gg
 goodness-× Wellfounded Wellfounded gf extF gg extG = wellfounded-× gf gg
 
+
+-- dc-×ᶠ : ∀{A}{B}{F G : Predᵒ A → Predᵒ B} (P : A → ℕ → Set) → dcᵖ P → dcᵖ (fun F P ×ᵖ fun G P)
+-- dc-×ᶠ = {!!}
+
+closed-×ᶠ : ∀{A B}{kG kF : Kind}{FDC GDC : IsDownClosed}
+    → (F : Fun A B kF FDC) → (G : Fun A B kG GDC)
+    → closed (bothClosed FDC GDC) (λ P → fun F P ×ᵖ fun G P)
+closed-×ᶠ {FDC = DownClosed} {DownClosed} F G =
+    λ {P dcP n x (FPxn , FGxn) →
+            dc-× (λ k → down F P dcP k x) (λ k → down G P dcP k x) n
+            (FPxn , FGxn) }
+closed-×ᶠ {FDC = DownClosed} {NotDownClosed} F G = ttᵖ
+closed-×ᶠ {FDC = NotDownClosed} {DownClosed} F G = ttᵖ
+closed-×ᶠ {FDC = NotDownClosed} {NotDownClosed} F G = ttᵖ
+
 infixr 6 _×ᶠ_
-_×ᶠ_ : ∀{A}{B}{kF kG}{FDC GDC}
+_×ᶠ_ : ∀{A}{B}{kF kG}{FDC}{GDC}
    → Fun A B kF FDC
    → Fun A B kG GDC
-   → Fun A B (choose kF kG) DownClosed
+   → Fun A B (choose kF kG) (bothClosed FDC GDC)
 F ×ᶠ G = record { fun = λ P → (fun F) P ×ᵖ (fun G) P
         ; good = goodness-× (kind F) (kind G) (good F) (ext F) (good G) (ext G)
         ; ext = extensional-× (ext F) (ext G)
-        ; down = λ P dcP n x x₁ → dc-× n x₁
-        ; ez = λ P x x₁ → ee-× (ez F P x x₁) (ez G P x x₁)
+        ; down = closed-×ᶠ F G
+            -- dc-× n x₁
+        ; ez = λ P eeP b → ez F P eeP b , ez G P eeP b
+        -- ee-× (ez F P x x₁) (ez G P x x₁)
         }
 
 goodness-⊎ : ∀ (kf kg : Kind) {A}{B}{F G : Predᵒ A → Predᵒ B}
