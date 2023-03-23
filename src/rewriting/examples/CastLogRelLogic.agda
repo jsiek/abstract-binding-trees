@@ -28,12 +28,12 @@ open import Structures using (extensionality)
 open import rewriting.examples.Cast
 open import rewriting.examples.StepIndexedLogic
 
-pre-𝓔 : (Type × Term) → Fun (Type × Term) ⊤ Wellfounded DownClosed
+pre-𝓔 : (Type × Term) → Fun (Type × Term) ⊤ Wellfounded DownClosed TrueAtZero
 pre-𝓔 (A , M) = ∀ᵍ λ N → (index (λ k → Σ[ r ∈ M —↠ N ] len r < k))
                         →ᶠ (irred N)ᶠ
                         →ᶠ ((▷ᶠ (recur (A , N))) ⊎ᶠ (N ≡ blame)ᶠ)
 
-pre-𝓥 : (Type × Term) → Fun (Type × Term) ⊤ Wellfounded DownClosed
+pre-𝓥 : (Type × Term) → Fun (Type × Term) ⊤ Wellfounded DownClosed TrueAtZero
 pre-𝓥 (★ , op-inject {G} g ⦅ cons (ast V) nil ⦆) =
     (Value V)ᶠ ×ᶠ (▷ᶠ (recur (G , V)))
 pre-𝓥 ($ₜ ι , op-lit {ι′} c ⦅ nil ⦆) = (ι ≡ ι′)ᶠ
@@ -99,6 +99,18 @@ V-fun {A}{B}{N} =
     (∀ᵒ λ W → (▷ᵒ 𝓥⟦ A ⟧ W) →ᵒ (𝓔⟦ B ⟧ (N [ W ])))
     QEDᵒ
 
+𝓔-def : ∀{A}{M}
+  → 𝓔⟦ A ⟧ M ≡ᵒ ∀ᵒ λ N → (λ k → Σ[ r ∈ (M —↠ N) ] suc (len r) ≤ k)
+                        →ᵒ (irred N)ᵒ
+                        →ᵒ ((▷ᵒ (𝓥⟦ A ⟧ N)) ⊎ᵒ (N ≡ blame)ᵒ)
+𝓔-def {A}{M} = 
+    𝓔⟦ A ⟧ M     ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
+    fun (pre-𝓔 (A , M)) (μᶠ (flip pre-𝓥)) tt     ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
+    (∀ᵒ λ N → (λ k → Σ[ r ∈ (M —↠ N) ] suc (len r) ≤ k)
+           →ᵒ (irred N)ᵒ
+           →ᵒ ((▷ᵒ (𝓥⟦ A ⟧ N)) ⊎ᵒ (N ≡ blame)ᵒ))
+    QEDᵒ
+
 {- Logical Relation (above zero) contains values -}
 
 𝓥⇒Value : ∀ {A}{k} M → 𝓥⟦ A ⟧ M (suc k) → Value M
@@ -150,14 +162,15 @@ _⊨_⦂_ : List Type → Term → Type → Set
 Val⇒Exp : ∀{A}{V : Term} (k : ℕ)
    → 𝓥⟦ A ⟧ V k
    → 𝓔⟦ A ⟧ V k
-Val⇒Exp {A} {V} k Vv N zero j≤k x .zero z≤n x₂ .zero z≤n = inj₂ tt
-Val⇒Exp {A} {V} (suc k) Vv N (suc j) (s≤s j≤k) (V—↠N , VN<1+j) i i≤1+j irN zero l≤i = inj₂ tt
-Val⇒Exp {A} {V} (suc k) Vv N (suc j) (s≤s j≤k) (V—↠N , VN<1+j) (suc i)
-    (s≤s i≤j) irN (suc l) (s≤s l≤i) 
-    with value—↠ (𝓥⇒Value{A} V Vv) V—↠N
-... | refl =
-    inj₁ λ {m (s≤s m≤l) → dc-𝓥{A}{V} (suc k) Vv m
-             (≤-trans m≤l (≤-trans l≤i (≤-trans i≤j (≤-trans j≤k (n≤1+n k)))))}
+Val⇒Exp {A} {V} zero Vv N .zero z≤n (V→N , V→N<j) .zero z≤n irN =
+    inj₂ tt
+Val⇒Exp {A} {V} (suc k) Vv N (suc j) (s≤s j≤k) (V→N , V→N<j) zero i≤j irN =
+    inj₂ tt
+Val⇒Exp {A} {V} (suc k) Vv N (suc j) (s≤s j≤k) (V→N , V→N<j) (suc i) (s≤s i≤j) irN
+    with value—↠ (𝓥⇒Value{A} V Vv) V→N
+... | refl = 
+    inj₁ λ {m (s≤s m≤i) → dc-𝓥{A}{V} (suc k) Vv m
+              (≤-trans m≤i (≤-trans i≤j (≤-trans j≤k (n≤1+n k)))) }
 
 dc-SafeEnv : ∀ j k {Γ} (γ : Subst)
    → j ≤ k
@@ -168,3 +181,52 @@ dc-SafeEnv j k {[]} γ j≤k 𝓖γ = tt
 dc-SafeEnv j k {A ∷ Γ} γ j≤k (𝓖γ , 𝓥γ0) =
   (dc-SafeEnv j k {Γ} (λ z → γ (suc z)) j≤k 𝓖γ)
   , dc-𝓥{A}{γ 0} k 𝓥γ0 j j≤k
+
+{- aka. bind -}
+𝓔-frame : ∀ {A}{B}{F}{M}{k}
+   → 𝓔⟦ B ⟧ M k
+   → (∀ V → (r : M —↠ V) → 𝓥⟦ B ⟧ V (k ∸ len r)
+       → 𝓔⟦ A ⟧ (F ⟦ V ⟧) (k ∸ len r))
+   → 𝓔⟦ A ⟧ (F ⟦ M ⟧) k
+𝓔-frame{A}{B}{F}{M}{k} 𝓔M 𝓔FV = proj₂ (𝓔AFM k) 𝓔AFMk
+    where
+    𝓔AFM : 𝓔⟦ A ⟧ (F ⟦ M ⟧)
+           ≡ᵒ ∀ᵒ λ N → (λ k → Σ[ r ∈ (F ⟦ M ⟧ —↠ N) ] suc (len r) ≤ k)
+                        →ᵒ (irred N)ᵒ
+                        →ᵒ ((▷ᵒ (𝓥⟦ A ⟧ N)) ⊎ᵒ (N ≡ blame)ᵒ)
+    𝓔AFM = 𝓔-def {A}{F ⟦ M ⟧}
+    𝓔AFMk : (∀ᵒ λ N → (λ k → Σ[ r ∈ (F ⟦ M ⟧ —↠ N) ] suc (len r) ≤ k)
+                        →ᵒ (irred N)ᵒ
+                        →ᵒ ((▷ᵒ (𝓥⟦ A ⟧ N)) ⊎ᵒ (N ≡ blame)ᵒ)) k
+    𝓔AFMk V j j≤k FM→V zero i≤j irV = inj₂ tt
+    𝓔AFMk V (suc j) j≤k (FM→V , s≤s FM→V≤j) (suc i) (s≤s i≤j) irV
+        with frame-inv FM→V irV
+    ... | inj₂ refl = inj₂ refl
+    ... | inj₁ (V′ , M→V′ , irV′ , FV′→V , eq)
+        with 𝓔M V′ {!!} {!!} (M→V′ , {!!}) {!!} {!!} irV′ 
+    ... | inj₂ refl =
+          inj₂ (frame-blame FV′→V refl irV)
+    ... | inj₁ ▷𝓥V′ = G
+        
+         where
+         𝓔FV′ : 𝓔⟦ A ⟧ (F ⟦ V′ ⟧) {!!}
+         𝓔FV′ =
+            let 𝓥V′ : 𝓥⟦ B ⟧ V′ {!!}
+                𝓥V′ = ▷𝓥V′ {!!} {!!} in
+            𝓔FV V′ M→V′ 𝓥V′
+
+         LT1 : k ≤ k + len M→V′
+         LT1 = m≤m+n k (len M→V′)
+
+         LT2 : len FV′→V < k
+         LT2 = ≤-trans (≤-trans (s≤s (≤-trans (m≤n+m _ _)
+                   (≤-reflexive (sym eq)))) (s≤s FM→V≤j)) j≤k
+
+         LT3 : suc i ≤ k
+         LT3 = ≤-trans (s≤s i≤j) j≤k
+
+         G : ((▷ᵒ (𝓥⟦ A ⟧ V)) ⊎ᵒ (V ≡ blame)ᵒ) (suc i)
+         G
+             with 𝓔FV′ V k {!!} (FV′→V , LT2) (suc i) LT3 irV
+         ... | inj₂ refl = inj₂ refl
+         ... | inj₁ ▷𝓥V = inj₁ λ {l (s≤s l≤i) → ▷𝓥V l (s≤s l≤i)}

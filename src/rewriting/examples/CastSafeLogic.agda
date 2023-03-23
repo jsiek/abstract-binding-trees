@@ -48,3 +48,21 @@ compatible-bool {Γ}{b} k γ 𝓖Γγk = Val⇒Exp{$ₜ ′𝔹} k (G k)
           G zero = tt
           G (suc k) = subst (λ X → X) (sym (V-base{k}{′𝔹}{′𝔹}{b})) refl
 
+compatible-app : ∀{Γ}{A}{B}{L}{M}
+    → Γ ⊨ L ⦂ (A ⇒ B)
+    → Γ ⊨ M ⦂ A
+      -------------------
+    → Γ ⊨ L · M ⦂ B
+compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M k γ 𝓖Γγk = Goal
+    where
+    𝓔L : 𝓔⟦ A ⇒ B ⟧ (⟪ γ ⟫ L ) k
+    𝓔L = ⊨L k γ 𝓖Γγk
+
+    𝓔M : 𝓔⟦ A ⟧ (⟪ γ ⟫ M ) k
+    𝓔M = ⊨M k γ 𝓖Γγk
+
+    Goal2 : (V : Term) (r : ⟪ γ ⟫ L —↠ V) → 𝓔⟦ B ⟧ (V · ⟪ γ ⟫ M) (k + len r)
+    Goal2 V L→V = 𝓔-frame{B}{{!!} ·□}{⟪ γ ⟫ M}{k + len L→V} {!!}
+
+    Goal : 𝓔⟦ B ⟧ (⟪ γ ⟫ (L · M)) k
+    Goal = 𝓔-frame{B}{□· (⟪ γ ⟫ M)}{⟪ γ ⟫ L}{k} Goal2
