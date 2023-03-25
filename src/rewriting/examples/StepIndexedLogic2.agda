@@ -186,14 +186,23 @@ infixr 8 ▷ᵒ_
 
 ↓ₒ : ℕ → Setᵒ → Setₒ
 ↓ₒ k S zero = ⊤
-↓ₒ k S (suc j) = suc j < k × (# S j)
+↓ₒ k S (suc j) = suc j < k × (# S (suc j))
+
+↓ₒ-intro : ∀{i}{k}
+     (S : Setᵒ)
+   → i < k
+   → # S i
+   → ↓ₒ k S i
+↓ₒ-intro {zero} {k} S i<k Si = tt
+↓ₒ-intro {suc i} {k} S i<k Si = i<k , Si
 
 ↓ᵒ : ℕ → Setᵒ → Setᵒ
 ↓ᵒ k S = record { # = ↓ₒ k S 
                 ; down = λ { zero x .zero z≤n → tt
                            ; (suc n) (sn<k , Sn) zero j≤n → tt
-                           ; (suc n) (sn<k , Sn) (suc j) (s≤s j≤n) →
-                           (≤-trans (s≤s (s≤s j≤n)) sn<k) , (down S n Sn j j≤n)}
+                           ; (suc n) (sn<k , Ssn) (suc j) (s≤s j≤n) →
+                           (≤-trans (s≤s (s≤s j≤n)) sn<k)
+                           , (down S (suc n) Ssn (suc j) (s≤s j≤n))}
                 ; tz = tt
                 }
 
@@ -413,26 +422,26 @@ cong-↓ : ∀{A}
   → congᵖ{A}{A} (↓ᵖ k)
 cong-↓ k P Q PQ x zero = (λ x → tt) , (λ x → tt)
 cong-↓ k P Q PQ x (suc i) =
-     (λ { (si<k , Pxi) → si<k , (proj₁ (PQ x i) Pxi)})
-   , (λ {(si<k , Qxi) → si<k , proj₂ (PQ x i) Qxi})
+     (λ { (si<k , Pxsi) → si<k , let P→Q = proj₁ (PQ x (suc i)) in P→Q Pxsi})
+   , (λ {(si<k , Qxsi) → si<k , let Q→P = proj₂ (PQ x (suc i)) in Q→P Qxsi})
                 
 {- ↓ᵖ is idempotent -}
 lemma17 : ∀{A}
      (P : Predᵒ A)
    → (k : ℕ)
    → #(↓ᵖ k (↓ᵖ (suc k) P)) ≡ₚ #(↓ᵖ k P)
-lemma17{A} P k x i = {!!}
-    -- (λ { (fst , snd) → fst , proj₂ snd})
-    -- , λ { (fst , snd) → fst , ((≤-trans fst (n≤1+n k)) , snd)}
-
+lemma17 {A} P k x zero = (λ x → tt) , (λ x → tt)
+lemma17 {A} P k x (suc i) =
+  (λ { (fst , fst₁ , snd) → fst , snd})
+  ,
+  (λ { (fst , snd) → fst , (s≤s (<⇒≤ fst)) , snd})
 
 ↓-zero : ∀{A}
    → (P : Predᵒ A)
    → (Q : Predᵒ A)
    → #(↓ᵖ 0 P) ≡ₚ #(↓ᵖ 0 Q)
-↓-zero P Q v i = {!!}
-   --   (λ {(z≤n , Pvi) → z≤n , (tz Q v)})
-   -- , λ {(z≤n , Qvi) → z≤n , (tz P v)}
+↓-zero P Q v zero = (λ x → tt) , (λ x → tt)
+↓-zero P Q v (suc i) = (λ { (() , _)}) , λ {(() , _)}
 
 wellfounded⇒continuous : ∀{A}{B}
    → (F : Predᵒ A → Predᵒ B)
@@ -443,8 +452,8 @@ wellfounded⇒continuous F wfF congF P zero = ↓-zero (F P) (F (↓ᵖ zero P))
 wellfounded⇒continuous F wfF congF P (suc k) =
     #(↓ᵖ (suc k) (F P))                       ≡ₚ⟨ wfF _ k ⟩
     #(↓ᵖ (suc k) (F (↓ᵖ k P)))
-             ≡ₚ⟨ cong-↓ (suc k) (F (↓ᵖ k P)) (F (↓ᵖ k (↓ᵖ (suc k) P)))
-                 (congF ((↓ᵖ k P)) ((↓ᵖ k (↓ᵖ (suc k) P))) (≡ₚ-sym (lemma17 P k))) ⟩
+       ≡ₚ⟨ cong-↓ (suc k) (F (↓ᵖ k P)) (F (↓ᵖ k (↓ᵖ (suc k) P)))
+             (congF ((↓ᵖ k P)) ((↓ᵖ k (↓ᵖ (suc k) P))) (≡ₚ-sym (lemma17 P k))) ⟩
     #(↓ᵖ (suc k) (F (↓ᵖ k (↓ᵖ (suc k) P))))   ≡ₚ⟨ ≡ₚ-sym (wfF _ k) ⟩
     #(↓ᵖ (suc k) (F (↓ᵖ (suc k) P)))
     QEDₚ
@@ -486,12 +495,19 @@ _→ᶠ_ {A}{B}{kF}{kG} F G =
   where
   down-fun : ∀{A} (P Q : Predᵒ A){k}
      → #(↓ᵖ k (P →ᵖ Q)) ≡ₚ #(↓ᵖ k ((↓ᵖ k P) →ᵖ (↓ᵖ k Q)))
-  down-fun {A} P Q {k} x i = {!!}
-   --   (λ {(i≤k , PQxi) → i≤k , (λ {j j≤i (j≤k , Pxj) → j≤k , (PQxi j j≤i Pxj)})})
-   -- , (λ {(i≤k , P→Q) →
-   --      i≤k , (λ j j≤i Pxj →
-   --                 let ↓kQ = P→Q j j≤i ((≤-trans j≤i i≤k) , Pxj) in
-   --                 proj₂ ↓kQ)})
+  down-fun {A} P Q {k} x zero = (λ x → tt) , (λ x → tt)
+  down-fun {A} P Q {k} x (suc i) =
+     (λ {(si<k , P→Q) →
+         si<k , (λ { zero j<si ↓kPxj → tt
+                   ; (suc j) j<si (sj<k , Pxsj) →
+                   sj<k , let Qsj = P→Q (suc j) j<si Pxsj in Qsj})})
+     ,
+     (λ {(si<k , P→Q) →
+         si<k , λ { zero j<si Pxj → tz Q x
+                  ; (suc j) j<si Pxj →
+                     let ↓Qsj = P→Q (suc j) j<si
+                                   ((≤-trans (s≤s j<si) si<k) , Pxj) in
+                     proj₂ ↓Qsj}})
 
   continuous-→ : ∀{A}{B}(F G : Predᵒ A → Predᵒ B)
      → continuous F
@@ -575,9 +591,11 @@ _×ᶠ_ {A}{B}{kF}{kG} F G =
   where
   down-× : ∀{A}(P Q : Predᵒ A){k}
      → #(↓ᵖ k (P ×ᵖ Q)) ≡ₚ #(↓ᵖ k ((↓ᵖ k P) ×ᵖ (↓ᵖ k Q)))
-  down-× {A} P Q {k} x i = {!!}
-      -- (λ { (i≤k , (Pxi , Qxi)) → i≤k , (i≤k , Pxi) , i≤k , Qxi})
-      -- , (λ {(i≤k , ((_ , Pxi) , (_ , Qxi))) → i≤k , Pxi , Qxi})
+  down-× {A} P Q {k} x zero = (λ x → tt) , (λ x → tt)
+  down-× {A} P Q {k} x (suc i) =
+      (λ { (si<k , Pxsi , Qxsi) → si<k , ((si<k , Pxsi) , (si<k , Qxsi))})
+      ,
+      (λ { (si<k , (_ , Pxsi) , _ , Qxsi) → si<k , Pxsi , Qxsi})
                            
   continuous-× : ∀{A}{B}(F G : Predᵒ A → Predᵒ B)
      → continuous F
@@ -656,15 +674,17 @@ _⊎ᶠ_ {A}{B}{kF}{kG} F G =
   where
   down-⊎ : ∀{A}(P Q : Predᵒ A){k}
      → #(↓ᵖ k (P ⊎ᵖ Q)) ≡ₚ #(↓ᵖ k ((↓ᵖ k P) ⊎ᵖ (↓ᵖ k Q)))
-  down-⊎ {A} P Q {k} x i = {!!}
-    -- where
-    -- to : #(↓ᵖ k (P ⊎ᵖ Q)) x i → #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q)) x i
-    -- to (i<k , inj₁ Pi) = i<k , inj₁ (i<k , Pi)
-    -- to (i<k , inj₂ Qi) = i<k , inj₂ (i<k , Qi)
+  down-⊎ {A} P Q {k} x i = to i , fro i
+    where
+    to : ∀ i →  #(↓ᵖ k (P ⊎ᵖ Q)) x i → #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q)) x i
+    to zero _ = tt
+    to (suc i) (si<k , inj₁ Psi) = si<k , (inj₁ (si<k , Psi))
+    to (suc i) (si<k , inj₂ Qsi) = si<k , (inj₂ (si<k , Qsi))
 
-    -- fro : #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q)) x i → #(↓ᵖ k (P ⊎ᵖ Q)) x i
-    -- fro (i<k , inj₁ Pi) = i<k , inj₁ (proj₂ Pi)
-    -- fro (i<k , inj₂ Qi) = i<k , inj₂ (proj₂ Qi)
+    fro : ∀ i → #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q)) x i → #(↓ᵖ k (P ⊎ᵖ Q)) x i
+    fro zero x = tt
+    fro (suc i) (si<k , inj₁ (_ , Psi)) = si<k , inj₁ Psi
+    fro (suc i) (si<k , inj₂ (_ , Qsi)) = si<k , (inj₂ Qsi)
 
   continuous-⊎ : ∀{A}{B}(F G : Predᵒ A → Predᵒ B)
      → continuous F
@@ -742,26 +762,36 @@ _⊎ᶠ_ {A}{B}{kF}{kG} F G =
   continuous-all : ∀{A B C}
      → (F : A → Fun B C Continuous)
      → continuous (λ P → ∀ᵖ (λ a → fun (F a) P))
-  continuous-all F P k x i = {!!}
-    -- (λ { (i<k , ∀FP) →
-    --    i<k , (λ v → let xx = proj₁ (good (F v) P k x i) (i<k , (∀FP v)) in
-    --                 proj₂ xx)})
-    -- , (λ {(i<k , ∀F↓P) →
-    --    i<k , (λ v → let xx = proj₂ (good (F v) P k x i) (i<k , (∀F↓P v)) in
-    --                 proj₂ xx)})
+  continuous-all F P k x zero = (λ x → tt) , (λ x → tt)
+  continuous-all F P k x (suc i) =
+      (λ {(si<k , ∀FP) → si<k ,
+           (λ v →
+               let ↓F↓P = proj₁ (good (F v) P k x (suc i))
+                            (↓ₒ-intro (apply (fun (F v) P) x) si<k (∀FP v) ) in
+               proj₂ ↓F↓P)})
+      ,
+      λ {(si<k , ∀FP) → si<k ,
+         (λ v →
+             let ↓FP = proj₂ (good (F v) P k x (suc i))
+                  (↓ₒ-intro ((apply (fun (F v) (↓ᵖ k P)) x)) si<k (∀FP v) ) in
+             proj₂ ↓FP)}
   
   wellfounded-all : ∀{A B C}
      → (F : A → Fun B C Wellfounded)
      → wellfounded (λ P → ∀ᵖ (λ a → fun (F a) P))
-  wellfounded-all F P k x i = {!!}
-      -- (λ{(i≤k , ∀FP) →
-      --     i≤k
-      --     , (λ v → let xx = proj₁ (good (F v) P k x i) (i≤k , (∀FP v)) in
-      --              proj₂ xx)})
-      -- , λ {(i≤k , ∀F↓P) →
-      --     i≤k
-      --     , (λ v → let xx = proj₂ (good (F v) P k x i) (i≤k , (∀F↓P v)) in
-      --              proj₂ xx)}
+  wellfounded-all F P k x zero = (λ x → tt) , (λ x → tt)
+  wellfounded-all F P k x (suc i) =
+      (λ{(s≤s i≤k , ∀FP) →
+          s≤s i≤k
+          , (λ v → let ↓F↓P = proj₁ (good (F v) P k x (suc i))
+                            (↓ₒ-intro (apply (fun (F v) P) x)
+                               (≤-trans (s≤s i≤k) ≤-refl) (∀FP v))
+                   in proj₂ ↓F↓P)})
+      , λ {(i≤k , ∀F↓P) →
+          i≤k
+          , (λ v → let ↓FP = proj₂ (good (F v) P k x (suc i))
+                          (↓ₒ-intro (apply (fun (F v) (↓ᵖ k P)) x) i≤k (∀F↓P v))
+                   in proj₂ ↓FP)}
   
   goodness-all : ∀{A B C}{K}
      → (F : A → Fun B C K)
@@ -819,13 +849,17 @@ _ᶠ : ∀{A}{B}
 
     EQ1 : (P : Predᵒ B)
        → #(↓ᵖ (suc k) (▷ᵖ P)) ≡ₚ #(↓ᵖ (suc k) (▷ᵖ (↓ᵖ k P)))
-    EQ1 P v i = {!!}
-    -- (λ {(i≤1+k , ▷Pvi) →
-    --              i≤1+k , (λ { j (s≤s j≤i) → (≤-trans j≤i (≤-inv i≤1+k))
-    --                       , (▷Pvi j (s≤s j≤i))})})
-    --           ,
-    --           λ {(i≤1+k , ▷Pvi) → i≤1+k ,
-    --               (λ { j (s≤s j≤n) → let xx = ▷Pvi j (s≤s j≤n) in proj₂ xx})}
+    EQ1 P v zero = (λ x → tt) , (λ x → tt)
+    EQ1 P v (suc i) =
+      (λ {(s≤s i≤1+k , ▷Pvi) →
+                   s≤s i≤1+k , (λ { j (s≤s j≤i) → 
+                                 ↓ₒ-intro (apply P v) (≤-trans (s≤s j≤i) i≤1+k)
+                                          (▷Pvi j (s≤s j≤i))})})
+      ,
+      λ {(i≤1+k , ▷Pvi) → i≤1+k ,
+          (λ { zero (s≤s j≤n) → tz P v
+             ; (suc j) (s≤s j≤n) →
+               let ↓P = ▷Pvi (suc j) (s≤s j≤n) in proj₂ ↓P})}
   
   goodness-▷ : ∀ (k : Kind) → ∀{A}{B} (F : Predᵒ A → Predᵒ B)
     → goodness k F
@@ -850,10 +884,8 @@ lemma15a : ∀{A} (P Q : Predᵒ A){j}
   → wellfounded F
   → congᵖ F
   → #(↓ᵖ j (iter j F P)) ≡ₚ #(↓ᵖ j (iter j F Q))
-lemma15a {A} P Q {zero} F wfF congF x i = {!!}
-    -- (λ { (z≤n , _) → z≤n , (tz Q x)})
-    -- ,
-    -- λ {(z≤n , _) → z≤n , (tz P x)}
+lemma15a {A} P Q {zero} F wfF congF x zero = (λ x → tt) , (λ x → tt)
+lemma15a {A} P Q {zero} F wfF congF x (suc i) = (λ { ()}) , λ { ()}
 lemma15a {A} P Q {suc j} F wfF congF =
     #(↓ᵖ (suc j) (F (iter j F P)))
   ≡ₚ⟨ wfF (iter j F P) j  ⟩ 
@@ -905,19 +937,25 @@ lemma15b{A} P {j}{k} F wfF congF j≤k =
      → wellfounded F
      → congᵖ F
      → downClosedᵖ (μₚ F) 
-  dc-μ {A} F wfF congF v k μFvk j j≤k = T
+  dc-μ {A} F wfF congF v k μFvk zero j≤k = tz (F ⊤ᵖ) v
+  dc-μ {A} F wfF congF v (suc k′) μFvk (suc j′) (s≤s j′≤k) = T
      where
+     j = suc j′
+     k = suc k′
+     j≤k : j ≤ k
+     j≤k = s≤s j′≤k
      X : #(iter (suc k) F ⊤ᵖ) v k
      X = μFvk
      Y : #(iter (suc k) F ⊤ᵖ) v j
      Y = dc-iter (suc k) F v k X j j≤k
      Z : #(↓ᵖ (suc j) (iter (suc k) F ⊤ᵖ)) v j
-     Z = {!!} -- n≤1+n j , Y
+     Z = ↓ₒ-intro (apply (iter (suc k) F ⊤ᵖ) v) ≤-refl Y
      W : #(↓ᵖ (suc j) (iter (suc j) F ⊤ᵖ)) v j
      W = let eq = lemma15b{A} ⊤ᵖ {suc j}{suc k} F wfF congF (s≤s j≤k)
          in proj₁ ((≡ₚ-sym eq) v j) Z
      T : #((iter (suc j) F ⊤ᵖ)) v j
-     T = {!!} -- proj₂ W
+     T = proj₂ W
+
 
 {-
   Fixpoint Theorem
