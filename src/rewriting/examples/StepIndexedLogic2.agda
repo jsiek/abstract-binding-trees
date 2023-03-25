@@ -184,12 +184,17 @@ infixr 8 ▷ᵒ_
               ; tz = λ k ()
               }
 
+↓ₒ : ℕ → Setᵒ → Setₒ
+↓ₒ k S zero = ⊤
+↓ₒ k S (suc j) = suc j < k × (# S j)
+
 ↓ᵒ : ℕ → Setᵒ → Setᵒ
-↓ᵒ k S = record { # = λ j → (j ≤ k) × (# S j)  -- j < k in Appel and McAllester
-                ; down = λ n (n<k , Sn) j j≤n →
-                             (≤-trans j≤n n<k)
-                           , (down S n Sn j j≤n)
-                ; tz = z≤n , (tz S)            -- need j ≤ k to prove tz
+↓ᵒ k S = record { # = ↓ₒ k S 
+                ; down = λ { zero x .zero z≤n → tt
+                           ; (suc n) (sn<k , Sn) zero j≤n → tt
+                           ; (suc n) (sn<k , Sn) (suc j) (s≤s j≤n) →
+                           (≤-trans (s≤s (s≤s j≤n)) sn<k) , (down S n Sn j j≤n)}
+                ; tz = tt
                 }
 
 apply : ∀{A} → Predᵒ A → A → Setᵒ
@@ -261,13 +266,8 @@ _ᵖ  : Set → ∀{A} → Predᵒ A
 ↓ᵖ : ℕ → ∀{A} → Predᵒ A → Predᵒ A
 ↓ᵖ k P = record { # = λ v → # (↓ᵒ k (apply P v))
                 ; down = λ v → down (↓ᵒ k (apply P v))
-                ; tz = λ v → z≤n , (tz P v)
+                ; tz = λ v → tt
                 }
-
--- μᵖ : ∀ {A} → (Predᵒ A → Predᵒ A) → Predᵒ A
--- (μᵖ F) = record { # = λ a k → #(iter (suc k) F ⊤ᵖ) a k
---                 ; down = {!!}
---                 ; tz = {!!} }
 
 {-----  Reasoning about Equality on Step Indexed Sets  ---------}
 
@@ -411,25 +411,28 @@ wellfounded F = ∀ P k → #(↓ᵖ (suc k) (F P)) ≡ₚ #(↓ᵖ (suc k) (F (
 cong-↓ : ∀{A}
     (k : ℕ)
   → congᵖ{A}{A} (↓ᵖ k)
-cong-↓ k P Q PQ x i = (λ { (i≤k , Pxi) → i≤k , proj₁ (PQ x i) Pxi})
-                   , (λ { (i≤k , Qxi) → i≤k , proj₂ (PQ x i) Qxi})
+cong-↓ k P Q PQ x zero = (λ x → tt) , (λ x → tt)
+cong-↓ k P Q PQ x (suc i) =
+     (λ { (si<k , Pxi) → si<k , (proj₁ (PQ x i) Pxi)})
+   , (λ {(si<k , Qxi) → si<k , proj₂ (PQ x i) Qxi})
                 
+{- ↓ᵖ is idempotent -}
 lemma17 : ∀{A}
      (P : Predᵒ A)
    → (k : ℕ)
    → #(↓ᵖ k (↓ᵖ (suc k) P)) ≡ₚ #(↓ᵖ k P)
-lemma17{A} P k x i =
-    (λ { (fst , snd) → fst , proj₂ snd})
-    , λ { (fst , snd) → fst , ((≤-trans fst (n≤1+n k)) , snd)}
+lemma17{A} P k x i = {!!}
+    -- (λ { (fst , snd) → fst , proj₂ snd})
+    -- , λ { (fst , snd) → fst , ((≤-trans fst (n≤1+n k)) , snd)}
 
 
 ↓-zero : ∀{A}
    → (P : Predᵒ A)
    → (Q : Predᵒ A)
    → #(↓ᵖ 0 P) ≡ₚ #(↓ᵖ 0 Q)
-↓-zero P Q v i =
-     (λ {(z≤n , Pvi) → z≤n , (tz Q v)})
-   , λ {(z≤n , Qvi) → z≤n , (tz P v)}
+↓-zero P Q v i = {!!}
+   --   (λ {(z≤n , Pvi) → z≤n , (tz Q v)})
+   -- , λ {(z≤n , Qvi) → z≤n , (tz P v)}
 
 wellfounded⇒continuous : ∀{A}{B}
    → (F : Predᵒ A → Predᵒ B)
@@ -483,12 +486,12 @@ _→ᶠ_ {A}{B}{kF}{kG} F G =
   where
   down-fun : ∀{A} (P Q : Predᵒ A){k}
      → #(↓ᵖ k (P →ᵖ Q)) ≡ₚ #(↓ᵖ k ((↓ᵖ k P) →ᵖ (↓ᵖ k Q)))
-  down-fun {A} P Q {k} x i =
-     (λ {(i≤k , PQxi) → i≤k , (λ {j j≤i (j≤k , Pxj) → j≤k , (PQxi j j≤i Pxj)})})
-   , (λ {(i≤k , P→Q) →
-        i≤k , (λ j j≤i Pxj →
-                   let ↓kQ = P→Q j j≤i ((≤-trans j≤i i≤k) , Pxj) in
-                   proj₂ ↓kQ)})
+  down-fun {A} P Q {k} x i = {!!}
+   --   (λ {(i≤k , PQxi) → i≤k , (λ {j j≤i (j≤k , Pxj) → j≤k , (PQxi j j≤i Pxj)})})
+   -- , (λ {(i≤k , P→Q) →
+   --      i≤k , (λ j j≤i Pxj →
+   --                 let ↓kQ = P→Q j j≤i ((≤-trans j≤i i≤k) , Pxj) in
+   --                 proj₂ ↓kQ)})
 
   continuous-→ : ∀{A}{B}(F G : Predᵒ A → Predᵒ B)
      → continuous F
@@ -572,9 +575,9 @@ _×ᶠ_ {A}{B}{kF}{kG} F G =
   where
   down-× : ∀{A}(P Q : Predᵒ A){k}
      → #(↓ᵖ k (P ×ᵖ Q)) ≡ₚ #(↓ᵖ k ((↓ᵖ k P) ×ᵖ (↓ᵖ k Q)))
-  down-× {A} P Q {k} x i =
-      (λ { (i≤k , (Pxi , Qxi)) → i≤k , (i≤k , Pxi) , i≤k , Qxi})
-      , (λ {(i≤k , ((_ , Pxi) , (_ , Qxi))) → i≤k , Pxi , Qxi})
+  down-× {A} P Q {k} x i = {!!}
+      -- (λ { (i≤k , (Pxi , Qxi)) → i≤k , (i≤k , Pxi) , i≤k , Qxi})
+      -- , (λ {(i≤k , ((_ , Pxi) , (_ , Qxi))) → i≤k , Pxi , Qxi})
                            
   continuous-× : ∀{A}{B}(F G : Predᵒ A → Predᵒ B)
      → continuous F
@@ -653,15 +656,15 @@ _⊎ᶠ_ {A}{B}{kF}{kG} F G =
   where
   down-⊎ : ∀{A}(P Q : Predᵒ A){k}
      → #(↓ᵖ k (P ⊎ᵖ Q)) ≡ₚ #(↓ᵖ k ((↓ᵖ k P) ⊎ᵖ (↓ᵖ k Q)))
-  down-⊎ {A} P Q {k} x i = to , fro
-    where
-    to : #(↓ᵖ k (P ⊎ᵖ Q)) x i → #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q)) x i
-    to (i<k , inj₁ Pi) = i<k , inj₁ (i<k , Pi)
-    to (i<k , inj₂ Qi) = i<k , inj₂ (i<k , Qi)
+  down-⊎ {A} P Q {k} x i = {!!}
+    -- where
+    -- to : #(↓ᵖ k (P ⊎ᵖ Q)) x i → #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q)) x i
+    -- to (i<k , inj₁ Pi) = i<k , inj₁ (i<k , Pi)
+    -- to (i<k , inj₂ Qi) = i<k , inj₂ (i<k , Qi)
 
-    fro : #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q)) x i → #(↓ᵖ k (P ⊎ᵖ Q)) x i
-    fro (i<k , inj₁ Pi) = i<k , inj₁ (proj₂ Pi)
-    fro (i<k , inj₂ Qi) = i<k , inj₂ (proj₂ Qi)
+    -- fro : #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q)) x i → #(↓ᵖ k (P ⊎ᵖ Q)) x i
+    -- fro (i<k , inj₁ Pi) = i<k , inj₁ (proj₂ Pi)
+    -- fro (i<k , inj₂ Qi) = i<k , inj₂ (proj₂ Qi)
 
   continuous-⊎ : ∀{A}{B}(F G : Predᵒ A → Predᵒ B)
      → continuous F
@@ -739,26 +742,26 @@ _⊎ᶠ_ {A}{B}{kF}{kG} F G =
   continuous-all : ∀{A B C}
      → (F : A → Fun B C Continuous)
      → continuous (λ P → ∀ᵖ (λ a → fun (F a) P))
-  continuous-all F P k x i =
-    (λ { (i<k , ∀FP) →
-       i<k , (λ v → let xx = proj₁ (good (F v) P k x i) (i<k , (∀FP v)) in
-                    proj₂ xx)})
-    , (λ {(i<k , ∀F↓P) →
-       i<k , (λ v → let xx = proj₂ (good (F v) P k x i) (i<k , (∀F↓P v)) in
-                    proj₂ xx)})
+  continuous-all F P k x i = {!!}
+    -- (λ { (i<k , ∀FP) →
+    --    i<k , (λ v → let xx = proj₁ (good (F v) P k x i) (i<k , (∀FP v)) in
+    --                 proj₂ xx)})
+    -- , (λ {(i<k , ∀F↓P) →
+    --    i<k , (λ v → let xx = proj₂ (good (F v) P k x i) (i<k , (∀F↓P v)) in
+    --                 proj₂ xx)})
   
   wellfounded-all : ∀{A B C}
      → (F : A → Fun B C Wellfounded)
      → wellfounded (λ P → ∀ᵖ (λ a → fun (F a) P))
-  wellfounded-all F P k x i =
-      (λ{(i≤k , ∀FP) →
-          i≤k
-          , (λ v → let xx = proj₁ (good (F v) P k x i) (i≤k , (∀FP v)) in
-                   proj₂ xx)})
-      , λ {(i≤k , ∀F↓P) →
-          i≤k
-          , (λ v → let xx = proj₂ (good (F v) P k x i) (i≤k , (∀F↓P v)) in
-                   proj₂ xx)}
+  wellfounded-all F P k x i = {!!}
+      -- (λ{(i≤k , ∀FP) →
+      --     i≤k
+      --     , (λ v → let xx = proj₁ (good (F v) P k x i) (i≤k , (∀FP v)) in
+      --              proj₂ xx)})
+      -- , λ {(i≤k , ∀F↓P) →
+      --     i≤k
+      --     , (λ v → let xx = proj₂ (good (F v) P k x i) (i≤k , (∀F↓P v)) in
+      --              proj₂ xx)}
   
   goodness-all : ∀{A B C}{K}
      → (F : A → Fun B C K)
@@ -816,12 +819,13 @@ _ᶠ : ∀{A}{B}
 
     EQ1 : (P : Predᵒ B)
        → #(↓ᵖ (suc k) (▷ᵖ P)) ≡ₚ #(↓ᵖ (suc k) (▷ᵖ (↓ᵖ k P)))
-    EQ1 P v i = (λ {(i≤1+k , ▷Pvi) →
-                 i≤1+k , (λ { j (s≤s j≤i) → (≤-trans j≤i (≤-inv i≤1+k))
-                          , (▷Pvi j (s≤s j≤i))})})
-              ,
-              λ {(i≤1+k , ▷Pvi) → i≤1+k ,
-                  (λ { j (s≤s j≤n) → let xx = ▷Pvi j (s≤s j≤n) in proj₂ xx})}
+    EQ1 P v i = {!!}
+    -- (λ {(i≤1+k , ▷Pvi) →
+    --              i≤1+k , (λ { j (s≤s j≤i) → (≤-trans j≤i (≤-inv i≤1+k))
+    --                       , (▷Pvi j (s≤s j≤i))})})
+    --           ,
+    --           λ {(i≤1+k , ▷Pvi) → i≤1+k ,
+    --               (λ { j (s≤s j≤n) → let xx = ▷Pvi j (s≤s j≤n) in proj₂ xx})}
   
   goodness-▷ : ∀ (k : Kind) → ∀{A}{B} (F : Predᵒ A → Predᵒ B)
     → goodness k F
@@ -839,55 +843,57 @@ _ᶠ : ∀{A}{B}
         (λ x₁ k x₂ → proj₁ (congF P Q PQ x k) (x₁ k x₂))
       , (λ x₁ k x₂ → proj₂ (congF P Q PQ x k) (x₁ k x₂))
 
+{- Lemma for defining the recursive predicate -}
+
+lemma15a : ∀{A} (P Q : Predᵒ A){j}
+  → (F : Predᵒ A → Predᵒ A)
+  → wellfounded F
+  → congᵖ F
+  → #(↓ᵖ j (iter j F P)) ≡ₚ #(↓ᵖ j (iter j F Q))
+lemma15a {A} P Q {zero} F wfF congF x i = {!!}
+    -- (λ { (z≤n , _) → z≤n , (tz Q x)})
+    -- ,
+    -- λ {(z≤n , _) → z≤n , (tz P x)}
+lemma15a {A} P Q {suc j} F wfF congF =
+    #(↓ᵖ (suc j) (F (iter j F P)))
+  ≡ₚ⟨ wfF (iter j F P) j  ⟩ 
+    #(↓ᵖ (suc j) (F (↓ᵖ j (iter j F P))))
+  ≡ₚ⟨ cong-↓ {A} (suc j)
+         (F (↓ᵖ j (iter j F P))) (F (↓ᵖ j (iter j F Q)))
+         (congF (↓ᵖ j (iter j F P)) (↓ᵖ j (iter j F Q))
+                (lemma15a{A} P Q {j = j} F wfF congF)) ⟩
+    #(↓ᵖ (suc j) (F (↓ᵖ j (iter j F Q))))
+  ≡ₚ⟨ ≡ₚ-sym (wfF (iter j F Q) j) ⟩
+    #(↓ᵖ (suc j) (F (iter j F Q)))
+  QEDₚ
+
+lemma15b : ∀{A}(P : Predᵒ A){j k}
+  → (F : Predᵒ A → Predᵒ A)
+  → wellfounded F
+  → congᵖ F
+  → j ≤ k
+  → #(↓ᵖ j (iter j F P)) ≡ₚ #(↓ᵖ j (iter k F P))
+lemma15b{A} P {j}{k} F wfF congF j≤k =
+    let eq = lemma15a {A} P (iter (k ∸ j) F P) {j} F wfF congF in
+    ≡ₚ-trans eq (cong-↓ j (iter j F (iter (k ∸ j) F P)) (iter k F P)
+                          (≡ₚ-refl Goal))
+    where
+    Goal : (λ z z₁ → #(iter j F (iter (k ∸ j) F P)) z z₁)
+           ≡ (λ z z₁ → #(iter k F P) z z₁)
+    Goal rewrite iter-subtract{A = Predᵒ A}{P} F j k j≤k = refl
+
 {- Recursive Predicate -}
 
 μₚ : ∀{A} → (Predᵒ A → Predᵒ A) → Predₒ A
-μₚ F = λ a k → #(iter (suc k) F ⊤ᵖ) a k
+μₚ F a k = #(iter (suc k) F ⊤ᵖ) a k
 
 μᵖ : ∀{A} → Fun A A Wellfounded → Predᵒ A
-μᵖ F = record { # = λ a k → #(iter (suc k) (fun F) ⊤ᵖ) a k
+μᵖ F = record { # = μₚ (fun F)
               ; down = dc-μ _ (good F) (congr F)
               ; tz = λ v → tz (fun F (id ⊤ᵖ)) v
               }
 
   where
-  lemma15a : ∀{A} (P Q : Predᵒ A){j}
-    → (F : Predᵒ A → Predᵒ A)
-    → wellfounded F
-    → congᵖ F
-    → #(↓ᵖ j (iter j F P)) ≡ₚ #(↓ᵖ j (iter j F Q))
-  lemma15a {A} P Q {zero} F wfF congF x i =
-      (λ { (z≤n , _) → z≤n , (tz Q x)})
-      ,
-      λ {(z≤n , _) → z≤n , (tz P x)}
-  lemma15a {A} P Q {suc j} F wfF congF =
-      #(↓ᵖ (suc j) (F (iter j F P)))
-    ≡ₚ⟨ wfF (iter j F P) j  ⟩ 
-      #(↓ᵖ (suc j) (F (↓ᵖ j (iter j F P))))
-    ≡ₚ⟨ cong-↓ {A} (suc j)
-           (F (↓ᵖ j (iter j F P))) (F (↓ᵖ j (iter j F Q)))
-           (congF (↓ᵖ j (iter j F P)) (↓ᵖ j (iter j F Q))
-                  (lemma15a{A} P Q {j = j} F wfF congF)) ⟩
-      #(↓ᵖ (suc j) (F (↓ᵖ j (iter j F Q))))
-    ≡ₚ⟨ ≡ₚ-sym (wfF (iter j F Q) j) ⟩
-      #(↓ᵖ (suc j) (F (iter j F Q)))
-    QEDₚ
-
-  lemma15b : ∀{A}(P : Predᵒ A){j k}
-    → (F : Predᵒ A → Predᵒ A)
-    → wellfounded F
-    → congᵖ F
-    → j ≤ k
-    → #(↓ᵖ j (iter j F P)) ≡ₚ #(↓ᵖ j (iter k F P))
-  lemma15b{A} P {j}{k} F wfF congF j≤k =
-      let eq = lemma15a {A} P (iter (k ∸ j) F P) {j} F wfF congF in
-      ≡ₚ-trans eq (cong-↓ j (iter j F (iter (k ∸ j) F P)) (iter k F P)
-                            (≡ₚ-refl Goal))
-      where
-      Goal : (λ z z₁ → #(iter j F (iter (k ∸ j) F P)) z z₁)
-             ≡ (λ z z₁ → #(iter k F P) z z₁)
-      Goal rewrite iter-subtract{A = Predᵒ A}{P} F j k j≤k = refl
-
   dc-iter : ∀(i : ℕ){A}
      → (F : Predᵒ A → Predᵒ A)
      → downClosedᵖ (#(iter i F ⊤ᵖ))
@@ -906,9 +912,58 @@ _ᶠ : ∀{A}{B}
      Y : #(iter (suc k) F ⊤ᵖ) v j
      Y = dc-iter (suc k) F v k X j j≤k
      Z : #(↓ᵖ (suc j) (iter (suc k) F ⊤ᵖ)) v j
-     Z = n≤1+n j , Y
+     Z = {!!} -- n≤1+n j , Y
      W : #(↓ᵖ (suc j) (iter (suc j) F ⊤ᵖ)) v j
      W = let eq = lemma15b{A} ⊤ᵖ {suc j}{suc k} F wfF congF (s≤s j≤k)
          in proj₁ ((≡ₚ-sym eq) v j) Z
      T : #((iter (suc j) F ⊤ᵖ)) v j
-     T = proj₂ W
+     T = {!!} -- proj₂ W
+
+{-
+  Fixpoint Theorem
+-}
+
+
+lemma18a : ∀{A}
+   → (k : ℕ)
+   → (F : Fun A A Wellfounded)
+   → #(↓ᵖ k (μᵖ F)) ≡ₚ #(↓ᵖ k (iter k (fun F) ⊤ᵖ))
+lemma18a zero F x i = {!!}
+    -- (λ { (z≤n , b) → z≤n , tt})
+    -- ,
+    -- λ { (z≤n , b) → z≤n , tz (fun F ⊤ᵖ) x}
+lemma18a (suc k′) F v j = {!!}
+    -- let k = suc k′ in
+    -- #(↓ᵖ k (μᵖ F)) v j                                                ⇔⟨ EQ1 ⟩
+    -- (j ≤ k  ×  (#(μᵖ F) v j))                                         ⇔⟨ EQ2 ⟩
+    -- (j ≤ k  ×  #(iter (suc j) (fun F) ⊤ᵖ) v j)                        ⇔⟨ EQ3 ⟩
+    -- (j ≤ k  ×  #(↓ᵖ (suc j) (iter (suc j) (fun F) ⊤ᵖ)) v j)           ⇔⟨ EQ4 ⟩
+    -- (j ≤ k  ×  #(↓ᵖ (suc j) (iter k (fun F) ⊤ᵖ)) v j)                 ⇔⟨ EQ5 ⟩
+    -- (j ≤ k  ×  #(iter k (fun F) ⊤ᵖ) v j)                              ⇔⟨ ? ⟩
+    -- #(↓ᵖ k (iter k (fun F) ⊤ᵖ)) v j
+    -- QED
+      
+{-
+      #(↓ᵖ k (μᵖ F)) v j                                ⇔⟨ EQ1 ⟩ 
+      (j ≤ k  ×  (#(μᵖ F) v j))                           ⇔⟨ EQ2 ⟩ 
+      (j ≤ k  ×  #(iter (suc j) (fun F) ⊤ᵖ) v j)              ⇔⟨ EQ3 ⟩ 
+      (j ≤ k  ×  #(↓ᵖ (suc j) (iter (suc j) (fun F) ⊤ᵖ)) v j) ⇔⟨ EQ4 ⟩
+      (j ≤ k  ×  #(↓ᵖ (suc j) (iter k (fun F) ⊤ᵖ)) v j)       ⇔⟨ EQ5 ⟩
+      (j ≤ k  ×  #(iter k (fun F) ⊤ᵖ) v j)                    ⇔⟨ EQ6 ⟩ 
+      #(↓ᵖ k (iter k (fun F) ⊤ᵖ)) v j
+    QED
+-}    
+    -- where
+    --   EQ1 = {!!} -- (λ {(a , b) → a , b}) , (λ {(a , b) → a , b})
+    --   EQ2 = (λ {(a , b) → a , b}) , (λ {(a , b) → a , b})
+    --   EQ3 = (λ {(a , b) → a , ((n≤1+n j) , b)})
+    --       , (λ {(a , (b , c)) → a , c})
+    --   EQ4 = (λ{(a , b) → a ,
+    --           let xx = (lemma15b ⊤ᵖ {j = suc j}{k = suc k′} (fun F) (good F) (congr F) {!!} v j) in
+    --           proj₁ xx b -- proj₁ (lemma15b {j = suc j}{k = suc k′} F ? ? a v j) b
+    --           })
+    --       , (λ{(a , b) → a ,
+    --           {!!} -- proj₂ (lemma15b {j = suc j}{k = suc k′} F ? ? a v j) b
+    --           })
+    --   EQ5 = (λ {(a , b) → a , {!!}}) , λ {(a , b) → a , {!!}}
+    --   EQ6 = (λ {(a , b) → a , b}) , λ z → z
