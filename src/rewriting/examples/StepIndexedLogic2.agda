@@ -26,13 +26,188 @@ open import Relation.Nullary using (¬_)
 open import Function using (id; _∘_)
 open import rewriting.examples.IfAndOnlyIf
 
-{- Step Indexed Propositions and Predicates -}
+{-
+   Step Indexed Propositions and Predicates
+   Continuous and Wellfounded Functions on Step Indexed Predicates
+ -}
 
 Setₒ : Set₁
 Setₒ = ℕ → Set
 
 Predₒ : Set → Set₁
 Predₒ A = A → ℕ → Set
+
+{- Step Indexed Propositions and Predicates
+   packaged with down-closed and true-at-zero.
+ -}
+
+downClosed : (ℕ → Set) → Set
+downClosed P = ∀ n → P n → ∀ k → k ≤ n → P k
+
+record Setᵒ : Set₁ where
+  field
+    # : Setₒ
+    down : downClosed #
+    tz : # 0
+open Setᵒ
+
+downClosedᵖ : ∀{A : Set} → (A → ℕ → Set) → Set
+downClosedᵖ P = ∀ v → downClosed (P v)
+
+record Predᵒ (A : Set) : Set₁ where
+  field
+    # : A → ℕ → Set -- or Set → Setᵒ?
+    down  : downClosedᵖ #
+    tz : ∀ v → # v 0
+open Predᵒ
+
+{-----  Equality on Step Indexed Sets  ---------}
+
+infix 4 _≡ₒ_
+_≡ₒ_ : Setₒ → Setₒ → Set
+S ≡ₒ T = ∀ i → S i ⇔ T i
+
+≡ₒ-refl : ∀{S T : Setₒ}
+  → S ≡ T
+  → S ≡ₒ T
+≡ₒ-refl refl i = (λ x → x) , (λ x → x)
+
+≡ₒ-sym : ∀{S T : Setₒ}
+  → S ≡ₒ T
+  → T ≡ₒ S
+≡ₒ-sym ST i = (proj₂ (ST i)) , (proj₁ (ST i))
+
+≡ₒ-trans : ∀{S T R : Setₒ}
+  → S ≡ₒ T
+  → T ≡ₒ R
+  → S ≡ₒ R
+≡ₒ-trans ST TR i = (λ z → proj₁ (TR i) (proj₁ (ST i) z))
+                 , (λ z → proj₂ (ST i) (proj₂ (TR i) z))
+
+infixr 2 _≡ₒ⟨_⟩_
+infix  3 _QEDₒ
+  
+_≡ₒ⟨_⟩_ : 
+    (P : Setₒ)
+   {Q : Setₒ}
+  → P ≡ₒ Q
+  → {R : Setₒ}
+  → Q ≡ₒ R
+  → P ≡ₒ R
+P ≡ₒ⟨ P≡Q ⟩ Q≡R = ≡ₒ-trans P≡Q Q≡R
+
+_QEDₒ :
+    (P : Setₒ)
+  → P ≡ₒ P
+P QEDₒ = ≡ₒ-refl refl
+
+{-----  Equality on Step Indexed Predicates  ---------}
+
+infix 2 _≡ₚ_
+_≡ₚ_ : ∀{A} → Predₒ A → Predₒ A → Set
+P ≡ₚ Q = ∀ v → P v ≡ₒ Q v
+
+≡ₚ-refl : ∀{A}{P Q : Predₒ A}
+  → P ≡ Q
+  → P ≡ₚ Q
+≡ₚ-refl refl x = ≡ₒ-refl refl
+
+≡ₚ-sym : ∀{A}{P Q : Predₒ A}
+  → P ≡ₚ Q
+  → Q ≡ₚ P
+≡ₚ-sym PQ x = ≡ₒ-sym (PQ x)
+  
+≡ₚ-trans : ∀{A : Set}{P Q R : Predₒ A}
+  → P ≡ₚ Q
+  → Q ≡ₚ R
+  → P ≡ₚ R
+≡ₚ-trans{R} PQ QR x = ≡ₒ-trans (PQ x) (QR x)
+
+infixr 2 _≡ₚ⟨_⟩_
+infix  3 _QEDₚ
+  
+_≡ₚ⟨_⟩_ : ∀{A}
+  → (P : Predₒ A)
+  → ∀{Q} → P ≡ₚ Q
+  → ∀{R} → Q ≡ₚ R
+  → P ≡ₚ R
+P ≡ₚ⟨ P≡Q ⟩ Q≡R = ≡ₚ-trans P≡Q Q≡R
+
+_QEDₚ : ∀{A}
+  → (P : Predₒ A)
+  → P ≡ₚ P
+P QEDₚ = ≡ₚ-refl refl
+
+{------------ Continuous and Wellfounded Functions on Step Indexed Predicates -}
+
+↓ₒ : ℕ → Setᵒ → Setₒ
+↓ₒ k S zero = ⊤
+↓ₒ k S (suc j) = suc j < k × (# S (suc j))
+
+↓ₒ-intro : ∀{i}{k}
+     (S : Setᵒ)
+   → i < k
+   → # S i
+   → ↓ₒ k S i
+↓ₒ-intro {zero} {k} S i<k Si = tt
+↓ₒ-intro {suc i} {k} S i<k Si = i<k , Si
+
+↓ᵒ : ℕ → Setᵒ → Setᵒ
+↓ᵒ k S = record { # = ↓ₒ k S 
+                ; down = λ { zero x .zero z≤n → tt
+                           ; (suc n) (sn<k , Sn) zero j≤n → tt
+                           ; (suc n) (sn<k , Ssn) (suc j) (s≤s j≤n) →
+                           (≤-trans (s≤s (s≤s j≤n)) sn<k)
+                           , (down S (suc n) Ssn (suc j) (s≤s j≤n))}
+                ; tz = tt
+                }
+
+apply : ∀{A} → Predᵒ A → A → Setᵒ
+apply P v = record { # = λ j → # P v j
+                   ; down = down P v
+                   ; tz = tz P v
+                   }
+                   
+↓ᵖ : ℕ → ∀{A} → Predᵒ A → Predᵒ A
+↓ᵖ k P = record { # = λ v → # (↓ᵒ k (apply P v))
+                ; down = λ v → down (↓ᵒ k (apply P v))
+                ; tz = λ v → tt
+                }
+
+congᵖ : ∀{A}{B} (F : Predᵒ A → Predᵒ B) → Set₁
+congᵖ F = ∀ P Q → # P ≡ₚ # Q → #(F P) ≡ₚ #(F Q)
+
+cong-↓ : ∀{A}
+    (k : ℕ)
+  → congᵖ{A}{A} (↓ᵖ k)
+cong-↓ k P Q PQ x zero = (λ x → tt) , (λ x → tt)
+cong-↓ k P Q PQ x (suc i) =
+     (λ { (si<k , Pxsi) → si<k , let P→Q = proj₁ (PQ x (suc i)) in P→Q Pxsi})
+   , (λ {(si<k , Qxsi) → si<k , let Q→P = proj₂ (PQ x (suc i)) in Q→P Qxsi})
+                
+continuous : ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
+continuous F = ∀ P k → #(↓ᵖ k (F P)) ≡ₚ #(↓ᵖ k (F (↓ᵖ k P)))
+
+wellfounded : ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
+wellfounded F = ∀ P k → #(↓ᵖ (suc k) (F P)) ≡ₚ #(↓ᵖ (suc k) (F (↓ᵖ k P)))
+
+data Kind : Set where
+  Continuous : Kind
+  Wellfounded : Kind
+
+goodness : Kind → ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
+goodness Continuous F = continuous F
+goodness Wellfounded F = wellfounded F
+
+record Fun (A B : Set) (κ : Kind)
+       : Set₁ where
+  field
+    fun : Predᵒ A → Predᵒ B
+    good : goodness κ fun
+    congr : congᵖ fun
+open Fun public
+
+{-- Step Index Propositions --}
 
 ⊥ₒ : Setₒ
 ⊥ₒ zero     =  ⊤
@@ -63,6 +238,8 @@ _ₒ  : Set → Setₒ
 
 ▷ₒ_ : Setₒ → Setₒ
 (▷ₒ P) n =  ∀ k → k < n → P k
+
+{-- Step Index Predicates --}
 
 ⊤ₚ : ∀{A} → Predₒ A
 ⊤ₚ x = ⊤ₒ
@@ -101,32 +278,7 @@ iter-subtract {A = A} {P} F .zero k z≤n = refl
 iter-subtract {A = A} {P} F (suc j) (suc k) (s≤s j≤k)
   rewrite iter-subtract{A = A}{P} F j k j≤k = refl
 
--- μₚ : ∀ {A} → (Predₒ A → Predₒ A) → Predₒ A
--- (μₚ F) x k = iter (suc k) F ⊤ₚ x k
-
-{- Step Indexed Propositions and Predicates
-   packaged with down-closed and true-at-zero.
- -}
-
-downClosed : (ℕ → Set) → Set
-downClosed P = ∀ n → P n → ∀ k → k ≤ n → P k
-
-record Setᵒ : Set₁ where
-  field
-    # : Setₒ
-    down : downClosed #
-    tz : # 0
-open Setᵒ
-
-downClosedᵖ : ∀{A : Set} → (A → ℕ → Set) → Set
-downClosedᵖ P = ∀ v → downClosed (P v)
-
-record Predᵒ (A : Set) : Set₁ where
-  field
-    # : A → ℕ → Set -- or Set → Setᵒ?
-    down  : downClosedᵖ #
-    tz : ∀ v → # v 0
-open Predᵒ
+{- Packaged Step Indexed Propositions -}
 
 ⊥ᵒ : Setᵒ
 ⊥ᵒ = record { # = ⊥ₒ
@@ -184,33 +336,7 @@ infixr 8 ▷ᵒ_
               ; tz = λ k ()
               }
 
-↓ₒ : ℕ → Setᵒ → Setₒ
-↓ₒ k S zero = ⊤
-↓ₒ k S (suc j) = suc j < k × (# S (suc j))
-
-↓ₒ-intro : ∀{i}{k}
-     (S : Setᵒ)
-   → i < k
-   → # S i
-   → ↓ₒ k S i
-↓ₒ-intro {zero} {k} S i<k Si = tt
-↓ₒ-intro {suc i} {k} S i<k Si = i<k , Si
-
-↓ᵒ : ℕ → Setᵒ → Setᵒ
-↓ᵒ k S = record { # = ↓ₒ k S 
-                ; down = λ { zero x .zero z≤n → tt
-                           ; (suc n) (sn<k , Sn) zero j≤n → tt
-                           ; (suc n) (sn<k , Ssn) (suc j) (s≤s j≤n) →
-                           (≤-trans (s≤s (s≤s j≤n)) sn<k)
-                           , (down S (suc n) Ssn (suc j) (s≤s j≤n))}
-                ; tz = tt
-                }
-
-apply : ∀{A} → Predᵒ A → A → Setᵒ
-apply P v = record { # = λ j → # P v j
-                   ; down = down P v
-                   ; tz = tz P v
-                   }
+{- Packaged Step Indexed Predicates -}
 
 ⊤ᵖ : ∀{A} → Predᵒ A
 ⊤ᵖ {A} = record { # = ⊤ₚ ; down = λ v n _ k _ → tt ; tz = λ v → tt }
@@ -272,96 +398,88 @@ _ᵖ  : Set → ∀{A} → Predᵒ A
               ; down = λ v → down (▷P v)
               ; tz = λ v → tz (▷P v) }
 
-↓ᵖ : ℕ → ∀{A} → Predᵒ A → Predᵒ A
-↓ᵖ k P = record { # = λ v → # (↓ᵒ k (apply P v))
-                ; down = λ v → down (↓ᵒ k (apply P v))
-                ; tz = λ v → tt
-                }
+lemma15a : ∀{A} (P Q : Predᵒ A){j}
+  → (F : Predᵒ A → Predᵒ A)
+  → wellfounded F
+  → congᵖ F
+  → #(↓ᵖ j (iter j F P)) ≡ₚ #(↓ᵖ j (iter j F Q))
+lemma15a {A} P Q {zero} F wfF congF x zero = (λ x → tt) , (λ x → tt)
+lemma15a {A} P Q {zero} F wfF congF x (suc i) = (λ { ()}) , λ { ()}
+lemma15a {A} P Q {suc j} F wfF congF =
+    #(↓ᵖ (suc j) (F (iter j F P)))
+  ≡ₚ⟨ wfF (iter j F P) j  ⟩ 
+    #(↓ᵖ (suc j) (F (↓ᵖ j (iter j F P))))
+  ≡ₚ⟨ cong-↓ {A} (suc j)
+         (F (↓ᵖ j (iter j F P))) (F (↓ᵖ j (iter j F Q)))
+         (congF (↓ᵖ j (iter j F P)) (↓ᵖ j (iter j F Q))
+                (lemma15a{A} P Q {j = j} F wfF congF)) ⟩
+    #(↓ᵖ (suc j) (F (↓ᵖ j (iter j F Q))))
+  ≡ₚ⟨ ≡ₚ-sym (wfF (iter j F Q) j) ⟩
+    #(↓ᵖ (suc j) (F (iter j F Q)))
+  QEDₚ
 
-{-----  Reasoning about Equality on Step Indexed Sets  ---------}
+lemma15b : ∀{A}(P : Predᵒ A){j k}
+  → (F : Predᵒ A → Predᵒ A)
+  → wellfounded F
+  → congᵖ F
+  → j ≤ k
+  → #(↓ᵖ j (iter j F P)) ≡ₚ #(↓ᵖ j (iter k F P))
+lemma15b{A} P {j}{k} F wfF congF j≤k =
+    let eq = lemma15a {A} P (iter (k ∸ j) F P) {j} F wfF congF in
+    ≡ₚ-trans eq (cong-↓ j (iter j F (iter (k ∸ j) F P)) (iter k F P)
+                          (≡ₚ-refl Goal))
+    where
+    Goal : (λ z z₁ → #(iter j F (iter (k ∸ j) F P)) z z₁)
+           ≡ (λ z z₁ → #(iter k F P) z z₁)
+    Goal rewrite iter-subtract{A = Predᵒ A}{P} F j k j≤k = refl
 
-infix 4 _≡ₒ_
-_≡ₒ_ : Setₒ → Setₒ → Set
-S ≡ₒ T = ∀ i → S i ⇔ T i
+μₚ : ∀{A} → (Predᵒ A → Predᵒ A) → Predₒ A
+μₚ F a k = #(iter (suc k) F ⊤ᵖ) a k
 
-≡ₒ-refl : ∀{S T : Setₒ}
-  → S ≡ T
-  → S ≡ₒ T
-≡ₒ-refl refl i = (λ x → x) , (λ x → x)
+μᵖ : ∀{A} → Fun A A Wellfounded → Predᵒ A
+μᵖ F = record { # = μₚ (fun F)
+              ; down = dc-μ _ (good F) (congr F)
+              ; tz = λ v → tz (fun F (id ⊤ᵖ)) v
+              }
 
-≡ₒ-sym : ∀{S T : Setₒ}
-  → S ≡ₒ T
-  → T ≡ₒ S
-≡ₒ-sym ST i = (proj₂ (ST i)) , (proj₁ (ST i))
+  where
+  dc-iter : ∀(i : ℕ){A}
+     → (F : Predᵒ A → Predᵒ A)
+     → downClosedᵖ (#(iter i F ⊤ᵖ))
+  dc-iter zero F = λ n x _ k _ → tt
+  dc-iter (suc i) F = down (F (iter i F ⊤ᵖ))
 
-≡ₒ-trans : ∀{S T R : Setₒ}
-  → S ≡ₒ T
-  → T ≡ₒ R
-  → S ≡ₒ R
-≡ₒ-trans ST TR i = (λ z → proj₁ (TR i) (proj₁ (ST i) z))
-                 , (λ z → proj₂ (ST i) (proj₂ (TR i) z))
+  dc-μ : ∀{A}
+       (F : Predᵒ A → Predᵒ A)
+     → wellfounded F
+     → congᵖ F
+     → downClosedᵖ (μₚ F) 
+  dc-μ {A} F wfF congF v k μFvk zero j≤k = tz (F ⊤ᵖ) v
+  dc-μ {A} F wfF congF v (suc k′) μFvk (suc j′) (s≤s j′≤k) = T
+     where
+     j = suc j′
+     k = suc k′
+     j≤k : j ≤ k
+     j≤k = s≤s j′≤k
+     X : #(iter (suc k) F ⊤ᵖ) v k
+     X = μFvk
+     Y : #(iter (suc k) F ⊤ᵖ) v j
+     Y = dc-iter (suc k) F v k X j j≤k
+     Z : #(↓ᵖ (suc j) (iter (suc k) F ⊤ᵖ)) v j
+     Z = ↓ₒ-intro (apply (iter (suc k) F ⊤ᵖ) v) ≤-refl Y
+     W : #(↓ᵖ (suc j) (iter (suc j) F ⊤ᵖ)) v j
+     W = let eq = lemma15b{A} ⊤ᵖ {suc j}{suc k} F wfF congF (s≤s j≤k)
+         in proj₁ ((≡ₚ-sym eq) v j) Z
+     T : #((iter (suc j) F ⊤ᵖ)) v j
+     T = proj₂ W
 
-infixr 2 _≡ₒ⟨_⟩_
-infix  3 _QEDₒ
-  
-_≡ₒ⟨_⟩_ : 
-    (P : Setₒ)
-   {Q : Setₒ}
-  → P ≡ₒ Q
-  → {R : Setₒ}
-  → Q ≡ₒ R
-  → P ≡ₒ R
-P ≡ₒ⟨ P≡Q ⟩ Q≡R = ≡ₒ-trans P≡Q Q≡R
-
-_QEDₒ :
-    (P : Setₒ)
-  → P ≡ₒ P
-P QEDₒ = ≡ₒ-refl refl
-
-example : ∀{P Q : Setᵒ} → # (P ×ᵒ Q) ≡ₒ # (Q ×ᵒ P)
-example {P}{Q} = 
-  # (P ×ᵒ Q)          ≡ₒ⟨ (λ i → (λ {(Pi , Qi) → Qi , Pi})
-                               , (λ {(Qi , Pi) → Pi , Qi})) ⟩
-  # (Q ×ᵒ P)
-  QEDₒ
+{-
+ UNDER CONSTRUCTION
+-}
 
 
-{-----  Reasoning about Equality on Step Indexed Predicates  ---------}
 
-infix 2 _≡ₚ_
-_≡ₚ_ : ∀{A} → Predₒ A → Predₒ A → Set
-P ≡ₚ Q = ∀ v → P v ≡ₒ Q v
 
-≡ₚ-refl : ∀{A}{P Q : Predₒ A}
-  → P ≡ Q
-  → P ≡ₚ Q
-≡ₚ-refl refl x = ≡ₒ-refl refl
-
-≡ₚ-sym : ∀{A}{P Q : Predₒ A}
-  → P ≡ₚ Q
-  → Q ≡ₚ P
-≡ₚ-sym PQ x = ≡ₒ-sym (PQ x)
-  
-≡ₚ-trans : ∀{A : Set}{P Q R : Predₒ A}
-  → P ≡ₚ Q
-  → Q ≡ₚ R
-  → P ≡ₚ R
-≡ₚ-trans{R} PQ QR x = ≡ₒ-trans (PQ x) (QR x)
-
-infixr 2 _≡ₚ⟨_⟩_
-infix  3 _QEDₚ
-  
-_≡ₚ⟨_⟩_ : ∀{A}
-  → (P : Predₒ A)
-  → ∀{Q} → P ≡ₚ Q
-  → ∀{R} → Q ≡ₚ R
-  → P ≡ₚ R
-P ≡ₚ⟨ P≡Q ⟩ Q≡R = ≡ₚ-trans P≡Q Q≡R
-
-_QEDₚ : ∀{A}
-  → (P : Predₒ A)
-  → P ≡ₚ P
-P QEDₚ = ≡ₚ-refl refl
 
 cong-→ᵖ : ∀{A}{P P′ Q Q′ : Predₒ A}
    → P ≡ₚ P′
@@ -406,25 +524,8 @@ cong-▷ᵖ : ∀{A}{P P′ : Predₒ A}
 cong-▷ᵖ PP′ v k = (λ {▷Pvk j j<k → proj₁ (PP′ v j) (▷Pvk j j<k)})
                 , (λ ▷P′vk j j<k → proj₂ (PP′ v j) (▷P′vk j j<k))
 
-{------------ Continuous and Wellfounded Functions on Step Indexed Predicates -}
+{------------ Auxiliary Lemmas ----------}
 
-congᵖ : ∀{A}{B} (F : Predᵒ A → Predᵒ B) → Set₁
-congᵖ F = ∀ P Q → # P ≡ₚ # Q → #(F P) ≡ₚ #(F Q)
-
-continuous : ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
-continuous F = ∀ P k → #(↓ᵖ k (F P)) ≡ₚ #(↓ᵖ k (F (↓ᵖ k P)))
-
-wellfounded : ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
-wellfounded F = ∀ P k → #(↓ᵖ (suc k) (F P)) ≡ₚ #(↓ᵖ (suc k) (F (↓ᵖ k P)))
-
-cong-↓ : ∀{A}
-    (k : ℕ)
-  → congᵖ{A}{A} (↓ᵖ k)
-cong-↓ k P Q PQ x zero = (λ x → tt) , (λ x → tt)
-cong-↓ k P Q PQ x (suc i) =
-     (λ { (si<k , Pxsi) → si<k , let P→Q = proj₁ (PQ x (suc i)) in P→Q Pxsi})
-   , (λ {(si<k , Qxsi) → si<k , let Q→P = proj₂ (PQ x (suc i)) in Q→P Qxsi})
-                
 {- ↓ᵖ is idempotent -}
 lemma17 : ∀{A}
      (P : Predᵒ A)
@@ -458,27 +559,13 @@ wellfounded⇒continuous F wfF congF P (suc k) =
     #(↓ᵖ (suc k) (F (↓ᵖ (suc k) P)))
     QEDₚ
 
-data Kind : Set where
-  Continuous : Kind
-  Wellfounded : Kind
-
 choose : Kind → Kind → Kind
 choose Continuous Continuous = Continuous
 choose Continuous Wellfounded = Continuous
 choose Wellfounded Continuous = Continuous
 choose Wellfounded Wellfounded = Wellfounded
 
-goodness : Kind → ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
-goodness Continuous F = continuous F
-goodness Wellfounded F = wellfounded F
-
-record Fun (A B : Set) (κ : Kind)
-       : Set₁ where
-  field
-    fun : Predᵒ A → Predᵒ B
-    good : goodness κ fun
-    congr : congᵖ fun
-open Fun public
+{-------------- Functions on Step Index Predicates  --------------}
 
 {------- Implication --------}
 
@@ -574,8 +661,7 @@ _→ᶠ_ {A}{B}{kF}{kG} F G =
         let GPbj = proj₂ GP≡GQ GQbj in
         GPbj)
 
-                
-{- Conjunction -}
+{------- Conjunction --------}
 
 infixr 6 _×ᶠ_
 _×ᶠ_ : ∀{A}{B}{kF kG}
@@ -658,7 +744,7 @@ _×ᶠ_ {A}{B}{kF}{kG} F G =
           let GPxi⇔GQxi = congG P Q PQ x i in
           proj₂ FPxi⇔FQxi FQxi  , proj₂ GPxi⇔GQxi GQxi})
 
-{- Disjunction -}
+{------- Disjunction --------}
 
 infixr 6 _⊎ᶠ_
 _⊎ᶠ_ : ∀{A}{B}{kF kG}
@@ -748,7 +834,7 @@ _⊎ᶠ_ {A}{B}{kF}{kG} F G =
     fro (inj₁ FQi) = inj₁ (proj₂ (extF P Q PQ x i) FQi)
     fro (inj₂ GQi) = inj₂ (proj₂ (extG P Q PQ x i) GQi)
 
-{- Forall -}
+{------- Forall --------}
 
 ∀ᶠ : ∀{A B C : Set}{K}
    → (A → Fun B C K)
@@ -806,7 +892,7 @@ _⊎ᶠ_ {A}{B}{kF}{kG} F G =
     (λ ∀FP v → proj₁ (congr (F v) P Q PQ c i) (∀FP v))
     , (λ ∀FQ v → proj₂ (congr (F v) P Q PQ c i) (∀FQ v))
 
-{- Constant -}
+{------- Constant --------}
 
 _ᶠ : ∀{A}{B}
    → Set
@@ -816,13 +902,12 @@ _ᶠ : ∀{A}{B}
     ; congr = λ P Q _ v i → (λ x → x) , (λ x → x)
     }
 
-{- Later -}
+{------- Later --------}
 
 ≤-inv : ∀{i}{j}
    → suc i ≤ suc j
    → i ≤ j
 ≤-inv (s≤s i≤j) = i≤j
-
 
 ▷ᶠ : ∀{A}{B}{kF} → Fun A B kF → Fun A B Wellfounded
 ▷ᶠ {A}{B}{kF} F = record { fun = (λ P → ▷ᵖ ((fun F) P))
@@ -877,89 +962,9 @@ _ᶠ : ∀{A}{B}
         (λ x₁ k x₂ → proj₁ (congF P Q PQ x k) (x₁ k x₂))
       , (λ x₁ k x₂ → proj₂ (congF P Q PQ x k) (x₁ k x₂))
 
-{- Lemma for defining the recursive predicate -}
-
-lemma15a : ∀{A} (P Q : Predᵒ A){j}
-  → (F : Predᵒ A → Predᵒ A)
-  → wellfounded F
-  → congᵖ F
-  → #(↓ᵖ j (iter j F P)) ≡ₚ #(↓ᵖ j (iter j F Q))
-lemma15a {A} P Q {zero} F wfF congF x zero = (λ x → tt) , (λ x → tt)
-lemma15a {A} P Q {zero} F wfF congF x (suc i) = (λ { ()}) , λ { ()}
-lemma15a {A} P Q {suc j} F wfF congF =
-    #(↓ᵖ (suc j) (F (iter j F P)))
-  ≡ₚ⟨ wfF (iter j F P) j  ⟩ 
-    #(↓ᵖ (suc j) (F (↓ᵖ j (iter j F P))))
-  ≡ₚ⟨ cong-↓ {A} (suc j)
-         (F (↓ᵖ j (iter j F P))) (F (↓ᵖ j (iter j F Q)))
-         (congF (↓ᵖ j (iter j F P)) (↓ᵖ j (iter j F Q))
-                (lemma15a{A} P Q {j = j} F wfF congF)) ⟩
-    #(↓ᵖ (suc j) (F (↓ᵖ j (iter j F Q))))
-  ≡ₚ⟨ ≡ₚ-sym (wfF (iter j F Q) j) ⟩
-    #(↓ᵖ (suc j) (F (iter j F Q)))
-  QEDₚ
-
-lemma15b : ∀{A}(P : Predᵒ A){j k}
-  → (F : Predᵒ A → Predᵒ A)
-  → wellfounded F
-  → congᵖ F
-  → j ≤ k
-  → #(↓ᵖ j (iter j F P)) ≡ₚ #(↓ᵖ j (iter k F P))
-lemma15b{A} P {j}{k} F wfF congF j≤k =
-    let eq = lemma15a {A} P (iter (k ∸ j) F P) {j} F wfF congF in
-    ≡ₚ-trans eq (cong-↓ j (iter j F (iter (k ∸ j) F P)) (iter k F P)
-                          (≡ₚ-refl Goal))
-    where
-    Goal : (λ z z₁ → #(iter j F (iter (k ∸ j) F P)) z z₁)
-           ≡ (λ z z₁ → #(iter k F P) z z₁)
-    Goal rewrite iter-subtract{A = Predᵒ A}{P} F j k j≤k = refl
-
-{- Recursive Predicate -}
-
-μₚ : ∀{A} → (Predᵒ A → Predᵒ A) → Predₒ A
-μₚ F a k = #(iter (suc k) F ⊤ᵖ) a k
-
-μᵖ : ∀{A} → Fun A A Wellfounded → Predᵒ A
-μᵖ F = record { # = μₚ (fun F)
-              ; down = dc-μ _ (good F) (congr F)
-              ; tz = λ v → tz (fun F (id ⊤ᵖ)) v
-              }
-
-  where
-  dc-iter : ∀(i : ℕ){A}
-     → (F : Predᵒ A → Predᵒ A)
-     → downClosedᵖ (#(iter i F ⊤ᵖ))
-  dc-iter zero F = λ n x _ k _ → tt
-  dc-iter (suc i) F = down (F (iter i F ⊤ᵖ))
-
-  dc-μ : ∀{A}
-       (F : Predᵒ A → Predᵒ A)
-     → wellfounded F
-     → congᵖ F
-     → downClosedᵖ (μₚ F) 
-  dc-μ {A} F wfF congF v k μFvk zero j≤k = tz (F ⊤ᵖ) v
-  dc-μ {A} F wfF congF v (suc k′) μFvk (suc j′) (s≤s j′≤k) = T
-     where
-     j = suc j′
-     k = suc k′
-     j≤k : j ≤ k
-     j≤k = s≤s j′≤k
-     X : #(iter (suc k) F ⊤ᵖ) v k
-     X = μFvk
-     Y : #(iter (suc k) F ⊤ᵖ) v j
-     Y = dc-iter (suc k) F v k X j j≤k
-     Z : #(↓ᵖ (suc j) (iter (suc k) F ⊤ᵖ)) v j
-     Z = ↓ₒ-intro (apply (iter (suc k) F ⊤ᵖ) v) ≤-refl Y
-     W : #(↓ᵖ (suc j) (iter (suc j) F ⊤ᵖ)) v j
-     W = let eq = lemma15b{A} ⊤ᵖ {suc j}{suc k} F wfF congF (s≤s j≤k)
-         in proj₁ ((≡ₚ-sym eq) v j) Z
-     T : #((iter (suc j) F ⊤ᵖ)) v j
-     T = proj₂ W
-
-
-{-
+{-------------------------------------------------------------------------------
   Fixpoint Theorem
--}
+-------------------------------------------------------------------------------}
 
 lemma18a : ∀{A}
    → (k : ℕ)
@@ -1056,3 +1061,11 @@ theorem20 : ∀{A}
    → (F : Fun A A Wellfounded)
    → #(μᵖ F) ≡ₚ #((fun F) (μᵖ F))
 theorem20 F = equiv-down (λ k → lemma19 k F)
+
+example : ∀{P Q : Setᵒ} → # (P ×ᵒ Q) ≡ₒ # (Q ×ᵒ P)
+example {P}{Q} = 
+  # (P ×ᵒ Q)          ≡ₒ⟨ (λ i → (λ {(Pi , Qi) → Qi , Pi})
+                               , (λ {(Qi , Pi) → Pi , Qi})) ⟩
+  # (Q ×ᵒ P)
+  QEDₒ
+
