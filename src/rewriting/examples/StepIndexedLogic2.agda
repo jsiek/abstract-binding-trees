@@ -961,47 +961,54 @@ lemma15b{A} P {j}{k} F wfF congF j≤k =
   Fixpoint Theorem
 -}
 
-
 lemma18a : ∀{A}
    → (k : ℕ)
    → (F : Fun A A Wellfounded)
    → #(↓ᵖ k (μᵖ F)) ≡ₚ #(↓ᵖ k (iter k (fun F) ⊤ᵖ))
-lemma18a zero F x i = {!!}
-    -- (λ { (z≤n , b) → z≤n , tt})
-    -- ,
-    -- λ { (z≤n , b) → z≤n , tz (fun F ⊤ᵖ) x}
-lemma18a (suc k′) F v j = {!!}
-    -- let k = suc k′ in
-    -- #(↓ᵖ k (μᵖ F)) v j                                                ⇔⟨ EQ1 ⟩
-    -- (j ≤ k  ×  (#(μᵖ F) v j))                                         ⇔⟨ EQ2 ⟩
-    -- (j ≤ k  ×  #(iter (suc j) (fun F) ⊤ᵖ) v j)                        ⇔⟨ EQ3 ⟩
-    -- (j ≤ k  ×  #(↓ᵖ (suc j) (iter (suc j) (fun F) ⊤ᵖ)) v j)           ⇔⟨ EQ4 ⟩
-    -- (j ≤ k  ×  #(↓ᵖ (suc j) (iter k (fun F) ⊤ᵖ)) v j)                 ⇔⟨ EQ5 ⟩
-    -- (j ≤ k  ×  #(iter k (fun F) ⊤ᵖ) v j)                              ⇔⟨ ? ⟩
-    -- #(↓ᵖ k (iter k (fun F) ⊤ᵖ)) v j
-    -- QED
-      
-{-
-      #(↓ᵖ k (μᵖ F)) v j                                ⇔⟨ EQ1 ⟩ 
-      (j ≤ k  ×  (#(μᵖ F) v j))                           ⇔⟨ EQ2 ⟩ 
-      (j ≤ k  ×  #(iter (suc j) (fun F) ⊤ᵖ) v j)              ⇔⟨ EQ3 ⟩ 
-      (j ≤ k  ×  #(↓ᵖ (suc j) (iter (suc j) (fun F) ⊤ᵖ)) v j) ⇔⟨ EQ4 ⟩
-      (j ≤ k  ×  #(↓ᵖ (suc j) (iter k (fun F) ⊤ᵖ)) v j)       ⇔⟨ EQ5 ⟩
-      (j ≤ k  ×  #(iter k (fun F) ⊤ᵖ) v j)                    ⇔⟨ EQ6 ⟩ 
-      #(↓ᵖ k (iter k (fun F) ⊤ᵖ)) v j
+lemma18a zero F x zero = (λ x → tt) , (λ x → tt)
+lemma18a zero F x (suc i) = (λ { (() , b)}) , (λ { (() , b)})
+lemma18a (suc k′) F v zero = (λ x → tt) , (λ x → tt)
+lemma18a (suc k′) F v (suc j′) =
+    let k = suc k′ in
+    let j = suc j′ in
+    #(↓ᵖ k (μᵖ F)) v j                                                ⇔⟨ EQ1 ⟩
+    (j < k  ×  (#(μᵖ F) v j))                                         ⇔⟨ EQ2 ⟩
+    (j < k  ×  #(iter (suc j) (fun F) ⊤ᵖ) v j)                        ⇔⟨ EQ3 ⟩
+    (j < k  ×  #(↓ᵖ (suc j) (iter (suc j) (fun F) ⊤ᵖ)) v j)           ⇔⟨ EQ4 ⟩
+    (j < k  ×  #(↓ᵖ (suc j) (iter k (fun F) ⊤ᵖ)) v j)                 ⇔⟨ EQ5 ⟩
+    (j < k  ×  #(iter k (fun F) ⊤ᵖ) v j)                              ⇔⟨ EQ6 ⟩
+    #(↓ᵖ k (iter k (fun F) ⊤ᵖ)) v j
     QED
--}    
-    -- where
-    --   EQ1 = {!!} -- (λ {(a , b) → a , b}) , (λ {(a , b) → a , b})
-    --   EQ2 = (λ {(a , b) → a , b}) , (λ {(a , b) → a , b})
-    --   EQ3 = (λ {(a , b) → a , ((n≤1+n j) , b)})
-    --       , (λ {(a , (b , c)) → a , c})
-    --   EQ4 = (λ{(a , b) → a ,
-    --           let xx = (lemma15b ⊤ᵖ {j = suc j}{k = suc k′} (fun F) (good F) (congr F) {!!} v j) in
-    --           proj₁ xx b -- proj₁ (lemma15b {j = suc j}{k = suc k′} F ? ? a v j) b
-    --           })
-    --       , (λ{(a , b) → a ,
-    --           {!!} -- proj₂ (lemma15b {j = suc j}{k = suc k′} F ? ? a v j) b
-    --           })
-    --   EQ5 = (λ {(a , b) → a , {!!}}) , λ {(a , b) → a , {!!}}
-    --   EQ6 = (λ {(a , b) → a , b}) , λ z → z
+    where
+      EQ1 = (λ { (j<k , μFvj) → j<k , μFvj})
+          , (λ {(j<k , μFvj) → j<k , μFvj})
+      EQ2 = (λ {(a , b) → a , b}) , (λ {(a , b) → a , b})
+      EQ3 = (λ {(a , b) → a , ≤-refl , b})
+          , (λ {(s≤s a , (b , c)) → s≤s a , c})
+      EQ4 = (λ{(s≤s j≤k′ , (j<1+j , FμF)) → s≤s j≤k′ ,
+              let ↓FμF = proj₁ (lemma15b ⊤ᵖ (fun F) (good F) (congr F)
+                                  (s≤s j≤k′) v (suc j′)) (j<1+j , FμF) in
+              j<1+j , proj₂ ↓FμF})
+          , (λ{(s≤s j≤k′ , (j<1+j , FμF)) → s≤s j≤k′ ,
+              let ↓FμF = proj₂ (lemma15b ⊤ᵖ (fun F) (good F) (congr F)
+                                  (s≤s j≤k′) v (suc j′)) (j<1+j , FμF) in
+              j<1+j , (proj₂ ↓FμF)
+              })
+      EQ5 = (λ {(a , b) → a , (proj₂ b)}) , λ {(a , b) → a , (≤-refl , b)}
+      EQ6 = (λ {(a , b) → a , b}) , λ z → z
+
+lemma18b : ∀{A}
+   → (k : ℕ)
+   → (F : Fun A A Wellfounded)
+   → #(↓ᵖ (suc k) ((fun F) (μᵖ F))) ≡ₚ #(↓ᵖ (suc k) (iter (suc k) (fun F) ⊤ᵖ))
+lemma18b {A} k F =
+      #(↓ᵖ (suc k) ((fun F) (μᵖ F)))                           ≡ₚ⟨ good F _ k ⟩
+      #(↓ᵖ (suc k) ((fun F) (↓ᵖ k (μᵖ F))))
+                           ≡ₚ⟨ cong-↓ (suc k) _ _ (congr F _ _ (lemma18a k F)) ⟩
+      #(↓ᵖ (suc k) ((fun F) (↓ᵖ k (iter k (fun F) ⊤ᵖ))))
+                                                       ≡ₚ⟨ ≡ₚ-sym (good F _ k) ⟩
+      #(↓ᵖ (suc k) ((fun F) (iter k (fun F) ⊤ᵖ)))             ≡ₚ⟨ ≡ₚ-refl refl ⟩
+      #(↓ᵖ (suc k) (iter (suc k) (fun F) ⊤ᵖ))
+    QEDₚ
+    
+
