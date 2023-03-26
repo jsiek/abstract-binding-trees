@@ -1011,4 +1011,48 @@ lemma18b {A} k F =
       #(↓ᵖ (suc k) (iter (suc k) (fun F) ⊤ᵖ))
     QEDₚ
     
+lemma19 : ∀{A}
+   → (k : ℕ)
+   → (F : Fun A A Wellfounded)
+   → #(↓ᵖ k (μᵖ F)) ≡ₚ #(↓ᵖ k ((fun F) (μᵖ F)))
+lemma19 {A} k F =
+      #(↓ᵖ k (μᵖ F))                                         ≡ₚ⟨ lemma18a k F ⟩
+      #(↓ᵖ k (iter k (fun F) ⊤ᵖ))
+                           ≡ₚ⟨ lemma15b _ (fun F) (good F) (congr F) (n≤1+n k) ⟩
+      #(↓ᵖ k (iter (suc k) (fun F) ⊤ᵖ))               ≡ₚ⟨ ≡ₚ-sym (lemma17 _ k) ⟩
+      #(↓ᵖ k (↓ᵖ (suc k) (iter (suc k) (fun F) ⊤ᵖ)))
+                                      ≡ₚ⟨ cong-↓ k _ _ (≡ₚ-sym (lemma18b _ F)) ⟩
+      #(↓ᵖ k (↓ᵖ (suc k) ((fun F) (μᵖ F))))                   ≡ₚ⟨ lemma17 _ k ⟩
+      #(↓ᵖ k ((fun F) (μᵖ F)))
+    QEDₚ
 
+down-eq : ∀{A}{P : Predᵒ A}{x}
+   → (i : ℕ)
+   → (#(↓ᵖ (suc i) P) x i) ⇔ (# P x i)
+down-eq {A}{P}{x} zero = (λ _ → tz P x) , (λ _ → tt)
+down-eq {A}{P}{x} (suc i′) =
+    (λ (i<1+i , Pxi) → Pxi) , (λ Pxi → s≤s (s≤s ≤-refl) , Pxi)
+
+equiv-down : ∀{A}{P Q : Predᵒ A}
+   → (∀ k → #(↓ᵖ k P) ≡ₚ #(↓ᵖ k Q))
+   → # P ≡ₚ # Q
+equiv-down {A} {P} {Q} ↓PQ x zero = (λ _ → tz Q x) , (λ _ → tz P x)
+equiv-down {A} {P} {Q} ↓PQ x (suc i′) =
+  (λ Pxi →
+      let ↓P→↓Q = proj₁ (↓PQ (suc (suc i′)) x (suc i′)) in
+      let ↓P = proj₂ (down-eq{A}{P}{x} (suc i′)) Pxi in
+      let ↓Q = ↓P→↓Q ↓P in
+      let Qxi = proj₂ ↓Q in
+      Qxi)
+  ,
+  (λ Qxi →
+      let ↓Q→↓P = proj₂ (↓PQ (suc (suc i′)) x (suc i′)) in
+      let ↓Q = proj₂ (down-eq{A}{Q}{x} (suc i′)) Qxi in
+      let ↓P = ↓Q→↓P ↓Q in
+      let Pxi = proj₂ ↓P in
+      Pxi)
+
+theorem20 : ∀{A}
+   → (F : Fun A A Wellfounded)
+   → #(μᵖ F) ≡ₚ #((fun F) (μᵖ F))
+theorem20 F = equiv-down (λ k → lemma19 k F)
