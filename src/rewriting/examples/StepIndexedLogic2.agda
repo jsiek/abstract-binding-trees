@@ -49,7 +49,7 @@ record Setᵒ : Set₁ where
     # : Setₒ
     down : downClosed #
     tz : # 0
-open Setᵒ
+open Setᵒ public
 
 downClosedᵖ : ∀{A : Set} → (A → ℕ → Set) → Set
 downClosedᵖ P = ∀ v → downClosed (P v)
@@ -59,7 +59,7 @@ record Predᵒ (A : Set) : Set₁ where
     # : A → ℕ → Set -- or Set → Setᵒ?
     down  : downClosedᵖ #
     tz : ∀ v → # v 0
-open Predᵒ
+open Predᵒ public
 
 {-----  Equality on Step Indexed Sets  ---------}
 
@@ -238,6 +238,7 @@ _ₒ  : Set → Setₒ
 
 ▷ₒ_ : Setₒ → Setₒ
 (▷ₒ P) n =  ∀ k → k < n → P k
+{- TODO: consider alternative recursive definition of ▷ₒ -}
 
 {-- Step Index Predicates --}
 
@@ -336,6 +337,11 @@ infixr 8 ▷ᵒ_
               ; tz = λ k ()
               }
 
+▷ᵒ-intro : ∀{n}{P : Setᵒ}
+  → # P n → # (▷ᵒ P) (suc n)
+▷ᵒ-intro {n}{P} Pn k (s≤s k≤n) = down P n Pn k k≤n
+
+
 {- Packaged Step Indexed Predicates -}
 
 ⊤ᵖ : ∀{A} → Predᵒ A
@@ -369,17 +375,16 @@ P →ᵖ Q = let P→Q = λ a → (apply P a →ᵒ apply Q a) in
                 ; tz = λ a → tz (apply P a →ᵒ apply Q a)
                 }
 
--- TODO: find a better name for the following
-cvt : ∀{A}{B}
+flipᵖ : ∀{A}{B}
    → (A → Predᵒ B)
      -------------
    → (B → Predᵒ A)
-cvt F b = record { # = λ a → # (F a) b
+flipᵖ F b = record { # = λ a → # (F a) b
                  ; down = λ a → down (F a) b
                  ; tz = λ a → tz (F a) b }   
 
 ∀ᵖ : ∀{A : Set}{B} → (A → Predᵒ B) → Predᵒ B
-∀ᵖ {A}{B} F = let ∀P = λ b → ∀ᵒ {A} (cvt F b) in
+∀ᵖ {A}{B} F = let ∀P = λ b → ∀ᵒ {A} (flipᵖ F b) in
               record { # = λ b → # (∀P b)
                      ; down = λ b → down (∀P b)
                      ; tz = λ b → tz (∀P b)
@@ -391,6 +396,14 @@ _ᵖ  : Set → ∀{A} → Predᵒ A
             record { # = λ a → # (Sᵖ a)
                    ; down = λ a → down (Sᵖ a)
                    ; tz = λ a → tz (Sᵖ a) }
+
+infixr 8 _ˢ
+_ˢ  : Setᵒ → ∀{A} → Predᵒ A
+(S ˢ) {A} = let Sˢ = λ a → S in
+            record { # = λ a → # (Sˢ a)
+                   ; down = λ a → down (Sˢ a)
+                   ; tz = λ a → tz (Sˢ a)
+                   }
 
 ▷ᵖ : ∀{A} → Predᵒ A → Predᵒ A
 ▷ᵖ P = let ▷P = λ v → ▷ᵒ (apply P v) in
@@ -473,13 +486,7 @@ lemma15b{A} P {j}{k} F wfF congF j≤k =
      T : #((iter (suc j) F ⊤ᵖ)) v j
      T = proj₂ W
 
-{-
- UNDER CONSTRUCTION
--}
-
-
-
-
+{------------ Auxiliary Lemmas ----------}
 
 cong-→ᵖ : ∀{A}{P P′ Q Q′ : Predₒ A}
    → P ≡ₚ P′
@@ -523,8 +530,6 @@ cong-▷ᵖ : ∀{A}{P P′ : Predₒ A}
    → ▷ₚ P ≡ₚ ▷ₚ P′
 cong-▷ᵖ PP′ v k = (λ {▷Pvk j j<k → proj₁ (PP′ v j) (▷Pvk j j<k)})
                 , (λ ▷P′vk j j<k → proj₂ (PP′ v j) (▷P′vk j j<k))
-
-{------------ Auxiliary Lemmas ----------}
 
 {- ↓ᵖ is idempotent -}
 lemma17 : ∀{A}
@@ -962,6 +967,59 @@ _ᶠ : ∀{A}{B}
         (λ x₁ k x₂ → proj₁ (congF P Q PQ x k) (x₁ k x₂))
       , (λ x₁ k x₂ → proj₂ (congF P Q PQ x k) (x₁ k x₂))
 
+{------- Flip --------}
+
+flip : ∀{A}{B}{C}{K}
+   → (A → Fun C B K)
+   → (B → (Predᵒ C → Predᵒ A))
+flip F b P = record { # = λ a → # (fun (F a) P) b
+                    ; down = λ a → down (fun (F a) P) b
+                    ; tz = λ a → tz (fun (F a) P) b
+                    }
+
+flipᶠ : ∀{A}{B}{C}{K}
+   → (A → Fun C B K)
+   → (B → Fun C A K)
+flipᶠ {A}{B}{C}{K} F b =
+  record { fun = flip F b
+         ; good = goodness-flip F b
+         ; congr = congᵖ-flip F b
+         }
+  where
+  goodness-flip : ∀{A}{B}{C}{K}
+    → (F : A → Fun C B K)
+    → (b : B)
+    → goodness K (flip F b)
+  goodness-flip {A}{B}{C} {Continuous} F b P k x = good (F x) P k b
+  goodness-flip {A}{B}{C} {Wellfounded} F b P k x = good (F x) P k b
+  
+  congᵖ-flip : ∀{A}{B}{C}{K}
+    → (F : A → Fun C B K)
+    → (b : B)
+     → congᵖ (flip F b)
+  congᵖ-flip {A}{B}{C}{K} F b P Q P≡Q a = congr (F a) P Q P≡Q b
+
+{------- Recur --------}
+
+recur : ∀{A}{B}
+   → A
+   → Fun A B Continuous
+recur a =
+  record { fun = λ P → (apply P a) ˢ 
+         ; good = continuous-recur a
+         ; congr = λ P Q PQ v i → PQ a i
+         }
+  where
+  continuous-recur : ∀{A}{B}
+     → (a : A)
+     → continuous{A}{B} (λ P → apply P a ˢ)
+  continuous-recur a P k v zero = (λ x → tt) , (λ x → tt)
+  continuous-recur a P k v (suc i) =
+      (λ {(si<k , Psi) → si<k , (si<k , Psi)})
+      ,
+      (λ {(si<k , (_ , Psi)) → si<k , Psi})
+
+
 {-------------------------------------------------------------------------------
   Fixpoint Theorem
 -------------------------------------------------------------------------------}
@@ -1057,10 +1115,11 @@ equiv-down {A} {P} {Q} ↓PQ x (suc i′) =
       let Pxi = proj₂ ↓P in
       Pxi)
 
-theorem20 : ∀{A}
+{- Theorem 20 -}
+fixpoint : ∀{A}
    → (F : Fun A A Wellfounded)
    → #(μᵖ F) ≡ₚ #((fun F) (μᵖ F))
-theorem20 F = equiv-down (λ k → lemma19 k F)
+fixpoint F = equiv-down (λ k → lemma19 k F)
 
 example : ∀{P Q : Setᵒ} → # (P ×ᵒ Q) ≡ₒ # (Q ×ᵒ P)
 example {P}{Q} = 
@@ -1069,3 +1128,33 @@ example {P}{Q} =
   # (Q ×ᵒ P)
   QEDₒ
 
+{--------------- Useful Lemmas -------------------}
+
+cong-×ₒ : ∀{S S′ T T′}
+  → S ≡ₒ S′
+  → T ≡ₒ T′ 
+  → (S ×ₒ T) ≡ₒ (S′ ×ₒ T′)
+cong-×ₒ S=S′ T=T′ i =
+    (λ { (Si , Ti) → (proj₁ (S=S′ i) Si) , (proj₁ (T=T′ i) Ti)})
+    ,
+    (λ {(S′i , T′i) → (proj₂ (S=S′ i) S′i) , (proj₂ (T=T′ i) T′i)})
+
+cong-⊎ₒ : ∀{S S′ T T′}
+  → S ≡ₒ S′
+  → T ≡ₒ T′ 
+  → (S ⊎ₒ T) ≡ₒ (S′ ⊎ₒ T′)
+cong-⊎ₒ S=S′ T=T′ i =
+  (λ { (inj₁ Si) → inj₁ (proj₁ (S=S′ i) Si)
+     ; (inj₂ Ti) → inj₂ (proj₁ (T=T′ i) Ti)})
+  ,
+  (λ { (inj₁ S′i) → inj₁ (proj₂ (S=S′ i) S′i)
+     ; (inj₂ T′i) → inj₂ (proj₂ (T=T′ i) T′i)})
+
+cong-→ₒ : ∀{S S′ T T′}
+  → S ≡ₒ S′
+  → T ≡ₒ T′ 
+  → (S →ₒ T) ≡ₒ (S′ →ₒ T′)
+cong-→ₒ S=S′ T=T′ i =
+  (λ S→Ti k k≤i S′k → proj₁ (T=T′ k) (S→Ti k k≤i (proj₂ (S=S′ k) S′k)))
+  ,
+  (λ z k z₁ z₂ → proj₂ (T=T′ k) (z k z₁ (proj₁ (S=S′ k) z₂)))
