@@ -41,7 +41,7 @@ Predₒ A = A → ℕ → Set
    packaged with down-closed and true-at-zero.
  -}
 
-downClosed : (ℕ → Set) → Set
+downClosed : Setₒ → Set
 downClosed P = ∀ n → P n → ∀ k → k ≤ n → P k
 
 record Setᵒ : Set₁ where
@@ -56,7 +56,7 @@ downClosedᵖ P = ∀ v → downClosed (P v)
 
 record Predᵒ (A : Set) : Set₁ where
   field
-    # : A → ℕ → Set -- or Set → Setᵒ?
+    # : A → ℕ → Set -- or A → Setᵒ?
     down  : downClosedᵖ #
     tz : ∀ v → # v 0
 open Predᵒ public
@@ -448,7 +448,10 @@ lemma15b{A} P {j}{k} F wfF congF j≤k =
 μₚ : ∀{A} → (Predᵒ A → Predᵒ A) → Predₒ A
 μₚ F a k = #(iter (suc k) F ⊤ᵖ) a k
 
-μᵖ : ∀{A} → Fun A A Wellfounded → Predᵒ A
+μᵖ : ∀{A}
+   → Fun A A Wellfounded
+     -------------------
+   → Predᵒ A
 μᵖ F = record { # = μₚ (fun F)
               ; down = dc-μ _ (good F) (congr F)
               ; tz = λ v → tz (fun F (id ⊤ᵖ)) v
@@ -913,7 +916,10 @@ _ᶠ : ∀{A}{B}
    → i ≤ j
 ≤-inv (s≤s i≤j) = i≤j
 
-▷ᶠ : ∀{A}{B}{kF} → Fun A B kF → Fun A B Wellfounded
+▷ᶠ : ∀{A}{B}{kF}
+   → Fun A B kF
+     -------------------
+   → Fun A B Wellfounded
 ▷ᶠ {A}{B}{kF} F = record { fun = (λ P → ▷ᵖ ((fun F) P))
               ; good = goodness-▷ kF (fun F) (good F) (congr F) 
               ; congr = cong-▷ (fun F) (congr F)
@@ -1117,13 +1123,6 @@ fixpoint : ∀{A}
    → #(μᵖ F) ≡ₚ #((fun F) (μᵖ F))
 fixpoint F = equiv-down (λ k → lemma19 k F)
 
-example : ∀{P Q : Setᵒ} → # (P ×ᵒ Q) ≡ₒ # (Q ×ᵒ P)
-example {P}{Q} = 
-  # (P ×ᵒ Q)          ≡ₒ⟨ (λ i → (λ {(Pi , Qi) → Qi , Pi})
-                               , (λ {(Qi , Pi) → Pi , Qi})) ⟩
-  # (Q ×ᵒ P)
-  QEDₒ
-
 {--------------- Useful Lemmas -------------------}
 
 cong-×ₒ : ∀{S S′ T T′}
@@ -1154,3 +1153,84 @@ cong-→ₒ S=S′ T=T′ i =
   (λ S→Ti k k≤i S′k → proj₁ (T=T′ k) (S→Ti k k≤i (proj₂ (S=S′ k) S′k)))
   ,
   (λ z k z₁ z₂ → proj₂ (T=T′ k) (z k z₁ (proj₁ (S=S′ k) z₂)))
+
+{---------------------- Proof Theory for Step Indexed Logic -------------------}
+
+⊨ᵒ : List Setᵒ → Setᵒ
+⊨ᵒ [] = ⊤ᵒ
+⊨ᵒ (P ∷ 𝓟) = P ×ᵒ ⊨ᵒ 𝓟 
+
+infix 2 _⊢ᵒ_
+_⊢ᵒ_ : List Setᵒ → Setᵒ → Set
+𝓟 ⊢ᵒ P = ∀ n → # (⊨ᵒ 𝓟) n → # P n
+
+downClosed-⊨ᵒ :
+    (𝓟 : List Setᵒ)
+  → downClosed (# (⊨ᵒ 𝓟))
+downClosed-⊨ᵒ [] = λ n _ k _ → tt
+downClosed-⊨ᵒ (P ∷ 𝓟) n (Pn , ⊨𝓟n) k k≤n =
+    (down P n Pn k k≤n) , (downClosed-⊨ᵒ 𝓟 n ⊨𝓟n k k≤n)
+
+⊢ᵒ-mono : ∀ 𝓟 P
+   → 𝓟 ⊢ᵒ P
+     ------------
+   → 𝓟 ⊢ᵒ (▷ᵒ P)
+⊢ᵒ-mono 𝓟 P ⊢P zero ⊨𝓟n = tt
+⊢ᵒ-mono 𝓟 P ⊢P (suc n) ⊨𝓟n =
+  let ⊨𝓟n = downClosed-⊨ᵒ 𝓟 (suc n) ⊨𝓟n n (n≤1+n n) in
+  let Pn = ⊢P n ⊨𝓟n in
+  Pn
+
+⊢ᵒ-lob : ∀ 𝓟 P
+   → (▷ᵒ P) ∷ 𝓟 ⊢ᵒ P
+     -----------------------
+   → 𝓟 ⊢ᵒ P
+⊢ᵒ-lob 𝓟 P step zero ⊨𝓟n = tz P
+⊢ᵒ-lob 𝓟 P step (suc n) ⊨𝓟sn =
+  let ⊨𝓟n = downClosed-⊨ᵒ 𝓟 (suc n) ⊨𝓟sn n (n≤1+n n) in
+  let Pn = ⊢ᵒ-lob 𝓟 P step n ⊨𝓟n in
+  let Psn = step (suc n) (Pn , ⊨𝓟sn) in 
+  Psn
+
+⊢ᵒ-▷-× : ∀{𝓟 P Q}
+   → 𝓟 ⊢ᵒ (▷ᵒ (P ×ᵒ Q))
+     ----------------------
+   → 𝓟 ⊢ᵒ (▷ᵒ P) ×ᵒ (▷ᵒ Q)
+⊢ᵒ-▷-× ▷P×Q 0 ⊨𝓟n = tt , tt
+⊢ᵒ-▷-× ▷P×Q (suc n) ⊨𝓟sn = ▷P×Q (suc n) ⊨𝓟sn
+
+⊢ᵒ-▷-⊎ : ∀{𝓟 P Q}
+   → 𝓟 ⊢ᵒ (▷ᵒ (P ⊎ᵒ Q))
+     ----------------------
+   → 𝓟 ⊢ᵒ (▷ᵒ P) ⊎ᵒ (▷ᵒ Q)
+⊢ᵒ-▷-⊎ ▷P⊎Q zero ⊨𝓟n = inj₁ tt
+⊢ᵒ-▷-⊎ ▷P⊎Q (suc n) ⊨𝓟n = ▷P⊎Q (suc n) ⊨𝓟n
+
+⊢ᵒ-▷-→ : ∀{𝓟 P Q}
+   → 𝓟 ⊢ᵒ (▷ᵒ (P →ᵒ Q))
+     ----------------------
+   → 𝓟 ⊢ᵒ (▷ᵒ P) →ᵒ (▷ᵒ Q)
+⊢ᵒ-▷-→ ▷P→Q zero ⊨𝓟n .zero z≤n tt = tt
+⊢ᵒ-▷-→ ▷P→Q (suc n) ⊨𝓟n .zero z≤n ▷Pj = tt
+⊢ᵒ-▷-→ ▷P→Q (suc n) ⊨𝓟n (suc j) (s≤s j≤n) Pj = ▷P→Q (suc n) ⊨𝓟n j j≤n Pj
+
+≡ₒ⇒⊢ᵒ : ∀{𝓟}{P Q : Setᵒ}
+  → 𝓟 ⊢ᵒ P
+  → # P ≡ₒ # Q
+  → 𝓟 ⊢ᵒ Q
+≡ₒ⇒⊢ᵒ 𝓟⊢P P=Q n ⊨𝓟n = proj₁ (P=Q n) (𝓟⊢P n ⊨𝓟n)
+
+≡ₚ⇒⊢ᵒ : ∀ 𝓟 {A} (P Q : Predᵒ A) {a : A}
+  → 𝓟 ⊢ᵒ apply P a
+  → # P ≡ₚ # Q
+  → 𝓟 ⊢ᵒ apply Q a
+≡ₚ⇒⊢ᵒ 𝓟 {A} P Q {a} 𝓟⊢P P=Q n ⊨𝓟n =
+    let Pan = 𝓟⊢P n ⊨𝓟n in
+    let Qan = proj₁ (P=Q a n) Pan in
+    Qan
+
+⊢ᵒ-elem-μ : ∀ {A}{𝓟}{F : Fun A A Wellfounded}{a : A}
+  → 𝓟 ⊢ᵒ apply (μᵖ F) a
+  → 𝓟 ⊢ᵒ apply ((fun F) (μᵖ F)) a
+⊢ᵒ-elem-μ {A}{𝓟}{F}{a} ⊢μa =
+    ≡ₚ⇒⊢ᵒ 𝓟 (μᵖ F) ((fun F) (μᵖ F)) ⊢μa (fixpoint F)

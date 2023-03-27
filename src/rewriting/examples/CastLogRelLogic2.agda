@@ -29,12 +29,12 @@ open import rewriting.examples.Cast
 open import rewriting.examples.StepIndexedLogic2
 
 pre-𝓥 : Type → Term → Fun (Type × Term) ⊤ Wellfounded
-pre-𝓥 ★ (op-inject{G} g ⦅ cons (ast V) nil ⦆) =
+pre-𝓥 ★ (op-inject{G} g ⦅ cons (ast V) nil ⦆) = -- V ⟨ g !⟩ 
     (Value V)ᶠ ×ᶠ ▷ᶠ (recur (G , V))
 pre-𝓥 ($ₜ ι) (op-lit {ι′} c ⦅ nil ⦆) = (ι ≡ ι′)ᶠ
 pre-𝓥 (A ⇒ B) (ƛ N) =
-    ∀ᶠ{Term} λ W → ▷ᶠ (recur (A , W)) →ᶠ (irred W)ᶠ →ᶠ
-                   ▷ᶠ (recur (A , N [ W ]))
+    ∀ᶠ λ W → ▷ᶠ (recur (A , W)) →ᶠ (irred W)ᶠ →ᶠ
+            ▷ᶠ (recur (A , N [ W ]))
 
 -- bogus cases for ★
 pre-𝓥 ★ (` x) = (⊥) ᶠ
@@ -61,15 +61,23 @@ pre-𝓥 (A ⇒ B) (M ⟨ h ?⟩) = (⊥) ᶠ
 pre-𝓥 (A ⇒ B) blame = (⊥) ᶠ
 
 -- Type Safety = Progress & Preservation
-pre-𝓔 : Type × Term → Fun (Type × Term) ⊤ Wellfounded
+pre-𝓔 : Type × Term
+       → Fun (Type × Term) ⊤ Wellfounded
 pre-𝓔 (A , M) = (pre-𝓥 A M ⊎ᶠ (red M)ᶠ)
-                 ×ᶠ ∀ᶠ{Term} λ N → ((M —→ N) ᶠ) →ᶠ ▷ᶠ (recur (A , N))
+                 ×ᶠ ∀ᶠ λ N → ((M —→ N) ᶠ) →ᶠ ▷ᶠ (recur (A , N))
 
 𝓔ᶠ : Fun (Type × Term) (Type × Term) Wellfounded
 𝓔ᶠ = flipᶠ pre-𝓔 tt
 
+-- Semantically Well Typed
 𝓔⟦_⟧ : (A : Type) → Term → Setₒ
 𝓔⟦ A ⟧ V = #(μᵖ 𝓔ᶠ) (A , V)
+
+𝓔′⟦_⟧ : (A : Type) → Term → Setᵒ
+𝓔′⟦ A ⟧ V = apply (μᵖ 𝓔ᶠ) (A , V)
+
+𝓥⟦_⟧ : (A : Type) → Term → Setₒ
+𝓥⟦ A ⟧ V = (λ k → # (fun (pre-𝓥 A V) (μᵖ 𝓔ᶠ)) tt k)
 
 𝓔-fixpointₚ : #(μᵖ 𝓔ᶠ) ≡ₚ #((fun 𝓔ᶠ) (μᵖ 𝓔ᶠ))
 𝓔-fixpointₚ = fixpoint 𝓔ᶠ
@@ -77,8 +85,6 @@ pre-𝓔 (A , M) = (pre-𝓥 A M ⊎ᶠ (red M)ᶠ)
 𝓔-fixpointₒ : ∀ A M → #(μᵖ 𝓔ᶠ) (A , M) ≡ₒ #((fun 𝓔ᶠ) (μᵖ 𝓔ᶠ)) (A , M)
 𝓔-fixpointₒ A M = fixpoint 𝓔ᶠ (A , M)
 
-𝓥⟦_⟧ : (A : Type) → Term → Setₒ
-𝓥⟦ A ⟧ V = (λ k → # (fun (pre-𝓥 A V) (μᵖ 𝓔ᶠ)) tt k)
 
 𝓔-def : ∀{A}{M}
   → 𝓔⟦ A ⟧ M ≡ₒ (𝓥⟦ A ⟧ M ⊎ₒ (red M)ₒ)
@@ -130,7 +136,17 @@ V-dyn-intro : ∀{G}{V}{g : Ground G}{n}
    → Value V
    → 𝓥⟦ G ⟧ V n
    → 𝓥⟦ ★ ⟧ (V ⟨ g !⟩) (suc n)
-V-dyn-intro {G}{V}{g}{n} v 𝓥V = v , {!!}
+V-dyn-intro {G}{V}{g}{n} v 𝓥V =
+    let 𝓥V′ : # (fun (pre-𝓥 G V) (μᵖ 𝓔ᶠ)) tt n
+        𝓥V′ = 𝓥V in
+    let 𝓥V″ : # (fun (pre-𝓥 G V) {!!}) tt n
+        𝓥V″ = {!!} in
+    let 𝓔n = (iter n (flip pre-𝓔 tt) ⊤ᵖ) in
+    let xx = congr (pre-𝓥 G V) 𝓔n (μᵖ 𝓔ᶠ) {!!} in
+    v , (inj₁ Goal) , {!!}
+    where
+    Goal : # (fun (pre-𝓥 G V) (iter n (flip pre-𝓔 tt) ⊤ᵖ)) tt n
+    Goal = {!!}
 
 --    let unroll = proj₁ (𝓔-fixpointₚ (G , V) n) in
 --    let x = unroll 𝓔V in
