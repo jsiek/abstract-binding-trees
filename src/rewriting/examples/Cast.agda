@@ -342,11 +342,11 @@ _—↠⟨_⟩_ : (L : Term) {M N : Term}
   → L —↠ N
 L —↠⟨ L—↠M ⟩ M—↠N  =  L—↠M ++ M—↠N
 
-red : (M : Term) → Set
-red M = ∃[ N ] (M —→ N)
+reducible : (M : Term) → Set
+reducible M = ∃[ N ] (M —→ N)
 
 irred : (M : Term) → Set
-irred M = ¬ red M
+irred M = ¬ reducible M
 
 len : ∀{M N : Term} → (M→N : M —↠ N) → ℕ
 len (_ END) = 0
