@@ -91,27 +91,47 @@ pre-𝓔 (A , M) = (pre-𝓥 A M ⊎ᶠ (red M)ᶠ)
     ×ₒ ∀ₒ λ N → ((M —→ N) ₒ) →ₒ ▷ₒ 𝓔⟦ A ⟧ N)
   QEDₒ
 
+𝓥⇒Value : ∀ {k} A M → 𝓥⟦ A ⟧ M (suc k) → Value M
+𝓥⇒Value ★ (M ⟨ g !⟩) (v , _) = v 〈 g 〉
+𝓥⇒Value ($ₜ ι) ($ c) 𝓥M = $̬ c
+𝓥⇒Value (A ⇒ B) (ƛ N) 𝓥M = ƛ̬ N
+-- vacuous cases
+𝓥⇒Value ★ (` x) ()
+𝓥⇒Value ★ ($ c) ()
+𝓥⇒Value ★ (ƛ N) ()
+𝓥⇒Value ★ (L · M) ()
+𝓥⇒Value ★ (M ⟨ h ?⟩) ()
+𝓥⇒Value ★ blame ()
+𝓥⇒Value ($ₜ ι) (` x) ()
+𝓥⇒Value ($ₜ ι) (ƛ N) ()
+𝓥⇒Value ($ₜ ι) (L · M) ()
+𝓥⇒Value ($ₜ ι) (M ⟨ g !⟩) ()
+𝓥⇒Value ($ₜ ι) (M ⟨ h ?⟩) ()
+𝓥⇒Value ($ₜ ι) blame ()
+𝓥⇒Value (A ⇒ B) (` x) ()
+𝓥⇒Value (A ⇒ B) ($ c) ()
+𝓥⇒Value (A ⇒ B) (L · M) ()
+𝓥⇒Value (A ⇒ B) (M ⟨ g !⟩) ()
+𝓥⇒Value (A ⇒ B) (M ⟨ h ?⟩) ()
+𝓥⇒Value (A ⇒ B) blame ()
 
--- V-base-intro : ∀{n}{ι}{c : rep ι}
---    → 𝓥⟦ $ₜ ι ⟧ ($ c) n
--- V-base-intro {zero} = tt , inj₁ (tt , tt) , λ { a .zero z≤n _ k ()}
--- V-base-intro {suc n}{ι}{c} =
---    let ir = value-irred ($̬ c) in
---    ir , (inj₁ (ir , refl)) ,
---    λ { a .(suc _) (s≤s x) rd k _ → ⊥-elim (ir (_ , rd))}
 
--- V-base-elim : ∀{n}{ι}{ι′}{c : rep ι′}
---    → 𝓥⟦ $ₜ ι ⟧ ($ c) (suc n)
---    → (ι ≡ ι′)
--- V-base-elim {n} (ir , inj₁ (_ , refl) , pres) = refl
--- V-base-elim {n} (ir , inj₂ rd , pres) = ⊥-elim (ir rd)
+V-base-intro : ∀{n}{ι}{c : rep ι}
+   → 𝓥⟦ $ₜ ι ⟧ ($ c) n
+V-base-intro {zero} = tt
+V-base-intro {suc n}{ι}{c} = refl
 
+V-base-elim : ∀{n}{ι}{ι′}{c : rep ι′}
+   → 𝓥⟦ $ₜ ι ⟧ ($ c) (suc n)
+   → (ι ≡ ι′)
+V-base-elim {n} refl = refl
 
--- V-dyn-intro : ∀{G}{V}{g : Ground G}{n}
---    → Value V
---    → 𝓥⟦ G ⟧ V n
---    → 𝓥⟦ ★ ⟧ (V ⟨ g !⟩) (suc n)
--- V-dyn-intro {G}{V}{g}{n} v (irV , 𝓔V) =
+V-dyn-intro : ∀{G}{V}{g : Ground G}{n}
+   → Value V
+   → 𝓥⟦ G ⟧ V n
+   → 𝓥⟦ ★ ⟧ (V ⟨ g !⟩) (suc n)
+V-dyn-intro {G}{V}{g}{n} v 𝓥V = v , {!!}
+
 --    let unroll = proj₁ (𝓔-fixpointₚ (G , V) n) in
 --    let x = unroll 𝓔V in
 --    let P = apply (fun (pre-𝓔 (G , V)) (iter n (flip pre-𝓔 tt) ⊤ᵖ)) tt in

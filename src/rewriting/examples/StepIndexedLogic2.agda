@@ -237,7 +237,9 @@ _ₒ  : Set → Setₒ
 (p ₒ) (suc n) = p
 
 ▷ₒ_ : Setₒ → Setₒ
-(▷ₒ P) n =  ∀ k → k < n → P k
+(▷ₒ P) zero =  ⊤
+(▷ₒ P) (suc n) = P n
+
 {- TODO: consider alternative recursive definition of ▷ₒ -}
 
 {-- Step Index Predicates --}
@@ -333,14 +335,11 @@ S ᵒ = record { # = S ₒ
 infixr 8 ▷ᵒ_
 ▷ᵒ_ : Setᵒ → Setᵒ
 ▷ᵒ P = record { # = ▷ₒ # P
-              ; down = λ n ▷Pn k k≤n j j<k → ▷Pn j (≤-trans j<k k≤n)
-              ; tz = λ k ()
+              ; down = λ { zero ▷Pn .zero z≤n → tt
+                         ; (suc n) ▷Pn .zero z≤n → tt
+                         ; (suc n) ▷Pn (suc k) (s≤s k≤n) → down P n ▷Pn k k≤n}
+              ; tz = tt
               }
-
-▷ᵒ-intro : ∀{n}{P : Setᵒ}
-  → # P n → # (▷ᵒ P) (suc n)
-▷ᵒ-intro {n}{P} Pn k (s≤s k≤n) = down P n Pn k k≤n
-
 
 {- Packaged Step Indexed Predicates -}
 
@@ -528,8 +527,8 @@ cong-⊎ᵖ {A}{P}{P′}{Q}{Q′} PP′ QQ′ v k = to , fro
 cong-▷ᵖ : ∀{A}{P P′ : Predₒ A}
    → P ≡ₚ P′
    → ▷ₚ P ≡ₚ ▷ₚ P′
-cong-▷ᵖ PP′ v k = (λ {▷Pvk j j<k → proj₁ (PP′ v j) (▷Pvk j j<k)})
-                , (λ ▷P′vk j j<k → proj₂ (PP′ v j) (▷P′vk j j<k))
+cong-▷ᵖ PP′ v zero = (λ x → tt) , (λ x → tt)
+cong-▷ᵖ PP′ v (suc k) = (λ {x → proj₁ (PP′ v k) x}) , proj₂ (PP′ v k)
 
 {- ↓ᵖ is idempotent -}
 lemma17 : ∀{A}
@@ -940,16 +939,12 @@ _ᶠ : ∀{A}{B}
     EQ1 : (P : Predᵒ B)
        → #(↓ᵖ (suc k) (▷ᵖ P)) ≡ₚ #(↓ᵖ (suc k) (▷ᵖ (↓ᵖ k P)))
     EQ1 P v zero = (λ x → tt) , (λ x → tt)
-    EQ1 P v (suc i) =
+    EQ1 P v (suc zero) = (λ {(a , b) → a , tt}) , λ {(a , b) → a , (tz P v)}
+    EQ1 P v (suc (suc i)) =
       (λ {(s≤s i≤1+k , ▷Pvi) →
-                   s≤s i≤1+k , (λ { j (s≤s j≤i) → 
-                                 ↓ₒ-intro (apply P v) (≤-trans (s≤s j≤i) i≤1+k)
-                                          (▷Pvi j (s≤s j≤i))})})
+                   s≤s i≤1+k , i≤1+k , ▷Pvi})
       ,
-      λ {(i≤1+k , ▷Pvi) → i≤1+k ,
-          (λ { zero (s≤s j≤n) → tz P v
-             ; (suc j) (s≤s j≤n) →
-               let ↓P = ▷Pvi (suc j) (s≤s j≤n) in proj₂ ↓P})}
+      λ {(i≤1+k , (_ , ▷Pvi)) → i≤1+k , ▷Pvi}
   
   goodness-▷ : ∀ (k : Kind) → ∀{A}{B} (F : Predᵒ A → Predᵒ B)
     → goodness k F
@@ -963,9 +958,10 @@ _ᶠ : ∀{A}{B}
        (F : Predᵒ A → Predᵒ B)
      → congᵖ F
      → congᵖ (λ P → ▷ᵖ (F P))
-  cong-▷ F congF P Q PQ x i =
-        (λ x₁ k x₂ → proj₁ (congF P Q PQ x k) (x₁ k x₂))
-      , (λ x₁ k x₂ → proj₂ (congF P Q PQ x k) (x₁ k x₂))
+  cong-▷ F congF P Q PQ x 0 = (λ x → tt) , (λ x → tt)
+  cong-▷ F congF P Q PQ x (suc i) =
+        (λ FPxi → proj₁ (congF P Q PQ x i) FPxi)
+      , (λ FQxi → proj₂ (congF P Q PQ x i) FQxi)
 
 {------- Flip --------}
 
