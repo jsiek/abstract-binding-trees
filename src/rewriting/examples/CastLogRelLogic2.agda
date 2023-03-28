@@ -72,7 +72,7 @@ pre-𝓥 (A ⇒ B) blame = (⊥) ᶠ
 -- Type Safety = Progress & Preservation
 pre-𝓔 : Type → Term
        → Fun 𝓔⊎𝓥-type ⊤ Wellfounded
-pre-𝓔 A M = (pre-𝓥 A M ⊎ᶠ (reducible M)ᶠ)          -- Progress
+pre-𝓔 A M = (pre-𝓥 A M ⊎ᶠ (reducible M)ᶠ ⊎ᶠ (Blame M)ᶠ)          -- Progress
              ×ᶠ (∀ᶠ[ N ] (M —→ N)ᶠ →ᶠ ▷ᶠ (𝓔ᶠ⟦ A ⟧ N)) -- Preservation
 
 pre-𝓔⊎𝓥 : 𝓔⊎𝓥-type → Fun 𝓔⊎𝓥-type ⊤ Wellfounded
@@ -96,78 +96,264 @@ pre-𝓔⊎𝓥 (inj₂ (A , M)) = pre-𝓔 A M
 𝓔⊎𝓥-fixpointₒ : ∀ x → #(μᵖ 𝓔⊎𝓥) x ≡ₒ #((fun 𝓔⊎𝓥) (μᵖ 𝓔⊎𝓥)) x
 𝓔⊎𝓥-fixpointₒ x = fixpoint 𝓔⊎𝓥 x
 
+progress : Type → Term → Setᵒ
+progress A M = (𝓥⟦ A ⟧ M) ⊎ᵒ (reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ
+
+preservation : Type → Term → Setᵒ
+preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (𝓔⟦ A ⟧ N)))
+
+𝓔-prop : Type → Term → Setᵒ
+𝓔-prop A M = (progress A M) ×ᵒ (preservation A M)
 
 𝓔-def : ∀{A}{M}
-  → #(𝓔⟦ A ⟧ M) ≡ₒ (#(𝓥⟦ A ⟧ M) ⊎ₒ (reducible M)ₒ)
-                    ×ₒ (∀ₒ[ N ] ((M —→ N)ₒ →ₒ ▷ₒ #(𝓔⟦ A ⟧ N)))
+  → #(𝓔⟦ A ⟧ M) ≡ₒ #(progress A M ×ᵒ preservation A M)
 𝓔-def {A}{M} =
   #(𝓔⟦ A ⟧ M)                                                ≡ₒ⟨ ≡ₒ-refl refl ⟩
   #(μᵖ 𝓔⊎𝓥) (inj₂ (A , M))                 ≡ₒ⟨ 𝓔⊎𝓥-fixpointₒ (inj₂ (A , M)) ⟩
   #((fun 𝓔⊎𝓥) (μᵖ 𝓔⊎𝓥)) (inj₂ (A , M))
                   ≡ₒ⟨ cong-×ₒ (cong-⊎ₒ (≡ₒ-sym (𝓔⊎𝓥-fixpointₒ (inj₁ (A , M))))
                                               (≡ₒ-refl refl)) (≡ₒ-refl refl) ⟩
-  ((#(𝓥⟦ A ⟧ M) ⊎ₒ (reducible M)ₒ)
-    ×ₒ (∀ₒ[ N ] ((M —→ N)ₒ →ₒ ▷ₒ #(𝓔⟦ A ⟧ N))))
+  #(progress A M ×ᵒ preservation A M)
   QEDₒ
 
+𝓔-unfold : ∀ 𝓟 {A}{M}
+  → 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ M
+  → 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
+𝓔-unfold 𝓟 {A}{M} 𝓟⊢𝓔M =
+   ≡ₒ⇒⊢ᵒ{𝓟}{𝓔⟦ A ⟧ M}{progress A M ×ᵒ preservation A M} 𝓟⊢𝓔M (𝓔-def{A}{M})
+
+𝓔-progress : ∀ 𝓟 {A}{M}
+  → 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ M
+  → 𝓟 ⊢ᵒ progress A M
+𝓔-progress 𝓟 {A}{M} 𝓟⊢𝓔M =
+  ⊢ᵒ-proj₁{𝓟}{progress A M}{preservation A M} (𝓔-unfold 𝓟 𝓟⊢𝓔M)
+
+𝓔-preservation : ∀ 𝓟 {A}{M}
+  → 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ M
+  → 𝓟 ⊢ᵒ preservation A M
+𝓔-preservation 𝓟 {A}{M} 𝓟⊢𝓔M =
+  ⊢ᵒ-proj₂{𝓟}{progress A M}{preservation A M} (𝓔-unfold 𝓟 𝓟⊢𝓔M)
+
+𝓔-fold : ∀ 𝓟 {A}{M}
+  → 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
+  → 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ M
+𝓔-fold 𝓟 {A}{M} 𝓟⊢prog×pres =
+   ≡ₒ⇒⊢ᵒ{𝓟}{progress A M ×ᵒ preservation A M}{𝓔⟦ A ⟧ M}
+     𝓟⊢prog×pres (≡ₒ-sym (𝓔-def{A}{M}))
+
+𝓔-intro : ∀ 𝓟 {A}{M}
+  → 𝓟 ⊢ᵒ progress A M
+  → 𝓟 ⊢ᵒ preservation A M
+  → 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ M
+𝓔-intro 𝓟 {A}{M} 𝓟⊢prog 𝓟⊢pres =
+  𝓔-fold 𝓟{A}{M} (⊢ᵒ-×-intro {𝓟}{progress A M}{preservation A M}
+                     𝓟⊢prog 𝓟⊢pres)
+
+𝓥⇒Value : ∀ {k} A M → #(𝓥⟦ A ⟧ M) (suc k) → Value M
+𝓥⇒Value ★ (M ⟨ g !⟩) (v , _) = v 〈 g 〉
+𝓥⇒Value ($ₜ ι) ($ c) 𝓥M = $̬ c
+𝓥⇒Value (A ⇒ B) (ƛ N) 𝓥M = ƛ̬ N
+-- vacuous cases
+𝓥⇒Value ★ (` x) ()
+𝓥⇒Value ★ ($ c) ()
+𝓥⇒Value ★ (ƛ N) ()
+𝓥⇒Value ★ (L · M) ()
+𝓥⇒Value ★ (M ⟨ h ?⟩) ()
+𝓥⇒Value ★ blame ()
+𝓥⇒Value ($ₜ ι) (` x) ()
+𝓥⇒Value ($ₜ ι) (ƛ N) ()
+𝓥⇒Value ($ₜ ι) (L · M) ()
+𝓥⇒Value ($ₜ ι) (M ⟨ g !⟩) ()
+𝓥⇒Value ($ₜ ι) (M ⟨ h ?⟩) ()
+𝓥⇒Value ($ₜ ι) blame ()
+𝓥⇒Value (A ⇒ B) (` x) ()
+𝓥⇒Value (A ⇒ B) ($ c) ()
+𝓥⇒Value (A ⇒ B) (L · M) ()
+𝓥⇒Value (A ⇒ B) (M ⟨ g !⟩) ()
+𝓥⇒Value (A ⇒ B) (M ⟨ h ?⟩) ()
+𝓥⇒Value (A ⇒ B) blame ()
+
+V-base : ∀{ι}{ι′}{c : rep ι′}
+   → #(𝓥⟦ $ₜ ι ⟧ ($ c)) ≡ₒ (ι ≡ ι′)ₒ
+V-base n = (λ x → x) , (λ x → x)
+
+V-base-intro : ∀{n}{ι}{c : rep ι}
+   → #(𝓥⟦ $ₜ ι ⟧ ($ c)) n
+V-base-intro {zero} = tt
+V-base-intro {suc n}{ι}{c} = refl
+
+V-base-elim : ∀{n}{ι}{ι′}{c : rep ι′}
+   → #(𝓥⟦ $ₜ ι ⟧ ($ c)) (suc n)
+   → (ι ≡ ι′)
+V-base-elim {n} refl = refl
+
+V-dyn : ∀{G}{V}{g : Ground G}
+   → #(𝓥⟦ ★ ⟧ (V ⟨ g !⟩)) ≡ₒ #(((Value V)ᵒ ×ᵒ ▷ᵒ (𝓥⟦ G ⟧ V)))
+V-dyn {G}{V}{g} =
+   let X = (inj₁ (★ , V ⟨ g !⟩)) in
+   #(𝓥⟦ ★ ⟧ (V ⟨ g !⟩))                                     ≡ₒ⟨ ≡ₒ-refl refl ⟩
+   #(μᵖ 𝓔⊎𝓥) X                                         ≡ₒ⟨ 𝓔⊎𝓥-fixpointₒ X ⟩
+   #((fun 𝓔⊎𝓥) (μᵖ 𝓔⊎𝓥)) X                                ≡ₒ⟨ ≡ₒ-refl refl ⟩ 
+   #(((Value V)ᵒ ×ᵒ ▷ᵒ (𝓥⟦ G ⟧ V)))
+   QEDₒ
+
+V-fun : ∀{A B}{N}
+   → #(𝓥⟦ A ⇒ B ⟧ (ƛ N)) ≡ₒ
+     #(∀ᵒ[ W ] ((▷ᵒ (𝓥⟦ A ⟧ W)) →ᵒ (▷ᵒ (𝓔⟦ B ⟧ (N [ W ])))))
+V-fun {A}{B}{N} =
+   let X = (inj₁ (A ⇒ B , ƛ N)) in
+   #(𝓥⟦ A ⇒ B ⟧ (ƛ N))                                     ≡ₒ⟨ ≡ₒ-refl refl ⟩
+   #(μᵖ 𝓔⊎𝓥) X                                          ≡ₒ⟨ 𝓔⊎𝓥-fixpointₒ X ⟩
+   #((fun 𝓔⊎𝓥) (μᵖ 𝓔⊎𝓥)) X                                ≡ₒ⟨ ≡ₒ-refl refl ⟩ 
+   #(∀ᵒ[ W ] ((▷ᵒ (𝓥⟦ A ⟧ W)) →ᵒ (▷ᵒ (𝓔⟦ B ⟧ (N [ W ])))))
+   QEDₒ
+
+𝓥⇒𝓔 : ∀{A}{𝓟}{V}
+   → 𝓟 ⊢ᵒ 𝓥⟦ A ⟧ V
+   → 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ V
+𝓥⇒𝓔 {A}{𝓟}{V} 𝓟⊢𝓥V n ⊨𝓟n =
+    let 𝓥V = 𝓟⊢𝓥V n ⊨𝓟n in
+    (inj₁ 𝓥V) , λ { N zero x V→N → tt ;
+                     N (suc j) (s≤s j≤) V→N →
+                         ⊥-elim (value-irreducible (𝓥⇒Value A V 𝓥V) V→N)}
+
+exp-▷ : ∀{𝓟}{A}{M N : Term}
+   → 𝓟 ⊢ᵒ (M —→ N)ᵒ
+   → 𝓟 ⊢ᵒ ▷ᵒ (𝓔⟦ A ⟧ N)
+     -------------------
+   → 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ M
+exp-▷{𝓟}{A}{M}{N} 𝓟⊢M→N ⊢▷𝓔N =
+  ≡ₒ⇒⊢ᵒ{𝓟}{progress A M ×ᵒ preservation A M}{𝓔⟦ A ⟧ M}
+      Goal (≡ₒ-sym (𝓔-def{A}{M}))
+  where
+  redM : 𝓟 ⊢ᵒ reducible M ᵒ
+  redM = ⊢ᵒ-ᵒ 𝓟 𝓟⊢M→N λ M→N → _ , M→N
+
+  ⊢prog : 𝓟 ⊢ᵒ progress A M
+  ⊢prog = ⊢ᵒ-inj₂{𝓟}{𝓥⟦ A ⟧ M}{(reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ}
+            (⊢ᵒ-inj₁{𝓟}{(reducible M)ᵒ}{(Blame M)ᵒ} redM)
+          
+  ⊢pres : 𝓟 ⊢ᵒ preservation A M
+  ⊢pres = ⊢ᵒ-∀-intro{𝓟}{Term}{λ N → ((M —→ N)ᵒ →ᵒ ▷ᵒ (𝓔⟦ A ⟧ N))}
+      λ { N′ zero ⊨𝓟n .zero z≤n M→N′ → tt ;
+          N′ (suc n) ⊨𝓟n .zero z≤n M→N′ → tt ;
+          N′ (suc n) ⊨𝓟n (suc j) (s≤s j≤n) M→N′ →
+            let ⊨𝓟sj = (downClosed-⊨ᵒ 𝓟 (suc n) ⊨𝓟n (suc j) (s≤s j≤n)) in
+            subst (λ X → (▷ₒ # (𝓔⟦ A ⟧ X)) (suc j))
+              (deterministic (𝓟⊢M→N (suc j) ⊨𝓟sj) M→N′) (⊢▷𝓔N (suc j) ⊨𝓟sj)}
+          
+  Goal : 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
+  Goal = ⊢ᵒ-×-intro{𝓟}{progress A M}{preservation A M} ⊢prog ⊢pres
+
+𝓔-frame : ∀{𝓟}{F : Frame}{M N : Term}{A}{B}
+   → 𝓟 ⊢ᵒ 𝓔⟦ B ⟧ M
+   → 𝓥⟦ B ⟧ M ∷ 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
+     ----------------------------------
+   → 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
+𝓔-frame {𝓟} {F} {M} {N} {A} {B} 𝓟⊢𝓔M 𝓥M∷𝓟⊢𝓔FM =
+  ⊢ᵒ-lob 𝓟 (𝓔⟦ A ⟧ (F ⟦ M ⟧)) Goal1
+  where
+  ▷𝓔FM = ▷ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
+
+  Goal2a1 : reducible M ᵒ ∷ ▷𝓔FM ∷ 𝓟 ⊢ᵒ progress A (F ⟦ M ⟧)
+  Goal2a1 zero x = inj₂ (inj₂ tt)
+  Goal2a1 (suc n) ((M′ , M→M′) , snd) = inj₂ (inj₁ (_ , (ξξ F refl refl M→M′)))
+
+  Goal2a3 : ∀ F N
+     → ((F ⟦ M ⟧) —→ N) ᵒ ∷ reducible M ᵒ ∷ ▷𝓔FM ∷ 𝓟 ⊢ᵒ ▷ᵒ 𝓔⟦ A ⟧ N
+  Goal2a3 (□· M₂) N zero (M·M₂→N , redM , ▷𝓔FM , ⊨𝓟n) = tt
+  Goal2a3 (□· M₂) N (suc n′) (M·M₂→N , (M′ , M→M′) , ▷𝓔FM , ⊨𝓟n) =
+     subst (λ X → # (𝓔⟦ A ⟧ X) n′)
+        (deterministic (ξξ (□· M₂) refl refl M→M′) M·M₂→N )
+        Goal
+     where
+     Goal : # (𝓔⟦ A ⟧ (M′ · M₂)) n′
+     Goal =
+        let 𝓔FM : # (𝓔⟦ A ⟧ (F ⟦ M ⟧)) n′
+            𝓔FM = ▷𝓔FM in
+        {!!}
+
+  Goal2a3 (v ·□) N = {!!}
+  Goal2a3 □⟨ g !⟩ N = {!!}
+  Goal2a3 □⟨ h ?⟩ N = {!!}
+
+  Goal2a2 : reducible M ᵒ ∷ ▷𝓔FM ∷ 𝓟 ⊢ᵒ preservation A (F ⟦ M ⟧)
+  Goal2a2 = ⊢ᵒ-∀-intro {reducible M ᵒ ∷ ▷𝓔FM ∷ 𝓟}{Term}
+                       {λ N → (F ⟦ M ⟧ —→ N)ᵒ →ᵒ ▷ᵒ (𝓔⟦ A ⟧ N)}
+               (λ N → ⊢ᵒ-→-intro{reducible M ᵒ ∷ ▷𝓔FM ∷ 𝓟}{(F ⟦ M ⟧ —→ N) ᵒ}
+                     {▷ᵒ 𝓔⟦ A ⟧ N} (Goal2a3 F N))
+  
+  Goal2a : reducible M ᵒ ∷ ▷𝓔FM ∷ 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
+  Goal2a = 𝓔-intro (reducible M ᵒ ∷ ▷𝓔FM ∷ 𝓟){A}{F ⟦ M ⟧} Goal2a1 Goal2a2
+
+  Goal2b : Blame M ᵒ ∷ ▷𝓔FM ∷ 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
+  Goal2b = {!!}
+  
+  Goal2 : reducible M ᵒ ⊎ᵒ Blame M ᵒ ∷ ▷𝓔FM ∷ 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
+  Goal2 = ⊢ᵒ-case-L{▷𝓔FM ∷ 𝓟}{reducible M ᵒ}{Blame M ᵒ}{𝓔⟦ A ⟧ (F ⟦ M ⟧)}
+             Goal2a Goal2b
+
+  Goal1 : ▷𝓔FM ∷ 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
+  Goal1 =
+    let ▷𝓔FM∷𝓟⊢progM = ⊢ᵒ-weaken{𝓟}{progress B M}{▷𝓔FM}
+                              (𝓔-progress 𝓟 𝓟⊢𝓔M) in
+    let 𝓥M∷▷𝓔FM∷𝓟⊢𝓔FM =
+          ⊢ᵒ-swap {𝓟}{𝓔⟦ A ⟧ (F ⟦ M ⟧)}{▷𝓔FM}{𝓥⟦ B ⟧ M}
+               (⊢ᵒ-weaken{𝓥⟦ B ⟧ M ∷ 𝓟}{𝓔⟦ A ⟧ (F ⟦ M ⟧)}{▷𝓔FM}
+                                  𝓥M∷𝓟⊢𝓔FM) in
+    ⊢ᵒ-case{▷𝓔FM ∷ 𝓟}{𝓥⟦ B ⟧ M}{(reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ}
+           {𝓔⟦ A ⟧ (F ⟦ M ⟧)}
+        ▷𝓔FM∷𝓟⊢progM  𝓥M∷▷𝓔FM∷𝓟⊢𝓔FM  Goal2
 
 
--- 𝓥⇒Value : ∀ {k} A M → 𝓥⟦ A ⟧ M (suc k) → Value M
--- 𝓥⇒Value ★ (M ⟨ g !⟩) (v , _) = v 〈 g 〉
--- 𝓥⇒Value ($ₜ ι) ($ c) 𝓥M = $̬ c
--- 𝓥⇒Value (A ⇒ B) (ƛ N) 𝓥M = ƛ̬ N
--- -- vacuous cases
--- 𝓥⇒Value ★ (` x) ()
--- 𝓥⇒Value ★ ($ c) ()
--- 𝓥⇒Value ★ (ƛ N) ()
--- 𝓥⇒Value ★ (L · M) ()
--- 𝓥⇒Value ★ (M ⟨ h ?⟩) ()
--- 𝓥⇒Value ★ blame ()
--- 𝓥⇒Value ($ₜ ι) (` x) ()
--- 𝓥⇒Value ($ₜ ι) (ƛ N) ()
--- 𝓥⇒Value ($ₜ ι) (L · M) ()
--- 𝓥⇒Value ($ₜ ι) (M ⟨ g !⟩) ()
--- 𝓥⇒Value ($ₜ ι) (M ⟨ h ?⟩) ()
--- 𝓥⇒Value ($ₜ ι) blame ()
--- 𝓥⇒Value (A ⇒ B) (` x) ()
--- 𝓥⇒Value (A ⇒ B) ($ c) ()
--- 𝓥⇒Value (A ⇒ B) (L · M) ()
--- 𝓥⇒Value (A ⇒ B) (M ⟨ g !⟩) ()
--- 𝓥⇒Value (A ⇒ B) (M ⟨ h ?⟩) ()
--- 𝓥⇒Value (A ⇒ B) blame ()
 
 
--- V-base-intro : ∀{n}{ι}{c : rep ι}
---    → 𝓥⟦ $ₜ ι ⟧ ($ c) n
--- V-base-intro {zero} = tt
--- V-base-intro {suc n}{ι}{c} = refl
+{-
+𝓔-frame {𝓟} {□· M} {L} {L′} {A} {B} 𝓟⊢𝓔L 𝓥M∷𝓟⊢𝓔FM =
+  {!!}
+  -- ⊢ᵒ-case{𝓟}{𝓥⟦ B ⟧ L}{(reducible L)ᵒ ⊎ᵒ (Blame L)ᵒ}{𝓔⟦ A ⟧ (L · M)}
+  --    (𝓔-progress 𝓟 𝓟⊢𝓔L) 𝓥M∷𝓟⊢𝓔FM Goal2
+  where
 
--- V-base-elim : ∀{n}{ι}{ι′}{c : rep ι′}
---    → 𝓥⟦ $ₜ ι ⟧ ($ c) (suc n)
---    → (ι ≡ ι′)
--- V-base-elim {n} refl = refl
+  Goal2a1 : reducible L ᵒ ∷ 𝓟 ⊢ᵒ progress A (L · M)
+  Goal2a1 zero x = inj₂ (inj₂ tt)
+  Goal2a1 (suc n) ((L′ , L→L′) , ⊨𝓟sn) =
+      inj₂ (inj₁ (_ , (ξξ (□· M) refl refl L→L′)))
 
--- V-dyn-intro : ∀{G}{V}{g : Ground G}{n}
---    → Value V
---    → 𝓥⟦ G ⟧ V n
---    → 𝓥⟦ ★ ⟧ (V ⟨ g !⟩) (suc n)
--- V-dyn-intro {G}{V}{g}{n} v 𝓥V =
---     let 𝓥V′ : # (fun (pre-𝓥 G V) (μᵖ 𝓔⊎𝓥)) tt n
---         𝓥V′ = 𝓥V in
---     let 𝓥V″ : # (fun (pre-𝓥 G V) {!!}) tt n
---         𝓥V″ = {!!} in
---     let 𝓔n = (iter n (flip pre-𝓔 tt) ⊤ᵖ) in
---     let xx = congr (pre-𝓥 G V) 𝓔n (μᵖ 𝓔⊎𝓥) {!!} in
---     v , (inj₁ Goal) , {!!}
---     where
---     Goal : # (fun (pre-𝓥 G V) (iter n (flip pre-𝓔 tt) ⊤ᵖ)) tt n
---     Goal = {!!}
+  Goal2a21 : ∀ N → (L · M —→ N) ᵒ ∷ reducible L ᵒ ∷ 𝓟 ⊢ᵒ ▷ᵒ 𝓔⟦ A ⟧ N
+  Goal2a21 N = {!!}
 
--- --    let unroll = proj₁ (𝓔⊎𝓥-fixpointₚ (G , V) n) in
--- --    let x = unroll 𝓔V in
--- --    let P = apply (fun (pre-𝓔 (G , V)) (iter n (flip pre-𝓔 tt) ⊤ᵖ)) tt in
--- --    {-
--- --    # (fun (pre-𝓔 (G , V)) (iter n (flip pre-𝓔 tt) ⊤ᵖ)) tt)
--- --    -}
--- --    (value-irred (v 〈 g 〉)) , {!!}
--- --    --(inj₁ (v , ▷ᵒ-intro{n}{P} {!!}))
+
+  Goal2a2 : reducible L ᵒ ∷ 𝓟 ⊢ᵒ preservation A (L · M)
+  Goal2a2 = ⊢ᵒ-∀-intro {reducible L ᵒ ∷ 𝓟}{Term}
+                {λ N → (L · M —→ N)ᵒ →ᵒ ▷ᵒ (𝓔⟦ A ⟧ N)}
+                (λ N → ⊢ᵒ-→-intro{reducible L ᵒ ∷ 𝓟}{(L · M —→ N) ᵒ}{▷ᵒ 𝓔⟦ A ⟧ N} (Goal2a21 N)) 
+
+  Goal2a : reducible L ᵒ ∷ 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ (L · M)
+  Goal2a = 𝓔-intro (reducible L ᵒ ∷ 𝓟) {A}{L · M} Goal2a1 Goal2a2
+
+  Goal2b : Blame L ᵒ ∷ 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ (L · M)
+  Goal2b = {!!}
+
+  Goal2 : reducible L ᵒ ⊎ᵒ Blame L ᵒ ∷ 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ (L · M)
+  Goal2 = ⊢ᵒ-case-L{𝓟}{reducible L ᵒ}{Blame L ᵒ}{𝓔⟦ A ⟧ (L · M)} Goal2a Goal2b
+
+{-
+    with (≡ₒ⇒⊢ᵒ{𝓟}{𝓔⟦ B ⟧ L}{𝓔-prop B L} 𝓟⊢𝓔L (𝓔-def{B}{L})) (suc n′) ⊨𝓟n
+... | inj₁ 𝓥Ln , Lpres =
+     {!!}
+... | inj₂ (inj₁ (L′ , L→L′)) , Lpres =
+     {!!}
+... | inj₂ (inj₂ isBlame) , Lpres =
+       let blame·M—→blame = ξξ-blame {L · M} (□· M) refl in
+       {!!}
+       where
+       Goal : 𝓟 ⊢ᵒ progress A ((□· M) ⟦ L ⟧) ×ᵒ preservation A ((□· M) ⟦ L ⟧)
+       Goal = {!!}
+       --(inj₂ (inj₁ (_ , blame·M—→blame))) , {!!}
+-}  
+
+𝓔-frame {𝓟} {v ·□} {M} {N} {A} {B} 𝓔M M→N⊢▷𝓔FN n ⊨𝓟n = {!!}
+𝓔-frame {𝓟} {□⟨ g !⟩} {M} {N} {A} {B} 𝓔M M→N⊢▷𝓔FN n ⊨𝓟n = {!!}
+𝓔-frame {𝓟} {□⟨ h ?⟩} {M} {N} {A} {B} 𝓔M M→N⊢▷𝓔FN n ⊨𝓟n = {!!}
+-}

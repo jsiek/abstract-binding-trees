@@ -117,6 +117,9 @@ pattern _⟨_!⟩ M g = (op-inject g) ⦅ cons (ast M) nil ⦆
 pattern _⟨_?⟩ M g = (op-project g) ⦅ cons (ast M) nil ⦆
 pattern blame = (op-blame) ⦅ nil ⦆
 
+data Blame : Term → Set where
+  isBlame : Blame blame
+
 data Value : Term → Set where
   ƛ̬_ : (N : Term) → Value (ƛ N)
   $̬_ : ∀{ι} → (k : rep ι) → Value ($ k)
@@ -607,3 +610,6 @@ frame-blame {□⟨ h ?⟩} {.(□⟨ h ?⟩ ⟦ blame ⟧)} (.(□⟨ h ?⟩ �
 frame-blame {□⟨ h ?⟩} {.(□⟨ h ?⟩ ⟦ blame ⟧)} (.(□⟨ h ?⟩ ⟦ blame ⟧) —→⟨ ξξ-blame □⟨ h₁ ?⟩ x ⟩ M→N) refl irN
     with blame—↠ M→N
 ... | refl = refl
+
+{- TODO: prove the following -}
+postulate deterministic : ∀{M N N′} → M —→ N → M —→ N′ → N ≡ N′
