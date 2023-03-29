@@ -613,3 +613,13 @@ frame-blame {□⟨ h ?⟩} {.(□⟨ h ?⟩ ⟦ blame ⟧)} (.(□⟨ h ?⟩ �
 
 {- TODO: prove the following -}
 postulate deterministic : ∀{M N N′} → M —→ N → M —→ N′ → N ≡ N′
+
+app-invL : ∀{L M N : Term}
+   → reducible L
+   → L · M  —→ N
+   → ∃[ L′ ] ((L —→ L′) × (N ≡ L′ · M))
+app-invL rl (ξ (□· M) L→L′) = _ , (L→L′ , refl)
+app-invL (L′ , L→L′) (ξ (v ·□) M→M′) = ⊥-elim (value-irreducible v L→L′)
+app-invL (L′ , L→L′) (ξ-blame (□· M)) = ⊥-elim (blame-irreducible L→L′)
+app-invL (L′ , L→L′) (ξ-blame (v ·□)) = ⊥-elim (value-irreducible v L→L′)
+app-invL (L′ , L→L′) (β v) = ⊥-elim (value-irreducible (ƛ̬ _) L→L′)

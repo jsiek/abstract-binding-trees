@@ -217,13 +217,13 @@ V-fun {A}{B}{N} =
 _⊨_⦂_ : List Type → Term → Type → Set
 Γ ⊨ M ⦂ A = ∀ (γ : Subst) → 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝓔⟦ A ⟧ (⟪ γ ⟫ M)
 
-lemma-𝓖 : (Γ : List Type) → (γ : Subst)
+lookup-𝓖 : (Γ : List Type) → (γ : Subst)
   → ∀ {A}{y} → (Γ ∋ y ⦂ A)
   → 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝓥⟦ A ⟧ (γ y)
-lemma-𝓖 (B ∷ Γ) γ {A} {zero} refl =
+lookup-𝓖 (B ∷ Γ) γ {A} {zero} refl =
     ⊢ᵒ-hyp{𝓖⟦ Γ ⟧ (λ x → γ (suc x))}{𝓥⟦ B ⟧ (γ 0)}
-lemma-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
-    let IH = lemma-𝓖 Γ (λ x → γ (suc x)) ∋y in
+lookup-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
+    let IH = lookup-𝓖 Γ (λ x → γ (suc x)) ∋y in
     ⊢ᵒ-weaken{𝓖⟦ Γ ⟧ (λ x → γ (suc x))}{𝓥⟦ A ⟧ (γ (suc y))}{𝓥⟦ B ⟧ (γ 0)}
         IH
 
@@ -248,7 +248,7 @@ exp-▷{𝓟}{A}{M}{N} 𝓟⊢M→N ⊢▷𝓔N =
       Goal (≡ₒ-sym (𝓔-def{A}{M}))
   where
   redM : 𝓟 ⊢ᵒ reducible M ᵒ
-  redM = ⊢ᵒ-ᵒ 𝓟 𝓟⊢M→N λ M→N → _ , M→N
+  redM = Sᵒ→Tᵒ⇒⊢ᵒ 𝓟 𝓟⊢M→N λ M→N → _ , M→N
 
   ⊢prog : 𝓟 ⊢ᵒ progress A M
   ⊢prog = ⊢ᵒ-inj₂{𝓟}{𝓥⟦ A ⟧ M}{(reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ}
