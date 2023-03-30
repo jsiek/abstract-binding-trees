@@ -301,6 +301,7 @@ exp-▷{𝓟}{A}{M}{N} 𝓟⊢M→N ⊢▷𝓔N =
 𝓔-frame-prop A B F =
    (∀ᵒ[ M ] 𝓔⟦ B ⟧ M
             →ᵒ (∀ᵒ[ V ] 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧))
+              -- probably need to add premise M —↠ V to the above
             →ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧))
 
 frame-prop-lemma : ∀{𝓟}{A}{B}{M}{F}
