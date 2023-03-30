@@ -12,22 +12,27 @@ abstract
   P ⇔ Q = (P → Q) × (Q → P)
 
   ⇔-intro : ∀{P Q : Set}
-    → (P → Q) → (Q → P)
+    → (P → Q)
+    → (Q → P)
+      -------
     → P ⇔ Q
   ⇔-intro PQ QP = PQ , QP
 
   ⇔-elim : ∀{P Q : Set}
     → P ⇔ Q
+      -----------------
     → (P → Q) × (Q → P)
   ⇔-elim PQ = PQ
 
   ⇔-to : ∀{P Q : Set}
     → P ⇔ Q
+      -------
     → (P → Q)
   ⇔-to PQ = proj₁ PQ
 
   ⇔-fro : ∀{P Q : Set}
     → P ⇔ Q
+      -------
     → (Q → P)
   ⇔-fro PQ = proj₂ PQ
 
