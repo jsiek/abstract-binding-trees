@@ -623,3 +623,6 @@ app-invL (L′ , L→L′) (ξ (v ·□) M→M′) = ⊥-elim (value-irreducible
 app-invL (L′ , L→L′) (ξ-blame (□· M)) = ⊥-elim (blame-irreducible L→L′)
 app-invL (L′ , L→L′) (ξ-blame (v ·□)) = ⊥-elim (value-irreducible v L→L′)
 app-invL (L′ , L→L′) (β v) = ⊥-elim (value-irreducible (ƛ̬ _) L→L′)
+
+{- TODO: prove the following -}
+postulate frame-inv2 : ∀{L N : Term}{F} → reducible L → F ⟦ L ⟧ —→ N → ∃[ L′ ] ((L —→ L′) × (N ≡ F ⟦ L′ ⟧))
