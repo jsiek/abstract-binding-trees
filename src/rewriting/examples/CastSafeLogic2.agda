@@ -159,7 +159,7 @@ red-inj-proj {G} {H} {g} {h} {W} w
 ... | yes refl = W , (collapse w g h refl)
 ... | no neq = blame , (collide w g h neq refl)
 
-compatible-project : ∀{Γ}{H}{h}{M}
+compatible-project : ∀{Γ}{H}{h : Ground H}{M}
   → Γ ⊨ M ⦂ ★
   → Γ ⊨ op-project{H} h ⦅ cons (ast M) nil ⦆ ⦂ H
 compatible-project {Γ}{H}{h}{M} ⊨M γ = 𝓔Mh?
@@ -176,11 +176,69 @@ compatible-project {Γ}{H}{h}{M} ⊨M γ = 𝓔Mh?
   ⊢𝓔Vh?{V} =
    let ⊢𝓥V : 𝓟₁ V ⊢ᵒ 𝓥⟦ ★ ⟧ V
        ⊢𝓥V = ⊢ᵒ-hyp in
-   V-dyn-elim ⊢𝓥V λ { W G g refl ⊢w×▷𝓥W→𝓔Vh! →
-   let ⊢w = ⊢ᵒ-proj₁ ⊢w×▷𝓥W→𝓔Vh! in
+   V-dyn-elim ⊢𝓥V λ { W G g refl ⊢w×▷𝓥W →
+   let ⊢w = ⊢ᵒ-proj₁ ⊢w×▷𝓥W in
+   let ▷𝓥W : 𝓟₁ V ⊢ᵒ ▷ᵒ 𝓥⟦ G ⟧ W
+       ▷𝓥W = ⊢ᵒ-proj₂ ⊢w×▷𝓥W in
    ⊢ᵒ-sucP ⊢w λ{n} w →
    let prog : 𝓟₁ (W ⟨ g !⟩) ⊢ᵒ progress H ((W ⟨ g !⟩) ⟨ h ?⟩)
        prog = ⊢ᵒ-inj₂ (⊢ᵒ-inj₁ (⊢ᵒ-Sᵒ-intro (red-inj-proj w))) in
-
-   𝓔-intro prog {!!}
+   let pres : 𝓟₁ (W ⟨ g !⟩) ⊢ᵒ preservation H ((W ⟨ g !⟩) ⟨ h ?⟩)
+       pres = ⊢ᵒ-∀-intro λ N → ⊢ᵒ-→-intro (Sᵒ⊢ᵒ λ r → Goal r w ▷𝓥W) in
+   𝓔-intro prog pres
    }
+    where
+    Goal : ∀{W}{G}{H}{g : Ground G}{h : Ground H}{N}
+       → ((W ⟨ g !⟩) ⟨ h ?⟩) —→ N
+       → Value W
+       → 𝓟₁ (W ⟨ g !⟩) ⊢ᵒ ▷ᵒ 𝓥⟦ G ⟧ W
+       → 𝓟₁ (W ⟨ g !⟩) ⊢ᵒ ▷ᵒ 𝓔⟦ H ⟧ N
+    Goal{g = g} (ξξ □⟨ h ?⟩ refl refl r) w ▷𝓥W =
+        ⊥-elim (value-irreducible (w 〈 g 〉) r)
+    Goal {W} (ξξ-blame □⟨ h ?⟩ ())
+    Goal {W}{G}{G}{g}{h}{W} (collapse{H} w′ g .h refl) w ▷𝓥W =
+       ⊢ᵒ-▷→▷{_}{𝓥⟦ H ⟧ W} ▷𝓥W (⊢ᵒ-→-intro (𝓥⇒𝓔 ⊢ᵒ-hyp))
+    Goal {W} (collide x g h x₁ x₂) w ▷𝓥W = ⊢ᵒ-mono 𝓔-blame
+
+fundamental : ∀ {Γ A} → (M : Term)
+  → Γ ⊢ M ⦂ A
+    ----------
+  → Γ ⊨ M ⦂ A
+fundamental {Γ} {A} .(` _) (⊢` ∋x) =
+    compatibility-var ∋x
+fundamental {Γ} {.($ₜ ′ℕ)} .($ _) (⊢$ ′ℕ) =
+    compatible-nat
+fundamental {Γ} {.($ₜ ′𝔹)} .($ _) (⊢$ ′𝔹) =
+    compatible-bool
+fundamental {Γ} {A} (L · M) (⊢· ⊢L ⊢M) =
+    compatible-app{L = L}{M} (fundamental L ⊢L) (fundamental M ⊢M)
+fundamental {Γ} {.(_ ⇒ _)} (ƛ N) (⊢ƛ ⊢N) =
+    compatible-lambda {N = N} (fundamental N ⊢N)
+fundamental {Γ} {.★} (M ⟨ g !⟩) (⊢⟨!⟩ ⊢M g) =
+    compatible-inject {M = M} (fundamental M ⊢M)
+fundamental {Γ} {A} (M ⟨ h ?⟩) (⊢⟨?⟩ ⊢M h) =
+    compatible-project {M = M} (fundamental M ⊢M)
+fundamental {Γ} {A} .blame ⊢blame = compatible-blame
+
+sem-type-safety : ∀ {A} → (M N : Term)
+  → (r : M —↠ N)
+  → # (𝓔⟦ A ⟧ M) (suc (len r))
+  → Value N  ⊎  (∃[ N′ ] (N —→ N′))  ⊎  N ≡ blame   
+sem-type-safety {A} M .M (.M END) (inj₁ 𝓥M , presM) =
+    inj₁ (𝓥⇒Value A M 𝓥M)
+sem-type-safety {A} M .M (.M END) (inj₂ (inj₁ r) , presM) =
+    inj₂ (inj₁ r)
+sem-type-safety {A} M .M (.M END) (inj₂ (inj₂ isBlame) , presM) =
+    inj₂ (inj₂ refl)
+sem-type-safety {A} M N (_—→⟨_⟩_ .M {M′} M→M′ M′→N) (_ , presM) =
+    let 𝓔M′ : # (𝓔⟦ A ⟧ M′) (suc (len M′→N))
+        𝓔M′ = presM M′ (suc (suc (len M′→N))) ≤-refl M→M′ in
+    sem-type-safety M′ N M′→N 𝓔M′
+
+type-safety : ∀ {A} → (M N : Term)
+  → [] ⊢ M ⦂ A
+  → M —↠ N
+  → Value N  ⊎  (∃[ N′ ] (N —→ N′))  ⊎  N ≡ blame   
+type-safety M N ⊢M M→N =
+  let 𝓔M = ⊢ᵒ-elim ((fundamental M ⊢M) id) (suc (len M→N)) tt in
+  sem-type-safety M N M→N 𝓔M 

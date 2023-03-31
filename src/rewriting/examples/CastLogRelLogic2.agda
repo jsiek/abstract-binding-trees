@@ -198,7 +198,7 @@ V-dyn {G}{V}{g} =
 
 V-dyn-elim : ∀{𝓟}{V}{R}
    → 𝓟 ⊢ᵒ 𝓥⟦ ★ ⟧ V
-   → (∀ W G g → V ≡ op-inject{G} g ⦅ cons (ast W) nil ⦆
+   → (∀ W G (g : Ground G) → V ≡ op-inject{G} g ⦅ cons (ast W) nil ⦆
              → 𝓟 ⊢ᵒ ((Value W)ᵒ ×ᵒ ▷ᵒ (𝓥⟦ G ⟧ W))
              → 𝓟 ⊢ᵒ R)
    → 𝓟 ⊢ᵒ R
