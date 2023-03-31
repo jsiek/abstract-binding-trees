@@ -1,5 +1,5 @@
 {-# OPTIONS --without-K --rewriting #-}
-module rewriting.examples.CastLogRel2 where
+module rewriting.examples.CastLogRel where
 
 open import Agda.Primitive using (lzero)
 open import Data.List using (List; []; _∷_; length)

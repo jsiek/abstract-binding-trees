@@ -7,7 +7,7 @@
  Also based on "An Indexed Model of Recursive Types"
  by Appel and McAllester.
 -}
-module rewriting.examples.StepIndexedLogic2 where
+module rewriting.examples.StepIndexedLogic where
 
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)

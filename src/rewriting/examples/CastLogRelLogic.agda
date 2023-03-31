@@ -1,5 +1,5 @@
 {-# OPTIONS --without-K --rewriting #-}
-module rewriting.examples.CastLogRelLogic2 where
+module rewriting.examples.CastLogRelLogic where
 
 open import Agda.Primitive using (lzero)
 open import Data.List using (List; []; _∷_; length)
@@ -26,7 +26,7 @@ open import Sig
 open import Var
 open import Structures using (extensionality)
 open import rewriting.examples.Cast
-open import rewriting.examples.StepIndexedLogic2
+open import rewriting.examples.StepIndexedLogic
 
 𝓔⊎𝓥-type : Set
 𝓔⊎𝓥-type = (Type × Term) ⊎ (Type × Term)

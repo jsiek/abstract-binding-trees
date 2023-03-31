@@ -1,5 +1,5 @@
 {-# OPTIONS --without-K --rewriting #-}
-module rewriting.examples.CastSafeLogic2 where
+module rewriting.examples.CastSafeLogic where
 
 open import Agda.Primitive using (lzero)
 open import Data.List using (List; []; _∷_; length)
@@ -24,8 +24,8 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Sig
 open import Var
 open import rewriting.examples.Cast
-open import rewriting.examples.StepIndexedLogic2
-open import rewriting.examples.CastLogRelLogic2
+open import rewriting.examples.StepIndexedLogic
+open import rewriting.examples.CastLogRelLogic
 
 {-# REWRITE sub-var #-}
 

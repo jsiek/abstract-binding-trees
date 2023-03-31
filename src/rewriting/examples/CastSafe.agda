@@ -1,5 +1,5 @@
 {-# OPTIONS --without-K --rewriting #-}
-module rewriting.examples.CastSafe2 where
+module rewriting.examples.CastSafe where
 
 open import Agda.Primitive using (lzero)
 open import Data.List using (List; []; _∷_; length)
@@ -23,7 +23,7 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Sig
 open import Var
 open import rewriting.examples.Cast
-open import rewriting.examples.CastLogRel2
+open import rewriting.examples.CastLogRel
 
 1+m∸n : (m n : ℕ) → n ≤ m → suc m ∸ n ≡ suc (m ∸ n)
 1+m∸n m .zero z≤n = refl
