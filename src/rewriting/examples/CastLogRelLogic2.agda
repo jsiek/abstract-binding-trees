@@ -320,38 +320,6 @@ exp-▷{𝓟}{A}{M}{N} 𝓟⊢M→N ⊢▷𝓔N =
   Goal : 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
   Goal = ⊢ᵒ-×-intro ⊢prog ⊢pres
 
--- {-
--- determ : ∀{M}{N}{N′}
---    → [] ⊢ᵒ (M —→ N)ᵒ
---    → [] ⊢ᵒ (M —→ N′)ᵒ
---    → N ≡ N′
--- determ {M}{N}{N′} ⊢M→N ⊢M→N′ =
---   let M→N = ⊢M→N (suc 0) tt in
---   let M→N′ = ⊢M→N′ (suc 0) tt in
---   deterministic M→N M→N′
-
--- 𝓔—→ : ∀{𝓟}{M}{N}{A}
---    → 𝓟 ⊢ᵒ (M —→ N)ᵒ
---    → 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ N
---    → 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ M
--- 𝓔—→ {𝓟}{M}{N}{A} ⊢M→N ⊢N =
---    let rM : 𝓟 ⊢ᵒ (reducible M)ᵒ
---        rM = λ { zero x → tt
---               ; (suc n) x → _ , (⊢M→N (suc n) x) } in
---    let progM : 𝓟 ⊢ᵒ progress A M
---        progM = (⊢ᵒ-inj₂{𝓟}{𝓥⟦ A ⟧ M}{(reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ}
---                   (⊢ᵒ-inj₁{𝓟}{(reducible M)ᵒ}{(Blame M)ᵒ} rM)) in
-
---     let ⊢▷𝓔N : ∀ N → (M —→ N) ᵒ ∷ 𝓟 ⊢ᵒ ▷ᵒ 𝓔⟦ A ⟧ N
---         ⊢▷𝓔N N =
-             
---             {!!} in
-                  
---     let presM : 𝓟 ⊢ᵒ preservation A M
---         presM = ⊢ᵒ-∀-intro{𝓟}{Term}{λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (𝓔⟦ A ⟧ N)}
---                    λ N → ⊢ᵒ-→-intro{𝓟}{(M —→ N)ᵒ}{▷ᵒ (𝓔⟦ A ⟧ N)} (⊢▷𝓔N N) in
---    𝓔-intro 𝓟 progM presM
-
 {- 𝓔-frame (Monadic Bind Lemma) -}
 
 𝓔-f-cont : Type → Type → Frame → Term → Setᵒ
