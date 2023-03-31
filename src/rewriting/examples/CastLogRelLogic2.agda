@@ -297,72 +297,78 @@ exp-▷{𝓟}{A}{M}{N} 𝓟⊢M→N ⊢▷𝓔N =
 --                    λ N → ⊢ᵒ-→-intro{𝓟}{(M —→ N)ᵒ}{▷ᵒ (𝓔⟦ A ⟧ N)} (⊢▷𝓔N N) in
 --    𝓔-intro 𝓟 progM presM
 
+
+𝓔-f-cont : Type → Type → Frame → Term → Setᵒ
+𝓔-f-cont A B F M = ∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧)
+
+𝓔-fp : Type → Type → Frame → Term → Setᵒ
+𝓔-fp A B F M = 𝓔⟦ B ⟧ M
+                →ᵒ 𝓔-f-cont A B F M
+                →ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
+
 𝓔-frame-prop : Type → Type → Frame → Setᵒ
-𝓔-frame-prop A B F =
-   (∀ᵒ[ M ] 𝓔⟦ B ⟧ M
-            →ᵒ (∀ᵒ[ V ] 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧))
-              -- probably need to add premise M —↠ V to the above
-            →ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧))
+𝓔-frame-prop A B F = ∀ᵒ[ M ] 𝓔-fp A B F M
 
 frame-prop-lemma : ∀{𝓟}{A}{B}{M}{F}
    → 𝓟 ⊢ᵒ ▷ᵒ 𝓔-frame-prop A B F
    → 𝓟 ⊢ᵒ ▷ᵒ 𝓔⟦ B ⟧ M
-   → 𝓟 ⊢ᵒ ▷ᵒ (∀ᵒ[ V ] 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧))
+   → 𝓟 ⊢ᵒ ▷ᵒ 𝓔-f-cont A B F M
    → 𝓟 ⊢ᵒ ▷ᵒ (𝓔⟦ A ⟧ (F ⟦ M ⟧))
 frame-prop-lemma{𝓟}{A}{B}{M}{F} IH 𝓔M V→FV =
-  {- inference problem regarding the rules about ∀ -}
-  let P₁ M = (𝓔⟦ B ⟧ M
-              →ᵒ (∀ᵒ[ V ] 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧))
-              →ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)) in
-  let IH1 = (⊢ᵒ-▷∀{P = λ M → P₁ M} IH) in
+  let IH1 = (⊢ᵒ-▷∀{P = λ M → 𝓔-fp A B F M} IH) in
   let IH2 = ⊢ᵒ-∀-elim IH1 M in
   let IH3 = (⊢ᵒ-→-elim (⊢ᵒ-▷→{𝓟}{𝓔⟦ B ⟧ M} IH2) 𝓔M) in
-  let IH4 = ⊢ᵒ-▷→{𝓟}{∀ᵒ[ V ] 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧)} IH3 in
+  let IH4 = ⊢ᵒ-▷→{𝓟}{𝓔-f-cont A B F M} IH3 in
        ⊢ᵒ-→-elim IH4 V→FV
 
-blame-frame : ∀{F}{N}
-   → (F ⟦ blame ⟧) —→ N
-   → N ≡ blame
-blame-frame {□· M} {.((□· M₁) ⟦ _ ⟧)} (ξξ (□· M₁) refl refl Fb→N) =
-    ⊥-elim (blame-irreducible Fb→N)
-blame-frame {□· M} (ξξ (() ·□) refl refl Fb→N)
-blame-frame {□· M} {.blame} (ξξ-blame (□· M₁) refl) = refl
-blame-frame {□· M} {.blame} (ξξ-blame (() ·□) refl)
-blame-frame {v ·□} {N} (ξξ (□· M) refl refl Fb→N) =
-    ⊥-elim (value-irreducible v Fb→N)
-blame-frame {v ·□} {N} (ξξ (v₁ ·□) refl refl Fb→N) =
-    ⊥-elim (blame-irreducible Fb→N)
-blame-frame {v ·□} {.blame} (ξξ-blame F x) = refl
-blame-frame {□⟨ g !⟩} {.(□⟨ g₁ !⟩ ⟦ _ ⟧)} (ξξ □⟨ g₁ !⟩ refl refl Fb→N) =
-    ⊥-elim (blame-irreducible Fb→N)
-blame-frame {□⟨ g !⟩} {.blame} (ξξ-blame F x) = refl
-blame-frame {□⟨ h ?⟩} {N} (ξξ □⟨ h₁ ?⟩ refl refl Fb→N) =
-    ⊥-elim (blame-irreducible Fb→N)
-blame-frame {□⟨ h ?⟩} {.blame} (ξξ-blame □⟨ h₁ ?⟩ x) = refl
+
+Pₒ→Qₒ : ∀{P Q : Set}{n}
+   → (P → Q)
+   → (P ₒ) n
+     --------
+   → (Q ₒ) n
+Pₒ→Qₒ {P} {Q} {zero} P→Q Pn = tt
+Pₒ→Qₒ {P} {Q} {suc n} P→Q Pn = P→Q Pn
+
+𝓔-f-cont-lemma : ∀{𝓟}{A}{B}{F}{M}{M′}
+   → M —→ M′
+   → 𝓟 ⊢ᵒ 𝓔-f-cont A B F M
+   → 𝓟 ⊢ᵒ 𝓔-f-cont A B F M′
+𝓔-f-cont-lemma {𝓟}{A}{B}{F}{M}{M′} M→M′ 𝓔-cont =
+   ⊢ᵒ-∀-intro λ V →
+      let M→V→𝓔FV : 𝓟 ⊢ᵒ (M —↠ V)ᵒ →ᵒ 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧)
+          M→V→𝓔FV = ⊢ᵒ-∀-elim 𝓔-cont V in
+   
+      let M′→V→𝓔FV : 𝓥⟦ B ⟧ V ∷ (M′ —↠ V)ᵒ ∷ 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧)
+          M′→V→𝓔FV = ⊢ᵒ-intro λ n (𝓥Vn , M′→Vn , ⊨𝓟n) →
+                ⊢ᵒ-elim M→V→𝓔FV n ⊨𝓟n n ≤-refl
+                    (Pₒ→Qₒ (λ M′→V → M —→⟨ M→M′ ⟩ M′→V) M′→Vn)
+                    n ≤-refl 𝓥Vn in
+       ⊢ᵒ-→-intro (⊢ᵒ-→-intro M′→V→𝓔FV)
 
 𝓔-frame-aux : ∀{𝓟}{A}{B}{F} → 𝓟 ⊢ᵒ 𝓔-frame-prop A B F
 𝓔-frame-aux {𝓟}{A}{B}{F} = ⊢ᵒ-lob Goal
   where
   Goal′ : ∀{M}
-     → (∀ᵒ[ V ] 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧))
-        ∷ 𝓔⟦ B ⟧ M ∷ ▷ᵒ 𝓔-frame-prop A B F ∷ 𝓟
+     → (𝓔-f-cont A B F M) ∷ 𝓔⟦ B ⟧ M ∷ ▷ᵒ 𝓔-frame-prop A B F ∷ 𝓟
         ⊢ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
   Goal′{M} =
      let ⊢𝓔M : 𝓟′ ⊢ᵒ 𝓔⟦ B ⟧ M
          ⊢𝓔M = ⊢ᵒ-weaken ⊢ᵒ-hyp in
      ⊢ᵒ-case3 (𝓔-progress ⊢𝓔M) Mval Mred Mblame
      where
-     𝓟′ = (∀ᵒ[ V ] 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧)) ∷ 𝓔⟦ B ⟧ M
-           ∷ ▷ᵒ 𝓔-frame-prop A B F ∷ 𝓟
+     𝓟′ = (𝓔-f-cont A B F M) ∷ 𝓔⟦ B ⟧ M ∷ ▷ᵒ 𝓔-frame-prop A B F ∷ 𝓟
 
      Mval : 𝓥⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
      Mval =
        let ⊢𝓥M : 𝓥⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ 𝓥⟦ B ⟧ M
            ⊢𝓥M = ⊢ᵒ-hyp in
-       let 𝓥V→𝓔FV : 𝓥⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ (∀ᵒ[ V ] 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧))
+       let 𝓥V→𝓔FV : 𝓥⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ 𝓔-f-cont A B F M
            𝓥V→𝓔FV = ⊢ᵒ-weaken ⊢ᵒ-hyp in
-       let 𝓥M→𝓔FM : 𝓥⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ (𝓥⟦ B ⟧ M →ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧))
-           𝓥M→𝓔FM = ⊢ᵒ-∀-elim 𝓥V→𝓔FV M in
+       let M→M→𝓥M→𝓔FM : 𝓥⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ((M —↠ M)ᵒ →ᵒ 𝓥⟦ B ⟧ M
+                                        →ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧))
+           M→M→𝓥M→𝓔FM = ⊢ᵒ-∀-elim{P = λ V → (M —↠ V)ᵒ →ᵒ 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧)} 𝓥V→𝓔FV M in
+       let 𝓥M→𝓔FM = ⊢ᵒ-→-elim M→M→𝓥M→𝓔FM (⊢ᵒ-Sᵒ-intro (M END)) in
        ⊢ᵒ-→-elim 𝓥M→𝓔FM ⊢𝓥M
 
      progMred : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ progress A (F ⟦ M ⟧)
@@ -388,10 +394,12 @@ blame-frame {□⟨ h ?⟩} {.blame} (ξξ-blame □⟨ h₁ ?⟩ x) = refl
                          (⊢ᵒ-∀-elim{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (𝓔⟦ B ⟧ N)}
                             (𝓔-preservation 𝓔M) M′)
                                 (⊢ᵒ-Sᵒ-intro M→M′) in
-          let 𝓥V→𝓔FV : 𝓟′ ⊢ᵒ (∀ᵒ[ V ] 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧))
-              𝓥V→𝓔FV = ⊢ᵒ-hyp in
+          let M→V→𝓥V→𝓔FV : 𝓟′ ⊢ᵒ 𝓔-f-cont A B F M
+              M→V→𝓥V→𝓔FV = ⊢ᵒ-hyp in
+          let M′→V→𝓥V→𝓔FV : 𝓟′ ⊢ᵒ 𝓔-f-cont A B F M′
+              M′→V→𝓥V→𝓔FV = 𝓔-f-cont-lemma{𝓟′}{A}{B} M→M′ M→V→𝓥V→𝓔FV in
           let ▷𝓔FM′ : 𝓟′ ⊢ᵒ ▷ᵒ (𝓔⟦ A ⟧ (F ⟦ M′ ⟧))
-              ▷𝓔FM′ = frame-prop-lemma IH ▷𝓔M′ (⊢ᵒ-mono 𝓥V→𝓔FV) in
+              ▷𝓔FM′ = frame-prop-lemma IH ▷𝓔M′ (⊢ᵒ-mono M′→V→𝓥V→𝓔FV) in
           subst (λ N → 𝓟′ ⊢ᵒ ▷ᵒ 𝓔⟦ A ⟧ N) (sym N≡) ▷𝓔FM′
 
      Mred : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
@@ -419,13 +427,14 @@ blame-frame {□⟨ h ?⟩} {.blame} (ξξ-blame □⟨ h₁ ?⟩ x) = refl
   Goal : ▷ᵒ 𝓔-frame-prop A B F ∷ 𝓟 ⊢ᵒ 𝓔-frame-prop A B F
   Goal = ⊢ᵒ-∀-intro λ M → ⊢ᵒ-→-intro (⊢ᵒ-→-intro Goal′)
 
+{- aka. bind lemma -}
 𝓔-frame : ∀{𝓟}{A}{B}{F}{M}
    → 𝓟 ⊢ᵒ 𝓔⟦ B ⟧ M
-   → 𝓟 ⊢ᵒ (∀ᵒ[ V ] 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧))
+   → 𝓟 ⊢ᵒ (∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧))
    → 𝓟 ⊢ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧)
 𝓔-frame {𝓟}{A}{B}{F}{M} ⊢𝓔M ⊢𝓥V→𝓔FV =
   let P M = 𝓔⟦ B ⟧ M →ᵒ
-             (∀ᵒ[ V ] 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧))
+             (∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝓥⟦ B ⟧ V →ᵒ 𝓔⟦ A ⟧ (F ⟦ V ⟧))
              →ᵒ 𝓔⟦ A ⟧ (F ⟦ M ⟧) in
   ⊢ᵒ-→-elim (⊢ᵒ-→-elim (⊢ᵒ-∀-elim{𝓟}{P = λ M → P M}
                           𝓔-frame-aux M)

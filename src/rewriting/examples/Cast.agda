@@ -626,3 +626,24 @@ app-invL (L′ , L→L′) (β v) = ⊥-elim (value-irreducible (ƛ̬ _) L→L�
 
 {- TODO: prove the following -}
 postulate frame-inv2 : ∀{L N : Term}{F} → reducible L → F ⟦ L ⟧ —→ N → ∃[ L′ ] ((L —→ L′) × (N ≡ F ⟦ L′ ⟧))
+
+blame-frame : ∀{F}{N}
+   → (F ⟦ blame ⟧) —→ N
+   → N ≡ blame
+blame-frame {□· M} {.((□· M₁) ⟦ _ ⟧)} (ξξ (□· M₁) refl refl Fb→N) =
+    ⊥-elim (blame-irreducible Fb→N)
+blame-frame {□· M} (ξξ (() ·□) refl refl Fb→N)
+blame-frame {□· M} {.blame} (ξξ-blame (□· M₁) refl) = refl
+blame-frame {□· M} {.blame} (ξξ-blame (() ·□) refl)
+blame-frame {v ·□} {N} (ξξ (□· M) refl refl Fb→N) =
+    ⊥-elim (value-irreducible v Fb→N)
+blame-frame {v ·□} {N} (ξξ (v₁ ·□) refl refl Fb→N) =
+    ⊥-elim (blame-irreducible Fb→N)
+blame-frame {v ·□} {.blame} (ξξ-blame F x) = refl
+blame-frame {□⟨ g !⟩} {.(□⟨ g₁ !⟩ ⟦ _ ⟧)} (ξξ □⟨ g₁ !⟩ refl refl Fb→N) =
+    ⊥-elim (blame-irreducible Fb→N)
+blame-frame {□⟨ g !⟩} {.blame} (ξξ-blame F x) = refl
+blame-frame {□⟨ h ?⟩} {N} (ξξ □⟨ h₁ ?⟩ refl refl Fb→N) =
+    ⊥-elim (blame-irreducible Fb→N)
+blame-frame {□⟨ h ?⟩} {.blame} (ξξ-blame □⟨ h₁ ?⟩ x) = refl
+
