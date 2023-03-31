@@ -1530,6 +1530,28 @@ abstract
   ◁Pᵒ ⊢◁P zero ⊨𝓟n = tt
   ◁Pᵒ ⊢◁P (suc n) ⊨𝓟n = ⊢◁P (suc n) ⊨𝓟n
 
+sucP⊢ᵒQ : ∀{𝓟}{P Q : Setᵒ}
+   → (∀{n} → # P (suc n) → P ∷ 𝓟 ⊢ᵒ Q)
+   → P ∷ 𝓟 ⊢ᵒ Q
+sucP⊢ᵒQ {𝓟}{P}{Q} Psn⊢Q =
+    ⊢ᵒ-intro λ { zero (Pn , 𝓟n) → tz Q
+               ; (suc n) (Psn , 𝓟sn) →
+                  let ⊢Q = Psn⊢Q Psn in
+                  let Qsn = ⊢ᵒ-elim ⊢Q (suc n) (Psn , 𝓟sn) in
+                  Qsn}
+
+⊢ᵒ-sucP : ∀{𝓟}{P Q : Setᵒ}
+   → 𝓟 ⊢ᵒ P
+   → (∀{n} → # P (suc n) → 𝓟 ⊢ᵒ Q)
+   → 𝓟 ⊢ᵒ Q
+⊢ᵒ-sucP {𝓟}{P}{Q} ⊢P Psn⊢Q =
+    ⊢ᵒ-intro λ { zero x → tz Q
+               ; (suc n) 𝓟sn →
+                 let ⊢Q = Psn⊢Q (⊢ᵒ-elim ⊢P (suc n) 𝓟sn) in
+                 let Qsn = ⊢ᵒ-elim ⊢Q (suc n) 𝓟sn in
+                 Qsn}
+
+
 {- This example shows that making ⊢ᵒ abstract solves the
    problem regarding inferece of implicit parameteters. -Jeremy -}
 example-⊢ᵒ1 : ∀{P Q} → P ∷ Q ∷ [] ⊢ᵒ Q
