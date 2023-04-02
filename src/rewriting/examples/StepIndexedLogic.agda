@@ -1,11 +1,16 @@
 {-# OPTIONS --without-K --rewriting #-}
 
 {-
- Based on the development of Logical step-indexed logical relation
+
+ Based on "Logical Step-Indexed Logical Relations"
+ by Dreyer, Ahmed, and Birkedal.
+
+ Based on the Agda development of Logical Step-Indexed Logical Relations
  by Philip Wadler (June 1, 2022)
 
- Also based on "An Indexed Model of Recursive Types"
- by Appel and McAllester.
+ The proof of the fixpoint theorem is based on "An Indexed Model of
+ Recursive Types" by Appel and McAllester.
+
 -}
 module rewriting.examples.StepIndexedLogic where
 
@@ -14,7 +19,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Nat
    using (ℕ; zero; suc; _≤_; _<_; _+_; _∸_; z≤n; s≤s; _≤′_; ≤′-step)
 open import Data.Nat.Properties
-   using (≤-refl; ≤-antisym; ≤-trans; ≤-step; s≤s-injective; ≤⇒≤′; ≤′⇒≤; n≤1+n; <⇒≤)
+   using (≤-refl; ≤-antisym; ≤-trans; ≤-step; ≤⇒≤′; ≤′⇒≤; n≤1+n; <⇒≤)
 open import Data.Product
    using (_×_; _,_; proj₁; proj₂; Σ; ∃; Σ-syntax; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -53,16 +58,6 @@ record Setᵒ : Set₁ where
     down : downClosed #
     tz : # 0
 open Setᵒ public
-
-abstract
-  ⌈Setᵒ⌉ : Set₁
-  ⌈Setᵒ⌉ = Setᵒ
-
-  ⌈_⌉ : Setᵒ → ⌈Setᵒ⌉
-  ⌈ S ⌉ = S
-
-  ⌊_⌋ : ⌈Setᵒ⌉ → Setᵒ
-  ⌊ S ⌋ = S
 
 record Predᵒ (A : Set) : Set₁ where
   field
