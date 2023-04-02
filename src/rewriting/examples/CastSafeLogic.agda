@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K --rewriting #-}
+{-# OPTIONS --rewriting #-}
 module rewriting.examples.CastSafeLogic where
 
 open import Agda.Primitive using (lzero)
@@ -25,6 +25,7 @@ open import Sig
 open import Var
 open import rewriting.examples.Cast
 open import rewriting.examples.StepIndexedLogic
+open import rewriting.examples.CastDeterministic
 open import rewriting.examples.CastLogRelLogic
 
 {-# REWRITE sub-var #-}

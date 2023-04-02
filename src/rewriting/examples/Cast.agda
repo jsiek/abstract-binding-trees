@@ -89,6 +89,10 @@ data GroundOf : Type → Type → Set where
   gnd-base : ∀{ι} → GroundOf ($ₜ ι) ($ₜ ι)
   gnd-fun : ∀{A B} → GroundOf (A ⇒ B) (★ ⇒ ★)
 
+uniqueG : ∀ {G} → (g : Ground G) → (h : Ground G) → g ≡ h
+uniqueG ($ᵍ ι) ($ᵍ .ι) = refl
+uniqueG ★⇒★   ★⇒★    = refl
+
 {- Terms -}
 
 data Op : Set where
@@ -611,9 +615,6 @@ frame-blame {□⟨ h ?⟩} {.(□⟨ h ?⟩ ⟦ blame ⟧)} (.(□⟨ h ?⟩ �
     with blame—↠ M→N
 ... | refl = refl
 
-{- TODO: prove the following -}
-postulate deterministic : ∀{M N N′} → M —→ N → M —→ N′ → N ≡ N′
-
 app-invL : ∀{L M N : Term}
    → reducible L
    → L · M  —→ N
@@ -623,9 +624,6 @@ app-invL (L′ , L→L′) (ξ (v ·□) M→M′) = ⊥-elim (value-irreducible
 app-invL (L′ , L→L′) (ξ-blame (□· M)) = ⊥-elim (blame-irreducible L→L′)
 app-invL (L′ , L→L′) (ξ-blame (v ·□)) = ⊥-elim (value-irreducible v L→L′)
 app-invL (L′ , L→L′) (β v) = ⊥-elim (value-irreducible (ƛ̬ _) L→L′)
-
-{- TODO: prove the following -}
-postulate frame-inv2 : ∀{L N : Term}{F} → reducible L → F ⟦ L ⟧ —→ N → ∃[ L′ ] ((L —→ L′) × (N ≡ F ⟦ L′ ⟧))
 
 blame-frame : ∀{F}{N}
    → (F ⟦ blame ⟧) —→ N

@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K --rewriting #-}
+{-# OPTIONS --rewriting #-}
 module rewriting.examples.CastLogRelLogic where
 
 open import Agda.Primitive using (lzero)
@@ -26,6 +26,7 @@ open import Sig
 open import Var
 open import Structures using (extensionality)
 open import rewriting.examples.Cast
+open import rewriting.examples.CastDeterministic
 open import rewriting.examples.StepIndexedLogic
 
 𝓔⊎𝓥-type : Set
