@@ -146,7 +146,7 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 ℰ-blame : ∀{𝓟}{A} → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ blame
 ℰ-blame {𝓟}{A} =
     ℰ-intro (inj₂ᵒ (inj₂ᵒ (⊢ᵒ-Sᵒ-intro isBlame)))
-            (λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ blame→ → ⊥-elim (blame-irreducible blame→)))
+            (Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ blame→ → ⊥-elim (blame-irreducible blame→)))
 
 𝒱⇒Value : ∀ {k} A M → # (𝒱⟦ A ⟧ M) (suc k) → Value M
 𝒱⇒Value ★ (M ⟨ g !⟩) (v , _) = v 〈 g 〉
@@ -349,7 +349,7 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
    → 𝓟 ⊢ᵒ ℰ-f-cont A B F M
    → 𝓟 ⊢ᵒ ℰ-f-cont A B F M′
 ℰ-f-cont-lemma {𝓟}{A}{B}{F}{M}{M′} M→M′ ℰ-cont =
-   λᵒ[ V ]
+   Λᵒ[ V ]
       let M→V→ℰFV : 𝓟 ⊢ᵒ (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
           M→V→ℰFV = instᵒ ℰ-cont V in
       let M′→V→ℰFV : 𝒱⟦ B ⟧ V ∷ (M′ —↠ V)ᵒ ∷ 𝓟 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
@@ -365,7 +365,7 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
 ℰ-frame-aux {𝓟}{A}{B}{F} = ⊢ᵒ-lob Goal
  where     
  Goal : ▷ᵒ ℰ-frame-prop A B F ∷ 𝓟 ⊢ᵒ ℰ-frame-prop A B F
- Goal = λᵒ[ M ] →ᵒI (→ᵒI Goal′)
+ Goal = Λᵒ[ M ] →ᵒI (→ᵒI Goal′)
   where
   Goal′ : ∀{M}
      → (ℰ-f-cont A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-frame-prop A B F ∷ 𝓟
@@ -390,7 +390,7 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
 
    Mred : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mred = ℰ-intro progressMred
-         (Sᵒ⊢ᵒ λ redM → λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ FM→N → (redM⇒▷ℰN redM FM→N)))
+         (Sᵒ⊢ᵒ λ redM → Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ FM→N → (redM⇒▷ℰN redM FM→N)))
     where
     progressMred : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ progress A (F ⟦ M ⟧)
     progressMred =
@@ -425,7 +425,7 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
 
    Mblame : (Blame M)ᵒ ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mblame = ℰ-intro progressMblame
-            (Sᵒ⊢ᵒ λ blameM → λᵒ[ N ]
+            (Sᵒ⊢ᵒ λ blameM → Λᵒ[ N ]
                →ᵒI (Sᵒ⊢ᵒ λ FM→N → blameM⇒▷ℰN blameM FM→N))
     where
     progressMblame : (Blame M)ᵒ ∷ 𝓟′ ⊢ᵒ progress A (F ⟦ M ⟧)

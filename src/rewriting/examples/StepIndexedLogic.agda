@@ -1366,9 +1366,9 @@ abstract
     → 𝓟 ⊢ᵒ P a
   instᵒ ⊢∀P a n ⊨𝓟n = ⊢∀P n ⊨𝓟n a
 
-λᵒ-syntax = ⊢ᵒ-∀-intro
-infix 1 λᵒ-syntax
-syntax λᵒ-syntax (λ a → ⊢Pa) = λᵒ[ a ] ⊢Pa
+Λᵒ-syntax = ⊢ᵒ-∀-intro
+infix 1 Λᵒ-syntax
+syntax Λᵒ-syntax (λ a → ⊢Pa) = Λᵒ[ a ] ⊢Pa
 
 abstract
   ⊢ᵒ-∀ₚ-intro : ∀{𝓟 : List Setᵒ }{A}{P : Predᵒ A}
@@ -1399,6 +1399,17 @@ abstract
   ⊢ᵒ-swap {𝓟}{T}{S}{S′} SS′𝓟⊢T n (S′n , Sn , ⊨𝓟n) =
       SS′𝓟⊢T n (Sn , S′n , ⊨𝓟n)
 
+  →ᵒI′ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
+    → (P ∷ 𝓟 ⊢ᵒ P → P ∷ 𝓟 ⊢ᵒ Q)
+      -----------------------
+    → 𝓟 ⊢ᵒ P →ᵒ Q
+  →ᵒI′ {𝓟}{P}{Q} P→Q = →ᵒI{𝓟}{P}{Q} (P→Q (⊢ᵒ-hyp{𝓟}{P}))
+
+λᵒ-syntax = →ᵒI′
+infix 1 λᵒ-syntax
+syntax λᵒ-syntax (λ ⊢P → ⊢Q) = λᵒ[ ⊢P ] ⊢Q
+
+abstract
   ⊢ᵒ-Sᵒ-intro : ∀{𝓟}{S : Set}
      → S
      → 𝓟 ⊢ᵒ (S)ᵒ
