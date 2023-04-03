@@ -149,7 +149,7 @@ compatible-inject {Γ}{G}{g}{M} ⊨M γ = ℰMg!
    ⊢ᵒ-sucP ⊢𝒱V λ 𝒱Vsn →
    let v = 𝒱⇒Value G V 𝒱Vsn in
    let eq = V-dyn{G}{V}{g} in
-   𝒱⇒ℰ ((≡ᵒ⇒⊢ᵒ (⊢ᵒ-×-intro (⊢ᵒ-Sᵒ-intro v) (⊢ᵒ-mono ⊢𝒱V)) (≡ᵒ-sym eq)))
+   𝒱⇒ℰ ((≡ᵒ⇒⊢ᵒ ((⊢ᵒ-Sᵒ-intro v) ,ᵒ (⊢ᵒ-mono ⊢𝒱V)) (≡ᵒ-sym eq)))
 
 red-inj-proj : ∀{G}{H}{g}{h}{W}
    → Value W
@@ -178,9 +178,9 @@ compatible-project {Γ}{H}{h}{M} ⊨M γ = ℰMh?
    let ⊢𝒱V : 𝓟₁ V ⊢ᵒ 𝒱⟦ ★ ⟧ V
        ⊢𝒱V = ⊢ᵒ-hyp in
    V-dyn-elim ⊢𝒱V λ { W G g refl ⊢w×▷𝒱W →
-   let ⊢w = ⊢ᵒ-proj₁ ⊢w×▷𝒱W in
+   let ⊢w = projᵒ₁ ⊢w×▷𝒱W in
    let ▷𝒱W : 𝓟₁ V ⊢ᵒ ▷ᵒ 𝒱⟦ G ⟧ W
-       ▷𝒱W = ⊢ᵒ-proj₂ ⊢w×▷𝒱W in
+       ▷𝒱W = projᵒ₂ ⊢w×▷𝒱W in
    ⊢ᵒ-sucP ⊢w λ{n} w →
    let prog : 𝓟₁ (W ⟨ g !⟩) ⊢ᵒ progress H ((W ⟨ g !⟩) ⟨ h ?⟩)
        prog = ⊢ᵒ-inj₂ (⊢ᵒ-inj₁ (⊢ᵒ-Sᵒ-intro (red-inj-proj w))) in

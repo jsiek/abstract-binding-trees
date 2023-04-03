@@ -36,36 +36,21 @@ open import rewriting.examples.IfAndOnlyIf
    Continuous and Wellfounded Functions on Step Indexed Predicates
  -}
 
-Setₒ : Set₁
-Setₒ = ℕ → Set
-
-Predₒ : Set → Set₁
-Predₒ A = A → Setₒ
-
 {- Step Indexed Propositions and Predicates
    packaged with down-closed and true-at-zero.
  -}
 
-downClosed : Setₒ → Set
+downClosed : (ℕ → Set) → Set
 downClosed S = ∀ n → S n → ∀ k → k ≤ n → S k
 
-downClosedᵖ : ∀{A : Set} → (Predₒ A) → Set
+downClosedᵖ : ∀{A : Set} → (A → ℕ → Set) → Set
 downClosedᵖ P = ∀ v → downClosed (P v)
 
-{-
-Phil:
-  Ditch Setₒ and Predₒ.
-
-  Could Predᵒ instead of record just be a
-  function from A to Setᵒ?
-  Then don't need apply.
-  
--}
 record Setᵒ : Set₁ where
   field
-    # : Setₒ
+    # : ℕ → Set
     down : downClosed #
-    tz : # 0
+    tz : # 0                -- tz short for true at zero
 open Setᵒ public
 
 Predᵒ : Set → Set₁
@@ -200,7 +185,7 @@ exampleᵖ {A}{P}{Q} P=Q =
   Here is their version:
   ↓ₒ k S j = j < k × (# S j)
 -}
-↓ₒ : ℕ → Setᵒ → Setₒ
+↓ₒ : ℕ → Setᵒ → (ℕ → Set)
 ↓ₒ k S zero = ⊤
 ↓ₒ k S (suc j) = suc j < k × (# S (suc j))
 
@@ -304,77 +289,6 @@ record Fun (A B : Set) (κ : Kind)
     congr : congᵖ fun
 open Fun public
 
-{-- Step Index Propositions --}
-
-⊥ₒ : Setₒ
-⊥ₒ zero     =  ⊤
-⊥ₒ (suc n)  =  ⊥
-
-⊤ₒ : Setₒ
-⊤ₒ n  =  ⊤
-
-infixr 7 _×ₒ_
-_×ₒ_ : Setₒ → Setₒ → Setₒ
-(P ×ₒ Q) n  = (P n) × (Q n)
-
-infixr 7 _⊎ₒ_
-_⊎ₒ_ : Setₒ → Setₒ → Setₒ
-(P ⊎ₒ Q) n  = (P n) ⊎ (Q n)
-
-infixr 6 _→ₒ_
-_→ₒ_ : Setₒ → Setₒ → Setₒ
-(P →ₒ Q) n  = ∀ k → k ≤ n → P k → Q k
-
-∀ₒ : ∀{A} → (A → Setₒ) → Setₒ
-∀ₒ {A} F n = ∀ (a : A) → F a n
-
-∀ₒ-syntax = ∀ₒ
-infix 1 ∀ₒ-syntax
-syntax ∀ₒ-syntax (λ x → P) = ∀ₒ[ x ] P
-
-infixr 8 _ₒ
-_ₒ  : Set → Setₒ
-(S ₒ) zero = ⊤
-(S ₒ) (suc n) = S
-
-▷ₒ_ : Setₒ → Setₒ
-(▷ₒ P) zero =  ⊤
-(▷ₒ P) (suc n) = P n
-
-◁ₒ_ : Setₒ → Setₒ
-(◁ₒ S) zero = ⊤
-(◁ₒ S) (suc n) = S (suc (suc n))
-
-{-- Step Index Predicates --}
-
-⊤ₚ : ∀{A} → Predₒ A
-⊤ₚ x = ⊤ₒ
-
-⊥ₚ : ∀{A} → Predₒ A
-⊥ₚ x = ⊥ₒ
-
-infixr 7 _×ₚ_
-_×ₚ_ : ∀{A} → Predₒ A → Predₒ A → Predₒ A
-(P ×ₚ Q) v  =  (P v) ×ₒ (Q v)
-
-infixr 7 _⊎ₚ_
-_⊎ₚ_ : ∀{A} → Predₒ A → Predₒ A → Predₒ A
-(P ⊎ₚ Q) v  =  (P v) ⊎ₒ (Q v)
-
-infixr 6 _→ₚ_
-_→ₚ_ : ∀{A} → Predₒ A → Predₒ A → Predₒ A
-(P →ₚ Q) v = P v →ₒ Q v
-
-∀ₚ : ∀{A : Set}{B} → (A → Predₒ B) → Predₒ B
-∀ₚ {A} F x = ∀ₒ[ v ] F v x
-
-∀ₚ-syntax = ∀ₚ
-infix 1 ∀ₚ-syntax
-syntax ∀ₚ-syntax (λ x → P) = ∀ₚ[ x ] P
-
-▷ₚ : ∀{A} → Predₒ A → Predₒ A
-▷ₚ P v = ▷ₒ (P v)
-
 iter : ∀ {ℓ} {A : Set ℓ} → ℕ → (A → A) → (A → A)
 iter zero    F  =  id
 iter (suc n) F  =  F ∘ iter n F
@@ -388,23 +302,23 @@ iter-subtract {A = A} {P} F .zero k z≤n = refl
 iter-subtract {A = A} {P} F (suc j) (suc k) (s≤s j≤k)
   rewrite iter-subtract{A = A}{P} F j k j≤k = refl
 
-{- Packaged Step Indexed Propositions -}
+{- Step Indexed Propositions -}
 
 ⊥ᵒ : Setᵒ
-⊥ᵒ = record { # = ⊥ₒ
+⊥ᵒ = record { # = λ { zero → ⊤ ; (suc k) → ⊥ }
             ; down = λ { zero ⊥n .zero z≤n → tt}
             ; tz = tt
             }
 
 ⊤ᵒ : Setᵒ
-⊤ᵒ = record { # = ⊤ₒ
+⊤ᵒ = record { # = λ k → ⊤
             ; down = λ n _ k _ → tt
             ; tz = tt
             }
               
 infixr 7 _×ᵒ_
 _×ᵒ_ : Setᵒ → Setᵒ → Setᵒ
-P ×ᵒ Q = record { # = # P ×ₒ # Q
+P ×ᵒ Q = record { # = λ k → # P k × # Q k
                 ; down = λ k (Pk , Qk) j j≤k →
                           (down P k Pk j j≤k) , (down Q k Qk j j≤k)
                 ; tz = (tz P) , (tz Q)
@@ -412,7 +326,7 @@ P ×ᵒ Q = record { # = # P ×ₒ # Q
                 
 infixr 7 _⊎ᵒ_
 _⊎ᵒ_ : Setᵒ → Setᵒ → Setᵒ
-P ⊎ᵒ Q = record { # = # P ⊎ₒ # Q
+P ⊎ᵒ Q = record { # = λ k → # P k ⊎ # Q k
                 ; down = λ { k (inj₁ Pk) j j≤k → inj₁ (down P k Pk j j≤k)
                            ; k (inj₂ Qk) j j≤k → inj₂ (down Q k Qk j j≤k)}
                 ; tz = inj₁ (tz P)
@@ -442,7 +356,7 @@ syntax ∀ᵒ-syntax (λ x → P) = ∀ᵒ[ x ] P
 
 infixr 8 _ᵒ
 _ᵒ  : Set → Setᵒ
-S ᵒ = record { # = S ₒ
+S ᵒ = record { # = λ { zero → ⊤ ; (suc k) → S }
              ; down = λ { k Sk zero j≤k → tt
                         ; (suc k) Sk (suc j) j≤k → Sk}
              ; tz = tt
@@ -450,7 +364,7 @@ S ᵒ = record { # = S ₒ
 
 infixr 8 ▷ᵒ_
 ▷ᵒ_ : Setᵒ → Setᵒ
-▷ᵒ P = record { # = ▷ₒ # P
+▷ᵒ P = record { # = λ { zero → ⊤ ; (suc k) → # P k }
               ; down = λ { zero ▷Pn .zero z≤n → tt
                          ; (suc n) ▷Pn .zero z≤n → tt
                          ; (suc n) ▷Pn (suc k) (s≤s k≤n) → down P n ▷Pn k k≤n}
@@ -459,14 +373,14 @@ infixr 8 ▷ᵒ_
 
 infixr 8 ◁ᵒ_
 ◁ᵒ_ : Setᵒ → Setᵒ
-◁ᵒ P = record { # = ◁ₒ # P
+◁ᵒ P = record { # = λ { zero → ⊤ ; (suc k) → # P (suc (suc k)) }
               ; down = λ { zero ◁Pk .zero z≤n → tt
                          ; (suc k) ◁Pk zero j≤k → tt
                          ; (suc k) ◁Pk (suc j) j≤k →
                             down P (suc (suc k)) ◁Pk (suc (suc j)) (s≤s j≤k)}
               ; tz = tt }
 
-{- Packaged Step Indexed Predicates -}
+{- Step Indexed Predicates -}
 
 ⊤ᵖ : ∀{A} → Predᵒ A
 ⊤ᵖ {A} = λ a → ⊤ᵒ
@@ -545,7 +459,7 @@ dc-iter : ∀(i : ℕ){A}
 dc-iter zero F = λ v n _ k _ → tt
 dc-iter (suc i) F = λ v → down (F (iter i F ⊤ᵖ) v)
 
-μₚ : ∀{A} → (Predᵒ A → Predᵒ A) → Predₒ A
+μₚ : ∀{A} → (Predᵒ A → Predᵒ A) → (A → ℕ → Set)
 μₚ F a k = #(iter (suc k) F ⊤ᵖ a) k
 
 μᵖ : ∀{A}
@@ -1355,24 +1269,24 @@ abstract
   ⊢ᵒ-⊥-elim ⊢⊥ P zero ⊨𝓟n = tz P
   ⊢ᵒ-⊥-elim ⊢⊥ P (suc n) ⊨𝓟sn = ⊥-elim (⊢⊥ (suc n) ⊨𝓟sn)
 
-  ⊢ᵒ-×-intro : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
+  _,ᵒ_ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
     → 𝓟 ⊢ᵒ P
     → 𝓟 ⊢ᵒ Q
       ------------
     → 𝓟 ⊢ᵒ P ×ᵒ Q
-  ⊢ᵒ-×-intro 𝓟⊢P 𝓟⊢Q n ⊨𝓟n = 𝓟⊢P n ⊨𝓟n , 𝓟⊢Q n ⊨𝓟n
+  (𝓟⊢P ,ᵒ 𝓟⊢Q) n ⊨𝓟n = 𝓟⊢P n ⊨𝓟n , 𝓟⊢Q n ⊨𝓟n
 
-  ⊢ᵒ-proj₁ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
+  projᵒ₁ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
     → 𝓟 ⊢ᵒ P ×ᵒ Q
       ------------
     → 𝓟 ⊢ᵒ P
-  ⊢ᵒ-proj₁ 𝓟⊢P×Q n ⊨𝓟n = proj₁ (𝓟⊢P×Q n ⊨𝓟n)
+  projᵒ₁ 𝓟⊢P×Q n ⊨𝓟n = proj₁ (𝓟⊢P×Q n ⊨𝓟n)
 
-  ⊢ᵒ-proj₂ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
+  projᵒ₂ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
     → 𝓟 ⊢ᵒ P ×ᵒ Q
       ------------
     → 𝓟 ⊢ᵒ Q
-  ⊢ᵒ-proj₂ 𝓟⊢P×Q n ⊨𝓟n = proj₂ (𝓟⊢P×Q n ⊨𝓟n)
+  projᵒ₂ 𝓟⊢P×Q n ⊨𝓟n = proj₂ (𝓟⊢P×Q n ⊨𝓟n)
 
   ⊢ᵒ-inj₁ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
     → 𝓟 ⊢ᵒ P
@@ -1417,6 +1331,7 @@ abstract
   ⊢ᵒ-→-intro {𝓟} P∷𝓟⊢Q n ⊨𝓟n j j≤n Pj =
       P∷𝓟⊢Q j (Pj , downClosed-Πᵒ 𝓟 n ⊨𝓟n j j≤n)
 
+abstract
   ⊢ᵒ-→-elim : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
     → 𝓟 ⊢ᵒ P →ᵒ Q
     → 𝓟 ⊢ᵒ P

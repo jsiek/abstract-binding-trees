@@ -125,12 +125,12 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 ℰ-progress : ∀ {𝓟}{A}{M}
   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
   → 𝓟 ⊢ᵒ progress A M
-ℰ-progress 𝓟⊢ℰM = ⊢ᵒ-proj₁ (ℰ-unfold 𝓟⊢ℰM)
+ℰ-progress 𝓟⊢ℰM = projᵒ₁ (ℰ-unfold 𝓟⊢ℰM)
 
 ℰ-preservation : ∀ {𝓟}{A}{M}
   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
   → 𝓟 ⊢ᵒ preservation A M
-ℰ-preservation 𝓟⊢ℰM = ⊢ᵒ-proj₂ (ℰ-unfold 𝓟⊢ℰM)
+ℰ-preservation 𝓟⊢ℰM = projᵒ₂ (ℰ-unfold 𝓟⊢ℰM)
 
 ℰ-fold : ∀ {𝓟}{A}{M}
   → 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
@@ -141,7 +141,7 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
   → 𝓟 ⊢ᵒ progress A M
   → 𝓟 ⊢ᵒ preservation A M
   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-ℰ-intro 𝓟⊢prog 𝓟⊢pres = ℰ-fold (⊢ᵒ-×-intro 𝓟⊢prog 𝓟⊢pres)
+ℰ-intro 𝓟⊢prog 𝓟⊢pres = ℰ-fold (𝓟⊢prog ,ᵒ 𝓟⊢pres)
 
 ℰ-blame : ∀{𝓟}{A} → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ blame
 ℰ-blame {𝓟}{A} =
@@ -216,8 +216,8 @@ V-dyn-elim {𝓟}{V}{R} ⊢𝒱V cont =
   G {W ⟨ g !⟩}{n} 𝒱Vsn ⊢𝒱V cont
       with 𝒱⇒Value ★ (W ⟨ g !⟩) 𝒱Vsn
   ... | w 〈 g 〉 =
-      let ⊢▷𝒱W = ⊢ᵒ-proj₂ (≡ᵒ⇒⊢ᵒ ⊢𝒱V (V-dyn{V = W}{g})) in
-      cont W _ g refl (⊢ᵒ-×-intro (⊢ᵒ-Sᵒ-intro w) ⊢▷𝒱W)
+      let ⊢▷𝒱W = projᵒ₂ (≡ᵒ⇒⊢ᵒ ⊢𝒱V (V-dyn{V = W}{g})) in
+      cont W _ g refl (⊢ᵒ-Sᵒ-intro w ,ᵒ ⊢▷𝒱W)
   G {` x}{n} ()
   G {$ c}{n} ()
   G {ƛ N}{n} ()
@@ -319,7 +319,7 @@ exp-▷{𝓟}{A}{M}{N} 𝓟⊢M→N ⊢▷ℰN =
                   ((⊢ᵒ-elim ⊢▷ℰN) (suc j) ⊨𝓟sj)}
           
   Goal : 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
-  Goal = ⊢ᵒ-×-intro ⊢prog ⊢pres
+  Goal = ⊢prog ,ᵒ ⊢pres
 
 {- ℰ-frame (Monadic Bind Lemma) -}
 
@@ -346,14 +346,6 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
   let IH4 = ⊢ᵒ-▷→{𝓟}{ℰ-f-cont A B F M} IH3 in
        ⊢ᵒ-→-elim IH4 V→FV
 
-Pₒ→Qₒ : ∀{P Q : Set}{n}
-   → (P → Q)
-   → (P ₒ) n
-     --------
-   → (Q ₒ) n
-Pₒ→Qₒ {P} {Q} {zero} P→Q Pn = tt
-Pₒ→Qₒ {P} {Q} {suc n} P→Q Pn = P→Q Pn
-
 ℰ-f-cont-lemma : ∀{𝓟}{A}{B}{F}{M}{M′}
    → M —→ M′
    → 𝓟 ⊢ᵒ ℰ-f-cont A B F M
@@ -362,13 +354,14 @@ Pₒ→Qₒ {P} {Q} {suc n} P→Q Pn = P→Q Pn
    ⊢ᵒ-∀-intro λ V →
       let M→V→ℰFV : 𝓟 ⊢ᵒ (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
           M→V→ℰFV = ⊢ᵒ-∀-elim ℰ-cont V in
-   
       let M′→V→ℰFV : 𝒱⟦ B ⟧ V ∷ (M′ —↠ V)ᵒ ∷ 𝓟 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
-          M′→V→ℰFV = ⊢ᵒ-intro λ n (𝒱Vn , M′→Vn , ⊨𝓟n) →
-                ⊢ᵒ-elim M→V→ℰFV n ⊨𝓟n n ≤-refl
-                    (Pₒ→Qₒ (λ M′→V → M —→⟨ M→M′ ⟩ M′→V) M′→Vn)
-                    n ≤-refl 𝒱Vn in
-       ⊢ᵒ-→-intro (⊢ᵒ-→-intro M′→V→ℰFV)
+          M′→V→ℰFV = ⊢ᵒ-intro λ{ zero (𝒱Vn , M′→Vn , ⊨𝓟n) →
+                                  tz (ℰ⟦ A ⟧ (F ⟦ V ⟧))
+                               ; (suc n) (𝒱Vsn , M′→Vsn , ⊨𝓟sn) →
+                                 ⊢ᵒ-elim M→V→ℰFV (suc n) ⊨𝓟sn (suc n) ≤-refl
+                                 (M —→⟨ M→M′ ⟩ M′→Vsn)
+                                 (suc n) ≤-refl 𝒱Vsn } in
+      ⊢ᵒ-→-intro (⊢ᵒ-→-intro M′→V→ℰFV)
 
 ℰ-frame-aux : ∀{𝓟}{A}{B}{F} → 𝓟 ⊢ᵒ ℰ-frame-prop A B F
 ℰ-frame-aux {𝓟}{A}{B}{F} = ⊢ᵒ-lob Goal
