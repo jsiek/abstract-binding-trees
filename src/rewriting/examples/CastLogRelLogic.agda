@@ -381,77 +381,78 @@ Pₒ→Qₒ {P} {Q} {suc n} P→Q Pn = P→Q Pn
      → (ℰ-f-cont A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-frame-prop A B F ∷ 𝓟
         ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
   Goal′{M} =
-     let ⊢ℰM : 𝓟′ ⊢ᵒ ℰ⟦ B ⟧ M
-         ⊢ℰM = ⊢ᵒ-weaken ⊢ᵒ-hyp in
-     ⊢ᵒ-case3 (ℰ-progress ⊢ℰM) Mval Mred Mblame
-     where
-     𝓟′ = (ℰ-f-cont A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-frame-prop A B F ∷ 𝓟
+   let ⊢ℰM : 𝓟′ ⊢ᵒ ℰ⟦ B ⟧ M
+       ⊢ℰM = ⊢ᵒ-weaken ⊢ᵒ-hyp in
+   ⊢ᵒ-case3 (ℰ-progress ⊢ℰM) Mval Mred Mblame
+   where
+   𝓟′ = (ℰ-f-cont A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-frame-prop A B F ∷ 𝓟
 
-     Mval : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
-     Mval =
-       let ⊢𝒱M : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ 𝒱⟦ B ⟧ M
-           ⊢𝒱M = ⊢ᵒ-hyp in
-       let 𝒱V→ℰFV : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ℰ-f-cont A B F M
-           𝒱V→ℰFV = ⊢ᵒ-weaken ⊢ᵒ-hyp in
-       let Cont = λ V → (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧) in
-       let M→M→𝒱M→ℰFM : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ((M —↠ M)ᵒ →ᵒ 𝒱⟦ B ⟧ M
-                                        →ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧))
-           M→M→𝒱M→ℰFM = ⊢ᵒ-∀-elim{P = Cont} 𝒱V→ℰFV M in
-       let 𝒱M→ℰFM = ⊢ᵒ-→-elim M→M→𝒱M→ℰFM (⊢ᵒ-Sᵒ-intro (M END)) in
-       ⊢ᵒ-→-elim 𝒱M→ℰFM ⊢𝒱M
+   Mval : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+   Mval =
+     let ⊢𝒱M : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ 𝒱⟦ B ⟧ M
+         ⊢𝒱M = ⊢ᵒ-hyp in
+     let 𝒱V→ℰFV : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ℰ-f-cont A B F M
+         𝒱V→ℰFV = ⊢ᵒ-weaken ⊢ᵒ-hyp in
+     let Cont = λ V → (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧) in
+     let M→M→𝒱M→ℰFM : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ((M —↠ M)ᵒ →ᵒ 𝒱⟦ B ⟧ M
+                                      →ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧))
+         M→M→𝒱M→ℰFM = ⊢ᵒ-∀-elim{P = Cont} 𝒱V→ℰFV M in
+     let 𝒱M→ℰFM = ⊢ᵒ-→-elim M→M→𝒱M→ℰFM (⊢ᵒ-Sᵒ-intro (M END)) in
+     ⊢ᵒ-→-elim 𝒱M→ℰFM ⊢𝒱M
 
-     progMred : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ progress A (F ⟦ M ⟧)
-     progMred =
-        let redFM : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
-            redFM = Sᵒ→Tᵒ⇒⊢ᵒ ⊢ᵒ-hyp λ {(M′ , M→M′) → _ , (ξ F M→M′)} in
-        ⊢ᵒ-inj₂ (⊢ᵒ-inj₁ redFM)
+   Mred : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+   Mred = ℰ-intro progressMred
+         (Sᵒ⊢ᵒ λ redM → ⊢ᵒ-∀-intro λ N →
+          ⊢ᵒ-→-intro (Sᵒ⊢ᵒ λ FM→N → (redM⇒▷ℰN redM FM→N)))
+    where
+    progressMred : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ progress A (F ⟦ M ⟧)
+    progressMred =
+       let redFM : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
+           redFM = Sᵒ→Tᵒ⇒⊢ᵒ ⊢ᵒ-hyp λ {(M′ , M→M′) → _ , (ξ F M→M′)} in
+       ⊢ᵒ-inj₂ (⊢ᵒ-inj₁ redFM)
 
-     redM⇒▷ℰN : ∀{N} → reducible M → (F ⟦ M ⟧ —→ N)
-        → 𝓟′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
-     redM⇒▷ℰN {N} rM FM→N =
-          let finv = frame-inv2{M}{N}{F} rM FM→N in
-          let M′ = proj₁ finv in
-          let M→M′ = proj₁ (proj₂ finv) in
-          let N≡ = proj₂ (proj₂ finv) in
+    redM⇒▷ℰN : ∀{N} → reducible M → (F ⟦ M ⟧ —→ N)
+       → 𝓟′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
+    redM⇒▷ℰN {N} rM FM→N =
+         let finv = frame-inv2{M}{N}{F} rM FM→N in
+         let M′ = proj₁ finv in
+         let M→M′ = proj₁ (proj₂ finv) in
+         let N≡ = proj₂ (proj₂ finv) in
 
-          let IH : 𝓟′ ⊢ᵒ ▷ᵒ ℰ-frame-prop A B F
-              IH = ⊢ᵒ-weaken (⊢ᵒ-weaken ⊢ᵒ-hyp) in
-          let ℰM : 𝓟′ ⊢ᵒ ℰ⟦ B ⟧ M
-              ℰM = ⊢ᵒ-weaken ⊢ᵒ-hyp in
-          let ▷ℰM′ : 𝓟′ ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M′
-              ▷ℰM′ = ⊢ᵒ-→-elim
-                         (⊢ᵒ-∀-elim{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ B ⟧ N)}
-                            (ℰ-preservation ℰM) M′)
-                                (⊢ᵒ-Sᵒ-intro M→M′) in
-          let M→V→𝒱V→ℰFV : 𝓟′ ⊢ᵒ ℰ-f-cont A B F M
-              M→V→𝒱V→ℰFV = ⊢ᵒ-hyp in
-          let M′→V→𝒱V→ℰFV : 𝓟′ ⊢ᵒ ℰ-f-cont A B F M′
-              M′→V→𝒱V→ℰFV = ℰ-f-cont-lemma{𝓟′}{A}{B} M→M′ M→V→𝒱V→ℰFV in
-          let ▷ℰFM′ : 𝓟′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))
-              ▷ℰFM′ = frame-prop-lemma IH ▷ℰM′ (⊢ᵒ-mono M′→V→𝒱V→ℰFV) in
-          subst (λ N → 𝓟′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym N≡) ▷ℰFM′
+         let IH : 𝓟′ ⊢ᵒ ▷ᵒ ℰ-frame-prop A B F
+             IH = ⊢ᵒ-weaken (⊢ᵒ-weaken ⊢ᵒ-hyp) in
+         let ℰM : 𝓟′ ⊢ᵒ ℰ⟦ B ⟧ M
+             ℰM = ⊢ᵒ-weaken ⊢ᵒ-hyp in
+         let ▷ℰM′ : 𝓟′ ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M′
+             ▷ℰM′ = ⊢ᵒ-→-elim
+                        (⊢ᵒ-∀-elim{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ B ⟧ N)}
+                           (ℰ-preservation ℰM) M′)
+                               (⊢ᵒ-Sᵒ-intro M→M′) in
+         let M→V→𝒱V→ℰFV : 𝓟′ ⊢ᵒ ℰ-f-cont A B F M
+             M→V→𝒱V→ℰFV = ⊢ᵒ-hyp in
+         let M′→V→𝒱V→ℰFV : 𝓟′ ⊢ᵒ ℰ-f-cont A B F M′
+             M′→V→𝒱V→ℰFV = ℰ-f-cont-lemma{𝓟′}{A}{B} M→M′ M→V→𝒱V→ℰFV in
+         let ▷ℰFM′ : 𝓟′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))
+             ▷ℰFM′ = frame-prop-lemma IH ▷ℰM′ (⊢ᵒ-mono M′→V→𝒱V→ℰFV) in
+         subst (λ N → 𝓟′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym N≡) ▷ℰFM′
 
-     Mred : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
-     Mred = ℰ-intro progMred
-           (Sᵒ⊢ᵒ λ redM → ⊢ᵒ-∀-intro λ N →
-            ⊢ᵒ-→-intro (Sᵒ⊢ᵒ λ FM→N → (redM⇒▷ℰN redM FM→N)))
+   Mblame : (Blame M)ᵒ ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+   Mblame = ℰ-intro progressMblame
+            (Sᵒ⊢ᵒ λ blameM → ⊢ᵒ-∀-intro λ N →
+             ⊢ᵒ-→-intro (Sᵒ⊢ᵒ λ FM→N → blameM⇒▷ℰN blameM FM→N))
+    where
+    progressMblame : (Blame M)ᵒ ∷ 𝓟′ ⊢ᵒ progress A (F ⟦ M ⟧)
+    progressMblame =
+       let redFM : (Blame M)ᵒ ∷ 𝓟′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
+           redFM = Sᵒ→Tᵒ⇒⊢ᵒ ⊢ᵒ-hyp λ {isBlame → _ , (ξ-blame F)} in
+       ⊢ᵒ-inj₂ (⊢ᵒ-inj₁ redFM)
 
-     progMblame : (Blame M)ᵒ ∷ 𝓟′ ⊢ᵒ progress A (F ⟦ M ⟧)
-     progMblame =
-        let redFM : (Blame M)ᵒ ∷ 𝓟′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
-            redFM = Sᵒ→Tᵒ⇒⊢ᵒ ⊢ᵒ-hyp λ {isBlame → _ , (ξ-blame F)} in
-        ⊢ᵒ-inj₂ (⊢ᵒ-inj₁ redFM)
+    blameM⇒▷ℰN : ∀{N} → Blame M → (F ⟦ M ⟧ —→ N)
+       → 𝓟′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
+    blameM⇒▷ℰN {N} isBlame FM→N =
+        let eq = blame-frame FM→N in
+        subst (λ N → 𝓟′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym eq) (⊢ᵒ-mono ℰ-blame)
 
-     blameM⇒▷ℰN : ∀{N} → Blame M → (F ⟦ M ⟧ —→ N)
-        → 𝓟′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
-     blameM⇒▷ℰN {N} isBlame FM→N =
-         let eq = blame-frame FM→N in
-         subst (λ N → 𝓟′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym eq) (⊢ᵒ-mono ℰ-blame)
-
-     Mblame : (Blame M)ᵒ ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
-     Mblame = ℰ-intro progMblame
-              (Sᵒ⊢ᵒ λ blameM → ⊢ᵒ-∀-intro λ N →
-               ⊢ᵒ-→-intro (Sᵒ⊢ᵒ λ FM→N → blameM⇒▷ℰN blameM FM→N))
 
 ℰ-frame : ∀{𝓟}{A}{B}{F}{M}
    → 𝓟 ⊢ᵒ ℰ⟦ B ⟧ M
