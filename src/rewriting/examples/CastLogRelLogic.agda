@@ -313,7 +313,7 @@ exp-▷{𝓟}{A}{M}{N} 𝓟⊢M→N ⊢▷ℰN =
         λ { zero ⊨𝓟n .zero z≤n M→N′ → tt ;
             (suc n) ⊨𝓟n .zero z≤n M→N′ → tt ;
             (suc n) ⊨𝓟n (suc j) (s≤s j≤n) M→N′ →
-              let ⊨𝓟sj = (downClosed-⊨ᵒ 𝓟 (suc n) ⊨𝓟n (suc j) (s≤s j≤n)) in
+              let ⊨𝓟sj = (downClosed-Πᵒ 𝓟 (suc n) ⊨𝓟n (suc j) (s≤s j≤n)) in
               subst (λ X → # (ℰ⟦ A ⟧ X) j)
                   (deterministic (((⊢ᵒ-elim 𝓟⊢M→N) (suc j) ⊨𝓟sj)) M→N′)
                   ((⊢ᵒ-elim ⊢▷ℰN) (suc j) ⊨𝓟sj)}

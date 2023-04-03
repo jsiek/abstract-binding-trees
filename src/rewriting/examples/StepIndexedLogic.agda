@@ -31,6 +31,10 @@ open import Relation.Nullary using (¬_)
 open import Function using (id; _∘_)
 open import rewriting.examples.IfAndOnlyIf
 
+{- update stdlib to get this -}
+n≮0 : ∀ {n} → (n < 0) → ⊥
+n≮0 ()
+
 {-
    Step Indexed Propositions and Predicates
    Continuous and Wellfounded Functions on Step Indexed Predicates
@@ -40,18 +44,27 @@ Setₒ : Set₁
 Setₒ = ℕ → Set
 
 Predₒ : Set → Set₁
-Predₒ A = A → ℕ → Set
+Predₒ A = A → Setₒ
 
 {- Step Indexed Propositions and Predicates
    packaged with down-closed and true-at-zero.
  -}
 
 downClosed : Setₒ → Set
-downClosed P = ∀ n → P n → ∀ k → k ≤ n → P k
+downClosed S = ∀ n → S n → ∀ k → k ≤ n → S k
 
-downClosedᵖ : ∀{A : Set} → (A → ℕ → Set) → Set
+downClosedᵖ : ∀{A : Set} → (Predₒ A) → Set
 downClosedᵖ P = ∀ v → downClosed (P v)
 
+{-
+Phil:
+  Ditch Setₒ and Predₒ.
+
+  Could Predᵒ instead of record just be a
+  function from A to Setᵒ?
+  Then don't need apply.
+  
+-}
 record Setᵒ : Set₁ where
   field
     # : Setₒ
@@ -112,6 +125,12 @@ abstract
     → T ≡ᵒ R
     → S ≡ᵒ R
   ≡ᵒ-trans ST TR i = ⇔-trans (ST i) (TR i)
+
+{-
+  Phil:
+    create a module for equational reasoning and
+    then instantiate for iff and for the step-indexed sets.
+-}
 
 infixr 2 _≡ᵒ⟨_⟩_
 infix  3 _QEDᵒ
@@ -189,9 +208,44 @@ exampleᵖ {A}{P}{Q} P=Q =
 
 {------------ Continuous and Wellfounded Functions on Step Indexed Predicates -}
 
+{-
+  The following is the same as the approx function in Appel and McAllester
+  except for the case at 0.
+  Here is their version:
+  ↓ₒ k S j = j < k × (# S j)
+-}
 ↓ₒ : ℕ → Setᵒ → Setₒ
 ↓ₒ k S zero = ⊤
 ↓ₒ k S (suc j) = suc j < k × (# S (suc j))
+
+{-
+Alternative that's simpler and true at zero,
+but Jeremy had trouble with it later in the proofs.
+
+↓′ₒ : ℕ → Setᵒ → Setₒ
+↓′ₒ k S j = j ≤ k × # S j
+
+The two definitions are related as follows:
+
+↓′ₒ (suc k) S = ↓ₒ k S
+
+so it should be possible to adapt to using ↓′ₒ.
+
+
+-}
+
+{-
+Phil: idea, create a closure operator that
+turns any Setₒ into Setᵒ.
+
+close : Setₒ → Setᵒ
+close S = record { # = λ k → ∀ j → j < k → S j
+                 ; down = λ n ∀jSj k k≤n j j<k → ∀jSj j (≤-trans j<k k≤n)
+                 ; tz = λ j () }
+
+↓′ᵒ : ℕ → Setᵒ → Setᵒ
+↓′ᵒ k S = close λ j → j < k × # S j
+-}
 
 ↓ₒ-intro : ∀{i}{k}
      (S : Setᵒ)
@@ -210,6 +264,19 @@ exampleᵖ {A}{P}{Q} P=Q =
                            , (down S (suc n) Ssn (suc j) (s≤s j≤n))}
                 ; tz = tt
                 }
+
+{-
+equiv : ∀ k S → ↓′ᵒ k S ≡ᵒ ↓ᵒ k S
+equiv zero S = ≡ᵒ-intro (λ { zero ↓0Sk → tt ;
+                             (suc k) ↓0Sk → let x , y = ↓0Sk k ≤-refl in ⊥-elim (n≮0 {k} x)})
+                        λ { zero ↓0Sk j () ;
+                            (suc k) (() , _) j j<k}
+equiv (suc k) S = ≡ᵒ-intro (λ { zero ↓′skSj → tt
+                              ; (suc j) ↓′skSj →
+                                let x , y = ↓′skSj j {!!} in
+                                {!!} , {!!}})
+                           {!!}
+-}
 
 ↓ᵖ : ℕ → ∀{A} → Predᵒ A → Predᵒ A
 ↓ᵖ k P = record { # = λ v → # (↓ᵒ k (apply P v))
@@ -281,8 +348,8 @@ syntax ∀ₒ-syntax (λ x → P) = ∀ₒ[ x ] P
 
 infixr 8 _ₒ
 _ₒ  : Set → Setₒ
-(p ₒ) zero = ⊤
-(p ₒ) (suc n) = p
+(S ₒ) zero = ⊤
+(S ₒ) (suc n) = S
 
 ▷ₒ_ : Setₒ → Setₒ
 (▷ₒ P) zero =  ⊤
@@ -1206,31 +1273,31 @@ abstract
 
 {---------------------- Proof Theory for Step Indexed Logic -------------------}
 
-⊨ᵒ : List Setᵒ → Setᵒ
-⊨ᵒ [] = ⊤ᵒ
-⊨ᵒ (P ∷ 𝓟) = P ×ᵒ ⊨ᵒ 𝓟 
+Πᵒ : List Setᵒ → Setᵒ
+Πᵒ [] = ⊤ᵒ
+Πᵒ (P ∷ 𝓟) = P ×ᵒ Πᵒ 𝓟 
 
 abstract 
   infix 2 _⊢ᵒ_
   _⊢ᵒ_ : List Setᵒ → Setᵒ → Set
-  𝓟 ⊢ᵒ P = ∀ n → # (⊨ᵒ 𝓟) n → # P n
+  𝓟 ⊢ᵒ P = ∀ n → # (Πᵒ 𝓟) n → # P n
 
   ⊢ᵒ-intro : ∀{𝓟}{P}
-     → (∀ n → # (⊨ᵒ 𝓟) n → # P n)
+     → (∀ n → # (Πᵒ 𝓟) n → # P n)
      → 𝓟 ⊢ᵒ P
   ⊢ᵒ-intro 𝓟→P = 𝓟→P
 
   ⊢ᵒ-elim : ∀{𝓟}{P}
      → 𝓟 ⊢ᵒ P
-     → (∀ n → # (⊨ᵒ 𝓟) n → # P n)
+     → (∀ n → # (Πᵒ 𝓟) n → # P n)
   ⊢ᵒ-elim 𝓟⊢P = 𝓟⊢P
 
-downClosed-⊨ᵒ :
+downClosed-Πᵒ :
     (𝓟 : List Setᵒ)
-  → downClosed (# (⊨ᵒ 𝓟))
-downClosed-⊨ᵒ [] = λ n _ k _ → tt
-downClosed-⊨ᵒ (P ∷ 𝓟) n (Pn , ⊨𝓟n) k k≤n =
-    (down P n Pn k k≤n) , (downClosed-⊨ᵒ 𝓟 n ⊨𝓟n k k≤n)
+  → downClosed (# (Πᵒ 𝓟))
+downClosed-Πᵒ [] = λ n _ k _ → tt
+downClosed-Πᵒ (P ∷ 𝓟) n (Pn , ⊨𝓟n) k k≤n =
+    (down P n Pn k k≤n) , (downClosed-Πᵒ 𝓟 n ⊨𝓟n k k≤n)
 
 ▷-suc : ∀{S : Setᵒ}{n}
    → # (▷ᵒ S) (suc n)
@@ -1244,9 +1311,8 @@ abstract
      → 𝓟 ⊢ᵒ (▷ᵒ P)
   ⊢ᵒ-mono {𝓟}{P} ⊢P zero ⊨𝓟n = tt
   ⊢ᵒ-mono {𝓟}{P} ⊢P (suc n) ⊨𝓟n =
-    let ⊨𝓟n = downClosed-⊨ᵒ 𝓟 (suc n) ⊨𝓟n n (n≤1+n n) in
-    let Pn = ⊢P n ⊨𝓟n in
-    Pn
+    let ⊨𝓟n = downClosed-Πᵒ 𝓟 (suc n) ⊨𝓟n n (n≤1+n n) in
+    ⊢P n ⊨𝓟n
 
   ⊢ᵒ-lob : ∀ {𝓟}{P}
      → (▷ᵒ P) ∷ 𝓟 ⊢ᵒ P
@@ -1254,24 +1320,24 @@ abstract
      → 𝓟 ⊢ᵒ P
   ⊢ᵒ-lob {𝓟}{P} step zero ⊨𝓟n = tz P
   ⊢ᵒ-lob {𝓟}{P} step (suc n) ⊨𝓟sn =
-    let ⊨𝓟n = downClosed-⊨ᵒ 𝓟 (suc n) ⊨𝓟sn n (n≤1+n n) in
+    let ⊨𝓟n = downClosed-Πᵒ 𝓟 (suc n) ⊨𝓟sn n (n≤1+n n) in
     let Pn = ⊢ᵒ-lob {𝓟}{P} step n ⊨𝓟n in
-    let Psn = step (suc n) (Pn , ⊨𝓟sn) in 
-    Psn
+    step (suc n) (Pn , ⊨𝓟sn)
 
+  {- Phil: rename to ▷×, remove the ⊢ᵒ- part. -}
   ⊢ᵒ-▷× : ∀{𝓟 P Q}
      → 𝓟 ⊢ᵒ (▷ᵒ (P ×ᵒ Q))
        ----------------------
      → 𝓟 ⊢ᵒ (▷ᵒ P) ×ᵒ (▷ᵒ Q)
-  ⊢ᵒ-▷× ▷P×Q 0 ⊨𝓟n = tt , tt
-  ⊢ᵒ-▷× ▷P×Q (suc n) ⊨𝓟sn = ▷P×Q (suc n) ⊨𝓟sn
+  ⊢ᵒ-▷× ▷P×Q zero = λ _ → tt , tt
+  ⊢ᵒ-▷× ▷P×Q (suc n) = ▷P×Q (suc n)
 
   ⊢ᵒ-▷⊎ : ∀{𝓟 P Q}
      → 𝓟 ⊢ᵒ (▷ᵒ (P ⊎ᵒ Q))
        ----------------------
      → 𝓟 ⊢ᵒ (▷ᵒ P) ⊎ᵒ (▷ᵒ Q)
-  ⊢ᵒ-▷⊎ ▷P⊎Q zero ⊨𝓟n = inj₁ tt
-  ⊢ᵒ-▷⊎ ▷P⊎Q (suc n) ⊨𝓟n = ▷P⊎Q (suc n) ⊨𝓟n
+  ⊢ᵒ-▷⊎ ▷P⊎Q zero = λ _ → inj₁ tt
+  ⊢ᵒ-▷⊎ ▷P⊎Q (suc n) = ▷P⊎Q (suc n) 
 
   ⊢ᵒ-▷→ : ∀{𝓟 P Q}
      → 𝓟 ⊢ᵒ (▷ᵒ (P →ᵒ Q))
@@ -1399,7 +1465,7 @@ abstract
       ------------
     → 𝓟 ⊢ᵒ P →ᵒ Q
   ⊢ᵒ-→-intro {𝓟} P∷𝓟⊢Q n ⊨𝓟n j j≤n Pj =
-      P∷𝓟⊢Q j (Pj , downClosed-⊨ᵒ 𝓟 n ⊨𝓟n j j≤n)
+      P∷𝓟⊢Q j (Pj , downClosed-Πᵒ 𝓟 n ⊨𝓟n j j≤n)
 
   ⊢ᵒ-→-elim : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
     → 𝓟 ⊢ᵒ P →ᵒ Q
@@ -1516,8 +1582,8 @@ abstract
 ◁̃ (P ∷ 𝓟) = ◁ᵒ P ∷ ◁̃ 𝓟
 
 ⊨◁𝓟 : ∀{𝓟}{n}
-   → # (⊨ᵒ 𝓟) (suc n)
-   → # (⊨ᵒ (◁̃ 𝓟)) n
+   → # (Πᵒ 𝓟) (suc n)
+   → # (Πᵒ (◁̃ 𝓟)) n
 ⊨◁𝓟 {[]} {n} ⊨𝓟sn = tt
 ⊨◁𝓟 {P ∷ 𝓟} {zero} (Psn , ⊨𝓟sn) = tt , ⊨◁𝓟{𝓟} ⊨𝓟sn
 ⊨◁𝓟 {P ∷ 𝓟} {suc n} (Psn , ⊨𝓟sn) = Psn , ⊨◁𝓟{𝓟} ⊨𝓟sn
