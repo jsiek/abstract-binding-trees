@@ -391,14 +391,12 @@ Pₒ→Qₒ {P} {Q} {suc n} P→Q Pn = P→Q Pn
    Mval =
      let ⊢𝒱M : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ 𝒱⟦ B ⟧ M
          ⊢𝒱M = ⊢ᵒ-hyp in
-     let 𝒱V→ℰFV : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ℰ-f-cont A B F M
-         𝒱V→ℰFV = ⊢ᵒ-weaken ⊢ᵒ-hyp in
+     let ℰcontFM : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ℰ-f-cont A B F M
+         ℰcontFM = ⊢ᵒ-weaken ⊢ᵒ-hyp in
      let Cont = λ V → (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧) in
-     let M→M→𝒱M→ℰFM : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ((M —↠ M)ᵒ →ᵒ 𝒱⟦ B ⟧ M
-                                      →ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧))
-         M→M→𝒱M→ℰFM = ⊢ᵒ-∀-elim{P = Cont} 𝒱V→ℰFV M in
-     let 𝒱M→ℰFM = ⊢ᵒ-→-elim M→M→𝒱M→ℰFM (⊢ᵒ-Sᵒ-intro (M END)) in
-     ⊢ᵒ-→-elim 𝒱M→ℰFM ⊢𝒱M
+     ⊢ᵒ-→-elim (⊢ᵒ-→-elim (⊢ᵒ-∀-elim{P = Cont} ℰcontFM M)
+                          (⊢ᵒ-Sᵒ-intro (M END)))
+               ⊢𝒱M
 
    Mred : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mred = ℰ-intro progressMred
