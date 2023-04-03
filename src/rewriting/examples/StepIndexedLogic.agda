@@ -31,10 +31,6 @@ open import Relation.Nullary using (¬_)
 open import Function using (id; _∘_)
 open import rewriting.examples.IfAndOnlyIf
 
-{- update stdlib to get this -}
-n≮0 : ∀ {n} → (n < 0) → ⊥
-n≮0 ()
-
 {-
    Step Indexed Propositions and Predicates
    Continuous and Wellfounded Functions on Step Indexed Predicates
@@ -72,19 +68,9 @@ record Setᵒ : Set₁ where
     tz : # 0
 open Setᵒ public
 
-record Predᵒ (A : Set) : Set₁ where
-  field
-    # : A → ℕ → Set -- or A → Setᵒ?
-    down  : downClosedᵖ #
-    tz : ∀ v → # v 0
-open Predᵒ public
+Predᵒ : Set → Set₁
+Predᵒ A = A → Setᵒ
 
-apply : ∀{A} → Predᵒ A → A → Setᵒ
-apply P v = record { # = λ j → # P v j
-                   ; down = down P v
-                   ; tz = tz P v
-                   }
-                   
 {-----  Equality on Step Indexed Sets  ---------}
 
 {- Making these abstract helps Agda's inference of implicits -Jeremy -}
@@ -160,30 +146,30 @@ exampleᵒ {P}{Q} P=Q =
 abstract
   infix 2 _≡ᵖ_
   _≡ᵖ_ : ∀{A} → Predᵒ A → Predᵒ A → Set
-  P ≡ᵖ Q = ∀ v → apply P v ≡ᵒ apply Q v
+  P ≡ᵖ Q = ∀ v → P v ≡ᵒ Q v
 
   apply-≡ᵖ : ∀{A}{P Q : Predᵒ A}
      → P ≡ᵖ Q
      → (a : A)
-     → apply P a ≡ᵒ apply Q a
+     → P a ≡ᵒ Q a
   apply-≡ᵖ P=Q a = P=Q a
 
   ≡ᵖ-refl : ∀{A}{P Q : Predᵒ A}
     → P ≡ Q
     → P ≡ᵖ Q
-  ≡ᵖ-refl{A}{P}{Q} refl x = ≡ᵒ-refl{apply P x}{apply Q x} refl
+  ≡ᵖ-refl{A}{P}{Q} refl x = ≡ᵒ-refl{P x}{Q x} refl
 
   ≡ᵖ-sym : ∀{A}{P Q : Predᵒ A}
     → P ≡ᵖ Q
     → Q ≡ᵖ P
-  ≡ᵖ-sym{A}{P}{Q} PQ x = ≡ᵒ-sym{apply P x}{apply Q x} (PQ x)
+  ≡ᵖ-sym{A}{P}{Q} PQ x = ≡ᵒ-sym{P x}{Q x} (PQ x)
 
   ≡ᵖ-trans : ∀{A : Set}{P Q R : Predᵒ A}
     → P ≡ᵖ Q
     → Q ≡ᵖ R
     → P ≡ᵖ R
   ≡ᵖ-trans{A}{P}{Q}{R} PQ QR x =
-      ≡ᵒ-trans{apply P x}{apply Q x}{apply R x} (PQ x) (QR x)
+      ≡ᵒ-trans{P x}{Q x}{R x} (PQ x) (QR x)
 
 infixr 2 _≡ᵖ⟨_⟩_
 infix  3 _QEDᵖ
@@ -231,7 +217,6 @@ The two definitions are related as follows:
 
 so it should be possible to adapt to using ↓′ₒ.
 
-
 -}
 
 {-
@@ -266,6 +251,10 @@ close S = record { # = λ k → ∀ j → j < k → S j
                 }
 
 {-
+{- update stdlib to get this -}
+n≮0 : ∀ {n} → (n < 0) → ⊥
+n≮0 ()
+
 equiv : ∀ k S → ↓′ᵒ k S ≡ᵒ ↓ᵒ k S
 equiv zero S = ≡ᵒ-intro (λ { zero ↓0Sk → tt ;
                              (suc k) ↓0Sk → let x , y = ↓0Sk k ≤-refl in ⊥-elim (n≮0 {k} x)})
@@ -279,10 +268,7 @@ equiv (suc k) S = ≡ᵒ-intro (λ { zero ↓′skSj → tt
 -}
 
 ↓ᵖ : ℕ → ∀{A} → Predᵒ A → Predᵒ A
-↓ᵖ k P = record { # = λ v → # (↓ᵒ k (apply P v))
-                ; down = λ v → down (↓ᵒ k (apply P v))
-                ; tz = λ v → tt
-                }
+↓ᵖ k P = λ a → ↓ᵒ k (P a)
 
 congᵖ : ∀{A}{B} (F : Predᵒ A → Predᵒ B) → Set₁
 congᵖ F = ∀ {P Q} → P ≡ᵖ Q → (F P) ≡ᵖ (F Q)
@@ -449,9 +435,9 @@ infix 1 ∀ᵒ-syntax
 syntax ∀ᵒ-syntax (λ x → P) = ∀ᵒ[ x ] P
 
 ∀ᵒₚ : ∀{A} → Predᵒ A → Setᵒ
-∀ᵒₚ{A} P = record { # = λ k → ∀ a → # P a k
-                 ; down = λ k ∀Pk j j≤k a → down P a k (∀Pk a) j j≤k
-                 ; tz = tz P
+∀ᵒₚ{A} P = record { # = λ k → ∀ a → # (P a) k
+                 ; down = λ k ∀Pk j j≤k a → down (P a) k (∀Pk a) j j≤k
+                 ; tz = λ a → tz (P a)
                  }
 
 infixr 8 _ᵒ
@@ -483,50 +469,31 @@ infixr 8 ◁ᵒ_
 {- Packaged Step Indexed Predicates -}
 
 ⊤ᵖ : ∀{A} → Predᵒ A
-⊤ᵖ {A} = record { # = ⊤ₚ ; down = λ v n _ k _ → tt ; tz = λ v → tt }
+⊤ᵖ {A} = λ a → ⊤ᵒ
 
 ⊥ᵖ : ∀{A} → Predᵒ A
-⊥ᵖ {A} = record { # = ⊥ₚ
-                ; down = λ { a zero ⊥n .zero z≤n → tt}
-                ; tz = λ v → tt }
+⊥ᵖ {A} = λ a → ⊤ᵒ
 
 infixr 7 _×ᵖ_
 _×ᵖ_ : ∀{A} → Predᵒ A → Predᵒ A → Predᵒ A
-P ×ᵖ Q = let P×Q = λ v → apply P v ×ᵒ apply Q v in
-         record { # = λ v → # (P×Q v)
-                ; down = λ v → down (P×Q v)
-                ; tz = λ v → tz (P×Q v) }
+P ×ᵖ Q = λ a → P a ×ᵒ Q a
 
 infixr 7 _⊎ᵖ_
 _⊎ᵖ_ : ∀{A} → Predᵒ A → Predᵒ A → Predᵒ A
-P ⊎ᵖ Q = let P⊎Q = λ v → apply P v ⊎ᵒ apply Q v in
-         record { # = λ v → # (P⊎Q v)
-                ; down = λ v → down (P⊎Q v)
-                ; tz = λ v → tz (P⊎Q v) }
-
+P ⊎ᵖ Q = λ a → P a ⊎ᵒ Q a
 
 infixr 6 _→ᵖ_
 _→ᵖ_ : ∀{A} → Predᵒ A → Predᵒ A → Predᵒ A
-P →ᵖ Q = let P→Q = λ a → (apply P a →ᵒ apply Q a) in
-         record { # = λ a → # (P→Q a)
-                ; down = λ a → down (apply P a →ᵒ apply Q a)
-                ; tz = λ a → tz (apply P a →ᵒ apply Q a)
-                }
+P →ᵖ Q = λ a → (P a →ᵒ Q a)
 
 flipᵖ : ∀{A}{B}
    → (A → Predᵒ B)
      -------------
    → (B → Predᵒ A)
-flipᵖ F b = record { # = λ a → # (F a) b
-                 ; down = λ a → down (F a) b
-                 ; tz = λ a → tz (F a) b }   
+flipᵖ F b = λ a → F a b
 
 ∀ᵖ : ∀{A : Set}{B} → (A → Predᵒ B) → Predᵒ B
-∀ᵖ {A}{B} F = let ∀P = λ b → ∀ᵒₚ {A} (flipᵖ F b) in
-              record { # = λ b → # (∀P b)
-                     ; down = λ b → down (∀P b)
-                     ; tz = λ b → tz (∀P b)
-                     }
+∀ᵖ {A}{B} F = λ b → ∀ᵒₚ {A} (flipᵖ F b)
 
 ∀ᵖ-syntax = ∀ᵖ
 infix 1 ∀ᵖ-syntax
@@ -534,24 +501,14 @@ syntax ∀ᵖ-syntax (λ x → P) = ∀ᵖ[ x ] P
 
 infixr 8 _ᵖ
 _ᵖ  : Set → ∀{A} → Predᵒ A
-(S ᵖ) {A} = let Sᵖ = λ a → (S ᵒ) in
-            record { # = λ a → # (Sᵖ a)
-                   ; down = λ a → down (Sᵖ a)
-                   ; tz = λ a → tz (Sᵖ a) }
+(S ᵖ) {A} = λ a → (S ᵒ)
 
 infixr 8 _ˢ
 _ˢ  : Setᵒ → ∀{A} → Predᵒ A
-(S ˢ) {A} = let Sˢ = λ a → S in
-            record { # = λ a → # (Sˢ a)
-                   ; down = λ a → down (Sˢ a)
-                   ; tz = λ a → tz (Sˢ a)
-                   }
+(S ˢ) {A} = λ a → S
 
 ▷ᵖ : ∀{A} → Predᵒ A → Predᵒ A
-▷ᵖ P = let ▷P = λ v → ▷ᵒ (apply P v) in
-       record { # = λ v → # (▷P v)
-              ; down = λ v → down (▷P v)
-              ; tz = λ v → tz (▷P v) }
+▷ᵖ P = λ a → ▷ᵒ (P a)
 
 abstract 
   ↓ᵖ-zero : ∀{A}{P Q : Predᵒ A} → ↓ᵖ zero P ≡ᵖ ↓ᵖ zero Q
@@ -584,42 +541,39 @@ lemma15b{A} P {j}{k} F j≤k =
 
 dc-iter : ∀(i : ℕ){A}
    → (F : Predᵒ A → Predᵒ A)
-   → downClosedᵖ (# (iter i F ⊤ᵖ))
-dc-iter zero F = down ⊤ᵖ
-dc-iter (suc i) F = down (F (iter i F ⊤ᵖ))
+   → ∀ v → downClosed (#(iter i F ⊤ᵖ v))
+dc-iter zero F = λ v n _ k _ → tt
+dc-iter (suc i) F = λ v → down (F (iter i F ⊤ᵖ) v)
 
 μₚ : ∀{A} → (Predᵒ A → Predᵒ A) → Predₒ A
-μₚ F a k = #(iter (suc k) F ⊤ᵖ) a k
+μₚ F a k = #(iter (suc k) F ⊤ᵖ a) k
 
 μᵖ : ∀{A}
    → Fun A A Wellfounded
      -------------------
    → Predᵒ A
-μᵖ F = record { # = μₚ (fun F)
-              ; down = dc-μ F
-              ; tz = λ v → tz (fun F (id ⊤ᵖ)) v
-              }
+μᵖ F a =  record { # = μₚ (fun F) a
+                 ; down = dc-μ F a
+                 ; tz = tz ((fun F (id ⊤ᵖ)) a)
+                 }
   where
   dc-μ : ∀{A}
        (F : Fun A A Wellfounded)
-     → downClosedᵖ (μₚ (fun F)) 
-  dc-μ {A} F v k μFvk zero j≤k = tz (fun F ⊤ᵖ) v
-  dc-μ {A} F v (suc k′) μFvk (suc j′) (s≤s j′≤k) = T
-    where
-    Y : # (iter (suc (suc k′)) (fun F) ⊤ᵖ) v (suc j′)
-    Y = dc-iter (suc (suc k′)) (fun F) v (suc k′) μFvk (suc j′) (s≤s j′≤k)
-    Z : # (↓ᵖ (suc (suc j′)) (iter (suc (suc k′)) (fun F) ⊤ᵖ)) v (suc j′)
-    Z = ↓ₒ-intro (apply (iter (suc (suc k′)) (fun F) ⊤ᵖ) v) ≤-refl Y
-    W : # (↓ᵖ (suc (suc j′)) (iter (suc (suc j′)) (fun F) ⊤ᵖ)) v (suc j′)
-    W = let eq = lemma15b ⊤ᵖ F (s≤s (s≤s j′≤k)) in
-        let eq′ = (≡ᵖ-sym{A}
-                     {↓ᵖ (suc (suc j′)) (fun F (fun F (iter j′ (fun F) ⊤ᵖ)))}
-                 {↓ᵖ (suc (suc j′)) (fun F (fun F (iter k′ (fun F) ⊤ᵖ)))} eq) in
-        ≡ᵒ-to (apply-≡ᵖ eq′ v) (suc j′) Z 
-
-    T : #((iter (suc (suc j′)) (fun F) ⊤ᵖ)) v (suc j′)
-    T = proj₂ W
-
+     → (a : A)
+     → downClosed (μₚ (fun F) a)
+  dc-μ {A} F a k μFak zero j≤k = tz (fun F ⊤ᵖ a)
+  dc-μ {A} F a (suc k′) μFak (suc j′) (s≤s j′≤k) = T
+   where
+   Y : # (iter (suc (suc k′)) (fun F) ⊤ᵖ a) (suc j′)
+   Y = dc-iter (suc (suc k′)) (fun F) a (suc k′) μFak (suc j′) (s≤s j′≤k)
+   Z : # (↓ᵖ (suc (suc j′)) (iter (suc (suc k′)) (fun F) ⊤ᵖ) a) (suc j′)
+   Z = ↓ₒ-intro ((iter (suc (suc k′)) (fun F) ⊤ᵖ) a) ≤-refl Y
+   W : # (↓ᵖ (suc (suc j′)) (iter (suc (suc j′)) (fun F) ⊤ᵖ) a) (suc j′)
+   W = let eq = lemma15b ⊤ᵖ F (s≤s (s≤s j′≤k)) in
+       ≡ᵒ-to (apply-≡ᵖ (≡ᵖ-sym eq) a) (suc j′) Z 
+   T : #(iter (suc (suc j′)) (fun F) ⊤ᵖ a) (suc j′)
+   T = proj₂ W
+   
 {------------ Auxiliary Lemmas ----------}
 
 abstract
@@ -643,9 +597,9 @@ abstract
      → P ×ᵖ Q  ≡ᵖ  P′ ×ᵖ Q′
   cong-×ᵖ {A}{P}{P′}{Q}{Q′} PP′ QQ′ v k = ⇔-intro to fro
     where
-    to : # (P ×ᵖ Q) v k → # (P′ ×ᵖ Q′) v k
+    to : # ((P ×ᵖ Q) v) k → # ((P′ ×ᵖ Q′) v) k
     to (Pvk , Qvk) = (⇔-to (PP′ v k) Pvk) , (⇔-to (QQ′ v k) Qvk)
-    fro  : #(P′ ×ᵖ Q′) v k → #(P ×ᵖ Q) v k
+    fro  : #((P′ ×ᵖ Q′) v) k → #((P ×ᵖ Q) v) k
     fro (P′vk , Q′vk) = (⇔-fro (PP′ v k) P′vk) , (⇔-fro (QQ′ v k) Q′vk)
 
   cong-⊎ᵖ : ∀{A}{P P′ Q Q′ : Predᵒ A}
@@ -654,10 +608,10 @@ abstract
      → P ⊎ᵖ Q  ≡ᵖ  P′ ⊎ᵖ Q′
   cong-⊎ᵖ {A}{P}{P′}{Q}{Q′} PP′ QQ′ v k = ⇔-intro to fro
     where
-    to : #(P ⊎ᵖ Q) v k → #(P′ ⊎ᵖ Q′) v k
+    to : #((P ⊎ᵖ Q) v) k → #((P′ ⊎ᵖ Q′) v) k
     to (inj₁ Pvk) = inj₁ (⇔-to (PP′ v k) Pvk)
     to (inj₂ Qvk) = inj₂ (⇔-to (QQ′ v k) Qvk)
-    fro : #(P′ ⊎ᵖ Q′) v k → #(P ⊎ᵖ Q) v k
+    fro : #((P′ ⊎ᵖ Q′) v) k → #((P ⊎ᵖ Q) v) k
     fro (inj₁ P′vk) = inj₁ (⇔-fro (PP′ v k) P′vk)
     fro (inj₂ Q′vk) = inj₂ (⇔-fro (QQ′ v k) Q′vk)
 
@@ -722,7 +676,7 @@ abstract
                    ; (suc j) j<si (sj<k , Pxsj) →
                    sj<k , let Qsj = P→Q (suc j) j<si Pxsj in Qsj})})
      (λ {(si<k , P→Q) →
-         si<k , λ { zero j<si Pxj → tz Q x
+         si<k , λ { zero j<si Pxj → tz (Q x)
                   ; (suc j) j<si Pxj →
                      let ↓Qsj = P→Q (suc j) j<si
                                    ((≤-trans (s≤s j<si) si<k) , Pxj) in
@@ -869,12 +823,12 @@ abstract
      → ↓ᵖ k (P ⊎ᵖ Q) ≡ᵖ ↓ᵖ k ((↓ᵖ k P) ⊎ᵖ (↓ᵖ k Q))
   down-⊎ {A}{P}{Q} {k} x i = ⇔-intro (to i) (fro i)
     where
-    to : ∀ i →  #(↓ᵖ k (P ⊎ᵖ Q)) x i → #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q)) x i
+    to : ∀ i →  #(↓ᵖ k (P ⊎ᵖ Q) x) i → #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q) x) i
     to zero _ = tt
     to (suc i) (si<k , inj₁ Psi) = si<k , (inj₁ (si<k , Psi))
     to (suc i) (si<k , inj₂ Qsi) = si<k , (inj₂ (si<k , Qsi))
 
-    fro : ∀ i → #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q)) x i → #(↓ᵖ k (P ⊎ᵖ Q)) x i
+    fro : ∀ i → #(↓ᵖ k (↓ᵖ k P ⊎ᵖ ↓ᵖ k Q) x) i → #(↓ᵖ k (P ⊎ᵖ Q) x) i
     fro zero x = tt
     fro (suc i) (si<k , inj₁ (_ , Psi)) = si<k , inj₁ Psi
     fro (suc i) (si<k , inj₂ (_ , Qsi)) = si<k , (inj₂ Qsi)
@@ -917,11 +871,11 @@ abstract
      → congᵖ (λ P → (fun F) P ⊎ᵖ (fun G) P)
   cong-⊎ {A}{B} F G {P}{Q} PQ x i = ⇔-intro to fro
     where
-    to : #((fun F) P ⊎ᵖ (fun G) P) x i → #((fun F) Q ⊎ᵖ (fun G) Q) x i
+    to : #(((fun F) P ⊎ᵖ (fun G) P) x) i → #(((fun F) Q ⊎ᵖ (fun G) Q) x) i
     to (inj₁ FPi) = inj₁ (⇔-to (congr F {P}{Q} PQ x i) FPi)
     to (inj₂ GPi) = inj₂ (⇔-to (congr G {P}{Q} PQ x i) GPi)
 
-    fro : #((fun F) Q ⊎ᵖ (fun G) Q) x i → #((fun F) P ⊎ᵖ (fun G) P) x i
+    fro : #(((fun F) Q ⊎ᵖ (fun G) Q) x) i → #(((fun F) P ⊎ᵖ (fun G) P) x) i
     fro (inj₁ FQi) = inj₁ (⇔-fro (congr F {P}{Q} PQ x i) FQi)
     fro (inj₂ GQi) = inj₂ (⇔-fro (congr G PQ x i) GQi)
 
@@ -948,12 +902,12 @@ abstract
       (λ {(si<k , ∀FP) → si<k ,
            (λ v →
                let ↓F↓P = ⇔-to (good (F v) x (suc i))
-                            (↓ₒ-intro (apply (fun (F v) P) x) si<k (∀FP v) ) in
+                            (↓ₒ-intro ((fun (F v) P) x) si<k (∀FP v) ) in
                proj₂ ↓F↓P)})
       (λ {(si<k , ∀FP) → si<k ,
          (λ v →
              let ↓FP = ⇔-fro (good (F v) x (suc i))
-                  (↓ₒ-intro ((apply (fun (F v) (↓ᵖ k P)) x)) si<k (∀FP v) ) in
+                  (↓ₒ-intro (((fun (F v) (↓ᵖ k P)) x)) si<k (∀FP v) ) in
              proj₂ ↓FP)})
 
   wellfounded-all : ∀{A B C}
@@ -965,13 +919,13 @@ abstract
       (λ{(s≤s i≤k , ∀FP) →
           s≤s i≤k
           , (λ v → let ↓F↓P = ⇔-to (good (F v) x (suc i))
-                            (↓ₒ-intro (apply (fun (F v) P) x)
+                            (↓ₒ-intro ((fun (F v) P) x)
                                (≤-trans (s≤s i≤k) ≤-refl) (∀FP v))
                    in proj₂ ↓F↓P)})
       (λ {(i≤k , ∀F↓P) →
           i≤k
           , (λ v → let ↓FP = ⇔-fro (good (F v) x (suc i))
-                          (↓ₒ-intro (apply (fun (F v) (↓ᵖ k P)) x) i≤k (∀F↓P v))
+                          (↓ₒ-intro ((fun (F v) (↓ᵖ k P)) x) i≤k (∀F↓P v))
                    in proj₂ ↓FP)})
 
 goodness-all : ∀{A B C}{K}
@@ -1030,7 +984,7 @@ abstract
   down-▷ : ∀{B}{k}(P : Predᵒ B) → ↓ᵖ (suc k) (▷ᵖ P) ≡ᵖ ↓ᵖ (suc k) (▷ᵖ (↓ᵖ k P))
   down-▷ P v zero = ⇔-intro (λ x → tt) (λ x → tt)
   down-▷ P v (suc zero) =
-      ⇔-intro (λ {(a , b) → a , tt}) (λ {(a , b) → a , (tz P v)})
+      ⇔-intro (λ {(a , b) → a , tt}) (λ {(a , b) → a , (tz (P v))})
   down-▷ P v (suc (suc i)) =
     ⇔-intro
     (λ {(s≤s i≤1+k , ▷Pvi) →
@@ -1079,10 +1033,7 @@ abstract
 flip : ∀{A}{B}{C}{K}
    → (A → Fun C B K)
    → (B → (Predᵒ C → Predᵒ A))
-flip F b P = record { # = λ a → # (fun (F a) P) b
-                    ; down = λ a → down (fun (F a) P) b
-                    ; tz = λ a → tz (fun (F a) P) b
-                    }
+flip F b P = λ a → (fun (F a) P) b
 
 abstract
   goodness-flip : ∀{A}{B}{C}{K}
@@ -1112,21 +1063,21 @@ flipᶠ {A}{B}{C}{K} F b =
 abstract
   continuous-recur : ∀{A}{B}
      → (a : A)
-     → continuous{A}{B} (λ P → apply P a ˢ)
+     → continuous{A}{B} (λ P → P a ˢ)
   continuous-recur a {P}{k} v zero = ⇔-intro (λ x → tt) (λ x → tt)
   continuous-recur a {P}{k} v (suc i) =
       ⇔-intro
       (λ {(si<k , Psi) → si<k , (si<k , Psi)})
       (λ {(si<k , (_ , Psi)) → si<k , Psi})
 
-  cong-recur : ∀ {A}{B}(a : A) → congᵖ{A}{B} (λ P → apply P a ˢ)
+  cong-recur : ∀ {A}{B}(a : A) → congᵖ{A}{B} (λ P → P a ˢ)
   cong-recur a PQ v i = PQ a i
 
 recur : ∀{A}{B}
    → A
    → Fun A B Continuous
 recur a =
-  record { fun = λ P → (apply P a) ˢ 
+  record { fun = λ P → (P a) ˢ 
          ; good = λ {P} {k} → continuous-recur a {P}{k}
          ; congr = cong-recur a
          }
@@ -1146,29 +1097,29 @@ abstract
   lemma18a (suc k′) F v (suc j′) =
       let k = suc k′ in
       let j = suc j′ in
-      #(↓ᵖ k (μᵖ F)) v j
+      #((↓ᵖ k (μᵖ F)) v) j
                                   ⇔⟨ ⇔-intro (λ { (j<k , μFvj) → j<k , μFvj})
                                               (λ {(j<k , μFvj) → j<k , μFvj}) ⟩
-      (j < k  ×  (#(μᵖ F) v j))              ⇔⟨ ⇔-intro (λ {(a , b) → a , b})
+      (j < k  ×  (#((μᵖ F) v) j))             ⇔⟨ ⇔-intro (λ {(a , b) → a , b})
                                                          (λ {(a , b) → a , b}) ⟩
-      (j < k  ×  #(iter (suc j) (fun F) ⊤ᵖ) v j)
+      (j < k  ×  #((iter (suc j) (fun F) ⊤ᵖ) v) j)
                                      ⇔⟨ ⇔-intro (λ {(a , b) → a , ≤-refl , b})
                                           (λ {(s≤s a , (b , c)) → s≤s a , c}) ⟩
-      (j < k  ×  #(↓ᵖ (suc j) (iter (suc j) (fun F) ⊤ᵖ)) v j)         ⇔⟨ EQ4 ⟩
-      (j < k  ×  #(↓ᵖ (suc j) (iter k (fun F) ⊤ᵖ)) v j)
+      (j < k  ×  #((↓ᵖ (suc j) (iter (suc j) (fun F) ⊤ᵖ)) v) j)        ⇔⟨ EQ4 ⟩
+      (j < k  ×  #((↓ᵖ (suc j) (iter k (fun F) ⊤ᵖ)) v) j)
                                     ⇔⟨ ⇔-intro (λ {(a , b) → a , (proj₂ b)})
                                              (λ {(a , b) → a , (≤-refl , b)}) ⟩
-      (j < k  ×  #(iter k (fun F) ⊤ᵖ) v j)
+      (j < k  ×  #((iter k (fun F) ⊤ᵖ) v) j)
                                   ⇔⟨ ⇔-intro (λ {(a , b) → a , b}) (λ z → z) ⟩
-      #(↓ᵖ k (iter k (fun F) ⊤ᵖ)) v j
+      #((↓ᵖ k (iter k (fun F) ⊤ᵖ)) v) j
       QED
       where
         k : ℕ
         k = suc k′
         j : ℕ
         j = suc j′
-        EQ4 : (j < k  ×  #(↓ᵖ (suc j) (iter (suc j) (fun F) ⊤ᵖ)) v j)
-               ⇔ (j < k  ×  #(↓ᵖ (suc j) (iter k (fun F) ⊤ᵖ)) v j)  
+        EQ4 : (j < k  ×  #((↓ᵖ (suc j) (iter (suc j) (fun F) ⊤ᵖ)) v) j)
+               ⇔ (j < k  ×  #((↓ᵖ (suc j) (iter k (fun F) ⊤ᵖ)) v) j)  
         EQ4 = ⇔-intro (λ{(s≤s j≤k′ , (j<1+j , FμF)) → s≤s j≤k′ ,
           let ↓FμF = ⇔-to (lemma15b ⊤ᵖ F (s≤s j≤k′) v (suc j′)) (j<1+j , FμF)
           in j<1+j , proj₂ ↓FμF})
@@ -1204,12 +1155,11 @@ lemma19 {A} k F =
       ↓ᵖ k ((fun F) (μᵖ F))
     QEDᵖ
 
-
 abstract
   down-eq : ∀{A}{P : Predᵒ A}{x}
      → (i : ℕ)
-     → (#(↓ᵖ (suc i) P) x i) ⇔ (# P x i)
-  down-eq {A}{P}{x} zero = ⇔-intro (λ _ → tz P x) (λ _ → tt)
+     → (#((↓ᵖ (suc i) P) x) i) ⇔ (# (P x) i)
+  down-eq {A}{P}{x} zero = ⇔-intro (λ _ → tz (P x)) (λ _ → tt)
   down-eq {A}{P}{x} (suc i′) =
       ⇔-intro (λ (i<1+i , Pxi) → Pxi) (λ Pxi → s≤s (s≤s ≤-refl) , Pxi)
 
@@ -1217,7 +1167,7 @@ abstract
   equiv-down : ∀{A}{P Q : Predᵒ A}
      → (∀ k → ↓ᵖ k P ≡ᵖ ↓ᵖ k Q)
      → P ≡ᵖ Q
-  equiv-down {A} {P} {Q} ↓PQ x zero = ⇔-intro (λ _ → tz Q x) (λ _ → tz P x)
+  equiv-down {A} {P} {Q} ↓PQ x zero = ⇔-intro (λ _ → tz (Q x)) (λ _ → tz (P x))
   equiv-down {A} {P} {Q} ↓PQ x (suc i′) =
     ⇔-intro
     (λ Pxi →
@@ -1370,26 +1320,26 @@ abstract
   ≡ᵒ⇒⊢ᵒ 𝓟⊢P P=Q n ⊨𝓟n = ⇔-to (P=Q n) (𝓟⊢P n ⊨𝓟n)
 
   ≡ᵖ⇒⊢ᵒ : ∀ 𝓟 {A} (P Q : Predᵒ A) {a : A}
-    → 𝓟 ⊢ᵒ apply P a
+    → 𝓟 ⊢ᵒ P a
     → P ≡ᵖ Q
       ---------------
-    → 𝓟 ⊢ᵒ apply Q a
+    → 𝓟 ⊢ᵒ Q a
   ≡ᵖ⇒⊢ᵒ 𝓟 {A} P Q {a} 𝓟⊢P P=Q n ⊨𝓟n =
       let Pan = 𝓟⊢P n ⊨𝓟n in
       let Qan = ⇔-to (P=Q a n) Pan in
       Qan
 
 ⊢ᵒ-unfold : ∀ {A}{𝓟}{F : Fun A A Wellfounded}{a : A}
-  → 𝓟 ⊢ᵒ apply (μᵖ F) a
+  → 𝓟 ⊢ᵒ (μᵖ F) a
     ------------------------------
-  → 𝓟 ⊢ᵒ apply ((fun F) (μᵖ F)) a
+  → 𝓟 ⊢ᵒ ((fun F) (μᵖ F)) a
 ⊢ᵒ-unfold {A}{𝓟}{F}{a} ⊢μa =
     ≡ᵖ⇒⊢ᵒ 𝓟 (μᵖ F) ((fun F) (μᵖ F)) ⊢μa (fixpoint F)
 
 ⊢ᵒ-fold : ∀ {A}{𝓟}{F : Fun A A Wellfounded}{a : A}
-  → 𝓟 ⊢ᵒ apply ((fun F) (μᵖ F)) a
+  → 𝓟 ⊢ᵒ ((fun F) (μᵖ F)) a
     ------------------------------
-  → 𝓟 ⊢ᵒ apply (μᵖ F) a
+  → 𝓟 ⊢ᵒ (μᵖ F) a
 ⊢ᵒ-fold {A}{𝓟}{F}{a} ⊢μa =
     ≡ᵖ⇒⊢ᵒ 𝓟 ((fun F) (μᵖ F)) (μᵖ F) ⊢μa (≡ᵖ-sym (fixpoint F))
 
@@ -1510,7 +1460,7 @@ abstract
   ⊢ᵒ-∀-elim2 ⊢∀P a n ⊨𝓟n = ⊢∀P n ⊨𝓟n a
 
   ⊢ᵒ-∀ₚ-intro : ∀{𝓟 : List Setᵒ }{A}{P : Predᵒ A}
-    → (∀ a → 𝓟 ⊢ᵒ apply P a)
+    → (∀ a → 𝓟 ⊢ᵒ P a)
       ----------------------
     → 𝓟 ⊢ᵒ ∀ᵒₚ P
   ⊢ᵒ-∀ₚ-intro ∀Pa n ⊨𝓟n a = ∀Pa a n ⊨𝓟n
@@ -1519,7 +1469,7 @@ abstract
     → 𝓟 ⊢ᵒ ∀ᵒₚ P
     → (a : A)
       ---------------
-    → 𝓟 ⊢ᵒ apply P a
+    → 𝓟 ⊢ᵒ P a
   ⊢ᵒ-∀ₚ-elim ⊢∀P a n ⊨𝓟n = ⊢∀P n ⊨𝓟n a
 
   ⊢ᵒ-hyp : ∀{𝓟 : List Setᵒ}{S : Setᵒ}
