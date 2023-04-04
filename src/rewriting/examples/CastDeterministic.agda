@@ -28,7 +28,7 @@ open import Structures using (extensionality)
 open import rewriting.examples.Cast
 
 inject-eq : ∀{G}{g : Ground G}{N N′}
-   → (N ⟨ g !⟩) ≡ (N′ ⟨ g !⟩)
+   → (N ⟨ G , g !⟩) ≡ (N′ ⟨ G , g !⟩)
    → N ≡ N′
 inject-eq {G} {g} {N} {.N} refl = refl
 
@@ -57,19 +57,19 @@ deterministic (ξ (v ·□) M—→N) (ξ-blame (v₁ ·□)) =
     ⊥-elim (blame-irreducible M—→N)
 deterministic (ξ (v ·□) M—→N) (β x) =
     ⊥-elim (value-irreducible x M—→N)
-deterministic (ξ (□⟨ g !⟩) M—→N) (ξ (□⟨ g₁ !⟩) M—→N′)
+deterministic (ξ (□⟨ G , g !⟩) M—→N) (ξ (□⟨ _ , g₁ !⟩) M—→N′)
     with deterministic M—→N M—→N′
 ... | refl = refl
-deterministic (ξ (□⟨ g !⟩) M—→N) (ξ-blame (□⟨ g₁ !⟩)) =
+deterministic (ξ (□⟨ G , g !⟩) M—→N) (ξ-blame (□⟨ _ , g₁ !⟩)) =
     ⊥-elim (blame-irreducible M—→N)
-deterministic (ξ (□⟨ h ?⟩) M—→N) (ξ (□⟨ h₁ ?⟩) M—→N′)
+deterministic (ξ (□⟨ H , h ?⟩) M—→N) (ξ (□⟨ _ , h₁ ?⟩) M—→N′)
     with deterministic M—→N M—→N′
 ... | refl = refl
-deterministic (ξ (□⟨ h ?⟩) M—→N) (ξ-blame (□⟨ h₁ ?⟩)) =
+deterministic (ξ (□⟨ H , h ?⟩) M—→N) (ξ-blame (□⟨ _ , h₁ ?⟩)) =
     ⊥-elim (blame-irreducible M—→N)
-deterministic (ξ □⟨ h ?⟩ r) (collapse v g .h refl) =
+deterministic (ξ □⟨ H , h ?⟩ r) (collapse v g .h refl) =
     ⊥-elim (value-irreducible (v 〈 g 〉) r)
-deterministic (ξ □⟨ h ?⟩ r) (collide v g .h neq refl) = 
+deterministic (ξ □⟨ H , h ?⟩ r) (collide v g .h neq refl) = 
     ⊥-elim (value-irreducible (v 〈 g 〉) r)
 deterministic (ξ-blame (□· M)) (ξ (□· M₁) M—→N′) =
     ⊥-elim (blame-irreducible M—→N′)
@@ -82,33 +82,33 @@ deterministic (ξ-blame (v ·□)) (ξ (v₁ ·□) M—→N′) =
     ⊥-elim (blame-irreducible M—→N′)
 deterministic (ξ-blame (() ·□)) (ξ-blame (□· .blame))
 deterministic (ξ-blame (v ·□)) (ξ-blame (v₁ ·□)) = refl
-deterministic (ξ-blame (□⟨ g !⟩)) (ξ (□⟨ g₁ !⟩) M—→N′) =
+deterministic (ξ-blame (□⟨ G , g !⟩)) (ξ (□⟨ _ , g₁ !⟩) M—→N′) =
     ⊥-elim (blame-irreducible M—→N′)
-deterministic (ξ-blame (□⟨ g !⟩)) (ξ-blame (□⟨ g₁ !⟩)) = refl
-deterministic (ξ-blame (□⟨ h ?⟩)) (ξ (□⟨ h₁ ?⟩) M—→N′) =
+deterministic (ξ-blame (□⟨ G , g !⟩)) (ξ-blame (□⟨ _ , g₁ !⟩)) = refl
+deterministic (ξ-blame (□⟨ H , h ?⟩)) (ξ (□⟨ _ , h₁ ?⟩) M—→N′) =
     ⊥-elim (blame-irreducible M—→N′)
-deterministic (ξ-blame (□⟨ h ?⟩)) (ξ-blame (□⟨ h₁ ?⟩)) = refl
+deterministic (ξ-blame (□⟨ H , h ?⟩)) (ξ-blame (□⟨ _ , h₁ ?⟩)) = refl
 deterministic (β x) (ξ (□· M) M—→N′) = ⊥-elim (value-irreducible (ƛ̬ _) M—→N′)
 deterministic (β x) (ξ (v ·□) M—→N′) = ⊥-elim (value-irreducible x M—→N′)
 deterministic (β ()) (ξ-blame (v ·□))
 deterministic (β x) (β x₁) = refl
 --deterministic (collapse x g) (ξ (□↓ p) M—→N′) =
 --    ⊥-elim (value-irreducible (x ⇑ g) M—→N′)
-deterministic (collapse v g h refl) (ξξ □⟨ h₁ ?⟩ refl refl r) =
+deterministic (collapse v g h refl) (ξξ □⟨ _ , h₁ ?⟩ refl refl r) =
     ⊥-elim (value-irreducible (v 〈 g 〉) r)
 deterministic (collapse v g h refl) (ξξ-blame (□· M) ())
 deterministic (collapse v g h refl) (ξξ-blame (v₁ ·□) ())
-deterministic (collapse v g h refl) (ξξ-blame □⟨ g₁ !⟩ ())
-deterministic (collapse v g h refl) (ξξ-blame □⟨ h₁ ?⟩ ())
+deterministic (collapse v g h refl) (ξξ-blame □⟨ _ , g₁ !⟩ ())
+deterministic (collapse v g h refl) (ξξ-blame □⟨ _ , h₁ ?⟩ ())
 deterministic (collapse v g h refl) (collapse x g₁ h₁ refl) = refl
 deterministic (collapse v g h refl) (collide x g₁ .h neq refl) =
     ⊥-elim (neq refl)
-deterministic (collide v g h neq refl) (ξξ □⟨ h₁ ?⟩ refl refl r) =
+deterministic (collide v g h neq refl) (ξξ □⟨ _ , h₁ ?⟩ refl refl r) =
     ⊥-elim (value-irreducible (v 〈 g 〉) r)
 deterministic (collide v g h neq refl) (ξξ-blame (□· M) ())
 deterministic (collide v g h neq refl) (ξξ-blame (v₁ ·□) ())
-deterministic (collide v g h neq refl) (ξξ-blame □⟨ g₁ !⟩ ())
-deterministic (collide v g h neq refl) (ξξ-blame □⟨ h₁ ?⟩ ())
+deterministic (collide v g h neq refl) (ξξ-blame □⟨ _ , g₁ !⟩ ())
+deterministic (collide v g h neq refl) (ξξ-blame □⟨ _ , h₁ ?⟩ ())
 deterministic (collide v g h neq refl) (collapse x g₁ .h refl) =
     ⊥-elim (neq refl)
 deterministic (collide v g h neq refl) (collide x g₁ .h x₁ x₂) = refl
@@ -137,18 +137,18 @@ frame-inv2 {L} {.blame} {v ·□} (L′ , L→L′) (ξξ-blame (v₁ ·□) ref
     ⊥-elim (blame-irreducible L→L′)
 frame-inv2 {L} {_} {v ·□} (L′ , L→L′) (β w) =
     ⊥-elim (value-irreducible w L→L′)
-frame-inv2 {L} {N} {□⟨ g !⟩} (L′ , L→L′) (ξξ □⟨ g₁ !⟩ refl refl FL→N)
+frame-inv2 {L} {N} {□⟨ G , g !⟩} (L′ , L→L′) (ξξ □⟨ _ , g₁ !⟩ refl refl FL→N)
     with deterministic L→L′ FL→N
 ... | refl = L′ , (L→L′ , refl)
-frame-inv2 {L} {.blame} {□⟨ g !⟩} (L′ , L→L′) (ξξ-blame □⟨ g₁ !⟩ refl) =
+frame-inv2 {L} {.blame} {□⟨ G , g !⟩} (L′ , L→L′) (ξξ-blame □⟨ _ , g₁ !⟩ refl) =
     ⊥-elim (blame-irreducible L→L′)
-frame-inv2 {L} {_} {□⟨ h ?⟩} (L′ , L→L′) (ξξ □⟨ h₁ ?⟩ refl refl FL→N)
+frame-inv2 {L} {_} {□⟨ H , h ?⟩} (L′ , L→L′) (ξξ □⟨ _ , h₁ ?⟩ refl refl FL→N)
     with deterministic L→L′ FL→N
 ... | refl = L′ , (L→L′ , refl)
-frame-inv2 {L} {.blame} {□⟨ h ?⟩} (L′ , L→L′) (ξξ-blame □⟨ h₁ ?⟩ refl) =
+frame-inv2 {L} {.blame} {□⟨ H , h ?⟩} (L′ , L→L′) (ξξ-blame □⟨ _ , h₁ ?⟩ refl) =
     ⊥-elim (blame-irreducible L→L′)
-frame-inv2 {L} {N} {□⟨ h ?⟩} (L′ , L→L′) (collapse v g .h refl) = 
+frame-inv2 {L} {N} {□⟨ H , h ?⟩} (L′ , L→L′) (collapse v g .h refl) = 
     ⊥-elim (value-irreducible (v 〈 g 〉) L→L′)
-frame-inv2 {L} {.blame} {□⟨ h ?⟩} (L′ , L→L′) (collide v g .h neq refl) =
+frame-inv2 {L} {.blame} {□⟨ H , h ?⟩} (L′ , L→L′) (collide v g .h neq refl) =
     ⊥-elim (value-irreducible (v 〈 g 〉) L→L′)
 

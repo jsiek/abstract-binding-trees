@@ -99,16 +99,16 @@ data Op : Set where
   op-lam : Op
   op-app : Op
   op-lit : ∀{ι : Base} → rep ι → Op
-  op-inject : {A : Type} → Ground A → Op
-  op-project : {A : Type} → Ground A → Op
+  op-inject : (A : Type) → Ground A → Op
+  op-project : (A : Type) → Ground A → Op
   op-blame : Op
 
 sig : Op → List Sig
 sig op-lam = (ν ■) ∷ []
 sig op-app = ■ ∷ ■ ∷ []
 sig (op-lit n) = []
-sig (op-inject g) = ■ ∷ []
-sig (op-project h) = ■ ∷ []
+sig (op-inject G g) = ■ ∷ []
+sig (op-project H h) = ■ ∷ []
 sig (op-blame) = []
 
 open import rewriting.AbstractBindingTree Op sig renaming (ABT to Term) public
@@ -117,8 +117,8 @@ pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
 infixl 7  _·_
 pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
 pattern $ k = (op-lit k) ⦅ nil ⦆
-pattern _⟨_!⟩ M g = (op-inject g) ⦅ cons (ast M) nil ⦆
-pattern _⟨_?⟩ M g = (op-project g) ⦅ cons (ast M) nil ⦆
+pattern _⟨_,_!⟩ M G g = (op-inject G g) ⦅ cons (ast M) nil ⦆
+pattern _⟨_,_?⟩ M H h = (op-project H h) ⦅ cons (ast M) nil ⦆
 pattern blame = (op-blame) ⦅ nil ⦆
 
 data Blame : Term → Set where
@@ -127,7 +127,7 @@ data Blame : Term → Set where
 data Value : Term → Set where
   ƛ̬_ : (N : Term) → Value (ƛ N)
   $̬_ : ∀{ι} → (k : rep ι) → Value ($ k)
-  _〈_〉 : ∀{V G} → Value V → (g : Ground G) → Value (V ⟨ g !⟩)
+  _〈_〉 : ∀{V G} → Value V → (g : Ground G) → Value (V ⟨ G , g !⟩)
 
 value : ∀ {V : Term}
   → (v : Value V)
@@ -207,13 +207,13 @@ data _⊢_⦂_ where
     → Γ ⊢ M ⦂ G
     → (g : Ground G)
       --------------------
-    → Γ ⊢ M ⟨ g !⟩ ⦂ ★
+    → Γ ⊢ M ⟨ G , g !⟩ ⦂ ★
 
   ⊢⟨?⟩ : ∀{Γ M H}
     → Γ ⊢ M ⦂ ★
     → (h : Ground H)
       --------------------
-    → Γ ⊢ M ⟨ h ?⟩ ⦂ H
+    → Γ ⊢ M ⟨ H , h ?⟩ ⦂ H
 
   ⊢blame : ∀{Γ A}
       ---------------
@@ -221,8 +221,8 @@ data _⊢_⦂_ where
 
 infix  6 □·_
 infix  6 _·□
-infix  6 □⟨_!⟩
-infix  6 □⟨_?⟩
+infix  6 □⟨_,_!⟩
+infix  6 □⟨_,_?⟩
 
 data Frame : Set where
 
@@ -236,14 +236,14 @@ data Frame : Set where
       -------------
     → Frame
 
-  □⟨_!⟩ : 
-      {G : Type}
+  □⟨_,_!⟩ : 
+      (G : Type)
     → (g : Ground G)
       -----
     → Frame
 
-  □⟨_?⟩ : 
-      {H : Type}
+  □⟨_,_?⟩ : 
+      (H : Type)
     → (h : Ground H)
       -----
     → Frame
@@ -253,8 +253,8 @@ data Frame : Set where
 _⟦_⟧ : Frame → Term → Term
 (□· M) ⟦ L ⟧        =  L · M
 (v ·□) ⟦ M ⟧        =  value v · M
-(□⟨ g !⟩) ⟦ M ⟧  =  M ⟨ g !⟩
-(□⟨ h ?⟩) ⟦ M ⟧  =  M ⟨ h ?⟩
+(□⟨ G , g !⟩) ⟦ M ⟧  =  M ⟨ G , g !⟩
+(□⟨ H , h ?⟩) ⟦ M ⟧  =  M ⟨ H , h ?⟩
 
 {- Reduction -}
 
@@ -283,18 +283,18 @@ data _—→_ : Term → Term → Set where
   collapse : ∀{G} {M V : Term}
     → Value V
     → (g h : Ground G)
-    → M ≡ V ⟨ g !⟩
+    → M ≡ V ⟨ G , g !⟩
       ---------------------------
-    → M ⟨ h ?⟩ —→ V
+    → M ⟨ G , h ?⟩ —→ V
 
   collide  : ∀{G H} {M V : Term}
     → Value V
     → (g : Ground G)
     → (h : Ground H)
     → G ≢ H
-    → M ≡ V ⟨ g !⟩
+    → M ≡ V ⟨ G , g !⟩
       ---------------------------------
-    → M ⟨ h ?⟩ —→ blame
+    → M ⟨ H , h ?⟩ —→ blame
 
 pattern ξ F M—→N = ξξ F refl refl M—→N
 pattern ξ-blame F = ξξ-blame F refl
@@ -368,22 +368,22 @@ value-irreducible v V—→M = nope V—→M v
    nope : ∀ {V M : Term} → V —→ M → Value V → ⊥
    nope (ξξ (□· M) () x₁ V→M) (ƛ̬ N)
    nope (ξξ (v ·□) () x₁ V→M) (ƛ̬ N)
-   nope (ξξ □⟨ g !⟩ () x₁ V→M) (ƛ̬ N)
-   nope (ξξ □⟨ h ?⟩ () x₁ V→M) (ƛ̬ N)
+   nope (ξξ □⟨ G , g !⟩ () x₁ V→M) (ƛ̬ N)
+   nope (ξξ □⟨ H , h ?⟩ () x₁ V→M) (ƛ̬ N)
    nope (ξξ-blame (□· M) ()) (ƛ̬ N)
    nope (ξξ-blame (v ·□) ()) (ƛ̬ N)
-   nope (ξξ-blame □⟨ g !⟩ ()) (ƛ̬ N)
-   nope (ξξ-blame □⟨ h ?⟩ ()) (ƛ̬ N)
+   nope (ξξ-blame □⟨ G , g !⟩ ()) (ƛ̬ N)
+   nope (ξξ-blame □⟨ H , h ?⟩ ()) (ƛ̬ N)
    nope (ξξ (□· M) () x₁ V→M) ($̬ k)
    nope (ξξ (v ·□) () x₁ V→M) ($̬ k)
-   nope (ξξ □⟨ g !⟩ () x₁ V→M) ($̬ k)
-   nope (ξξ □⟨ h ?⟩ () x₁ V→M) ($̬ k)
+   nope (ξξ □⟨ G , g !⟩ () x₁ V→M) ($̬ k)
+   nope (ξξ □⟨ H , h ?⟩ () x₁ V→M) ($̬ k)
    nope (ξξ-blame (□· M) ()) ($̬ k)
    nope (ξξ-blame (v ·□) ()) ($̬ k)
-   nope (ξξ-blame □⟨ g !⟩ ()) ($̬ k)
-   nope (ξξ-blame □⟨ h ?⟩ ()) ($̬ k)
-   nope (ξ □⟨ g !⟩ V→M) (v 〈 g 〉) = nope V→M v
-   nope (ξ-blame □⟨ _ !⟩) (() 〈 g 〉)
+   nope (ξξ-blame □⟨ G , g !⟩ ()) ($̬ k)
+   nope (ξξ-blame □⟨ H , h ?⟩ ()) ($̬ k)
+   nope (ξ □⟨ G , g !⟩ V→M) (v 〈 g 〉) = nope V→M v
+   nope (ξ-blame □⟨ _ , _ !⟩) (() 〈 g 〉)
 
 value-irred : ∀{V : Term} → Value V → irred V
 value-irred {V} v (N , V→N) = value-irreducible v V→N
@@ -401,22 +401,22 @@ blame—↠ : ∀{N}
 blame—↠ {.blame} (.blame END) = refl
 blame—↠ {N} (.blame —→⟨ ξξ (□· M) () x₁ x₂ ⟩ red)
 blame—↠ {N} (.blame —→⟨ ξξ (v ·□) () x₁ x₂ ⟩ red)
-blame—↠ {N} (.blame —→⟨ ξξ □⟨ g !⟩ () x₁ x₂ ⟩ red)
-blame—↠ {N} (.blame —→⟨ ξξ □⟨ h ?⟩ () x₁ x₂ ⟩ red)
+blame—↠ {N} (.blame —→⟨ ξξ □⟨ G , g !⟩ () x₁ x₂ ⟩ red)
+blame—↠ {N} (.blame —→⟨ ξξ □⟨ H , h ?⟩ () x₁ x₂ ⟩ red)
 blame—↠ {N} (.blame —→⟨ ξξ-blame (□· M) () ⟩ red)
 blame—↠ {N} (.blame —→⟨ ξξ-blame (v ·□) () ⟩ red)
-blame—↠ {N} (.blame —→⟨ ξξ-blame □⟨ g !⟩ () ⟩ red)
-blame—↠ {N} (.blame —→⟨ ξξ-blame □⟨ h ?⟩ () ⟩ red)
+blame—↠ {N} (.blame —→⟨ ξξ-blame □⟨ G , g !⟩ () ⟩ red)
+blame—↠ {N} (.blame —→⟨ ξξ-blame □⟨ H , h ?⟩ () ⟩ red)
 
 blame-irreducible : ∀{M} → ¬ (blame —→ M)
 blame-irreducible {M} (ξξ (□· M₁) () x₁ blame→M)
 blame-irreducible {M} (ξξ (v ·□) () x₁ blame→M)
-blame-irreducible {M} (ξξ □⟨ g !⟩ () x₁ blame→M)
-blame-irreducible {M} (ξξ □⟨ h ?⟩ () x₁ blame→M)
+blame-irreducible {M} (ξξ □⟨ G , g !⟩ () x₁ blame→M)
+blame-irreducible {M} (ξξ □⟨ H , h ?⟩ () x₁ blame→M)
 blame-irreducible {.blame} (ξξ-blame (□· M) ())
 blame-irreducible {.blame} (ξξ-blame (v ·□) ())
-blame-irreducible {.blame} (ξξ-blame □⟨ g !⟩ ())
-blame-irreducible {.blame} (ξξ-blame □⟨ h ?⟩ ())
+blame-irreducible {.blame} (ξξ-blame □⟨ G , g !⟩ ())
+blame-irreducible {.blame} (ξξ-blame □⟨ H , h ?⟩ ())
 
 app-multi-inv : ∀{L M N}
   → (r1 : L · M —↠ N)
@@ -466,38 +466,38 @@ app-multi-inv {.(ƛ _)} {M} {N} (.(ƛ _ · M) —→⟨ β v ⟩ M′—↠N) =
   inj₂ (inj₂ (inj₁ (ƛ _ , M , (_ END) , ƛ̬ _ , (M END) , v , (_ —→⟨ β v ⟩ M′—↠N) , refl)))
 
 inject-multi-inv : ∀{M N}{G}{g : Ground G}
-  → (red : M ⟨ g !⟩ —↠ N)
-  → (∃[ M′ ] Σ[ r1 ∈ M —↠ M′ ] (N ≡ M′ ⟨ g !⟩ × len r1 ≡ len red))
-    ⊎ (∃[ V ] Σ[ r1 ∈ M —↠ V ] Value V × Σ[ r2 ∈ V ⟨ g !⟩ —↠ N ] len red ≡ len r1 + len r2)
+  → (red : M ⟨ G , g !⟩ —↠ N)
+  → (∃[ M′ ] Σ[ r1 ∈ M —↠ M′ ] (N ≡ M′ ⟨ G , g !⟩ × len r1 ≡ len red))
+    ⊎ (∃[ V ] Σ[ r1 ∈ M —↠ V ] Value V × Σ[ r2 ∈ V ⟨ G , g !⟩ —↠ N ] len red ≡ len r1 + len r2)
     ⊎ N ≡ blame
-inject-multi-inv {M}{g = g} (.(_ ⟨ _ !⟩) END) = inj₁ (M , (_ END) , refl , refl)
-inject-multi-inv (.(_ ⟨ _ !⟩) —→⟨ ξξ □⟨ g !⟩ refl refl r1 ⟩ r2)
+inject-multi-inv {M}{g = g} (.(_ ⟨ _ , _ !⟩) END) = inj₁ (M , (_ END) , refl , refl)
+inject-multi-inv (.(_ ⟨ _ , _ !⟩) —→⟨ ξξ □⟨ G , g !⟩ refl refl r1 ⟩ r2)
     with inject-multi-inv r2
 ... | inj₁ (M′ , →M′ , eq , eqlen) = inj₁ (_ , (_ —→⟨ r1 ⟩ →M′) , eq , cong suc eqlen)
 ... | inj₂ (inj₁ (V , →V , v , →N , eqlen)) = inj₂ (inj₁ (_ , (_ —→⟨ r1 ⟩ →V) , v , →N , cong suc eqlen))
 ... | inj₂ (inj₂ refl) = inj₂ (inj₂ refl)
-inject-multi-inv (.(_ ⟨ _ !⟩) —→⟨ ξξ-blame □⟨ g !⟩ x ⟩ red)
+inject-multi-inv (.(_ ⟨ _ , _ !⟩) —→⟨ ξξ-blame □⟨ G , g !⟩ x ⟩ red)
     with blame—↠ red
 ... | refl = inj₂ (inj₂ refl)
 
 project-multi-inv2 : ∀{M N}{G}{g : Ground G}
-  → (red : M ⟨ g ?⟩ —↠ N)
-  → (∃[ M′ ] Σ[ r1 ∈ M —↠ M′ ] (N ≡ M′ ⟨ g ?⟩ × len r1 ≡ len red))
-    ⊎ (∃[ V ] Σ[ r1 ∈ M —↠ V ] Value V × Σ[ r2 ∈ V ⟨ g ?⟩ —↠ N ] len red ≡ len r1 + len r2)
+  → (red : M ⟨ G , g ?⟩ —↠ N)
+  → (∃[ M′ ] Σ[ r1 ∈ M —↠ M′ ] (N ≡ M′ ⟨ G , g ?⟩ × len r1 ≡ len red))
+    ⊎ (∃[ V ] Σ[ r1 ∈ M —↠ V ] Value V × Σ[ r2 ∈ V ⟨ G , g ?⟩ —↠ N ] len red ≡ len r1 + len r2)
     ⊎ N ≡ blame
-project-multi-inv2 (.(_ ⟨ _ ?⟩) END) = inj₁ (_ , (_ END) , refl , refl)
-project-multi-inv2 (.(_ ⟨ _ ?⟩) —→⟨ ξξ □⟨ h ?⟩ refl refl r ⟩ rs)
+project-multi-inv2 (.(_ ⟨ _ , _ ?⟩) END) = inj₁ (_ , (_ END) , refl , refl)
+project-multi-inv2 (.(_ ⟨ _ , _ ?⟩) —→⟨ ξξ □⟨ H , h ?⟩ refl refl r ⟩ rs)
     with project-multi-inv2 rs
 ... | inj₁ (M′ , M→M′ , refl , eq) = inj₁ (M′ , (_ —→⟨ r ⟩ M→M′) , refl , cong suc eq)
 ... | inj₂ (inj₁ (V , M→V , v , Vg→N , eq)) = inj₂ (inj₁ (V , (_ —→⟨ r ⟩ M→V ) , v , Vg→N , cong suc eq))
 ... | inj₂ (inj₂ refl) = inj₂ (inj₂ refl)
-project-multi-inv2 (.(_ ⟨ _ ?⟩) —→⟨ ξξ-blame □⟨ h ?⟩ refl ⟩ rs)
+project-multi-inv2 (.(_ ⟨ _ , _ ?⟩) —→⟨ ξξ-blame □⟨ H , h ?⟩ refl ⟩ rs)
     with blame—↠ rs
 ... | refl = inj₂ (inj₂ refl)
-project-multi-inv2 (.(_ ⟨ _ ?⟩) —→⟨ collapse v g h refl ⟩ rs) =
-    inj₂ (inj₁ ((_ ⟨ g !⟩) , (_ END) , (v 〈 g 〉) , (_ —→⟨ collapse v g h refl ⟩ rs) , refl))
-project-multi-inv2 (.(_ ⟨ _ ?⟩) —→⟨ collide v g h neq refl ⟩ rs) =
-    inj₂ (inj₁ ((_ ⟨ g !⟩) , (_ END) , (v 〈 g 〉) , (_ —→⟨ collide v g h neq refl ⟩ rs) , refl))
+project-multi-inv2 (.(_ ⟨ _ , _ ?⟩) —→⟨ collapse v g h refl ⟩ rs) =
+    inj₂ (inj₁ ((_ ⟨ _ , g !⟩) , (_ END) , (v 〈 g 〉) , (_ —→⟨ collapse v g h refl ⟩ rs) , refl))
+project-multi-inv2 (.(_ ⟨ _ , _ ?⟩) —→⟨ collide v g h neq refl ⟩ rs) =
+    inj₂ (inj₁ ((_ ⟨ _ , g !⟩) , (_ END) , (v 〈 g 〉) , (_ —→⟨ collide v g h neq refl ⟩ rs) , refl))
 
 app-inv-left : ∀{L M N}
   → (r1 : L · M —↠ N)
@@ -560,29 +560,29 @@ frame-inv : ∀{F M N}
     ⊎ N ≡ blame
 frame-inv {□· M} {L} {N} r1 irN = app-inv-left r1 irN 
 frame-inv {v ·□} {M} {N} r1 irN = app-inv-right r1 v irN
-frame-inv {□⟨ g !⟩} {M} (_ END) irN = inj₁ (_ , (_ END) , irM , (_ END) , refl)
+frame-inv {□⟨ G , g !⟩} {M} (_ END) irN = inj₁ (_ , (_ END) , irM , (_ END) , refl)
     where irM : irred M
-          irM (M′ , M→M′) = irN (_ , (ξ □⟨ g !⟩ M→M′))
-frame-inv {□⟨ g !⟩} {M} {N} (.(□⟨ g !⟩ ⟦ M ⟧) —→⟨ ξ □⟨ g₁ !⟩ r1 ⟩ r2) irN
-    with frame-inv{□⟨ g !⟩} r2 irN
+          irM (M′ , M→M′) = irN (_ , (ξ □⟨ G , g !⟩ M→M′))
+frame-inv {□⟨ G , g !⟩} {M} {N} (.(□⟨ G , g !⟩ ⟦ M ⟧) —→⟨ ξ □⟨ _ , g₁ !⟩ r1 ⟩ r2) irN
+    with frame-inv{□⟨ G , g !⟩} r2 irN
 ... | inj₁ (M′ , r3 , irM′ , r4 , eq) = inj₁ (_ , (_ —→⟨ r1 ⟩ r3) , irM′ , r4 , cong suc eq)
 ... | inj₂ refl = inj₂ refl
-frame-inv {□⟨ g !⟩} {M} {N} (.(□⟨ g !⟩ ⟦ M ⟧) —→⟨ ξ-blame □⟨ g₁ !⟩ ⟩ r2) irN
+frame-inv {□⟨ G , g !⟩} {M} {N} (.(□⟨ G , g !⟩ ⟦ M ⟧) —→⟨ ξ-blame □⟨ _ , g₁ !⟩ ⟩ r2) irN
     with blame—↠ r2
 ... | refl = inj₂ refl
-frame-inv {□⟨ h ?⟩} {M} (_ END) irN = inj₁ (_ , (_ END) , irM , (_ END) , refl)
+frame-inv {□⟨ H , h ?⟩} {M} (_ END) irN = inj₁ (_ , (_ END) , irM , (_ END) , refl)
     where irM : irred M
-          irM (M′ , M→M′) = irN (_ , (ξ □⟨ h ?⟩ M→M′))
-frame-inv {□⟨ h ?⟩} {M} {N} (.(□⟨ h ?⟩ ⟦ M ⟧) —→⟨ ξ □⟨ h₁ ?⟩ r1 ⟩ r2) irN
-    with frame-inv{□⟨ h ?⟩} r2 irN
+          irM (M′ , M→M′) = irN (_ , (ξ □⟨ H , h ?⟩ M→M′))
+frame-inv {□⟨ H , h ?⟩} {M} {N} (.(□⟨ H , h ?⟩ ⟦ M ⟧) —→⟨ ξ □⟨ _ , h₁ ?⟩ r1 ⟩ r2) irN
+    with frame-inv{□⟨ H , h ?⟩} r2 irN
 ... | inj₁ (M′ , r3 , irM′ , r4 , eq) = inj₁ (_ , (_ —→⟨ r1 ⟩ r3) , irM′ , r4 , cong suc eq)
 ... | inj₂ refl = inj₂ refl
-frame-inv {□⟨ h ?⟩} {M} {N} (.(□⟨ h ?⟩ ⟦ M ⟧) —→⟨ ξ-blame □⟨ h₁ ?⟩ ⟩ r2) irN
+frame-inv {□⟨ H , h ?⟩} {M} {N} (.(□⟨ H , h ?⟩ ⟦ M ⟧) —→⟨ ξ-blame □⟨ _ , h₁ ?⟩ ⟩ r2) irN
     with blame—↠ r2
 ... | refl = inj₂ refl
-frame-inv {□⟨ h ?⟩} {M} {N} (.(□⟨ h ?⟩ ⟦ M ⟧) —→⟨ collapse v g .h refl ⟩ r2) irN =
+frame-inv {□⟨ H , h ?⟩} {M} {N} (.(□⟨ H , h ?⟩ ⟦ M ⟧) —→⟨ collapse v g .h refl ⟩ r2) irN =
   inj₁ (M , (_ END) , value-irred (v 〈 g 〉) , (_ —→⟨ collapse v g h refl ⟩ r2) , refl)
-frame-inv {□⟨ h ?⟩} {M} {N} (.(□⟨ h ?⟩ ⟦ M ⟧) —→⟨ collide v g .h eq refl ⟩ r2) irN =
+frame-inv {□⟨ H , h ?⟩} {M} {N} (.(□⟨ H , h ?⟩ ⟦ M ⟧) —→⟨ collide v g .h eq refl ⟩ r2) irN =
   inj₁ (M , (_ END) , value-irred (v 〈 g 〉) , (_ —→⟨ collide v g h eq refl ⟩ r2) , refl)
 
 frame-blame : ∀{F}{M}{N}
@@ -604,14 +604,14 @@ frame-blame {v ·□} {.((v ·□) ⟦ blame ⟧)} (.((v ·□) ⟦ blame ⟧) �
 frame-blame {v ·□} {.((v ·□) ⟦ blame ⟧)} (.((v ·□) ⟦ blame ⟧) —→⟨ ξξ-blame F x ⟩ M→N) refl irN 
     with blame—↠ M→N
 ... | refl = refl
-frame-blame {□⟨ g !⟩} {.(□⟨ g !⟩ ⟦ blame ⟧)} (.(□⟨ g !⟩ ⟦ blame ⟧) —→⟨ ξξ □⟨ g₁ !⟩ refl refl r ⟩ M→N) refl irN =
+frame-blame {□⟨ G , g !⟩} {.(□⟨ G , g !⟩ ⟦ blame ⟧)} (.(□⟨ G , g !⟩ ⟦ blame ⟧) —→⟨ ξξ □⟨ _ , g₁ !⟩ refl refl r ⟩ M→N) refl irN =
   ⊥-elim (blame-irreducible r)
-frame-blame {□⟨ g !⟩} {.(□⟨ g !⟩ ⟦ blame ⟧)} (.(□⟨ g !⟩ ⟦ blame ⟧) —→⟨ ξξ-blame F x ⟩ M→N) refl irN
+frame-blame {□⟨ G , g !⟩} {.(□⟨ G , g !⟩ ⟦ blame ⟧)} (.(□⟨ G , g !⟩ ⟦ blame ⟧) —→⟨ ξξ-blame F x ⟩ M→N) refl irN
     with blame—↠ M→N
 ... | refl = refl
-frame-blame {□⟨ h ?⟩} {.(□⟨ h ?⟩ ⟦ blame ⟧)} (.(□⟨ h ?⟩ ⟦ blame ⟧) —→⟨ ξξ □⟨ h₁ ?⟩ refl refl r ⟩ M→N) refl irN = 
+frame-blame {□⟨ H , h ?⟩} {.(□⟨ H , h ?⟩ ⟦ blame ⟧)} (.(□⟨ H , h ?⟩ ⟦ blame ⟧) —→⟨ ξξ □⟨ _ , h₁ ?⟩ refl refl r ⟩ M→N) refl irN = 
   ⊥-elim (blame-irreducible r)
-frame-blame {□⟨ h ?⟩} {.(□⟨ h ?⟩ ⟦ blame ⟧)} (.(□⟨ h ?⟩ ⟦ blame ⟧) —→⟨ ξξ-blame □⟨ h₁ ?⟩ x ⟩ M→N) refl irN
+frame-blame {□⟨ H , h ?⟩} {.(□⟨ H , h ?⟩ ⟦ blame ⟧)} (.(□⟨ H , h ?⟩ ⟦ blame ⟧) —→⟨ ξξ-blame □⟨ _ , h₁ ?⟩ x ⟩ M→N) refl irN
     with blame—↠ M→N
 ... | refl = refl
 
@@ -638,10 +638,10 @@ blame-frame {v ·□} {N} (ξξ (□· M) refl refl Fb→N) =
 blame-frame {v ·□} {N} (ξξ (v₁ ·□) refl refl Fb→N) =
     ⊥-elim (blame-irreducible Fb→N)
 blame-frame {v ·□} {.blame} (ξξ-blame F x) = refl
-blame-frame {□⟨ g !⟩} {.(□⟨ g₁ !⟩ ⟦ _ ⟧)} (ξξ □⟨ g₁ !⟩ refl refl Fb→N) =
+blame-frame {□⟨ G , g !⟩} {_} (ξξ □⟨ _ , g₁ !⟩ refl refl Fb→N) =
     ⊥-elim (blame-irreducible Fb→N)
-blame-frame {□⟨ g !⟩} {.blame} (ξξ-blame F x) = refl
-blame-frame {□⟨ h ?⟩} {N} (ξξ □⟨ h₁ ?⟩ refl refl Fb→N) =
+blame-frame {□⟨ G , g !⟩} {.blame} (ξξ-blame F x) = refl
+blame-frame {□⟨ H , h ?⟩} {N} (ξξ □⟨ _ , h₁ ?⟩ refl refl Fb→N) =
     ⊥-elim (blame-irreducible Fb→N)
-blame-frame {□⟨ h ?⟩} {.blame} (ξξ-blame □⟨ h₁ ?⟩ x) = refl
+blame-frame {□⟨ H , h ?⟩} {.blame} (ξξ-blame □⟨ _ , h₁ ?⟩ x) = refl
 

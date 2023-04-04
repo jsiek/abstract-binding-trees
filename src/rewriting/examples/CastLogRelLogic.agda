@@ -39,7 +39,7 @@ open import rewriting.examples.StepIndexedLogic
 ℰᶠ⟦ A ⟧ M = recur (inj₂ (A , M))
 
 pre-𝒱 : Type → Term → Fun ℰ⊎𝒱-type ⊤ Wellfounded
-pre-𝒱 ★ (op-inject{G} g ⦅ cons (ast V) nil ⦆) = -- (V ⟨ g !⟩ )
+pre-𝒱 ★ (V ⟨ G , g !⟩ ) =
     (Value V)ᶠ ×ᶠ ▷ᶠ (𝒱ᶠ⟦ G ⟧ V)
 pre-𝒱 ($ₜ ι) (op-lit {ι′} c ⦅ nil ⦆) =   -- ($ c)
     (ι ≡ ι′)ᶠ
@@ -51,23 +51,23 @@ pre-𝒱 ★ (` x) = (⊥) ᶠ
 pre-𝒱 ★ ($ c) = (⊥) ᶠ
 pre-𝒱 ★ (ƛ N) = (⊥) ᶠ
 pre-𝒱 ★ (L · M) = (⊥) ᶠ
-pre-𝒱 ★ (M ⟨ h ?⟩) = (⊥) ᶠ
+pre-𝒱 ★ (M ⟨ H , h ?⟩) = (⊥) ᶠ
 pre-𝒱 ★ blame = (⊥) ᶠ
 
 -- bogus cases for ι
 pre-𝒱 ($ₜ ι) (` x) = (⊥) ᶠ
 pre-𝒱 ($ₜ ι) (ƛ N) = (⊥) ᶠ
 pre-𝒱 ($ₜ ι) (L · M) = (⊥) ᶠ
-pre-𝒱 ($ₜ ι) (M ⟨ g !⟩) = (⊥) ᶠ
-pre-𝒱 ($ₜ ι) (M ⟨ h ?⟩) = (⊥) ᶠ
+pre-𝒱 ($ₜ ι) (M ⟨ G , g !⟩) = (⊥) ᶠ
+pre-𝒱 ($ₜ ι) (M ⟨ H , h ?⟩) = (⊥) ᶠ
 pre-𝒱 ($ₜ ι) blame = (⊥) ᶠ
 
 -- bogus cases for A ⇒ B
 pre-𝒱 (A ⇒ B) (` x) = (⊥) ᶠ
 pre-𝒱 (A ⇒ B) ($ c) = (⊥) ᶠ
 pre-𝒱 (A ⇒ B) (L · M) = (⊥) ᶠ
-pre-𝒱 (A ⇒ B) (M ⟨ g !⟩) = (⊥) ᶠ
-pre-𝒱 (A ⇒ B) (M ⟨ h ?⟩) = (⊥) ᶠ
+pre-𝒱 (A ⇒ B) (M ⟨ G , g !⟩) = (⊥) ᶠ
+pre-𝒱 (A ⇒ B) (M ⟨ H , h ?⟩) = (⊥) ᶠ
 pre-𝒱 (A ⇒ B) blame = (⊥) ᶠ
 
 -- Type Safety = Progress & Preservation
@@ -91,11 +91,8 @@ pre-ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
 ℰ⟦_⟧ : (A : Type) → Term → Setᵒ
 ℰ⟦ A ⟧ M = (μᵖ ℰ⊎𝒱) (inj₂ (A , M))
 
-ℰ⊎𝒱-fixpointᵖ : μᵖ ℰ⊎𝒱 ≡ᵖ (fun ℰ⊎𝒱) (μᵖ ℰ⊎𝒱)
-ℰ⊎𝒱-fixpointᵖ = fixpoint ℰ⊎𝒱
-
 ℰ⊎𝒱-fixpointᵒ : ∀ X → (μᵖ ℰ⊎𝒱) X ≡ᵒ ((fun ℰ⊎𝒱) (μᵖ ℰ⊎𝒱)) X
-ℰ⊎𝒱-fixpointᵒ X = apply-≡ᵖ ℰ⊎𝒱-fixpointᵖ X 
+ℰ⊎𝒱-fixpointᵒ X = apply-≡ᵖ (fixpoint ℰ⊎𝒱) X 
 
 progress : Type → Term → Setᵒ
 progress A M = (𝒱⟦ A ⟧ M) ⊎ᵒ (reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ
@@ -103,12 +100,9 @@ progress A M = (𝒱⟦ A ⟧ M) ⊎ᵒ (reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ
 preservation : Type → Term → Setᵒ
 preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)))
 
-ℰ-prop : Type → Term → Setᵒ
-ℰ-prop A M = (progress A M) ×ᵒ (preservation A M)
-
-ℰ-def : ∀{A}{M}
+ℰ-stmt : ∀{A}{M}
   → ℰ⟦ A ⟧ M ≡ᵒ progress A M ×ᵒ preservation A M
-ℰ-def {A}{M} =
+ℰ-stmt {A}{M} =
   ℰ⟦ A ⟧ M                                                ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
   (μᵖ ℰ⊎𝒱) (inj₂ (A , M))          ≡ᵒ⟨ ℰ⊎𝒱-fixpointᵒ (inj₂ (A , M)) ⟩
   ((fun ℰ⊎𝒱) (μᵖ ℰ⊎𝒱)) (inj₂ (A , M))
@@ -117,31 +111,21 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
   progress A M ×ᵒ preservation A M
   QEDᵒ
 
-ℰ-unfold : ∀ {𝓟}{A}{M}
-  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-  → 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
-ℰ-unfold 𝓟⊢ℰM = substᵒ ℰ-def 𝓟⊢ℰM 
-
 ℰ-progress : ∀ {𝓟}{A}{M}
   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
   → 𝓟 ⊢ᵒ progress A M
-ℰ-progress 𝓟⊢ℰM = proj₁ᵒ (ℰ-unfold 𝓟⊢ℰM)
+ℰ-progress 𝓟⊢ℰM = proj₁ᵒ (substᵒ ℰ-stmt 𝓟⊢ℰM )
 
 ℰ-preservation : ∀ {𝓟}{A}{M}
   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
   → 𝓟 ⊢ᵒ preservation A M
-ℰ-preservation 𝓟⊢ℰM = proj₂ᵒ (ℰ-unfold 𝓟⊢ℰM)
-
-ℰ-fold : ∀ {𝓟}{A}{M}
-  → 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
-  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-ℰ-fold 𝓟⊢prog×pres = substᵒ (≡ᵒ-sym (ℰ-def)) 𝓟⊢prog×pres
+ℰ-preservation 𝓟⊢ℰM = proj₂ᵒ (substᵒ ℰ-stmt 𝓟⊢ℰM )
 
 ℰ-intro : ∀ {𝓟}{A}{M}
   → 𝓟 ⊢ᵒ progress A M
   → 𝓟 ⊢ᵒ preservation A M
   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-ℰ-intro 𝓟⊢prog 𝓟⊢pres = ℰ-fold (𝓟⊢prog ,ᵒ 𝓟⊢pres)
+ℰ-intro 𝓟⊢prog 𝓟⊢pres = substᵒ (≡ᵒ-sym (ℰ-stmt)) (𝓟⊢prog ,ᵒ 𝓟⊢pres)
 
 ℰ-blame : ∀{𝓟}{A} → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ blame
 ℰ-blame {𝓟}{A} =
@@ -149,7 +133,7 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
             (Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ blame→ → ⊥-elim (blame-irreducible blame→)))
 
 𝒱⇒Value : ∀ {k} A M → # (𝒱⟦ A ⟧ M) (suc k) → Value M
-𝒱⇒Value ★ (M ⟨ g !⟩) (v , _) = v 〈 g 〉
+𝒱⇒Value ★ (M ⟨ G , g !⟩) (v , _) = v 〈 g 〉
 𝒱⇒Value ($ₜ ι) ($ c) 𝒱M = $̬ c
 𝒱⇒Value (A ⇒ B) (ƛ N) 𝒱M = ƛ̬ N
 -- vacuous cases
@@ -157,19 +141,19 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 𝒱⇒Value ★ ($ c) ()
 𝒱⇒Value ★ (ƛ N) ()
 𝒱⇒Value ★ (L · M) ()
-𝒱⇒Value ★ (M ⟨ h ?⟩) ()
+𝒱⇒Value ★ (M ⟨ H , h ?⟩) ()
 𝒱⇒Value ★ blame ()
 𝒱⇒Value ($ₜ ι) (` x) ()
 𝒱⇒Value ($ₜ ι) (ƛ N) ()
 𝒱⇒Value ($ₜ ι) (L · M) ()
-𝒱⇒Value ($ₜ ι) (M ⟨ g !⟩) ()
-𝒱⇒Value ($ₜ ι) (M ⟨ h ?⟩) ()
+𝒱⇒Value ($ₜ ι) (M ⟨ G , g !⟩) ()
+𝒱⇒Value ($ₜ ι) (M ⟨ H , h ?⟩) ()
 𝒱⇒Value ($ₜ ι) blame ()
 𝒱⇒Value (A ⇒ B) (` x) ()
 𝒱⇒Value (A ⇒ B) ($ c) ()
 𝒱⇒Value (A ⇒ B) (L · M) ()
-𝒱⇒Value (A ⇒ B) (M ⟨ g !⟩) ()
-𝒱⇒Value (A ⇒ B) (M ⟨ h ?⟩) ()
+𝒱⇒Value (A ⇒ B) (M ⟨ G , g !⟩) ()
+𝒱⇒Value (A ⇒ B) (M ⟨ H , h ?⟩) ()
 𝒱⇒Value (A ⇒ B) blame ()
 
 V-base : ∀{ι}{ι′}{c : rep ι′}
@@ -187,10 +171,10 @@ V-base-elim : ∀{n}{ι}{ι′}{c : rep ι′}
 V-base-elim {n} refl = refl
 
 V-dyn : ∀{G}{V}{g : Ground G}
-   → 𝒱⟦ ★ ⟧ (V ⟨ g !⟩) ≡ᵒ ((Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ V))
+   → 𝒱⟦ ★ ⟧ (V ⟨ G , g !⟩) ≡ᵒ ((Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ V))
 V-dyn {G}{V}{g} =
-   let X = (inj₁ (★ , V ⟨ g !⟩)) in
-   𝒱⟦ ★ ⟧ (V ⟨ g !⟩)                              ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
+   let X = (inj₁ (★ , V ⟨ G , g !⟩)) in
+   𝒱⟦ ★ ⟧ (V ⟨ G , g !⟩)                              ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
    (μᵖ ℰ⊎𝒱) X                                     ≡ᵒ⟨ ℰ⊎𝒱-fixpointᵒ X ⟩
    ((fun ℰ⊎𝒱) (μᵖ ℰ⊎𝒱)) X                        ≡ᵒ⟨ ≡ᵒ-refl refl ⟩ 
    (Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ V)
@@ -198,7 +182,7 @@ V-dyn {G}{V}{g} =
 
 V-dyn-elim : ∀{𝓟}{V}{R}
    → 𝓟 ⊢ᵒ 𝒱⟦ ★ ⟧ V
-   → (∀ W G (g : Ground G) → V ≡ op-inject{G} g ⦅ cons (ast W) nil ⦆
+   → (∀ W G (g : Ground G) → V ≡ W ⟨ G , g !⟩
              → 𝓟 ⊢ᵒ ((Value W)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ W))
              → 𝓟 ⊢ᵒ R)
    → 𝓟 ⊢ᵒ R
@@ -208,12 +192,12 @@ V-dyn-elim {𝓟}{V}{R} ⊢𝒱V cont =
   G : ∀{V}{n}
       → # (𝒱⟦ ★ ⟧ V) (suc n)
       → 𝓟 ⊢ᵒ 𝒱⟦ ★ ⟧ V
-      → (∀ W G g → V ≡ op-inject{G} g ⦅ cons (ast W) nil ⦆
+      → (∀ W G g → V ≡ W ⟨ G , g !⟩
                 → 𝓟 ⊢ᵒ ((Value W)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ W))
                 → 𝓟 ⊢ᵒ R)
       → 𝓟 ⊢ᵒ R
-  G {W ⟨ g !⟩}{n} 𝒱Vsn ⊢𝒱V cont
-      with 𝒱⇒Value ★ (W ⟨ g !⟩) 𝒱Vsn
+  G {W ⟨ G , g !⟩}{n} 𝒱Vsn ⊢𝒱V cont
+      with 𝒱⇒Value ★ (W ⟨ G , g !⟩) 𝒱Vsn
   ... | w 〈 g 〉 =
       let ⊢▷𝒱W = proj₂ᵒ (substᵒ (V-dyn{V = W}{g}) ⊢𝒱V) in
       cont W _ g refl (⊢ᵒ-Sᵒ-intro w ,ᵒ ⊢▷𝒱W)
@@ -221,7 +205,7 @@ V-dyn-elim {𝓟}{V}{R} ⊢𝒱V cont =
   G {$ c}{n} ()
   G {ƛ N}{n} ()
   G {L · M}{n} ()
-  G {M ⟨ h ?⟩}{n} ()
+  G {M ⟨ H , h ?⟩}{n} ()
   G {blame}{n} ()
   
 V-fun : ∀{A B}{N}
@@ -257,8 +241,8 @@ V-fun-elim {𝓟}{A}{B}{V}{R} ⊢𝒱V cont =
   G{` x}{n} ()
   G{$ c}{n} ()
   G{L · M}{n} ()
-  G{M ⟨ g !⟩}{n} ()
-  G{M ⟨ h ?⟩}{n} ()
+  G{M ⟨ G , g !⟩}{n} ()
+  G{M ⟨ H , h ?⟩}{n} ()
   G{blame}{n} ()
 
 {- Semantic Type Safety -}
@@ -296,7 +280,7 @@ exp-▷ : ∀{𝓟}{A}{M N : Term}
      -------------------
    → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
 exp-▷{𝓟}{A}{M}{N} 𝓟⊢M→N ⊢▷ℰN =
-  substᵒ (≡ᵒ-sym (ℰ-def{A}{M})) Goal 
+  substᵒ (≡ᵒ-sym (ℰ-stmt{A}{M})) Goal 
   where
   redM : 𝓟 ⊢ᵒ reducible M ᵒ
   redM = Sᵒ→Tᵒ⇒⊢ᵒ 𝓟⊢M→N λ M→N → _ , M→N
@@ -444,7 +428,6 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
    → 𝓟 ⊢ᵒ (∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧))
    → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
 ℰ-frame {𝓟}{A}{B}{F}{M} ⊢ℰM ⊢𝒱V→ℰFV =
-  appᵒ (appᵒ (instᵒ{𝓟}{P = λ M → ℰ-fp A B F M}
-                          ℰ-frame-aux M)
-                        ⊢ℰM)
-             ⊢𝒱V→ℰFV
+  appᵒ (appᵒ (instᵒ{𝓟}{P = λ M → ℰ-fp A B F M} ℰ-frame-aux M)
+             ⊢ℰM)
+       ⊢𝒱V→ℰFV
