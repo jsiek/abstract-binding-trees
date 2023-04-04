@@ -120,7 +120,7 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 ℰ-unfold : ∀ {𝓟}{A}{M}
   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
   → 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
-ℰ-unfold 𝓟⊢ℰM = ≡ᵒ⇒⊢ᵒ 𝓟⊢ℰM ℰ-def
+ℰ-unfold 𝓟⊢ℰM = substᵒ ℰ-def 𝓟⊢ℰM 
 
 ℰ-progress : ∀ {𝓟}{A}{M}
   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
@@ -135,7 +135,7 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 ℰ-fold : ∀ {𝓟}{A}{M}
   → 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-ℰ-fold 𝓟⊢prog×pres = ≡ᵒ⇒⊢ᵒ 𝓟⊢prog×pres (≡ᵒ-sym (ℰ-def))
+ℰ-fold 𝓟⊢prog×pres = substᵒ (≡ᵒ-sym (ℰ-def)) 𝓟⊢prog×pres
 
 ℰ-intro : ∀ {𝓟}{A}{M}
   → 𝓟 ⊢ᵒ progress A M
@@ -215,7 +215,7 @@ V-dyn-elim {𝓟}{V}{R} ⊢𝒱V cont =
   G {W ⟨ g !⟩}{n} 𝒱Vsn ⊢𝒱V cont
       with 𝒱⇒Value ★ (W ⟨ g !⟩) 𝒱Vsn
   ... | w 〈 g 〉 =
-      let ⊢▷𝒱W = proj₂ᵒ (≡ᵒ⇒⊢ᵒ ⊢𝒱V (V-dyn{V = W}{g})) in
+      let ⊢▷𝒱W = proj₂ᵒ (substᵒ (V-dyn{V = W}{g}) ⊢𝒱V) in
       cont W _ g refl (⊢ᵒ-Sᵒ-intro w ,ᵒ ⊢▷𝒱W)
   G {` x}{n} ()
   G {$ c}{n} ()
@@ -253,7 +253,7 @@ V-fun-elim {𝓟}{A}{B}{V}{R} ⊢𝒱V cont =
      → 𝓟 ⊢ᵒ R
   G{ƛ N}{n} 𝒱V ⊢𝒱V cont = cont N refl λ {W} →
       instᵒ{P = λ W → (▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ])))}
-                 (≡ᵒ⇒⊢ᵒ ⊢𝒱V V-fun) W
+                 (substᵒ V-fun ⊢𝒱V) W
   G{` x}{n} ()
   G{$ c}{n} ()
   G{L · M}{n} ()
@@ -273,9 +273,9 @@ _⊨_⦂_ : List Type → Term → Type → Set
 lookup-𝓖 : (Γ : List Type) → (γ : Subst)
   → ∀ {A}{y} → (Γ ∋ y ⦂ A)
   → 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ A ⟧ (γ y)
-lookup-𝓖 (B ∷ Γ) γ {A} {zero} refl = ⊢ᵒ-hyp
+lookup-𝓖 (B ∷ Γ) γ {A} {zero} refl = Zᵒ
 lookup-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
-    ⊢ᵒ-weaken (lookup-𝓖 Γ (λ x → γ (suc x)) ∋y) 
+    Sᵒ (lookup-𝓖 Γ (λ x → γ (suc x)) ∋y) 
 
 {- Lemmas -}
 
@@ -296,8 +296,7 @@ exp-▷ : ∀{𝓟}{A}{M N : Term}
      -------------------
    → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
 exp-▷{𝓟}{A}{M}{N} 𝓟⊢M→N ⊢▷ℰN =
-  ≡ᵒ⇒⊢ᵒ{𝓟}{progress A M ×ᵒ preservation A M}{ℰ⟦ A ⟧ M}
-      Goal (≡ᵒ-sym (ℰ-def{A}{M}))
+  substᵒ (≡ᵒ-sym (ℰ-def{A}{M})) Goal 
   where
   redM : 𝓟 ⊢ᵒ reducible M ᵒ
   redM = Sᵒ→Tᵒ⇒⊢ᵒ 𝓟⊢M→N λ M→N → _ , M→N
@@ -372,7 +371,7 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
         ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
   Goal′{M} =
    let ⊢ℰM : 𝓟′ ⊢ᵒ ℰ⟦ B ⟧ M
-       ⊢ℰM = ⊢ᵒ-weaken ⊢ᵒ-hyp in
+       ⊢ℰM = Sᵒ Zᵒ in
    case3ᵒ (ℰ-progress ⊢ℰM) Mval Mred Mblame
    where
    𝓟′ = (ℰ-f-cont A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-frame-prop A B F ∷ 𝓟
@@ -380,9 +379,9 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
    Mval : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mval =
      let ⊢𝒱M : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ 𝒱⟦ B ⟧ M
-         ⊢𝒱M = ⊢ᵒ-hyp in
+         ⊢𝒱M = Zᵒ in
      let ℰcontFM : 𝒱⟦ B ⟧ M ∷ 𝓟′ ⊢ᵒ ℰ-f-cont A B F M
-         ℰcontFM = ⊢ᵒ-weaken ⊢ᵒ-hyp in
+         ℰcontFM = Sᵒ Zᵒ in
      let Cont = λ V → (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧) in
      appᵒ (appᵒ (instᵒ{P = Cont} ℰcontFM M)
                           (⊢ᵒ-Sᵒ-intro (M END)))
@@ -395,7 +394,7 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
     progressMred : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ progress A (F ⟦ M ⟧)
     progressMred =
        let redFM : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
-           redFM = Sᵒ→Tᵒ⇒⊢ᵒ ⊢ᵒ-hyp λ {(M′ , M→M′) → _ , (ξ F M→M′)} in
+           redFM = Sᵒ→Tᵒ⇒⊢ᵒ Zᵒ λ {(M′ , M→M′) → _ , (ξ F M→M′)} in
        inj₂ᵒ (inj₁ᵒ redFM)
 
     redM⇒▷ℰN : ∀{N} → reducible M → (F ⟦ M ⟧ —→ N)
@@ -407,16 +406,15 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
          let N≡ = proj₂ (proj₂ finv) in
 
          let IH : 𝓟′ ⊢ᵒ ▷ᵒ ℰ-frame-prop A B F
-             IH = ⊢ᵒ-weaken (⊢ᵒ-weaken ⊢ᵒ-hyp) in
+             IH = Sᵒ (Sᵒ Zᵒ) in
          let ℰM : 𝓟′ ⊢ᵒ ℰ⟦ B ⟧ M
-             ℰM = ⊢ᵒ-weaken ⊢ᵒ-hyp in
+             ℰM = Sᵒ Zᵒ in
          let ▷ℰM′ : 𝓟′ ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M′
-             ▷ℰM′ = appᵒ
-                        (instᵒ{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ B ⟧ N)}
+             ▷ℰM′ = appᵒ (instᵒ{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ B ⟧ N)}
                            (ℰ-preservation ℰM) M′)
-                               (⊢ᵒ-Sᵒ-intro M→M′) in
+                         (⊢ᵒ-Sᵒ-intro M→M′) in
          let M→V→𝒱V→ℰFV : 𝓟′ ⊢ᵒ ℰ-f-cont A B F M
-             M→V→𝒱V→ℰFV = ⊢ᵒ-hyp in
+             M→V→𝒱V→ℰFV = Zᵒ in
          let M′→V→𝒱V→ℰFV : 𝓟′ ⊢ᵒ ℰ-f-cont A B F M′
              M′→V→𝒱V→ℰFV = ℰ-f-cont-lemma{𝓟′}{A}{B} M→M′ M→V→𝒱V→ℰFV in
          let ▷ℰFM′ : 𝓟′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))
@@ -431,7 +429,7 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
     progressMblame : (Blame M)ᵒ ∷ 𝓟′ ⊢ᵒ progress A (F ⟦ M ⟧)
     progressMblame =
        let redFM : (Blame M)ᵒ ∷ 𝓟′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
-           redFM = Sᵒ→Tᵒ⇒⊢ᵒ ⊢ᵒ-hyp λ {isBlame → _ , (ξ-blame F)} in
+           redFM = Sᵒ→Tᵒ⇒⊢ᵒ Zᵒ λ {isBlame → _ , (ξ-blame F)} in
        inj₂ᵒ (inj₁ᵒ redFM)
 
     blameM⇒▷ℰN : ∀{N} → Blame M → (F ⟦ M ⟧ —→ N)
