@@ -31,7 +31,7 @@ open import rewriting.examples.CastLogRelLogic
 {-# REWRITE sub-var #-}
 
 compatible-blame : ∀{Γ}{A}
-     -------------------
+     -------------
    → Γ ⊨ blame ⦂ A
 compatible-blame {Γ}{A} γ = ℰ-blame
 
@@ -44,13 +44,17 @@ compatibility-var {Γ}{A}{x} ∋x γ =
          ⊢𝒱γx = lookup-𝓖 Γ γ ∋x in
      𝒱⇒ℰ ⊢𝒱γx
 
-compatible-nat : ∀{Γ}{n : ℕ} → Γ ⊨ ($ n) ⦂ ($ₜ ′ℕ)
+compatible-nat : ∀{Γ}{n : ℕ}
+    --------------------
+   → Γ ⊨ ($ n) ⦂ ($ₜ ′ℕ)
 compatible-nat {Γ}{n} γ =
      let ⊢𝒱n : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ $ₜ ′ℕ ⟧ ($ n)
          ⊢𝒱n = ⊢ᵒ-intro λ { zero x → tt ; (suc k) x → refl} in
      𝒱⇒ℰ ⊢𝒱n
 
-compatible-bool : ∀{Γ}{b : 𝔹} → Γ ⊨ ($ b) ⦂ ($ₜ ′𝔹)
+compatible-bool : ∀{Γ}{b : 𝔹}
+    --------------------
+   → Γ ⊨ ($ b) ⦂ ($ₜ ′𝔹)
 compatible-bool {Γ}{b} γ =
      let ⊢𝒱b : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ $ₜ ′𝔹 ⟧ ($ b)
          ⊢𝒱b = ⊢ᵒ-intro λ { zero x → tt ; (suc k) x → refl} in
@@ -119,6 +123,7 @@ compatible-lambda {Γ}{A}{B}{N} ⊨N γ = ⊢ℰγλN
 
 compatible-inject : ∀{Γ}{G}{g}{M}
   → Γ ⊨ M ⦂ G
+    --------------------
   → Γ ⊨ M ⟨ G , g !⟩ ⦂ ★
 compatible-inject {Γ}{G}{g}{M} ⊨M γ = ℰMg!
  where
@@ -145,6 +150,7 @@ red-inj-proj {G} {H} {g} {h} {W} w
 
 compatible-project : ∀{Γ}{H}{h : Ground H}{M}
   → Γ ⊨ M ⦂ ★
+    --------------------
   → Γ ⊨ M ⟨ H , h ?⟩ ⦂ H
 compatible-project {Γ}{H}{h}{M} ⊨M γ = ℰMh?
  where
