@@ -1,27 +1,17 @@
 {-# OPTIONS --rewriting #-}
 module rewriting.examples.CastSafeLogic where
 
-open import Agda.Primitive using (lzero)
-open import Data.List using (List; []; _∷_; length)
-open import Data.Nat
-open import Data.Nat.Induction
 open import Data.Bool using (true; false) renaming (Bool to 𝔹)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using ([]; _∷_)
+open import Data.Nat
 open import Data.Nat.Properties
 open import Data.Product using (_,_;_×_; proj₁; proj₂; Σ-syntax; ∃-syntax)
-open import Data.Unit using (⊤; tt)
-open import Data.Unit.Polymorphic renaming (⊤ to ⊤ᵖ; tt to ttᵖ)
-open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
-open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Induction using (RecStruct)
-open import Induction.WellFounded as WF
-open import Data.Product.Relation.Binary.Lex.Strict
-  using (×-Lex; ×-wellFounded; ×-preorder)
-open import Relation.Binary using (Rel)
+open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality as Eq
   using (_≡_; _≢_; refl; sym; cong; subst; trans)
-open import Relation.Nullary using (¬_; Dec; yes; no)
-open import Sig
+open import Relation.Nullary using (¬_; yes; no)
 open import Var
 open import rewriting.examples.Cast
 open import rewriting.examples.StepIndexedLogic

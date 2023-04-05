@@ -339,7 +339,7 @@ P →ᵒ Q = record { # = λ k → ∀ j → j ≤ k → # P j → # Q j
                 ; tz = λ { .zero z≤n _ → tz Q}
                 }
 
-∀ᵒ : ∀{A : Set} → (A → Setᵒ) → Setᵒ
+∀ᵒ : ∀{A : Set} → (Predᵒ A) → Setᵒ
 ∀ᵒ{A} P = record { # = λ k → ∀ (a : A) → # (P a) k
                  ; down = λ n ∀Pn k k≤n a → down (P a) n (∀Pn a) k k≤n
                  ; tz = λ a → tz (P a) }
@@ -347,12 +347,6 @@ P →ᵒ Q = record { # = λ k → ∀ j → j ≤ k → # P j → # Q j
 ∀ᵒ-syntax = ∀ᵒ
 infix 1 ∀ᵒ-syntax
 syntax ∀ᵒ-syntax (λ x → P) = ∀ᵒ[ x ] P
-
-∀ᵒₚ : ∀{A} → Predᵒ A → Setᵒ
-∀ᵒₚ{A} P = record { # = λ k → ∀ a → # (P a) k
-                 ; down = λ k ∀Pk j j≤k a → down (P a) k (∀Pk a) j j≤k
-                 ; tz = λ a → tz (P a)
-                 }
 
 infixr 8 _ᵒ
 _ᵒ  : Set → Setᵒ
@@ -407,7 +401,7 @@ flipᵖ : ∀{A}{B}
 flipᵖ F b = λ a → F a b
 
 ∀ᵖ : ∀{A : Set}{B} → (A → Predᵒ B) → Predᵒ B
-∀ᵖ {A}{B} F = λ b → ∀ᵒₚ {A} (flipᵖ F b)
+∀ᵖ {A}{B} F = λ b → ∀ᵒ {A} (flipᵖ F b)
 
 ∀ᵖ-syntax = ∀ᵖ
 infix 1 ∀ᵖ-syntax
@@ -462,11 +456,11 @@ dc-iter (suc i) F = λ v → down (F (iter i F ⊤ᵖ) v)
 μₚ : ∀{A} → (Predᵒ A → Predᵒ A) → (A → ℕ → Set)
 μₚ F a k = #(iter (suc k) F ⊤ᵖ a) k
 
-μᵖ : ∀{A}
+μᵒ : ∀{A}
    → Fun A A Wellfounded
      -------------------
    → Predᵒ A
-μᵖ F a =  record { # = μₚ (fun F) a
+μᵒ F a =  record { # = μₚ (fun F) a
                  ; down = dc-μ F a
                  ; tz = tz ((fun F (id ⊤ᵖ)) a)
                  }
@@ -651,6 +645,7 @@ infixr 6 _→ᶠ_
 _→ᶠ_ : ∀{A B}{kF kG}
    → Fun A B kF
    → Fun A B kG
+     ----------------------
    → Fun A B (choose kF kG)
 _→ᶠ_ {A}{B}{kF}{kG} F G =
   record { fun = λ P → fun F P →ᵖ fun G P
@@ -674,9 +669,8 @@ continuous-× : ∀{A}{B}
    → continuous (λ P → (fun F) P ×ᵖ (fun G) P)
 continuous-× {A}{B} F G {P}{k} =
     let f = fun F in let g = fun G in
-    ↓ᵖ k (f P ×ᵖ g P)                              ≡ᵖ⟨ down-× ⟩
-    ↓ᵖ k (↓ᵖ k (f P) ×ᵖ ↓ᵖ k (g P))
-                                       ≡ᵖ⟨ cong-↓ (cong-×ᵖ (good F) (good G)) ⟩
+    ↓ᵖ k (f P ×ᵖ g P)                                              ≡ᵖ⟨ down-× ⟩
+    ↓ᵖ k (↓ᵖ k (f P) ×ᵖ ↓ᵖ k (g P))    ≡ᵖ⟨ cong-↓ (cong-×ᵖ (good F) (good G)) ⟩
     ↓ᵖ k (↓ᵖ k (f (↓ᵖ k P)) ×ᵖ ↓ᵖ k (g (↓ᵖ k P)))           ≡ᵖ⟨ ≡ᵖ-sym down-× ⟩
     ↓ᵖ k (f (↓ᵖ k P) ×ᵖ g (↓ᵖ k P))
     QEDᵖ
@@ -723,6 +717,7 @@ infixr 6 _×ᶠ_
 _×ᶠ_ : ∀{A}{B}{kF kG}
    → Fun A B kF
    → Fun A B kG
+     ----------------------
    → Fun A B (choose kF kG)
 _×ᶠ_ {A}{B}{kF}{kG} F G =
   record { fun = λ P → (fun F) P ×ᵖ (fun G) P
@@ -797,6 +792,7 @@ infixr 6 _⊎ᶠ_
 _⊎ᶠ_ : ∀{A}{B}{kF kG}
    → Fun A B kF
    → Fun A B kG
+     ----------------------
    → Fun A B (choose kF kG)
 _⊎ᶠ_ {A}{B}{kF}{kG} F G =
   record { fun = λ P → (fun F) P ⊎ᵖ (fun G) P
@@ -809,7 +805,7 @@ _⊎ᶠ_ {A}{B}{kF}{kG} F G =
 abstract
   continuous-all : ∀{A B C}
      → (F : A → Fun B C Continuous)
-     → continuous (λ P → ∀ᵖ (λ a → fun (F a) P))
+     → continuous (λ P → ∀ᵖ[ a ] fun (F a) P)
   continuous-all F {P}{k} x zero = ⇔-intro (λ x → tt) (λ x → tt)
   continuous-all F {P}{k} x (suc i) =
       ⇔-intro
@@ -859,9 +855,10 @@ abstract
 
 ∀ᶠ : ∀{A B C : Set}{K}
    → (A → Fun B C K)
+     ---------------
    → Fun B C K
 ∀ᶠ {A}{B}{C}{K} F =
-  record { fun = λ P → ∀ᵖ {A} λ a → fun (F a) P
+  record { fun = λ P → ∀ᵖ[ a ] fun (F a) P
          ; good = goodness-all F
          ; congr = cong-all F
          }
@@ -965,6 +962,7 @@ abstract
     
 flipᶠ : ∀{A}{B}{C}{K}
    → (A → Fun C B K)
+     ----------------
    → (B → Fun C A K)
 flipᶠ {A}{B}{C}{K} F b =
   record { fun = flip F b
@@ -989,6 +987,7 @@ abstract
 
 recur : ∀{A}{B}
    → A
+     ------------------
    → Fun A B Continuous
 recur a =
   record { fun = λ P → (P a) ˢ 
@@ -1004,17 +1003,17 @@ abstract
   lemma18a : ∀{A}
      → (k : ℕ)
      → (F : Fun A A Wellfounded)
-     → ↓ᵖ k (μᵖ F) ≡ᵖ ↓ᵖ k (iter k (fun F) ⊤ᵖ)
+     → ↓ᵖ k (μᵒ F) ≡ᵖ ↓ᵖ k (iter k (fun F) ⊤ᵖ)
   lemma18a zero F x zero = ⇔-intro (λ x → tt) (λ x → tt)
   lemma18a zero F x (suc i) = ⇔-intro (λ { (() , b)}) (λ { (() , b)})
   lemma18a (suc k′) F v zero = ⇔-intro (λ x → tt) (λ x → tt)
   lemma18a (suc k′) F v (suc j′) =
       let k = suc k′ in
       let j = suc j′ in
-      #((↓ᵖ k (μᵖ F)) v) j
+      #((↓ᵖ k (μᵒ F)) v) j
                                   ⇔⟨ ⇔-intro (λ { (j<k , μFvj) → j<k , μFvj})
                                               (λ {(j<k , μFvj) → j<k , μFvj}) ⟩
-      (j < k  ×  (#((μᵖ F) v) j))             ⇔⟨ ⇔-intro (λ {(a , b) → a , b})
+      (j < k  ×  (#((μᵒ F) v) j))             ⇔⟨ ⇔-intro (λ {(a , b) → a , b})
                                                          (λ {(a , b) → a , b}) ⟩
       (j < k  ×  #((iter (suc j) (fun F) ⊤ᵖ) v) j)
                                      ⇔⟨ ⇔-intro (λ {(a , b) → a , ≤-refl , b})
@@ -1045,10 +1044,10 @@ abstract
 lemma18b : ∀{A}
    → (k : ℕ)
    → (F : Fun A A Wellfounded)
-   → ↓ᵖ (suc k) ((fun F) (μᵖ F)) ≡ᵖ ↓ᵖ (suc k) (iter (suc k) (fun F) ⊤ᵖ)
+   → ↓ᵖ (suc k) ((fun F) (μᵒ F)) ≡ᵖ ↓ᵖ (suc k) (iter (suc k) (fun F) ⊤ᵖ)
 lemma18b {A} k F =
-      ↓ᵖ (suc k) ((fun F) (μᵖ F))                         ≡ᵖ⟨ good F ⟩
-      ↓ᵖ (suc k) ((fun F) (↓ᵖ k (μᵖ F)))
+      ↓ᵖ (suc k) ((fun F) (μᵒ F))                         ≡ᵖ⟨ good F ⟩
+      ↓ᵖ (suc k) ((fun F) (↓ᵖ k (μᵒ F)))
                                           ≡ᵖ⟨ cong-↓ (congr F (lemma18a k F)) ⟩
       ↓ᵖ (suc k) ((fun F) (↓ᵖ k (iter k (fun F) ⊤ᵖ)))     ≡ᵖ⟨ ≡ᵖ-sym (good F) ⟩
       ↓ᵖ (suc k) ((fun F) (iter k (fun F) ⊤ᵖ))            ≡ᵖ⟨ ≡ᵖ-refl refl ⟩
@@ -1058,15 +1057,15 @@ lemma18b {A} k F =
 lemma19 : ∀{A}
    → (k : ℕ)
    → (F : Fun A A Wellfounded)
-   → ↓ᵖ k (μᵖ F) ≡ᵖ ↓ᵖ k ((fun F) (μᵖ F))
+   → ↓ᵖ k (μᵒ F) ≡ᵖ ↓ᵖ k ((fun F) (μᵒ F))
 lemma19 {A} k F =
-      ↓ᵖ k (μᵖ F)                                  ≡ᵖ⟨ lemma18a k F ⟩
+      ↓ᵖ k (μᵒ F)                                  ≡ᵖ⟨ lemma18a k F ⟩
       ↓ᵖ k (iter k (fun F) ⊤ᵖ)                     ≡ᵖ⟨ lemma15b _ F (n≤1+n k) ⟩
       ↓ᵖ k (iter (suc k) (fun F) ⊤ᵖ)               ≡ᵖ⟨ ≡ᵖ-sym lemma17 ⟩
       ↓ᵖ k (↓ᵖ (suc k) (iter (suc k) (fun F) ⊤ᵖ))
                                            ≡ᵖ⟨ cong-↓ (≡ᵖ-sym (lemma18b _ F)) ⟩
-      ↓ᵖ k (↓ᵖ (suc k) ((fun F) (μᵖ F)))           ≡ᵖ⟨ lemma17 ⟩
-      ↓ᵖ k ((fun F) (μᵖ F))
+      ↓ᵖ k (↓ᵖ (suc k) ((fun F) (μᵒ F)))           ≡ᵖ⟨ lemma17 ⟩
+      ↓ᵖ k ((fun F) (μᵒ F))
     QEDᵖ
 
 abstract
@@ -1100,7 +1099,7 @@ abstract
 {- Theorem 20 -}
 fixpoint : ∀{A}
    → (F : Fun A A Wellfounded)
-   → μᵖ F ≡ᵖ (fun F) (μᵖ F)
+   → μᵒ F ≡ᵖ (fun F) (μᵒ F)
 fixpoint F = equiv-down (λ k → lemma19 k F)
 
 {--------------- Useful Lemmas -------------------}
@@ -1217,13 +1216,6 @@ abstract
   ▷∀ 𝓟⊢▷∀P zero ⊨𝓟n a = tt
   ▷∀ 𝓟⊢▷∀P (suc n) ⊨𝓟sn a = 𝓟⊢▷∀P (suc n) ⊨𝓟sn a
 
-  ▷∀ₚ : ∀{𝓟}{A}{P : Predᵒ A}
-     → 𝓟 ⊢ᵒ ▷ᵒ (∀ᵒₚ P)
-       ---------------
-     → 𝓟 ⊢ᵒ ∀ᵒₚ (▷ᵖ P)
-  ▷∀ₚ 𝓟⊢▷∀P zero ⊨𝓟n a = tt
-  ▷∀ₚ 𝓟⊢▷∀P (suc n) ⊨𝓟sn a = 𝓟⊢▷∀P (suc n) ⊨𝓟sn a
-
 abstract
   substᵒ : ∀{𝓟}{P Q : Setᵒ}
     → P ≡ᵒ Q
@@ -1242,18 +1234,18 @@ abstract
       Qan
 
 ⊢ᵒ-unfold : ∀ {A}{𝓟}{F : Fun A A Wellfounded}{a : A}
-  → 𝓟 ⊢ᵒ (μᵖ F) a
+  → 𝓟 ⊢ᵒ (μᵒ F) a
     ------------------------------
-  → 𝓟 ⊢ᵒ ((fun F) (μᵖ F)) a
+  → 𝓟 ⊢ᵒ ((fun F) (μᵒ F)) a
 ⊢ᵒ-unfold {A}{𝓟}{F}{a} ⊢μa =
-    ≡ᵖ⇒⊢ᵒ 𝓟 (μᵖ F) ((fun F) (μᵖ F)) ⊢μa (fixpoint F)
+    ≡ᵖ⇒⊢ᵒ 𝓟 (μᵒ F) ((fun F) (μᵒ F)) ⊢μa (fixpoint F)
 
 ⊢ᵒ-fold : ∀ {A}{𝓟}{F : Fun A A Wellfounded}{a : A}
-  → 𝓟 ⊢ᵒ ((fun F) (μᵖ F)) a
+  → 𝓟 ⊢ᵒ ((fun F) (μᵒ F)) a
     ------------------------------
-  → 𝓟 ⊢ᵒ (μᵖ F) a
+  → 𝓟 ⊢ᵒ (μᵒ F) a
 ⊢ᵒ-fold {A}{𝓟}{F}{a} ⊢μa =
-    ≡ᵖ⇒⊢ᵒ 𝓟 ((fun F) (μᵖ F)) (μᵖ F) ⊢μa (≡ᵖ-sym (fixpoint F))
+    ≡ᵖ⇒⊢ᵒ 𝓟 ((fun F) (μᵒ F)) (μᵒ F) ⊢μa (≡ᵖ-sym (fixpoint F))
 
 abstract
   ttᵒ : ∀{𝓟 : List Setᵒ}
@@ -1370,19 +1362,6 @@ infix 1 Λᵒ-syntax
 syntax Λᵒ-syntax (λ a → ⊢Pa) = Λᵒ[ a ] ⊢Pa
 
 abstract
-  ⊢ᵒ-∀ₚ-intro : ∀{𝓟 : List Setᵒ }{A}{P : Predᵒ A}
-    → (∀ a → 𝓟 ⊢ᵒ P a)
-      ----------------------
-    → 𝓟 ⊢ᵒ ∀ᵒₚ P
-  ⊢ᵒ-∀ₚ-intro ∀Pa n ⊨𝓟n a = ∀Pa a n ⊨𝓟n
-
-  ⊢ᵒ-∀ₚ-elim : ∀{𝓟 : List Setᵒ }{A}{P : Predᵒ A}
-    → 𝓟 ⊢ᵒ ∀ᵒₚ P
-    → (a : A)
-      ---------------
-    → 𝓟 ⊢ᵒ P a
-  ⊢ᵒ-∀ₚ-elim ⊢∀P a n ⊨𝓟n = ⊢∀P n ⊨𝓟n a
-
   Zᵒ : ∀{𝓟 : List Setᵒ}{S : Setᵒ}
      → S ∷ 𝓟 ⊢ᵒ S
   Zᵒ n (Sn , ⊨𝓟n) = Sn

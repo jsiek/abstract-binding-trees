@@ -1,30 +1,18 @@
 {-# OPTIONS --rewriting #-}
 module rewriting.examples.CastLogRelLogic where
 
-open import Agda.Primitive using (lzero)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Nat
-open import Data.Nat.Induction
 open import Data.Bool using (true; false) renaming (Bool to 𝔹)
 open import Data.Nat.Properties
 open import Data.Product using (_,_;_×_; proj₁; proj₂; Σ-syntax; ∃-syntax)
---open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Unit using (⊤; tt)
-open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Induction using (RecStruct)
-open import Induction.WellFounded as WF
-open import Data.Product.Relation.Binary.Lex.Strict
-  using (×-Lex; ×-wellFounded; ×-preorder)
-open import Relation.Binary using (Rel)
 open import Relation.Binary.PropositionalEquality as Eq
   using (_≡_; _≢_; refl; sym; cong; subst; trans)
-open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
-open import Sig
 open import Var
-open import Structures using (extensionality)
 open import rewriting.examples.Cast
 open import rewriting.examples.CastDeterministic
 open import rewriting.examples.StepIndexedLogic
@@ -85,13 +73,13 @@ pre-ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
 
 -- Semantically Well Typed Value
 𝒱⟦_⟧ : (A : Type) → Term → Setᵒ
-𝒱⟦ A ⟧ V = (μᵖ ℰ⊎𝒱) (inj₁ (A , V))
+𝒱⟦ A ⟧ V = (μᵒ ℰ⊎𝒱) (inj₁ (A , V))
 
 -- Semantically Well Typed Term
 ℰ⟦_⟧ : (A : Type) → Term → Setᵒ
-ℰ⟦ A ⟧ M = (μᵖ ℰ⊎𝒱) (inj₂ (A , M))
+ℰ⟦ A ⟧ M = (μᵒ ℰ⊎𝒱) (inj₂ (A , M))
 
-ℰ⊎𝒱-fixpointᵒ : ∀ X → (μᵖ ℰ⊎𝒱) X ≡ᵒ ((fun ℰ⊎𝒱) (μᵖ ℰ⊎𝒱)) X
+ℰ⊎𝒱-fixpointᵒ : ∀ X → (μᵒ ℰ⊎𝒱) X ≡ᵒ ((fun ℰ⊎𝒱) (μᵒ ℰ⊎𝒱)) X
 ℰ⊎𝒱-fixpointᵒ X = apply-≡ᵖ (fixpoint ℰ⊎𝒱) X 
 
 progress : Type → Term → Setᵒ
@@ -103,9 +91,9 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 ℰ-stmt : ∀{A}{M}
   → ℰ⟦ A ⟧ M ≡ᵒ progress A M ×ᵒ preservation A M
 ℰ-stmt {A}{M} =
-  ℰ⟦ A ⟧ M                                                ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
-  (μᵖ ℰ⊎𝒱) (inj₂ (A , M))          ≡ᵒ⟨ ℰ⊎𝒱-fixpointᵒ (inj₂ (A , M)) ⟩
-  ((fun ℰ⊎𝒱) (μᵖ ℰ⊎𝒱)) (inj₂ (A , M))
+  ℰ⟦ A ⟧ M                                                  ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
+  (μᵒ ℰ⊎𝒱) (inj₂ (A , M))                  ≡ᵒ⟨ ℰ⊎𝒱-fixpointᵒ (inj₂ (A , M)) ⟩
+  ((fun ℰ⊎𝒱) (μᵒ ℰ⊎𝒱)) (inj₂ (A , M))
                   ≡ᵒ⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (ℰ⊎𝒱-fixpointᵒ (inj₁ (A , M))))
                                        (≡ᵒ-refl refl)) (≡ᵒ-refl refl) ⟩
   progress A M ×ᵒ preservation A M
@@ -124,6 +112,7 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 ℰ-intro : ∀ {𝓟}{A}{M}
   → 𝓟 ⊢ᵒ progress A M
   → 𝓟 ⊢ᵒ preservation A M
+    ----------------------
   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
 ℰ-intro 𝓟⊢prog 𝓟⊢pres = substᵒ (≡ᵒ-sym (ℰ-stmt)) (𝓟⊢prog ,ᵒ 𝓟⊢pres)
 
@@ -132,7 +121,10 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
     ℰ-intro (inj₂ᵒ (inj₂ᵒ (⊢ᵒ-Sᵒ-intro isBlame)))
             (Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ blame→ → ⊥-elim (blame-irreducible blame→)))
 
-𝒱⇒Value : ∀ {k} A M → # (𝒱⟦ A ⟧ M) (suc k) → Value M
+𝒱⇒Value : ∀ {k} A M
+   → # (𝒱⟦ A ⟧ M) (suc k)
+     ---------------------
+   → Value M
 𝒱⇒Value ★ (M ⟨ G , g !⟩) (v , _) = v 〈 g 〉
 𝒱⇒Value ($ₜ ι) ($ c) 𝒱M = $̬ c
 𝒱⇒Value (A ⇒ B) (ƛ N) 𝒱M = ƛ̬ N
@@ -160,23 +152,13 @@ V-base : ∀{ι}{ι′}{c : rep ι′}
    → (𝒱⟦ $ₜ ι ⟧ ($ c)) ≡ᵒ (ι ≡ ι′)ᵒ
 V-base = ≡ᵒ-intro (λ k z → z) (λ k z → z)
 
-V-base-intro : ∀{n}{ι}{c : rep ι}
-   → # (𝒱⟦ $ₜ ι ⟧ ($ c)) n
-V-base-intro {zero} = tt
-V-base-intro {suc n}{ι}{c} = refl
-
-V-base-elim : ∀{n}{ι}{ι′}{c : rep ι′}
-   → # (𝒱⟦ $ₜ ι ⟧ ($ c)) (suc n)
-   → (ι ≡ ι′)
-V-base-elim {n} refl = refl
-
 V-dyn : ∀{G}{V}{g : Ground G}
    → 𝒱⟦ ★ ⟧ (V ⟨ G , g !⟩) ≡ᵒ ((Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ V))
 V-dyn {G}{V}{g} =
    let X = (inj₁ (★ , V ⟨ G , g !⟩)) in
    𝒱⟦ ★ ⟧ (V ⟨ G , g !⟩)                              ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
-   (μᵖ ℰ⊎𝒱) X                                     ≡ᵒ⟨ ℰ⊎𝒱-fixpointᵒ X ⟩
-   ((fun ℰ⊎𝒱) (μᵖ ℰ⊎𝒱)) X                        ≡ᵒ⟨ ≡ᵒ-refl refl ⟩ 
+   (μᵒ ℰ⊎𝒱) X                                     ≡ᵒ⟨ ℰ⊎𝒱-fixpointᵒ X ⟩
+   ((fun ℰ⊎𝒱) (μᵒ ℰ⊎𝒱)) X                        ≡ᵒ⟨ ≡ᵒ-refl refl ⟩ 
    (Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ V)
    QEDᵒ
 
@@ -185,6 +167,7 @@ V-dyn-elim : ∀{𝓟}{V}{R}
    → (∀ W G (g : Ground G) → V ≡ W ⟨ G , g !⟩
              → 𝓟 ⊢ᵒ ((Value W)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ W))
              → 𝓟 ⊢ᵒ R)
+     ----------------------------------------------
    → 𝓟 ⊢ᵒ R
 V-dyn-elim {𝓟}{V}{R} ⊢𝒱V cont =
   ⊢ᵒ-sucP ⊢𝒱V λ { 𝒱Vsn → G 𝒱Vsn ⊢𝒱V cont }
@@ -209,13 +192,13 @@ V-dyn-elim {𝓟}{V}{R} ⊢𝒱V cont =
   G {blame}{n} ()
   
 V-fun : ∀{A B}{N}
-   → (𝒱⟦ A ⇒ B ⟧ (ƛ N)) ≡ᵒ
-     (∀ᵒ[ W ] ((▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ])))))
+   → (𝒱⟦ A ⇒ B ⟧ (ƛ N))
+      ≡ᵒ (∀ᵒ[ W ] ((▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ])))))
 V-fun {A}{B}{N} =
    let X = (inj₁ (A ⇒ B , ƛ N)) in
    (𝒱⟦ A ⇒ B ⟧ (ƛ N))                                  ≡ᵒ⟨ ≡ᵒ-refl refl ⟩
-   (μᵖ ℰ⊎𝒱) X                                          ≡ᵒ⟨ ℰ⊎𝒱-fixpointᵒ X ⟩
-   ((fun ℰ⊎𝒱) (μᵖ ℰ⊎𝒱)) X                             ≡ᵒ⟨ ≡ᵒ-refl refl ⟩ 
+   (μᵒ ℰ⊎𝒱) X                                          ≡ᵒ⟨ ℰ⊎𝒱-fixpointᵒ X ⟩
+   ((fun ℰ⊎𝒱) (μᵒ ℰ⊎𝒱)) X                             ≡ᵒ⟨ ≡ᵒ-refl refl ⟩ 
    (∀ᵒ[ W ] ((▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ])))))
    QEDᵒ
 
@@ -224,6 +207,7 @@ V-fun-elim : ∀{𝓟}{A}{B}{V}{R}
    → (∀ N → V ≡ ƛ N
              → (∀{W} → 𝓟 ⊢ᵒ (▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ]))))
              → 𝓟 ⊢ᵒ R)
+     --------------------------------------------------------------------
    → 𝓟 ⊢ᵒ R
 V-fun-elim {𝓟}{A}{B}{V}{R} ⊢𝒱V cont =
   ⊢ᵒ-sucP ⊢𝒱V λ { 𝒱Vsn → G {V} 𝒱Vsn ⊢𝒱V cont}
@@ -261,10 +245,11 @@ lookup-𝓖 (B ∷ Γ) γ {A} {zero} refl = Zᵒ
 lookup-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
     Sᵒ (lookup-𝓖 Γ (λ x → γ (suc x)) ∋y) 
 
-{- Lemmas -}
+{- Semantic Values are Semantic Expressions -}
 
 𝒱⇒ℰ : ∀{A}{𝓟}{V}
    → 𝓟 ⊢ᵒ 𝒱⟦ A ⟧ V
+     ---------------
    → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ V
 𝒱⇒ℰ {A}{𝓟}{V} 𝓟⊢𝒱V =
     ⊢ᵒ-intro
@@ -273,35 +258,6 @@ lookup-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
     (inj₁ 𝒱V) , λ { N zero x V→N → tt ;
                      N (suc j) (s≤s j≤) V→N →
                          ⊥-elim (value-irreducible (𝒱⇒Value A V 𝒱V) V→N)}
-
-exp-▷ : ∀{𝓟}{A}{M N : Term}
-   → 𝓟 ⊢ᵒ (M —→ N)ᵒ
-   → 𝓟 ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
-     -------------------
-   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-exp-▷{𝓟}{A}{M}{N} 𝓟⊢M→N ⊢▷ℰN =
-  substᵒ (≡ᵒ-sym (ℰ-stmt{A}{M})) Goal 
-  where
-  redM : 𝓟 ⊢ᵒ reducible M ᵒ
-  redM = Sᵒ→Tᵒ⇒⊢ᵒ 𝓟⊢M→N λ M→N → _ , M→N
-
-  ⊢prog : 𝓟 ⊢ᵒ progress A M
-  ⊢prog = inj₂ᵒ{𝓟}{𝒱⟦ A ⟧ M}{(reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ}
-            (inj₁ᵒ{𝓟}{(reducible M)ᵒ}{(Blame M)ᵒ} redM)
-          
-  ⊢pres : 𝓟 ⊢ᵒ preservation A M
-  ⊢pres = ⊢ᵒ-∀-intro {P = λ N → ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))}
-      λ N′ → ⊢ᵒ-intro
-        λ { zero ⊨𝓟n .zero z≤n M→N′ → tt ;
-            (suc n) ⊨𝓟n .zero z≤n M→N′ → tt ;
-            (suc n) ⊨𝓟n (suc j) (s≤s j≤n) M→N′ →
-              let ⊨𝓟sj = (downClosed-Πᵒ 𝓟 (suc n) ⊨𝓟n (suc j) (s≤s j≤n)) in
-              subst (λ X → # (ℰ⟦ A ⟧ X) j)
-                  (deterministic (((⊢ᵒ-elim 𝓟⊢M→N) (suc j) ⊨𝓟sj)) M→N′)
-                  ((⊢ᵒ-elim ⊢▷ℰN) (suc j) ⊨𝓟sj)}
-          
-  Goal : 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
-  Goal = ⊢prog ,ᵒ ⊢pres
 
 {- ℰ-frame (Monadic Bind Lemma) -}
 
@@ -431,3 +387,34 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
   appᵒ (appᵒ (instᵒ{𝓟}{P = λ M → ℰ-fp A B F M} ℰ-frame-aux M)
              ⊢ℰM)
        ⊢𝒱V→ℰFV
+
+{- The following lemma is currently not used. -}
+exp-▷ : ∀{𝓟}{A}{M N : Term}
+   → 𝓟 ⊢ᵒ (M —→ N)ᵒ
+   → 𝓟 ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
+     -------------------
+   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
+exp-▷{𝓟}{A}{M}{N} 𝓟⊢M→N ⊢▷ℰN =
+  substᵒ (≡ᵒ-sym (ℰ-stmt{A}{M})) Goal 
+  where
+  redM : 𝓟 ⊢ᵒ reducible M ᵒ
+  redM = Sᵒ→Tᵒ⇒⊢ᵒ 𝓟⊢M→N λ M→N → _ , M→N
+
+  ⊢prog : 𝓟 ⊢ᵒ progress A M
+  ⊢prog = inj₂ᵒ{𝓟}{𝒱⟦ A ⟧ M}{(reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ}
+            (inj₁ᵒ{𝓟}{(reducible M)ᵒ}{(Blame M)ᵒ} redM)
+          
+  ⊢pres : 𝓟 ⊢ᵒ preservation A M
+  ⊢pres = ⊢ᵒ-∀-intro {P = λ N → ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))}
+      λ N′ → ⊢ᵒ-intro
+        λ { zero ⊨𝓟n .zero z≤n M→N′ → tt ;
+            (suc n) ⊨𝓟n .zero z≤n M→N′ → tt ;
+            (suc n) ⊨𝓟n (suc j) (s≤s j≤n) M→N′ →
+              let ⊨𝓟sj = (downClosed-Πᵒ 𝓟 (suc n) ⊨𝓟n (suc j) (s≤s j≤n)) in
+              subst (λ X → # (ℰ⟦ A ⟧ X) j)
+                  (deterministic (((⊢ᵒ-elim 𝓟⊢M→N) (suc j) ⊨𝓟sj)) M→N′)
+                  ((⊢ᵒ-elim ⊢▷ℰN) (suc j) ⊨𝓟sj)}
+          
+  Goal : 𝓟 ⊢ᵒ progress A M ×ᵒ preservation A M
+  Goal = ⊢prog ,ᵒ ⊢pres
+
