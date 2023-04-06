@@ -98,7 +98,7 @@ uniqueG ★⇒★   ★⇒★    = refl
 data Op : Set where
   op-lam : Op
   op-app : Op
-  op-lit : ∀{ι : Base} → rep ι → Op
+  op-lit : (ι : Base) → rep ι → Op
   op-inject : (A : Type) → Ground A → Op
   op-project : (A : Type) → Ground A → Op
   op-blame : Op
@@ -106,7 +106,7 @@ data Op : Set where
 sig : Op → List Sig
 sig op-lam = (ν ■) ∷ []
 sig op-app = ■ ∷ ■ ∷ []
-sig (op-lit n) = []
+sig (op-lit ι n) = []
 sig (op-inject G g) = ■ ∷ []
 sig (op-project H h) = ■ ∷ []
 sig (op-blame) = []
@@ -116,7 +116,7 @@ open import rewriting.AbstractBindingTree Op sig renaming (ABT to Term) public
 pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
 infixl 7  _·_
 pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
-pattern $ k = (op-lit k) ⦅ nil ⦆
+pattern $ ι k = (op-lit ι k) ⦅ nil ⦆
 pattern _⟨_,_!⟩ M G g = (op-inject G g) ⦅ cons (ast M) nil ⦆
 pattern _⟨_,_?⟩ M H h = (op-project H h) ⦅ cons (ast M) nil ⦆
 pattern blame = (op-blame) ⦅ nil ⦆
@@ -126,7 +126,7 @@ data Blame : Term → Set where
 
 data Value : Term → Set where
   ƛ̬_ : (N : Term) → Value (ƛ N)
-  $̬_ : ∀{ι} → (k : rep ι) → Value ($ k)
+  $̬ : (ι : Base) → (k : rep ι) → Value ($ ι k)
   _〈_〉 : ∀{V G} → Value V → (g : Ground G) → Value (V ⟨ G , g !⟩)
 
 value : ∀ {V : Term}
@@ -143,7 +143,7 @@ rename-val : ∀ {V : Term}
     ------------------
   → Value (rename ρ V)
 rename-val ρ (ƛ̬ N)    =  ƛ̬ (rename (extr ρ) N)
-rename-val ρ ($̬ k)    =  $̬ k
+rename-val ρ ($̬ ι k)    =  $̬ ι k
 rename-val ρ (V 〈 g 〉)  =  (rename-val ρ V) 〈 g 〉
 
 sub-val : ∀ {V}
@@ -151,7 +151,7 @@ sub-val : ∀ {V}
   → Value V
   → Value (⟪ σ ⟫ V)
 sub-val σ (ƛ̬ N) = ƛ̬ ⟪ ext σ ⟫ N
-sub-val σ ($̬ k) = $̬ k
+sub-val σ ($̬ ι k) = $̬ ι k
 sub-val σ (V 〈 g 〉)  =  (sub-val σ V) 〈 g 〉
 
 {----------------- Type System ------------------------}
@@ -190,7 +190,7 @@ data _⊢_⦂_ where
 
   ⊢$ : ∀ {Γ} (ι : Base) {k : rep ι}
       -----------------
-    → Γ ⊢ $ k ⦂ ($ₜ ι)
+    → Γ ⊢ $ ι k ⦂ ($ₜ ι)
 
   ⊢· : ∀ {Γ L M A B}
     → Γ ⊢ L ⦂ (A ⇒ B)
@@ -374,14 +374,14 @@ value-irreducible v V—→M = nope V—→M v
    nope (ξξ-blame (v ·□) ()) (ƛ̬ N)
    nope (ξξ-blame □⟨ G , g !⟩ ()) (ƛ̬ N)
    nope (ξξ-blame □⟨ H , h ?⟩ ()) (ƛ̬ N)
-   nope (ξξ (□· M) () x₁ V→M) ($̬ k)
-   nope (ξξ (v ·□) () x₁ V→M) ($̬ k)
-   nope (ξξ □⟨ G , g !⟩ () x₁ V→M) ($̬ k)
-   nope (ξξ □⟨ H , h ?⟩ () x₁ V→M) ($̬ k)
-   nope (ξξ-blame (□· M) ()) ($̬ k)
-   nope (ξξ-blame (v ·□) ()) ($̬ k)
-   nope (ξξ-blame □⟨ G , g !⟩ ()) ($̬ k)
-   nope (ξξ-blame □⟨ H , h ?⟩ ()) ($̬ k)
+   nope (ξξ (□· M) () x₁ V→M) ($̬ ι k)
+   nope (ξξ (v ·□) () x₁ V→M) ($̬ ι k)
+   nope (ξξ □⟨ G , g !⟩ () x₁ V→M) ($̬ ι k)
+   nope (ξξ □⟨ H , h ?⟩ () x₁ V→M) ($̬ ι k)
+   nope (ξξ-blame (□· M) ()) ($̬ ι k)
+   nope (ξξ-blame (v ·□) ()) ($̬ ι k)
+   nope (ξξ-blame □⟨ G , g !⟩ ()) ($̬ ι k)
+   nope (ξξ-blame □⟨ H , h ?⟩ ()) ($̬ ι k)
    nope (ξ □⟨ G , g !⟩ V→M) (v 〈 g 〉) = nope V→M v
    nope (ξ-blame □⟨ _ , _ !⟩) (() 〈 g 〉)
 

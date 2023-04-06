@@ -57,7 +57,7 @@ because those other casts can still be expressed in this cast calculus.
 
 The values include lambdas, literals, and injected values.
 
-    V,W ::= ƛ N | $ k | V ⟨ G , g !⟩
+    V,W ::= ƛ N | $ c | V ⟨ G , g !⟩
 
 The reduction rules make use of frames, which are defined as follows.
 
@@ -72,6 +72,74 @@ The reduction rules of the cast calculus are as follows:
     (β)        (ƛ N) · W —→ N [ W ]
     (collapse) V ⟨ G , g !⟩ ⟨ G , g ?⟩ —→ V
     (collide)  If G ≢ H, then V ⟨ G , g !⟩ ⟨ H , h ?⟩ —→ blame.
+
+
+## A First Attempt at a Logical Relation for Type Safety
+
+The following is a first attempt to define a logical relation for type
+safety for the cast calculus. The predicate 𝓔 expresses the semantic
+notion of a term being well typed at a given type A. Here we say that
+a term M is well typed at type A if it satisfies "progress" and
+"preservation". The progress part says that M is either (1) a
+(semantic) value, (2) reducible, or (3) an error. The preservation part
+says that if M reduces to N, then N is also semantically well typed at A.
+
+    ℰ⟦_⟧ : (A : Type) → Term → Set
+    ℰ⟦ A ⟧ M = (𝒱 ⟦ A ⟧ M ⊎ reducible M ⊎ Blame M)
+                × (∀ N → (M —→ N) → ℰ⟦ A ⟧ N)
+
+The predicate 𝓥 expresses the semantic notion of a value being well
+typed a some type A. For a base type `ι` (𝔹 or ℕ), the value must be
+the appropriate kind of literal (Boolean or natural number). For a
+function type `A ⇒ B`, the value must be a lambda expression `ƛ N`,
+and furthermore, substituting any value `W` that is semantically well
+typed at `A` into the body `N` produces a term that is semantically
+well typed at `B`.
+
+    𝒱⟦_⟧ : (A : Type) → Term → Set
+    𝒱⟦ ι ⟧ ($ ι′ c) = ι ≡ ι′
+    𝒱⟦ A ⇒ B ⟧ (ƛ N) = ∀ W → 𝒱⟦ A ⟧ W → ℰ⟦ B ⟧ (N [ W ])
+    𝒱⟦ ★ ⟧ (V ⟨ G , g !⟩) = Value V × 𝒱⟦ G ⟧ V
+    𝒱⟦ _ ⟧ _ = ⊥
+
+Note that the definitions of 𝓔 and 𝓥 are recursive. Unfortunately they
+are not proper definitions of (total) functions because there is no
+guarantee of termination. For simple languages, like the Simply Typed
+Lambda Calculus, 𝓥 can be defined by recursion on the type A. However,
+here we have the unknown type ★ and the recursion for that clause
+invokes `𝒱⟦ G ⟧ V`, but `G` is not a structural part of ★.  (The
+definition of 𝓔 above is also problematic, but one can reformulate 𝓔
+to remove the recursion in 𝓔.)
+
+## An Explicitly Step-indexed Logical Relation for Type Safety
+
+We can force the definitions of 𝓔 and 𝓥 to terminate using
+step-indexing (aka. the "gasoline" technique). We add a parameter k to
+each definition that is a natural number, and decrement k on each
+recursive call. When k is zero, then 𝓔 and 𝓥 accept all terms.  Thus,
+the meaning of `𝓔⟦ A ⟧ M k` is that term `M` is guaranteed to behave
+according to type `A` for `k` reduction steps, but after that there
+are no guarantees.
+
+    ℰ⟦_⟧ : (A : Type) → Term → ℕ → Set
+    ℰ⟦ A ⟧ M 0 = ⊤
+    ℰ⟦ A ⟧ M (suc k) = (𝒱 ⟦ A ⟧ M k ⊎ reducible M ⊎ Blame M)
+                        × (∀ N → (M —→ N) → ℰ⟦ A ⟧ N k)
+
+    𝒱⟦_⟧ : (A : Type) → Term → ℕ → Set
+    𝒱⟦ A ⟧ M 0 = ⊤
+    𝒱⟦ ι ⟧ ($ ι′ c) (suc k) = ι ≡ ι′
+    𝒱⟦ A ⇒ B ⟧ (ƛ N) (suc k) = ∀ W → 𝒱⟦ A ⟧ W k → ℰ⟦ B ⟧ (N [ W ]) k
+    𝒱⟦ ★ ⟧ (V ⟨ G , g !⟩) (suc k) = Value V × 𝒱⟦ G ⟧ V k
+    𝒱⟦ _ ⟧ _ (suc k) = ⊥
+
+We now have proper definitions of 𝓔 and 𝓥 but proving theorems about
+these definitions involves a fair bit of reasoning about the step
+indices, which is tedious, especially in Agda because it's support for
+automating arithmetic proofs is cumbersome to use.
+
+
+
 
 
 ## Step-indexed Logic
