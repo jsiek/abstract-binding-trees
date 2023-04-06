@@ -157,4 +157,7 @@ mreduce (M , N) = (M ≡ N)ᶠ ⊎ᶠ (∃ᶠ[ L ] (M —→ L)ᶠ ×ᶠ ▷ᶠ 
 
 infix 2 _—→*_
 _—→*_ : Term → Term → Set
-M —→* N = Σ[ n ∈ ℕ ] (#(μᵒ (flipᶠ mreduce tt) (M , N)) n)
+M —→* N =
+   let F : Fun (Term × Term) (Term × Term) Wellfounded
+       F = flipᶠ mreduce tt in
+   Σ[ n ∈ ℕ ] (#(μᵒ F (M , N)) n)
