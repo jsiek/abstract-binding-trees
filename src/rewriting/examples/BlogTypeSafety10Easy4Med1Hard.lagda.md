@@ -218,7 +218,7 @@ true, except at time zero, when `S ᵒ` has to be true.
     S ᵒ = record { # = λ { zero → ⊤ ; (suc k) → S }
                  ; down = ... ; tz = ... }
 
-Next we discuss the most imporant and interesting of the propositions,
+Next we discuss the most important and interesting of the propositions,
 the one for defining a recursive predicate. The following is a first
 attempt at writing down the type of this proposition. The idea is that
 this constructor of recursive predicates works like the Y-combinator
