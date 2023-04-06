@@ -20,29 +20,29 @@ open import rewriting.examples.StepIndexedLogic
 ℰ⊎𝒱-type : Set
 ℰ⊎𝒱-type = (Type × Term) ⊎ (Type × Term)
 
-𝒱ᶠ⟦_⟧ : Type → Term → Fun ℰ⊎𝒱-type ⊤ Continuous
-𝒱ᶠ⟦ A ⟧ V = recur (inj₁ (A , V))
+𝒱ᶠ⟦_⟧ : Type → Term → Fun ℰ⊎𝒱-type ⊤ Now
+𝒱ᶠ⟦ A ⟧ V = recurᶠ (inj₁ (A , V))
 
-ℰᶠ⟦_⟧ : Type → Term → Fun ℰ⊎𝒱-type ⊤ Continuous
-ℰᶠ⟦ A ⟧ M = recur (inj₂ (A , M))
+ℰᶠ⟦_⟧ : Type → Term → Fun ℰ⊎𝒱-type ⊤ Now
+ℰᶠ⟦ A ⟧ M = recurᶠ (inj₂ (A , M))
 
-pre-𝒱 : Type → Term → Fun ℰ⊎𝒱-type ⊤ Wellfounded
-pre-𝒱 ★ (V ⟨ G , g !⟩ )  = (Value V)ᶠ ×ᶠ ▷ᶠ (𝒱ᶠ⟦ G ⟧ V)
-pre-𝒱 ($ₜ ι) ($ ι′ c)     = (ι ≡ ι′)ᶠ
+pre-𝒱 : Type → Term → Fun ℰ⊎𝒱-type ⊤ Later
+pre-𝒱 ★ (V ⟨ G !⟩ )  = (Value V)ᶠ ×ᶠ ▷ᶠ (𝒱ᶠ⟦ typeofGround G ⟧ V)
+pre-𝒱 ($ₜ ι) ($ c)        = (ι ≡ typeof c)ᶠ
 pre-𝒱 (A ⇒ B) (ƛ N)      = ∀ᶠ[ W ] ▷ᶠ (𝒱ᶠ⟦ A ⟧ W) →ᶠ ▷ᶠ (ℰᶠ⟦ B ⟧ (N [ W ]))
 pre-𝒱 A M                = ⊥ ᶠ
 
 -- Type Safety = Progress & Preservation
 pre-ℰ : Type → Term
-       → Fun ℰ⊎𝒱-type ⊤ Wellfounded
+       → Fun ℰ⊎𝒱-type ⊤ Later
 pre-ℰ A M = (pre-𝒱 A M ⊎ᶠ (reducible M)ᶠ ⊎ᶠ (Blame M)ᶠ)    -- Progress
              ×ᶠ (∀ᶠ[ N ] (M —→ N)ᶠ →ᶠ ▷ᶠ (ℰᶠ⟦ A ⟧ N))        -- Preservation
 
-pre-ℰ⊎𝒱 : ℰ⊎𝒱-type → Fun ℰ⊎𝒱-type ⊤ Wellfounded
+pre-ℰ⊎𝒱 : ℰ⊎𝒱-type → Fun ℰ⊎𝒱-type ⊤ Later
 pre-ℰ⊎𝒱 (inj₁ (A , V)) = pre-𝒱 A V
 pre-ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
 
-ℰ⊎𝒱 : Fun ℰ⊎𝒱-type ℰ⊎𝒱-type Wellfounded
+ℰ⊎𝒱 : Fun ℰ⊎𝒱-type ℰ⊎𝒱-type Later
 ℰ⊎𝒱 = flipᶠ pre-ℰ⊎𝒱 tt
 
 -- Semantically Well Typed Value
@@ -99,47 +99,47 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
    → # (𝒱⟦ A ⟧ M) (suc k)
      ---------------------
    → Value M
-𝒱⇒Value ★ (M ⟨ G , g !⟩) (v , _) = v 〈 g 〉
-𝒱⇒Value ($ₜ ι) ($ ι′ c) 𝒱M = $̬ ι′ c
+𝒱⇒Value ★ (M ⟨ G !⟩) (v , _) = v 〈 G 〉
+𝒱⇒Value ($ₜ ι) ($ c) 𝒱M = $̬ c
 𝒱⇒Value (A ⇒ B) (ƛ N) 𝒱M = ƛ̬ N
 -- vacuous cases
 𝒱⇒Value ★ (` x) ()
-𝒱⇒Value ★ ($ ι c) ()
+𝒱⇒Value ★ ($ c) ()
 𝒱⇒Value ★ (ƛ N) ()
 𝒱⇒Value ★ (L · M) ()
-𝒱⇒Value ★ (M ⟨ H , h ?⟩) ()
+𝒱⇒Value ★ (M ⟨ H ?⟩) ()
 𝒱⇒Value ★ blame ()
 𝒱⇒Value ($ₜ ι) (` x) ()
 𝒱⇒Value ($ₜ ι) (ƛ N) ()
 𝒱⇒Value ($ₜ ι) (L · M) ()
-𝒱⇒Value ($ₜ ι) (M ⟨ G , g !⟩) ()
-𝒱⇒Value ($ₜ ι) (M ⟨ H , h ?⟩) ()
+𝒱⇒Value ($ₜ ι) (M ⟨ G !⟩) ()
+𝒱⇒Value ($ₜ ι) (M ⟨ H ?⟩) ()
 𝒱⇒Value ($ₜ ι) blame ()
 𝒱⇒Value (A ⇒ B) (` x) ()
-𝒱⇒Value (A ⇒ B) ($ ι c) ()
+𝒱⇒Value (A ⇒ B) ($ c) ()
 𝒱⇒Value (A ⇒ B) (L · M) ()
-𝒱⇒Value (A ⇒ B) (M ⟨ G , g !⟩) ()
-𝒱⇒Value (A ⇒ B) (M ⟨ H , h ?⟩) ()
+𝒱⇒Value (A ⇒ B) (M ⟨ G !⟩) ()
+𝒱⇒Value (A ⇒ B) (M ⟨ H ?⟩) ()
 𝒱⇒Value (A ⇒ B) blame ()
 
-V-base : ∀{ι}{ι′}{c : rep ι′}
-   → (𝒱⟦ $ₜ ι ⟧ ($ ι′ c)) ≡ᵒ (ι ≡ ι′)ᵒ
+V-base : ∀{ι}{c : Lit}
+   → (𝒱⟦ $ₜ ι ⟧ ($ c)) ≡ᵒ (ι ≡ typeof c)ᵒ
 V-base = ≡ᵒ-intro (λ k z → z) (λ k z → z)
 
-V-dyn : ∀{G}{V}{g : Ground G}
-   → 𝒱⟦ ★ ⟧ (V ⟨ G , g !⟩) ≡ᵒ ((Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ V))
-V-dyn {G}{V}{g} =
-   let X = (inj₁ (★ , V ⟨ G , g !⟩)) in
-   𝒱⟦ ★ ⟧ (V ⟨ G , g !⟩)                              ⩦⟨ ≡ᵒ-refl refl ⟩
+V-dyn : ∀{G}{V}
+   → 𝒱⟦ ★ ⟧ (V ⟨ G !⟩) ≡ᵒ ((Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ typeofGround G ⟧ V))
+V-dyn {G}{V} =
+   let X = (inj₁ (★ , V ⟨ G !⟩)) in
+   𝒱⟦ ★ ⟧ (V ⟨ G !⟩)                              ⩦⟨ ≡ᵒ-refl refl ⟩
    (μᵒ ℰ⊎𝒱) X                                     ⩦⟨ ℰ⊎𝒱-fixpointᵒ X ⟩
    ((fun ℰ⊎𝒱) (μᵒ ℰ⊎𝒱)) X                        ⩦⟨ ≡ᵒ-refl refl ⟩ 
-   (Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ V)
+   (Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ typeofGround G ⟧ V)
    ∎
 
 V-dyn-elim : ∀{𝓟}{V}{R}
    → 𝓟 ⊢ᵒ 𝒱⟦ ★ ⟧ V
-   → (∀ W G (g : Ground G) → V ≡ W ⟨ G , g !⟩
-             → 𝓟 ⊢ᵒ ((Value W)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ W))
+   → (∀ W G → V ≡ W ⟨ G !⟩
+             → 𝓟 ⊢ᵒ ((Value W)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ typeofGround G ⟧ W))
              → 𝓟 ⊢ᵒ R)
      ----------------------------------------------
    → 𝓟 ⊢ᵒ R
@@ -149,20 +149,20 @@ V-dyn-elim {𝓟}{V}{R} ⊢𝒱V cont =
   G : ∀{V}{n}
       → # (𝒱⟦ ★ ⟧ V) (suc n)
       → 𝓟 ⊢ᵒ 𝒱⟦ ★ ⟧ V
-      → (∀ W G g → V ≡ W ⟨ G , g !⟩
-                → 𝓟 ⊢ᵒ ((Value W)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ G ⟧ W))
-                → 𝓟 ⊢ᵒ R)
+      → (∀ W G → V ≡ W ⟨ G !⟩
+               → 𝓟 ⊢ᵒ ((Value W)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ typeofGround G ⟧ W))
+               → 𝓟 ⊢ᵒ R)
       → 𝓟 ⊢ᵒ R
-  G {W ⟨ G , g !⟩}{n} 𝒱Vsn ⊢𝒱V cont
-      with 𝒱⇒Value ★ (W ⟨ G , g !⟩) 𝒱Vsn
-  ... | w 〈 g 〉 =
-      let ⊢▷𝒱W = proj₂ᵒ (substᵒ (V-dyn{V = W}{g}) ⊢𝒱V) in
-      cont W _ g refl (⊢ᵒ-Sᵒ-intro w ,ᵒ ⊢▷𝒱W)
+  G {W ⟨ G !⟩}{n} 𝒱Vsn ⊢𝒱V cont
+      with 𝒱⇒Value ★ (W ⟨ G !⟩) 𝒱Vsn
+  ... | w 〈 _ 〉 =
+      let ⊢▷𝒱W = proj₂ᵒ (substᵒ (V-dyn{V = W}) ⊢𝒱V) in
+      cont W _ refl (⊢ᵒ-Sᵒ-intro w ,ᵒ ⊢▷𝒱W)
   G {` x}{n} ()
-  G {$ ι c}{n} ()
+  G {$ c}{n} ()
   G {ƛ N}{n} ()
   G {L · M}{n} ()
-  G {M ⟨ H , h ?⟩}{n} ()
+  G {M ⟨ H ?⟩}{n} ()
   G {blame}{n} ()
   
 V-fun : ∀{A B}{N}
@@ -197,10 +197,10 @@ V-fun-elim {𝓟}{A}{B}{V}{R} ⊢𝒱V cont =
       instᵒ{P = λ W → (▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ])))}
                  (substᵒ V-fun ⊢𝒱V) W
   G{` x}{n} ()
-  G{$ ι c}{n} ()
+  G{$ c}{n} ()
   G{L · M}{n} ()
-  G{M ⟨ G , g !⟩}{n} ()
-  G{M ⟨ H , h ?⟩}{n} ()
+  G{M ⟨ G !⟩}{n} ()
+  G{M ⟨ H ?⟩}{n} ()
   G{blame}{n} ()
 
 {- Semantic Type Safety -}

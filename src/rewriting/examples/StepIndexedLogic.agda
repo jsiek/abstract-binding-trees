@@ -387,12 +387,12 @@ wellfounded : ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
 wellfounded F = ∀ {P k} → ↓ᵒ (suc k) (F P) ≡ᵖ ↓ᵒ (suc k) (F (↓ᵒ k P))
 
 data Kind : Set where
-  Continuous : Kind
-  Wellfounded : Kind
+  Now : Kind
+  Later : Kind
 
 goodness : Kind → ∀{A}{B} → (Predᵒ A → Predᵒ B) → Set₁
-goodness Continuous F = continuous F
-goodness Wellfounded F = wellfounded F
+goodness Now F = continuous F
+goodness Later F = wellfounded F
 
 record Fun (A B : Set) (κ : Kind)
        : Set₁ where
@@ -422,7 +422,7 @@ abstract
   ↓ᵒ-zero v (suc i) = ⇔-intro (λ{()}) (λ{()})
 
 lemma15a : ∀{A} {P Q : Predᵒ A}{j}
-  → (F : Fun A A Wellfounded)
+  → (F : Fun A A Later)
   → ↓ᵒ j (iter j (fun F) P) ≡ᵖ ↓ᵒ j (iter j (fun F) Q)
 lemma15a {A} {P}{Q} {zero} F = ↓ᵒ-zero
 lemma15a {A} {P}{Q} {suc j} F =
@@ -434,7 +434,7 @@ lemma15a {A} {P}{Q} {suc j} F =
   ∎
 
 lemma15b : ∀{A}(P : Predᵒ A){j k}
-  → (F : Fun A A Wellfounded)
+  → (F : Fun A A Later)
   → j ≤ k
   → ↓ᵒ j (iter j (fun F) P) ≡ᵖ ↓ᵒ j (iter k (fun F) P)
 lemma15b{A} P {j}{k} F j≤k =
@@ -455,7 +455,7 @@ dc-iter (suc i) F = λ v → down (F (iter i F ⊤ᵒ) v)
 μₚ F a k = #(iter (suc k) F ⊤ᵒ a) k
 
 μᵒ : ∀{A}
-   → Fun A A Wellfounded
+   → Fun A A Later
      -------------------
    → Predᵒ A
 μᵒ F a =  record { # = μₚ (fun F) a
@@ -464,7 +464,7 @@ dc-iter (suc i) F = λ v → down (F (iter i F ⊤ᵒ) v)
                  }
   where
   dc-μ : ∀{A}
-       (F : Fun A A Wellfounded)
+       (F : Fun A A Later)
      → (a : A)
      → downClosed (μₚ (fun F) a)
   dc-μ {A} F a k μFak zero j≤k = tz (fun F ⊤ᵒ a)
@@ -543,7 +543,7 @@ abstract
   ↓-zero v (suc i) = ⇔-intro (λ { (() , _)}) (λ {(() , _)})
 
 wellfounded⇒continuous : ∀{A}{B}
-   → (F : Fun A B Wellfounded)
+   → (F : Fun A B Later)
    → continuous (fun F)
 wellfounded⇒continuous F {P}{zero} = ↓-zero 
 wellfounded⇒continuous F {P}{suc k} =
@@ -555,17 +555,17 @@ wellfounded⇒continuous F {P}{suc k} =
     ∎
 
 WF⇒C : ∀{A}{B}
-   → Fun A B Wellfounded
-   → Fun A B Continuous
+   → Fun A B Later
+   → Fun A B Now
 WF⇒C F = record { fun = fun F
                 ; good = wellfounded⇒continuous F
                 ; congr = congr F }   
 
 choose : Kind → Kind → Kind
-choose Continuous Continuous = Continuous
-choose Continuous Wellfounded = Continuous
-choose Wellfounded Continuous = Continuous
-choose Wellfounded Wellfounded = Wellfounded
+choose Now Now = Now
+choose Now Later = Now
+choose Later Now = Now
+choose Later Later = Later
 
 {-------------- Functions on Step Index Predicates  --------------}
 
@@ -588,7 +588,7 @@ abstract
                                    ((≤-trans (s≤s j<si) si<k) , Pxj) in
                      proj₂ ↓Qsj}})
 
-continuous-→ : ∀{A}{B}(F G : Fun A B Continuous)
+continuous-→ : ∀{A}{B}(F G : Fun A B Now)
    → continuous (λ P → (fun F) P →ᵒ (fun G) P)
 continuous-→ {A}{B} F G {P}{k} =
    let f = fun F in let g = fun G in
@@ -598,7 +598,7 @@ continuous-→ {A}{B} F G {P}{k} =
    ↓ᵒ k (f (↓ᵒ k P) →ᵒ g (↓ᵒ k P))
    ∎
 
-wellfounded-→ : ∀{A}{B}(F G : Fun A B Wellfounded)
+wellfounded-→ : ∀{A}{B}(F G : Fun A B Later)
    → wellfounded (λ P → (fun F) P →ᵒ (fun G) P)
 wellfounded-→ {A}{B} F G {P}{k} =
     let f = fun F in let g = fun G in
@@ -614,10 +614,10 @@ goodness-→ : ∀ {kf kg : Kind} {A}{B}
      (F : Fun A B kf)
      (G : Fun A B kg)
    → goodness (choose kf kg) (λ P → (fun F) P →ᵒ (fun G) P)
-goodness-→ {Continuous}{Continuous} F G  = continuous-→ F G
-goodness-→ {Continuous}{Wellfounded} F G = continuous-→ F (WF⇒C G)
-goodness-→ {Wellfounded}{Continuous} F G = continuous-→ (WF⇒C F) G
-goodness-→ {Wellfounded}{Wellfounded} F G = wellfounded-→ F G 
+goodness-→ {Now}{Now} F G  = continuous-→ F G
+goodness-→ {Now}{Later} F G = continuous-→ F (WF⇒C G)
+goodness-→ {Later}{Now} F G = continuous-→ (WF⇒C F) G
+goodness-→ {Later}{Later} F G = wellfounded-→ F G 
 
 abstract
   cong-→ : ∀{A}{B}{kf}{kg}
@@ -663,7 +663,7 @@ abstract
       (λ { (si<k , (_ , Pxsi) , _ , Qxsi) → si<k , Pxsi , Qxsi})
 
 continuous-× : ∀{A}{B}
-    (F G : Fun A B Continuous)
+    (F G : Fun A B Now)
    → continuous (λ P → (fun F) P ×ᵒ (fun G) P)
 continuous-× {A}{B} F G {P}{k} =
     let f = fun F in let g = fun G in
@@ -674,7 +674,7 @@ continuous-× {A}{B} F G {P}{k} =
     ∎
 
 wellfounded-× : ∀{A}{B}
-    (F G : Fun A B Wellfounded)
+    (F G : Fun A B Later)
    → wellfounded (λ P → (fun F) P ×ᵒ (fun G) P)
 wellfounded-× {A}{B} F G {P}{k} =
     let f = fun F in let g = fun G in
@@ -690,10 +690,10 @@ goodness-× : ∀ {kf kg : Kind} {A}{B}
     (F : Fun A B kf)
     (G : Fun A B kg)
    → goodness (choose kf kg) (λ P → (fun F) P ×ᵒ (fun G) P)
-goodness-× {Continuous}{Continuous} F G = continuous-× F G 
-goodness-× {Continuous}{Wellfounded} F G = continuous-× F (WF⇒C G)
-goodness-× {Wellfounded}{Continuous} F G = continuous-× (WF⇒C F) G
-goodness-× {Wellfounded}{Wellfounded} F G = wellfounded-× F G 
+goodness-× {Now}{Now} F G = continuous-× F G 
+goodness-× {Now}{Later} F G = continuous-× F (WF⇒C G)
+goodness-× {Later}{Now} F G = continuous-× (WF⇒C F) G
+goodness-× {Later}{Later} F G = wellfounded-× F G 
 
 abstract
   cong-× : ∀{A}{B}{kf}{kg}
@@ -740,7 +740,7 @@ abstract
     fro (suc i) (si<k , inj₁ (_ , Psi)) = si<k , inj₁ Psi
     fro (suc i) (si<k , inj₂ (_ , Qsi)) = si<k , (inj₂ Qsi)
   
-continuous-⊎ : ∀{A}{B}(F G : Fun A B Continuous)
+continuous-⊎ : ∀{A}{B}(F G : Fun A B Now)
    → continuous (λ P → (fun F) P ⊎ᵒ (fun G) P)
 continuous-⊎ {A}{B} F G {P}{k} =
     let f = fun F in let g = fun G in
@@ -750,7 +750,7 @@ continuous-⊎ {A}{B} F G {P}{k} =
     ↓ᵒ k (f (↓ᵒ k P) ⊎ᵒ g (↓ᵒ k P))
     ∎
 
-wellfounded-⊎ : ∀{A}{B}(F G : Fun A B Wellfounded)
+wellfounded-⊎ : ∀{A}{B}(F G : Fun A B Later)
    → wellfounded (λ P → (fun F) P ⊎ᵒ (fun G) P)
 wellfounded-⊎ {A}{B} F G {P}{k} =
     let f = fun F in let g = fun G in
@@ -766,10 +766,10 @@ goodness-⊎ : ∀ {kf kg : Kind} {A}{B}
      (F : Fun A B kf)
      (G : Fun A B kg)
    → goodness (choose kf kg) (λ P → (fun F) P ⊎ᵒ (fun G) P)
-goodness-⊎ {Continuous}{Continuous} F G = continuous-⊎ F G 
-goodness-⊎ {Continuous}{Wellfounded} F G = continuous-⊎ F (WF⇒C G)
-goodness-⊎ {Wellfounded}{Continuous} F G = continuous-⊎ (WF⇒C F) G
-goodness-⊎ {Wellfounded}{Wellfounded} F G = wellfounded-⊎ F G
+goodness-⊎ {Now}{Now} F G = continuous-⊎ F G 
+goodness-⊎ {Now}{Later} F G = continuous-⊎ F (WF⇒C G)
+goodness-⊎ {Later}{Now} F G = continuous-⊎ (WF⇒C F) G
+goodness-⊎ {Later}{Later} F G = wellfounded-⊎ F G
 
 abstract
   cong-⊎ : ∀{A}{B}{kf}{kg}
@@ -802,7 +802,7 @@ _⊎ᶠ_ {A}{B}{kF}{kG} F G =
 
 abstract
   continuous-all : ∀{A B C}
-     → (F : A → Fun B C Continuous)
+     → (F : A → Fun B C Now)
      → continuous (λ P → ∀ᵒ[ a ] fun (F a) P)
   continuous-all F {P}{k} x zero = ⇔-intro (λ x → tt) (λ x → tt)
   continuous-all F {P}{k} x (suc i) =
@@ -819,7 +819,7 @@ abstract
              proj₂ ↓FP)})
 
   wellfounded-all : ∀{A B C}
-     → (F : A → Fun B C Wellfounded)
+     → (F : A → Fun B C Later)
      → wellfounded (λ P → ∀ᵒ[ a ] fun (F a) P)
   wellfounded-all F {P}{k} x zero = ⇔-intro (λ x → tt) (λ x → tt)
   wellfounded-all F {P}{k} x (suc i) =
@@ -839,8 +839,8 @@ abstract
 goodness-all : ∀{A B C}{K}
    → (F : A → Fun B C K)
    → goodness K (λ P → ∀ᵒ[ a ] fun (F a) P)
-goodness-all {A} {B} {C} {Continuous} F = continuous-all F
-goodness-all {A} {B} {C} {Wellfounded} F = wellfounded-all F
+goodness-all {A} {B} {C} {Now} F = continuous-all F
+goodness-all {A} {B} {C} {Later} F = wellfounded-all F
 
 abstract
   cong-all : ∀{A B C}{K}
@@ -869,7 +869,7 @@ syntax ∀ᶠ-syntax (λ x → F) = ∀ᶠ[ x ] F
 
 abstract
   continuous-exist : ∀{A B C}{{_ : Inhabited A}}
-     → (F : A → Fun B C Continuous)
+     → (F : A → Fun B C Now)
      → continuous (λ P → ∃ᵒ[ a ] fun (F a) P)
   continuous-exist F c zero = (λ x → tt) , (λ x → tt)
   continuous-exist F {P} {zero} c (suc i) = (λ {(() , _)}) , λ {(() , _)}
@@ -883,7 +883,7 @@ abstract
           si<sk , (a , proj₂ ↓FP))
 
   wellfounded-exist : ∀{A B C}{{_ : Inhabited A}}
-     → (F : A → Fun B C Wellfounded)
+     → (F : A → Fun B C Later)
      → wellfounded (λ P → ∃ᵒ[ a ] fun (F a) P)
   wellfounded-exist F {P} {k} c zero = (λ x → tt) , (λ x → tt)
   wellfounded-exist F {P} {k} c (suc i) =
@@ -898,8 +898,8 @@ abstract
 goodness-exist : ∀{A B C}{K}{{_ : Inhabited A}}
    → (F : A → Fun B C K)
    → goodness K (λ P → ∃ᵒ[ a ] fun (F a) P)
-goodness-exist {A} {B} {C} {Continuous} F = continuous-exist F
-goodness-exist {A} {B} {C} {Wellfounded} F = wellfounded-exist F
+goodness-exist {A} {B} {C} {Now} F = continuous-exist F
+goodness-exist {A} {B} {C} {Later} F = wellfounded-exist F
 
 abstract
   cong-exist : ∀{A B C}{K}{{_ : Inhabited A}}
@@ -936,7 +936,7 @@ abstract
 
 _ᶠ : ∀{A}{B}
    → Set
-   → Fun A B Wellfounded
+   → Fun A B Later
 (S)ᶠ = record { fun = λ P → S ᵒ
               ; good = λ {P}{k} → wellfounded-const S {P}{k}
               ; congr = cong-const S
@@ -960,7 +960,7 @@ abstract
                  s≤s i≤1+k , i≤1+k , ▷Pvi})
     (λ {(i≤1+k , (_ , ▷Pvi)) → i≤1+k , ▷Pvi})
 
-wellfounded-▷ : ∀{A}{B} (F : Fun A B Continuous)
+wellfounded-▷ : ∀{A}{B} (F : Fun A B Now)
    → wellfounded (λ P → ▷ᵒ ((fun F) P))
 wellfounded-▷ {A}{B} F {P}{k} =
     let f = fun F in
@@ -975,8 +975,8 @@ wellfounded-▷ {A}{B} F {P}{k} =
 
 goodness-▷ : ∀ {k : Kind}{A}{B} (F : Fun A B k)
   → wellfounded (λ P → ▷ᵒ ((fun F) P))
-goodness-▷ {Continuous} F = wellfounded-▷ F
-goodness-▷ {Wellfounded} F = wellfounded-▷ (WF⇒C F)
+goodness-▷ {Now} F = wellfounded-▷ F
+goodness-▷ {Later} F = wellfounded-▷ (WF⇒C F)
 
 abstract
   cong-▷ : ∀{A}{B}{kf}
@@ -991,7 +991,7 @@ abstract
 ▷ᶠ : ∀{A}{B}{kF}
    → Fun A B kF
      -------------------
-   → Fun A B Wellfounded
+   → Fun A B Later
 ▷ᶠ {A}{B}{kF} F = record { fun = (λ P → ▷ᵒ ((fun F) P))
               ; good = goodness-▷ F
               ; congr = cong-▷ F
@@ -1009,8 +1009,8 @@ abstract
     → (F : A → Fun C B K)
     → (b : B)
     → goodness K (flip F b)
-  goodness-flip {A}{B}{C} {Continuous} F b {P}{k} x = good (F x) b
-  goodness-flip {A}{B}{C} {Wellfounded} F b {P}{k} x = good (F x) b
+  goodness-flip {A}{B}{C} {Now} F b {P}{k} x = good (F x) b
+  goodness-flip {A}{B}{C} {Later} F b {P}{k} x = good (F x) b
     
   congᵖ-flip : ∀{A}{B}{C}{K}
     → (F : A → Fun C B K)
@@ -1043,11 +1043,11 @@ abstract
   cong-recur : ∀ {A}{B}(a : A) → congᵖ{A}{B} (λ P → P a ˢ)
   cong-recur a PQ v i = PQ a i
 
-recur : ∀{A}{B}
+recurᶠ : ∀{A}{B}
    → A
      ------------------
-   → Fun A B Continuous
-recur a =
+   → Fun A B Now
+recurᶠ a =
   record { fun = λ P → (P a) ˢ 
          ; good = λ {P} {k} → continuous-recur a {P}{k}
          ; congr = cong-recur a
@@ -1060,7 +1060,7 @@ recur a =
 abstract
   lemma18a : ∀{A}
      → (k : ℕ)
-     → (F : Fun A A Wellfounded)
+     → (F : Fun A A Later)
      → ↓ᵒ k (μᵒ F) ≡ᵖ ↓ᵒ k (iter k (fun F) ⊤ᵒ)
   lemma18a zero F x zero = ⇔-intro (λ x → tt) (λ x → tt)
   lemma18a zero F x (suc i) = ⇔-intro (λ { (() , b)}) (λ { (() , b)})
@@ -1101,7 +1101,7 @@ abstract
 
 lemma18b : ∀{A}
    → (k : ℕ)
-   → (F : Fun A A Wellfounded)
+   → (F : Fun A A Later)
    → ↓ᵒ (suc k) ((fun F) (μᵒ F)) ≡ᵖ ↓ᵒ (suc k) (iter (suc k) (fun F) ⊤ᵒ)
 lemma18b {A} k F =
       ↓ᵒ (suc k) ((fun F) (μᵒ F))                         ⩦⟨ good F ⟩
@@ -1114,7 +1114,7 @@ lemma18b {A} k F =
     
 lemma19 : ∀{A}
    → (k : ℕ)
-   → (F : Fun A A Wellfounded)
+   → (F : Fun A A Later)
    → ↓ᵒ k (μᵒ F) ≡ᵖ ↓ᵒ k ((fun F) (μᵒ F))
 lemma19 {A} k F =
       ↓ᵒ k (μᵒ F)                                  ⩦⟨ lemma18a k F ⟩
@@ -1156,25 +1156,28 @@ abstract
 
 {- Theorem 20 -}
 fixpoint : ∀{A}
-   → (F : Fun A A Wellfounded)
+   → (F : Fun A A Later)
    → μᵒ F ≡ᵖ (fun F) (μᵒ F)
 fixpoint F = equiv-down (λ k → lemma19 k F)
 
 {--------------- Make a Recursive Predicate -------------------}
 
-recursive : ∀{A}
-   → (A → Fun A ⊤ Wellfounded)
-     -------------------------
-   → Predᵒ A
-recursive F = μᵒ (flipᶠ F tt)
+RecSetᵒ : Set → Kind → Set₁
+RecSetᵒ A κ = Fun A ⊤ Later
 
-fixpointᵒ : ∀{A} (F : A → Fun A ⊤ Wellfounded) (a : A)
-    → recursive F a ≡ᵒ fun (F a) (recursive F) tt
+recursiveᵒ : ∀{A}
+   → (A → RecSetᵒ A Later)
+     ---------------------
+   → Predᵒ A
+recursiveᵒ F = μᵒ (flipᶠ F tt)
+
+fixpointᵒ : ∀{A} (F : A → RecSetᵒ A Later) (a : A)
+    → recursiveᵒ F a ≡ᵒ fun (F a) (recursiveᵒ F) tt
 fixpointᵒ {A} F a =
-  recursive F a                             ⩦⟨ ≡ᵒ-refl refl ⟩
+  recursiveᵒ F a                             ⩦⟨ ≡ᵒ-refl refl ⟩
   μᵒ (flipᶠ F tt) a                         ⩦⟨ apply-≡ᵖ (fixpoint (flipᶠ F tt)) a ⟩
   (fun (flipᶠ F tt)) (μᵒ (flipᶠ F tt)) a     ⩦⟨ ≡ᵒ-refl refl ⟩
-  fun (F a) (recursive F) tt                ∎
+  fun (F a) (recursiveᵒ F) tt                ∎
 
 
 {--------------- Useful Lemmas -------------------}
@@ -1308,14 +1311,14 @@ abstract
       let Qan = ⇔-to (P=Q a n) Pan in
       Qan
 
-⊢ᵒ-unfold : ∀ {A}{𝓟}{F : Fun A A Wellfounded}{a : A}
+⊢ᵒ-unfold : ∀ {A}{𝓟}{F : Fun A A Later}{a : A}
   → 𝓟 ⊢ᵒ (μᵒ F) a
     ------------------------------
   → 𝓟 ⊢ᵒ ((fun F) (μᵒ F)) a
 ⊢ᵒ-unfold {A}{𝓟}{F}{a} ⊢μa =
     ≡ᵖ⇒⊢ᵒ 𝓟 (μᵒ F) ((fun F) (μᵒ F)) ⊢μa (fixpoint F)
 
-⊢ᵒ-fold : ∀ {A}{𝓟}{F : Fun A A Wellfounded}{a : A}
+⊢ᵒ-fold : ∀ {A}{𝓟}{F : Fun A A Later}{a : A}
   → 𝓟 ⊢ᵒ ((fun F) (μᵒ F)) a
     ------------------------------
   → 𝓟 ⊢ᵒ (μᵒ F) a

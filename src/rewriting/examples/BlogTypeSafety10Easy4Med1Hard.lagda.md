@@ -3,23 +3,30 @@
 ```
 {-# OPTIONS --rewriting #-}
 module rewriting.examples.BlogTypeSafety10Easy4Med1Hard where
+
+open import Data.Nat
+open import Data.Product using (_,_;_×_; proj₁; proj₂; Σ-syntax; ∃-syntax)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Unit using (⊤; tt)
+open import Relation.Binary.PropositionalEquality as Eq
+  using (_≡_; _≢_; refl; sym; cong; subst; trans)
+
 ```
 
-Ok, so the title of this post gives it away that logical relations are
-overkill for proving type safety. The proof technique is better suited
-to proving more interesting properties such as parametricity, program
-equivalence, and the gradual guarantee.  Nevertheless, understanding a
-proof of type safety via logical relations is a helpful stepping stone
-to understanding these more complex use cases, especial when the
-logical relations employ more advanced techniques, such as step
-indexing.  In this blog post I prove type safety of a cast calculus,
-that is, for an intermediate language of the gradually typed lambda
-calculus.  The proof is in Agda and the proof uses step-indexed
-logical relations because the presence of the unknown (aka. dynamic)
-type prevents the use of regular logical relations. To reduce the
-clutter of reasoning about step indexing, we conduct the proof using a
-temporal logic, in the spirit of the LSLR logic of Dreyer, Ahmed, and
-Birkedal (2011), that we embed in Agda.
+Ok, so logical relations are overkill for proving type safety. The
+proof technique is better suited to proving more interesting
+properties such as parametricity, program equivalence, and the gradual
+guarantee.  Nevertheless, understanding a proof of type safety via
+logical relations is a helpful stepping stone to understanding these
+more complex use cases, especial when the logical relations employ
+more advanced techniques, such as step indexing.  In this blog post I
+prove type safety of a cast calculus (an intermediate language of the
+gradually typed lambda calculus).  The proof is in Agda and the proof
+uses step-indexed logical relations because the presence of the
+unknown type (aka. dynamic type) prevents the use of regular logical
+relations. To reduce the clutter of reasoning about step indexing, we
+conduct the proof using a temporal logic, in the spirit of the LSLR
+logic of Dreyer, Ahmed, and Birkedal (2011), that we embed in Agda.
 
 ## Review of the Cast Calculus
 
@@ -27,8 +34,8 @@ Birkedal (2011), that we embed in Agda.
 open import rewriting.examples.Cast
 ```
 
-We'll review the syntax and reduction rules of this cast calculus.
-Just like the lambda calculus, types include base types (Booleans and
+We review the syntax and reduction rules of this cast calculus.  Just
+like the lambda calculus, types include base types (Booleans and
 natural numbers), and function types. To support gradual typing, we
 include the unknown type ★.
 
@@ -37,18 +44,18 @@ include the unknown type ★.
 
 The ground types are 
 
-    g,h ::= ι | ★⇒★
+    G,H ::= ι | ★⇒★
 
-Just like the lambda calculus, there are variables (de Bruijn),
+Just like the lambda calculus, there are variables (de Bruijn indices),
 lambdas, and application. We also throw in literals (Booleans and
-natural numbers).  To support gradual typing, we include a term `M ⟨ G
-, g !⟩` for injecting from a ground type `G` to the unknown type, and
-dually, a term `M ⟨ H , h ?⟩` for projecting from the unknown type
+natural numbers).  To support gradual typing, we include a term
+`M ⟨ G !⟩` for injecting from a ground type `G` to the unknown type, and
+a term `M ⟨ H ?⟩` for projecting from the unknown type
 back out to a ground type.  Finally, we include the `blame` term to
 represent trapped runtime errors.  The syntax is a bit odd to make
 Agda happy.
 
-    L,M,N ::= ` x | ƛ N | L · M | $ k | M ⟨ G , g !⟩ | M ⟨ H , h ?⟩ | blame
+    L,M,N ::= ` x | ƛ N | L · M | $ k | M ⟨ G !⟩ | M ⟨ H ?⟩ | blame
 
 This cast calculus is somewhat unusual in that it only includes injections
 and projections but not the other kinds of casts that one typically
@@ -57,11 +64,11 @@ because those other casts can still be expressed in this cast calculus.
 
 The values include lambdas, literals, and injected values.
 
-    V,W ::= ƛ N | $ c | V ⟨ G , g !⟩
+    V,W ::= ƛ N | $ c | V ⟨ G !⟩
 
 The reduction rules make use of frames, which are defined as follows.
 
-    F ::= □· M | V ·□ | □⟨ G , g !⟩ | □⟨ H , h ?⟩
+    F ::= □· M | V ·□ | □⟨ G !⟩ | □⟨ H ?⟩
 
 The operation `F ⟦ M ⟧` plugs a term into a frame.
 
@@ -70,15 +77,15 @@ The reduction rules of the cast calculus are as follows:
     (ξ)        If M —→ N, then F ⟦ M ⟧ —→ F ⟦ N ⟧
     (ξ-blame)  F ⟦ blame ⟧ —→ blame
     (β)        (ƛ N) · W —→ N [ W ]
-    (collapse) V ⟨ G , g !⟩ ⟨ G , g ?⟩ —→ V
-    (collide)  If G ≢ H, then V ⟨ G , g !⟩ ⟨ H , h ?⟩ —→ blame.
+    (collapse) V ⟨ G !⟩ ⟨ G ?⟩ —→ V
+    (collide)  If G ≢ H, then V ⟨ G !⟩ ⟨ H ?⟩ —→ blame.
 
 
 ## A First Attempt at a Logical Relation for Type Safety
 
 The following is a first attempt to define a logical relation for type
 safety for the cast calculus. The predicate 𝓔 expresses the semantic
-notion of a term being well typed at a given type A. Here we say that
+notion of a term being well typed at a given type A. Here we define that
 a term M is well typed at type A if it satisfies "progress" and
 "preservation". The progress part says that M is either (1) a
 (semantic) value, (2) reducible, or (3) an error. The preservation part
@@ -94,22 +101,25 @@ the appropriate kind of literal (Boolean or natural number). For a
 function type `A ⇒ B`, the value must be a lambda expression `ƛ N`,
 and furthermore, substituting any value `W` that is semantically well
 typed at `A` into the body `N` produces a term that is semantically
-well typed at `B`.
+well typed at `B`. For the unknown type `★`, the value must be
+an injection of a value `V` from some ground type `G`, and `V`
+must be semantically well typed at `G`.
 
     𝒱⟦_⟧ : (A : Type) → Term → Set
-    𝒱⟦ ι ⟧ ($ ι′ c) = ι ≡ ι′
+    𝒱⟦ ι ⟧ ($ c) = ι ≡ typeof c
     𝒱⟦ A ⇒ B ⟧ (ƛ N) = ∀ W → 𝒱⟦ A ⟧ W → ℰ⟦ B ⟧ (N [ W ])
-    𝒱⟦ ★ ⟧ (V ⟨ G , g !⟩) = Value V × 𝒱⟦ G ⟧ V
+    𝒱⟦ ★ ⟧ (V ⟨ G !⟩) = Value V × 𝒱⟦ typeofGround G ⟧ V
     𝒱⟦ _ ⟧ _ = ⊥
 
 Note that the definitions of 𝓔 and 𝓥 are recursive. Unfortunately they
 are not proper definitions of (total) functions because there is no
-guarantee of termination. For simple languages, like the Simply Typed
-Lambda Calculus, 𝓥 can be defined by recursion on the type A. However,
-here we have the unknown type ★ and the recursion for that clause
-invokes `𝒱⟦ G ⟧ V`, but `G` is not a structural part of ★.  (The
-definition of 𝓔 above is also problematic, but one can reformulate 𝓔
-to remove the recursion in 𝓔.)
+guarantee of their termination. For simple languages, like the Simply
+Typed Lambda Calculus, 𝓥 can be defined by recursion on the type
+`A`. However, here we have the unknown type `★` and the recursion in that
+clause invokes `𝒱⟦ typeofGround G ⟧ V`, but `typeofGround G` is
+not a structural part of ★ (nothing is).
+(The definition of 𝓔 above is also problematic, but one could
+reformulate 𝓔 to remove the recursion in 𝓔.)
 
 ## An Explicitly Step-indexed Logical Relation for Type Safety
 
@@ -131,7 +141,7 @@ are no guarantees.
     𝒱⟦ A ⟧ M 0 = ⊤
     𝒱⟦ ι ⟧ ($ ι′ c) (suc k) = ι ≡ ι′
     𝒱⟦ A ⇒ B ⟧ (ƛ N) (suc k) = ∀ W → 𝒱⟦ A ⟧ W k → ℰ⟦ B ⟧ (N [ W ]) k
-    𝒱⟦ ★ ⟧ (V ⟨ G , g !⟩) (suc k) = Value V × 𝒱⟦ G ⟧ V k
+    𝒱⟦ ★ ⟧ (V ⟨ G !⟩) (suc k) = Value V × 𝒱⟦ typeofGround G ⟧ V k
     𝒱⟦ _ ⟧ _ (suc k) = ⊥
 
 We now have proper definitions of 𝓔 and 𝓥 but proving theorems about
@@ -185,6 +195,21 @@ and `Q` are true at time `k`.
     P ×ᵒ Q = record { # = λ k → # P k × # Q k
                     ; down = ... ; tz = ... }
 
+The "for all" proposition `∀ᵒ[ a ] P` is true at a given time `k` if
+the predicate `P` is true for all `a` at time `k`.
+
+    ∀ᵒ : ∀{A : Set} → (A → Setᵒ) → Setᵒ
+    ∀ᵒ{A} P = record { # = λ k → ∀ (a : A) → # (P a) k
+                     ; down = ... ; tz = ... }
+
+The "exists" proposition `∃ᵒ[ a ] P` is true at a given time `k` if
+the predicate `P` is true for some `a` at time `k`. However, we
+must require that the type `A` is inhabited.
+
+    ∃ᵒ : ∀{A : Set}{{_ : Inhabited A}} → (A → Setᵒ) → Setᵒ
+    ∃ᵒ{A} P = record { # = λ k → Σ[ a ∈ A ] # (P a) k
+                         ; down = ... ; tz = ... }
+
 We embed arbitrary Agda formulas into the step-indexed logic with the
 following operator, written `S ᵒ`, which is true if and only if `S` is
 true, except at time zero, when `S ᵒ` has to be true.
@@ -193,35 +218,126 @@ true, except at time zero, when `S ᵒ` has to be true.
     S ᵒ = record { # = λ { zero → ⊤ ; (suc k) → S }
                  ; down = ... ; tz = ... }
 
-In addition to true/false propositions, the step-indexed logic can
-express predicates, which we represent in Agda simply as functions
-into `Setᵒ`.
+Next we discuss the most imporant and interesting of the propositions,
+the one for defining a recursive predicate. The following is a first
+attempt at writing down the type of this proposition. The idea is that
+this constructor of recursive predicates works like the Y-combinator
+in that it turns a non-recursive predicate into a recursive one.
 
-    Predᵒ : Set → Set₁
-    Predᵒ A = A → Setᵒ
+    recursiveᵒ : ∀{A}
+       → (A → (A → Setᵒ) → Setᵒ)
+         -----------------------
+       → A → Setᵒ
 
+The non-recursive predicate has type `A → (A → Setᵒ) → Setᵒ`. It has
+an extra parameter `(A → Setᵒ)` that will be supplied with the
+recursive predicate itself. To clarify, lets look at an example.
+Suppose we wanted to define multi-step reduction via rules
+such as the following:
 
+                M —→ L    L —→* N
+    -------     ------------------
+    M —→* M     M —→* N
 
+We would first define a non-recursive predicate that has an extra
+parameter, let us name it `R` for recursion.
 
+    mreduce : Term × Term → (Term × Term → Setᵒ) → Setᵒ
+    mreduce (M , N) R = (M ≡ N)ᵒ ⊎ᵒ (∃ᵒ[ L ] (M —→ L)ᵒ ×ᵒ R (L , N))
+
+Because we use "exists" with a Term, we need to prove that Term is inhabited.
 
 ```
-
-open import Data.Nat
-open import Data.Product using (_,_;_×_; proj₁; proj₂; Σ-syntax; ∃-syntax)
-open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality as Eq
-  using (_≡_; _≢_; refl; sym; cong; subst; trans)
-
 instance
   TermInhabited : Inhabited Term
   TermInhabited = record { elt = ` 0 }
 
-mreduce : Term × Term → Fun (Term × Term) ⊤ Wellfounded
-mreduce (M , N) = (M ≡ N)ᶠ ⊎ᶠ (∃ᶠ[ L ] (M —→ L)ᶠ ×ᶠ ▷ᶠ (recur (L , N)))
+```
+We then apply the `recursiveᵒ` proposition to `mreduce` to
+obtain the desired recursive predicate.
 
+    _—→*_ : Term → Term → Setᵒ
+    M —→* N = recursiveᵒ mreduce (M , N)
+
+The only problem with the above story is that it's not possible (to my
+knowledge) to construct a recursive predicate from a arbitrary
+function of type `A → (A → Setᵒ) → Setᵒ`. Instead, we need to place
+restrictions on the function. In particular, if we impose the
+restriction that the recursion never happens "now", but only "later",
+then it becomes possible to construct `recursiveᵒ`. We define the
+`RecSetᵒ` type in Agda to capture this restriction.
+
+    RecSetᵒ A κ
+
+The `A` is the parameter type for the recursion and κ is `Now` or
+`Later`.  We then define variants of all the propositions that work on
+RecSetᵒ instead of Setᵒ and that track whether the recursive call
+happened now or later.
+
+We can now give the true type of `recursiveᵒ` it takes a non-recursive
+function from `A` to a `RecSetᵒ` and then produces a recursive
+predicate in `A`.
+
+    recursiveᵒ : ∀{A}
+       → (A → RecSetᵒ A Later)
+         ---------------------
+       → A → Setᵒ
+
+To invoke the recursion, use the `recur` proposition. It takes an
+argument of type `A` and produces a `RecSetᵒ` that indicates that the
+recursion happened `Now`.
+
+    recurᶠ : ∀{A} → A → RecSetᵒ A Now
+
+The "later" operator, `▷ᶠ P`, moves `P` into the future, so regardless
+of whether `P` contained any recursive calls, the predicate `▷ᶠ P` can
+safely say that any recursion happened `Later`.
+
+    ▷ᶠ : ∀{A}{κ} → RecSetᵒ A κ → RecSetᵒ A Later
+
+The "and" operator, `P ×ᶠ Q` is categorized as `Later` only if
+both `P` and `Q` are `Later`. Otherwise it is `Now`.
+So we use the following function to choose:
+
+    choose : Kind → Kind → Kind
+    choose Now Now = Now
+    choose Now Later = Now
+    choose Later Now = Now
+    choose Later Later = Later
+
+Here's the type of the "and" operator:
+
+    _×ᶠ_ : ∀{A}{κ₁ κ₂} → RecSetᵒ A κ₁ → RecSetᵒ A κ₂ → RecSetᵒ A (choose κ₁ κ₂)
+
+The other propositions following a similar pattern.
+
+Let's now revisit the example of defining multi-step reduction.  The
+non-recursive `mreduce` predicate is defined as follows.
+
+```
+mreduce : Term × Term → RecSetᵒ (Term × Term) Later
+mreduce (M , N) = (M ≡ N)ᶠ ⊎ᶠ (∃ᶠ[ L ] (M —→ L)ᶠ ×ᶠ ▷ᶠ (recurᶠ (L , N)))
+```
+
+Note that the `R` parameter has become implicit; it is hidden inside
+the `RecSetᵒ` type. Also the use of `R`, the application `R (L , N)`
+is replaced by `recurᶠ (L , N)`.
+
+We can now define the recursive predicate `M —→* N` by applying
+`recursiveᵒ` to `mreduce`.
+
+```
 infix 2 _—→*_
-_—→*_ : Term → Term → Set
-M —→* N =
-   let F : Fun (Term × Term) (Term × Term) Wellfounded
-       F = flipᶠ mreduce tt in
-   Σ[ n ∈ ℕ ] (#(μᵒ F (M , N)) n)
+_—→*_ : Term → Term → Setᵒ
+M —→* N = recursiveᵒ mreduce (M , N)
+```
+
+Here are a couple examples uses of the multi-step reduction relation.
+
+```
+X₀ : #($ (Num 0) —→* $ (Num 0)) 1
+X₀ = inj₁ refl
+
+X₁ : #((ƛ ($ (Num 1))) · $ (Num 0) —→* $ (Num 1)) 2
+X₁ = inj₂ (_ , (β ($̬ _) , inj₁ refl))
+```

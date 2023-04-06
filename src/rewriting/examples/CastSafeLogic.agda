@@ -35,18 +35,18 @@ compatibility-var {Γ}{A}{x} ∋x γ =
      𝒱⇒ℰ ⊢𝒱γx
 
 compatible-nat : ∀{Γ}{n : ℕ}
-    --------------------
-   → Γ ⊨ ($ ′ℕ n) ⦂ ($ₜ ′ℕ)
+    --------------------------
+   → Γ ⊨ ($ (Num n)) ⦂ ($ₜ ′ℕ)
 compatible-nat {Γ}{n} γ =
-     let ⊢𝒱n : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ $ₜ ′ℕ ⟧ ($ ′ℕ n)
+     let ⊢𝒱n : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ $ₜ ′ℕ ⟧ ($ (Num n))
          ⊢𝒱n = ⊢ᵒ-intro λ { zero x → tt ; (suc k) x → refl} in
      𝒱⇒ℰ ⊢𝒱n
 
 compatible-bool : ∀{Γ}{b : 𝔹}
-    -----------------------
-   → Γ ⊨ ($ ′𝔹 b) ⦂ ($ₜ ′𝔹)
+    ---------------------------
+   → Γ ⊨ ($ (Bool b)) ⦂ ($ₜ ′𝔹)
 compatible-bool {Γ}{b} γ =
-     let ⊢𝒱b : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ $ₜ ′𝔹 ⟧ ($ ′𝔹 b)
+     let ⊢𝒱b : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ $ₜ ′𝔹 ⟧ ($ (Bool b))
          ⊢𝒱b = ⊢ᵒ-intro λ { zero x → tt ; (suc k) x → refl} in
      𝒱⇒ℰ ⊢𝒱b
 
@@ -111,72 +111,72 @@ compatible-lambda {Γ}{A}{B}{N} ⊨N γ = ⊢ℰγλN
          ⊢𝒱W→ℰN[W] = ▷→ (⊢ᵒ-mono (→ᵒI (⊨N (W • γ)))) in
      appᵒ (Sᵒ ⊢𝒱W→ℰN[W]) Zᵒ
 
-compatible-inject : ∀{Γ}{G}{g}{M}
-  → Γ ⊨ M ⦂ G
+compatible-inject : ∀{Γ}{G}{M}
+  → Γ ⊨ M ⦂ typeofGround G
     --------------------
-  → Γ ⊨ M ⟨ G , g !⟩ ⦂ ★
-compatible-inject {Γ}{G}{g}{M} ⊨M γ = ℰMg!
+  → Γ ⊨ M ⟨ G !⟩ ⦂ ★
+compatible-inject {Γ}{G}{M} ⊨M γ = ℰMg!
  where
- ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ G ⟧ (⟪ γ ⟫ M)
+ ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ typeofGround G ⟧ (⟪ γ ⟫ M)
  ⊢ℰM = ⊨M γ
   
- ℰMg! : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ ★ ⟧ ((⟪ γ ⟫ M) ⟨ G , g !⟩)
- ℰMg! = ℰ-frame {F = □⟨ G , g !⟩} ⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVg!))
+ ℰMg! : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ ★ ⟧ ((⟪ γ ⟫ M) ⟨ G !⟩)
+ ℰMg! = ℰ-frame {F = □⟨ G !⟩} ⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVg!))
   where
-  𝓟₁ = λ V → 𝒱⟦ G ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
-  ⊢ℰVg! : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ ★ ⟧ (V ⟨ G , g !⟩)
+  𝓟₁ = λ V → 𝒱⟦ typeofGround G ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
+  ⊢ℰVg! : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ ★ ⟧ (V ⟨ G !⟩)
   ⊢ℰVg!{V} =
    ⊢ᵒ-sucP Zᵒ λ 𝒱Vsn →
-   let v = 𝒱⇒Value G V 𝒱Vsn in
+   let v = 𝒱⇒Value (typeofGround G) V 𝒱Vsn in
    𝒱⇒ℰ (substᵒ (≡ᵒ-sym V-dyn) (⊢ᵒ-Sᵒ-intro v ,ᵒ (⊢ᵒ-mono Zᵒ)))
 
-red-inj-proj : ∀{G}{H}{g}{h}{W}
+red-inj-proj : ∀{G}{H}{W}
    → Value W
-   → reducible ((W ⟨ G , g !⟩) ⟨ H , h ?⟩)
-red-inj-proj {G} {H} {g} {h} {W} w
-    with g ≡ᵍ h
-... | yes refl = W , (collapse w g h refl)
-... | no neq = blame , (collide w g h neq refl)
+   → reducible ((W ⟨ G !⟩) ⟨ H ?⟩)
+red-inj-proj {G} {H} {W} w
+    with G ≡ᵍ H
+... | yes refl = W , (collapse w  refl)
+... | no neq = blame , (collide w neq refl)
 
-compatible-project : ∀{Γ}{H}{h : Ground H}{M}
+compatible-project : ∀{Γ}{H}{M}
   → Γ ⊨ M ⦂ ★
-    --------------------
-  → Γ ⊨ M ⟨ H , h ?⟩ ⦂ H
-compatible-project {Γ}{H}{h}{M} ⊨M γ = ℰMh?
+    -----------------------------
+  → Γ ⊨ M ⟨ H ?⟩ ⦂ typeofGround H
+compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
  where
  ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ ★ ⟧ (⟪ γ ⟫ M)
  ⊢ℰM = ⊨M γ
   
- ℰMh? : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ H ⟧ ((⟪ γ ⟫ M) ⟨ H , h ?⟩)
- ℰMh? = ℰ-frame {F = □⟨ H , h ?⟩} ⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVh?))
+ ℰMh? : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ typeofGround H ⟧ ((⟪ γ ⟫ M) ⟨ H ?⟩)
+ ℰMh? = ℰ-frame {F = □⟨ H ?⟩} ⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVh?))
   where
   𝓟₁ = λ V → 𝒱⟦ ★ ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
-  ⊢ℰVh? : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ H ⟧ (V ⟨ H , h ?⟩)
+  ⊢ℰVh? : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ typeofGround H ⟧ (V ⟨ H ?⟩)
   ⊢ℰVh?{V} =
    let ⊢𝒱V : 𝓟₁ V ⊢ᵒ 𝒱⟦ ★ ⟧ V
        ⊢𝒱V = Zᵒ in
-   V-dyn-elim ⊢𝒱V λ { W G g refl ⊢w×▷𝒱W →
+   V-dyn-elim ⊢𝒱V λ { W G refl ⊢w×▷𝒱W →
    let ⊢w = proj₁ᵒ ⊢w×▷𝒱W in
    let ▷𝒱W = proj₂ᵒ ⊢w×▷𝒱W in
    ⊢ᵒ-sucP ⊢w λ{n} w →
-   let prog : 𝓟₁ (W ⟨ G , g !⟩) ⊢ᵒ progress H ((W ⟨ G , g !⟩) ⟨ H , h ?⟩)
+   let prog : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ progress (typeofGround H) ((W ⟨ G !⟩) ⟨ H ?⟩)
        prog = inj₂ᵒ (inj₁ᵒ (⊢ᵒ-Sᵒ-intro (red-inj-proj w))) in
-   let pres : 𝓟₁ (W ⟨ G , g !⟩) ⊢ᵒ preservation H ((W ⟨ G , g !⟩) ⟨ H , h ?⟩)
+   let pres : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ preservation (typeofGround H) ((W ⟨ G !⟩) ⟨ H ?⟩)
        pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ r → Goal r w ▷𝒱W) in
    ℰ-intro prog pres
    }
     where
-    Goal : ∀{W}{G}{H}{g : Ground G}{h : Ground H}{N}
-       → (W ⟨ G , g !⟩ ⟨ H , h ?⟩) —→ N
+    Goal : ∀{W}{G}{H}{N}
+       → (W ⟨ G !⟩ ⟨ H ?⟩) —→ N
        → Value W
-       → 𝓟₁ (W ⟨ G , g !⟩) ⊢ᵒ ▷ᵒ 𝒱⟦ G ⟧ W
-       → 𝓟₁ (W ⟨ G , g !⟩) ⊢ᵒ ▷ᵒ ℰ⟦ H ⟧ N
-    Goal{g = g} (ξξ □⟨ H , h ?⟩ refl refl r) w ▷𝒱W =
-        ⊥-elim (value-irreducible (w 〈 g 〉) r)
-    Goal {W} (ξξ-blame □⟨ H , h ?⟩ ())
-    Goal {W}{G}{G}{g}{h}{W} (collapse{H} w′ g .h refl) w ▷𝒱W =
+       → 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ 𝒱⟦ typeofGround G ⟧ W
+       → 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ ℰ⟦ typeofGround H ⟧ N
+    Goal (ξξ □⟨ H ?⟩ refl refl r) w ▷𝒱W =
+        ⊥-elim (value-irreducible (w 〈 _ 〉) r)
+    Goal {W} (ξξ-blame □⟨ H ?⟩ ())
+    Goal {W}{G}{G}{W} (collapse{H} w′ refl) w ▷𝒱W =
        ▷→▷ ▷𝒱W (→ᵒI (𝒱⇒ℰ Zᵒ))
-    Goal {W} (collide x g h x₁ x₂) w ▷𝒱W = ⊢ᵒ-mono ℰ-blame
+    Goal {W} (collide x x₁ x₂) w ▷𝒱W = ⊢ᵒ-mono ℰ-blame
 
 fundamental : ∀ {Γ A} → (M : Term)
   → Γ ⊢ M ⦂ A
@@ -184,17 +184,17 @@ fundamental : ∀ {Γ A} → (M : Term)
   → Γ ⊨ M ⦂ A
 fundamental {Γ} {A} .(` _) (⊢` ∋x) =
     compatibility-var ∋x
-fundamental {Γ} {.($ₜ ′ℕ)} .($ _ _) (⊢$ ′ℕ) =
+fundamental {Γ} {.($ₜ ′ℕ)} .($ (Num _)) (⊢$ (Num n)) =
     compatible-nat
-fundamental {Γ} {.($ₜ ′𝔹)} .($ _ _) (⊢$ ′𝔹) =
+fundamental {Γ} {.($ₜ ′𝔹)} .($ (Bool _)) (⊢$ (Bool b)) =
     compatible-bool
 fundamental {Γ} {A} (L · M) (⊢· ⊢L ⊢M) =
     compatible-app{L = L}{M} (fundamental L ⊢L) (fundamental M ⊢M)
 fundamental {Γ} {.(_ ⇒ _)} (ƛ N) (⊢ƛ ⊢N) =
     compatible-lambda {N = N} (fundamental N ⊢N)
-fundamental {Γ} {.★} (M ⟨ G , g !⟩) (⊢⟨!⟩ ⊢M g) =
+fundamental {Γ} {.★} (M ⟨ G !⟩) (⊢⟨!⟩ ⊢M) =
     compatible-inject {M = M} (fundamental M ⊢M)
-fundamental {Γ} {A} (M ⟨ H , h ?⟩) (⊢⟨?⟩ ⊢M h) =
+fundamental {Γ} {A} (M ⟨ H ?⟩) (⊢⟨?⟩ ⊢M H) =
     compatible-project {M = M} (fundamental M ⊢M)
 fundamental {Γ} {A} .blame ⊢blame = compatible-blame
 
