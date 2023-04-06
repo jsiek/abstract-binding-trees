@@ -140,7 +140,21 @@ into `Setᵒ`.
     Predᵒ : Set → Set₁
     Predᵒ A = A → Setᵒ
 
-
-
 ```
 
+open import Data.Nat
+open import Data.Product using (_,_;_×_; proj₁; proj₂; Σ-syntax; ∃-syntax)
+open import Data.Unit using (⊤; tt)
+open import Relation.Binary.PropositionalEquality as Eq
+  using (_≡_; _≢_; refl; sym; cong; subst; trans)
+
+instance
+  TermInhabited : Inhabited Term
+  TermInhabited = record { elt = ` 0 }
+
+mreduce : Term × Term → Fun (Term × Term) ⊤ Wellfounded
+mreduce (M , N) = (M ≡ N)ᶠ ⊎ᶠ (∃ᶠ[ L ] (M —→ L)ᶠ ×ᶠ ▷ᶠ (recur (L , N)))
+
+infix 2 _—→*_
+_—→*_ : Term → Term → Set
+M —→* N = Σ[ n ∈ ℕ ] (#(μᵒ (flipᶠ mreduce tt) (M , N)) n)

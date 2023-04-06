@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K --rewriting #-}
+{-# OPTIONS --without-K --rewriting --allow-unsolved-metas #-}
 
 {-
 
@@ -150,6 +150,11 @@ exampleᵖ {A}{P}{Q} P=Q =
   P
   ∎
 
+record Inhabited (A : Set) : Set where
+  field
+    elt : A
+open Inhabited {{...}} public
+
 {- Signature of a Step-indexed Formula -}
 
 record StepIndexedFormula : Set₂ where
@@ -168,6 +173,7 @@ record StepIndexedFormula : Set₂ where
     _⊎ᵒ_ : Frmᵒ → Frmᵒ → Frmᵒ
     _→ᵒ_ : Frmᵒ → Frmᵒ → Frmᵒ
     ∀ᵒ : ∀{A : Set} → (A → Frmᵒ) → Frmᵒ
+    ∃ᵒ : ∀{A : Set}{{_ : Inhabited A}} → (A → Frmᵒ) → Frmᵒ
     ▷ᵒ_ : Frmᵒ → Frmᵒ
     ◁ᵒ_ : Frmᵒ → Frmᵒ
     ↓ᵒ : ℕ → Frmᵒ → Frmᵒ
@@ -209,12 +215,22 @@ impliesᵒ P Q = record { # = λ k → ∀ j → j ≤ k → # P j → # Q j
 
 allᵒ : ∀{A : Set} → (Predᵒ A) → Setᵒ
 allᵒ{A} P = record { # = λ k → ∀ (a : A) → # (P a) k
-                 ; down = λ n ∀Pn k k≤n a → down (P a) n (∀Pn a) k k≤n
-                 ; tz = λ a → tz (P a) }
+                   ; down = λ n ∀Pn k k≤n a → down (P a) n (∀Pn a) k k≤n
+                   ; tz = λ a → tz (P a) }
 
 ∀ᵒ-syntax = ∀ᵒ
 infix 1 ∀ᵒ-syntax
 syntax ∀ᵒ-syntax (λ x → P) = ∀ᵒ[ x ] P
+
+existᵒ : ∀{A : Set}{{_ : Inhabited A}} → (Predᵒ A) → Setᵒ
+existᵒ{A} P = record { # = λ k → Σ[ a ∈ A ] # (P a) k
+                     ; down = λ n (a , Pa) k k≤n → a , (down (P a) n Pa k k≤n)
+                     ; tz = elt , tz (P elt)
+                     }
+
+∃ᵒ-syntax = ∃ᵒ
+infix 1 ∃ᵒ-syntax
+syntax ∃ᵒ-syntax (λ x → P) = ∃ᵒ[ x ] P
 
 constᵒ : Set → Setᵒ
 constᵒ S = record { # = λ { zero → ⊤ ; (suc k) → S }
@@ -316,7 +332,8 @@ instance
   SILᵒ : StepIndexedFormula
   SILᵒ = record
            { Frmᵒ = Setᵒ ; ⊥ᵒ = botᵒ ; ⊤ᵒ = topᵒ ; _ᵒ = constᵒ
-           ; _×ᵒ_ = andᵒ ; _⊎ᵒ_ = orᵒ ; _→ᵒ_ = impliesᵒ ; ∀ᵒ = allᵒ
+           ; _×ᵒ_ = andᵒ ; _⊎ᵒ_ = orᵒ ; _→ᵒ_ = impliesᵒ
+           ; ∀ᵒ = allᵒ ; ∃ᵒ = existᵒ
            ; ▷ᵒ_ = laterᵒ ; ◁ᵒ_ = beforeᵒ ; ↓ᵒ = approxᵒ
            }
 
@@ -343,6 +360,7 @@ instance
              ; _⊎ᵒ_ = λ P Q a → P a ⊎ᵒ Q a
              ; _→ᵒ_ = λ P Q a → (P a →ᵒ Q a)
              ; ∀ᵒ = λ {A} F b → ∀ᵒ {A} (flipᵖ F b)
+             ; ∃ᵒ = λ {A} F b → ∃ᵒ {A} (flipᵖ F b)
              ; ▷ᵒ_ = λ P a → ▷ᵒ (P a)
              ; ◁ᵒ_ = λ P a → ◁ᵒ (P a)
              ; ↓ᵒ = λ k P a → approxᵒ k (P a)
@@ -846,6 +864,46 @@ abstract
 ∀ᶠ-syntax = ∀ᶠ
 infix 1 ∀ᶠ-syntax
 syntax ∀ᶠ-syntax (λ x → F) = ∀ᶠ[ x ] F
+
+{------- Exists --------}
+
+abstract
+  continuous-exist : ∀{A B C}{{_ : Inhabited A}}
+     → (F : A → Fun B C Continuous)
+     → continuous (λ P → ∃ᵒ[ a ] fun (F a) P)
+  continuous-exist = {!!}
+
+  wellfounded-exist : ∀{A B C}{{_ : Inhabited A}}
+     → (F : A → Fun B C Wellfounded)
+     → wellfounded (λ P → ∃ᵒ[ a ] fun (F a) P)
+  wellfounded-exist = {!!}
+
+goodness-exist : ∀{A B C}{K}{{_ : Inhabited A}}
+   → (F : A → Fun B C K)
+   → goodness K (λ P → ∃ᵒ[ a ] fun (F a) P)
+goodness-exist {A} {B} {C} {Continuous} F = continuous-exist F
+goodness-exist {A} {B} {C} {Wellfounded} F = wellfounded-exist F
+
+abstract
+  cong-exist : ∀{A B C}{K}{{_ : Inhabited A}}
+     → (F : A → Fun B C K)
+     → congᵖ (λ P → ∃ᵒ[ a ] fun (F a) P)
+  cong-exist F {P}{Q} PQ c i = {!!}
+     
+∃ᶠ : ∀{A B C : Set}{K}{{_ : Inhabited A}}
+   → (A → Fun B C K)
+     ---------------
+   → Fun B C K
+∃ᶠ {A}{B}{C}{K} F =
+  record { fun = λ P → ∃ᵒ[ a ] fun (F a) P
+         ; good = goodness-exist F
+         ; congr = cong-exist F
+         }
+  
+∃ᶠ-syntax = ∃ᶠ
+infix 1 ∃ᶠ-syntax
+syntax ∃ᶠ-syntax (λ x → F) = ∃ᶠ[ x ] F
+
 
 {------- Constant --------}
 
