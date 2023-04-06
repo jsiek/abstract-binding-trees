@@ -479,7 +479,7 @@ dc-iter (suc i) F = λ v → down (F (iter i F ⊤ᵒ) v)
        ≡ᵒ-to (apply-≡ᵖ (≡ᵖ-sym eq) a) (suc j′) Z 
    T : #(iter (suc (suc j′)) (fun F) ⊤ᵒ a) (suc j′)
    T = proj₂ W
-   
+
 {------------ Auxiliary Lemmas ----------}
 
 abstract
@@ -871,12 +871,29 @@ abstract
   continuous-exist : ∀{A B C}{{_ : Inhabited A}}
      → (F : A → Fun B C Continuous)
      → continuous (λ P → ∃ᵒ[ a ] fun (F a) P)
-  continuous-exist = {!!}
+  continuous-exist F c zero = (λ x → tt) , (λ x → tt)
+  continuous-exist F {P} {zero} c (suc i) = (λ {(() , _)}) , λ {(() , _)}
+  continuous-exist F {P} {suc k} c (suc i) =
+      (λ (si<sk , (a , FPa)) →
+          let ↓F↓P = ⇔-to (good (F a) c (suc i)) (si<sk , FPa) in
+          si<sk , (a , proj₂ ↓F↓P))
+      ,
+      (λ (si<sk , (a , FPa)) →
+          let ↓FP = ⇔-fro (good (F a) c (suc i)) (si<sk , FPa) in
+          si<sk , (a , proj₂ ↓FP))
 
   wellfounded-exist : ∀{A B C}{{_ : Inhabited A}}
      → (F : A → Fun B C Wellfounded)
      → wellfounded (λ P → ∃ᵒ[ a ] fun (F a) P)
-  wellfounded-exist = {!!}
+  wellfounded-exist F {P} {k} c zero = (λ x → tt) , (λ x → tt)
+  wellfounded-exist F {P} {k} c (suc i) =
+      (λ {(s≤s i<k , (a , FPa)) →
+          let ↓F↓P = ⇔-to (good (F a) c (suc i)) (s≤s i<k , FPa) in
+          (s≤s i<k) , (a , proj₂ ↓F↓P)})
+      ,
+      (λ {(s≤s i<k , (a , FPa)) →
+          let ↓FP = ⇔-fro (good (F a) c (suc i)) (s≤s i<k , FPa) in
+          (s≤s i<k) , (a , proj₂ ↓FP)})
 
 goodness-exist : ∀{A B C}{K}{{_ : Inhabited A}}
    → (F : A → Fun B C K)
@@ -888,7 +905,10 @@ abstract
   cong-exist : ∀{A B C}{K}{{_ : Inhabited A}}
      → (F : A → Fun B C K)
      → congᵖ (λ P → ∃ᵒ[ a ] fun (F a) P)
-  cong-exist F {P}{Q} PQ c i = {!!}
+  cong-exist F {P}{Q} PQ c i =
+      (λ {(a , Fa) → a , ⇔-to (congr (F a) PQ c i) Fa})
+      ,
+      (λ {(a , Fa) → a , ⇔-fro (congr (F a) PQ c i) Fa})
      
 ∃ᶠ : ∀{A B C : Set}{K}{{_ : Inhabited A}}
    → (A → Fun B C K)
@@ -1139,6 +1159,23 @@ fixpoint : ∀{A}
    → (F : Fun A A Wellfounded)
    → μᵒ F ≡ᵖ (fun F) (μᵒ F)
 fixpoint F = equiv-down (λ k → lemma19 k F)
+
+{--------------- Make a Recursive Predicate -------------------}
+
+recursive : ∀{A}
+   → (A → Fun A ⊤ Wellfounded)
+     -------------------------
+   → Predᵒ A
+recursive F = μᵒ (flipᶠ F tt)
+
+fixpointᵒ : ∀{A} (F : A → Fun A ⊤ Wellfounded) (a : A)
+    → recursive F a ≡ᵒ fun (F a) (recursive F) tt
+fixpointᵒ {A} F a =
+  recursive F a                             ⩦⟨ ≡ᵒ-refl refl ⟩
+  μᵒ (flipᶠ F tt) a                         ⩦⟨ apply-≡ᵖ (fixpoint (flipᶠ F tt)) a ⟩
+  (fun (flipᶠ F tt)) (μᵒ (flipᶠ F tt)) a     ⩦⟨ ≡ᵒ-refl refl ⟩
+  fun (F a) (recursive F) tt                ∎
+
 
 {--------------- Useful Lemmas -------------------}
 

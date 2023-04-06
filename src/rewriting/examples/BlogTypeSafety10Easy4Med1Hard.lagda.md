@@ -18,7 +18,7 @@ calculus.  The proof is in Agda and the proof uses step-indexed
 logical relations because the presence of the unknown (aka. dynamic)
 type prevents the use of regular logical relations. To reduce the
 clutter of reasoning about step indexing, we conduct the proof using a
-modal logic, in the spirit of the LSLR logic of Dreyer, Ahmed, and
+temporal logic, in the spirit of the LSLR logic of Dreyer, Ahmed, and
 Birkedal (2011), that we embed in Agda.
 
 ## Review of the Cast Calculus
@@ -114,10 +114,11 @@ to remove the recursion in 𝓔.)
 ## An Explicitly Step-indexed Logical Relation for Type Safety
 
 We can force the definitions of 𝓔 and 𝓥 to terminate using
-step-indexing (aka. the "gasoline" technique). We add a parameter k to
-each definition that is a natural number, and decrement k on each
-recursive call. When k is zero, then 𝓔 and 𝓥 accept all terms.  Thus,
-the meaning of `𝓔⟦ A ⟧ M k` is that term `M` is guaranteed to behave
+step-indexing (aka. the "gasoline" technique), which was first applied
+to logical relations by Appel and McAllester (TOPLAS 2001). We add a
+parameter k (a natural number) to 𝓔 and 𝓥, and decrement k on each
+recursive call. When k is zero, 𝓔 and 𝓥 accept all terms. Thus, the
+meaning of `𝓔⟦ A ⟧ M k` is that term `M` is guaranteed to behave
 according to type `A` for `k` reduction steps, but after that there
 are no guarantees.
 
@@ -136,10 +137,10 @@ are no guarantees.
 We now have proper definitions of 𝓔 and 𝓥 but proving theorems about
 these definitions involves a fair bit of reasoning about the step
 indices, which is tedious, especially in Agda because it's support for
-automating arithmetic proofs is cumbersome to use.
-
-
-
+automating arithmetic proofs is cumbersome to use.  To streamline the
+definitions and proofs that involve step indexing, Dreyer, Ahmed, and
+Birkedal (2011) propose the use of a temporal logic that hides the
+step indexing. Next we discuss the embedding of such a logic in Agda.
 
 
 ## Step-indexed Logic
@@ -148,22 +149,21 @@ automating arithmetic proofs is cumbersome to use.
 open import rewriting.examples.StepIndexedLogic
 ```
 
-The step-indexed logic is a first-order logic (i.e., a logic with
-"and", "or", "implies", "for all"). To distinguish its connectives
-from Agda's, we add a superscript "o". So "and" is written `×ᵒ`,
-"implies" is written `→ᵒ`, and so on.  The step-indexed logic also
-includes a notion of time in which there is clock counting down. The
-logic is designed in such a way that if a formula `P` is true at some
-time then `P` stays true in the future (at lower counts). When the
-clock reaches zero, every formula becomes true.  Furthermore, the
-logic includes a "later" operator, written `▷ᵒ P`, meaning that `P` is
-true one clock tick in the future.
+Our Step-indexed Logic (SIL) is a first-order logic (i.e., a logic
+with "and", "or", "implies", "for all"). To distinguish its
+connectives from Agda's, we add a superscript "o". So "and" is written
+`×ᵒ`, "implies" is written `→ᵒ`, and so on.  The SIL also includes a
+notion of time in which there is clock counting down. The logic is
+designed in such a way that if a formula `P` is true at some time then
+`P` stays true in the future (at lower counts). When the clock reaches
+zero, every formula becomes true.  Furthermore, the logic includes a
+"later" operator, written `▷ᵒ P`, meaning that `P` is true one clock
+tick in the future.
 
 Just as `Set` is the type of true/false formulas in Agda, `Setᵒ` is
-the type of true/false formulas in the step indexed logic. It is a
-record that bundles the formula itself, represented with a function of
-type `ℕ → Set`, with proofs that the formula is downward closed and
-true at zero.
+the type of true/false formulas in SIL. It is a record that bundles
+the formula itself, represented with a function of type `ℕ → Set`,
+with proofs that the formula is downward closed and true at zero.
 
     record Setᵒ : Set₁ where
       field
@@ -176,19 +176,14 @@ For example, the "false" proposition is false at every time except zero.
 
     ⊥ᵒ : Setᵒ
     ⊥ᵒ = record { # = λ { zero → ⊤ ; (suc k) → ⊥ }
-                ; down = λ { zero ⊥n .zero z≤n → tt}
-                ; tz = tt
-                }
+                ; down = ... ; tz = ... }
 
 The "and" proposition `P ×ᵒ Q` is true at a given time `k` if both `P`
 and `Q` are true at time `k`.
 
     _×ᵒ_ : Setᵒ → Setᵒ → Setᵒ
     P ×ᵒ Q = record { # = λ k → # P k × # Q k
-                    ; down = λ k (Pk , Qk) j j≤k →
-                              (down P k Pk j j≤k) , (down Q k Qk j j≤k)
-                    ; tz = (tz P) , (tz Q)
-                    }
+                    ; down = ... ; tz = ... }
 
 We embed arbitrary Agda formulas into the step-indexed logic with the
 following operator, written `S ᵒ`, which is true if and only if `S` is
@@ -196,10 +191,7 @@ true, except at time zero, when `S ᵒ` has to be true.
 
     _ᵒ  : Set → Setᵒ
     S ᵒ = record { # = λ { zero → ⊤ ; (suc k) → S }
-                 ; down = λ { k Sk zero j≤k → tt
-                            ; (suc k) Sk (suc j) j≤k → Sk}
-                 ; tz = tt
-                 }
+                 ; down = ... ; tz = ... }
 
 In addition to true/false propositions, the step-indexed logic can
 express predicates, which we represent in Agda simply as functions
@@ -207,6 +199,10 @@ into `Setᵒ`.
 
     Predᵒ : Set → Set₁
     Predᵒ A = A → Setᵒ
+
+
+
+
 
 ```
 
