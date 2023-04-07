@@ -232,8 +232,8 @@ in that it turns a non-recursive predicate into a recursive one.
 The non-recursive predicate has type `A → (A → Setᵒ) → Setᵒ`. It has
 an extra parameter `(A → Setᵒ)` that will be supplied with the
 recursive predicate itself. To clarify, lets look at an example.
-Suppose we wanted to define multi-step reduction via rules
-such as the following:
+Suppose we wanted to define multi-step reduction according to
+the following rules:
 
                 M —→ L    L —→* N
     -------     ------------------
@@ -254,44 +254,30 @@ instance
 
 ```
 We then apply the `recursiveᵒ` proposition to `mreduce` to
-obtain the desired recursive predicate.
+obtain the desired recursive predicate `—→*`.
 
     _—→*_ : Term → Term → Setᵒ
     M —→* N = recursiveᵒ mreduce (M , N)
 
-The only problem with the above story is that it's not possible (to my
-knowledge) to construct a recursive predicate from a arbitrary
+The problem with the above story is that it's not possible (to my
+knowledge) to construct a recursive predicate from an arbitrary
 function of type `A → (A → Setᵒ) → Setᵒ`. Instead, we need to place
-restrictions on the function. In particular, if we impose the
-restriction that the recursion never happens "now", but only "later",
-then it becomes possible to construct `recursiveᵒ`. We define the
-`RecSetᵒ` type in Agda to capture this restriction.
+restrictions on the function. In particular, if we make sure that the
+recursion never happens "now", but only "later", then it becomes
+possible to construct `recursiveᵒ`. We define the `RecSetᵒ` type in
+Agda to capture this restriction.
 
     RecSetᵒ A κ
 
-The `A` is the parameter type for the recursion and κ is `Now` or
-`Later`.  We then define variants of all the propositions that work on
-RecSetᵒ instead of Setᵒ and that track whether the recursive call
-happened now or later.
+The `A` in `RecSetᵒ A κ` the parameter type for the recursion
+and κ is `Now` or `Later`.  We then define variants of all the
+propositions that work on RecSetᵒ instead of Setᵒ and that track
+whether the recursive call happened now or later.
 
-We can now give the true type of `recursiveᵒ` it takes a non-recursive
-function from `A` to a `RecSetᵒ` and then produces a recursive
-predicate in `A`.
-
-    recursiveᵒ : ∀{A}
-       → (A → RecSetᵒ A Later)
-         ---------------------
-       → A → Setᵒ
-
-To invoke the recursion, use the `recur` proposition. It takes an
-argument of type `A` and produces a `RecSetᵒ` that indicates that the
-recursion happened `Now`.
-
-    recurᶠ : ∀{A} → A → RecSetᵒ A Now
-
-The "later" operator, `▷ᶠ P`, moves `P` into the future, so regardless
-of whether `P` contained any recursive calls, the predicate `▷ᶠ P` can
-safely say that any recursion happened `Later`.
+For example, the "later" operator, `▷ᶠ P`, asserts that `P` is true
+the future, so regardless of whether `P` contained any recursive
+calls, the predicate `▷ᶠ P` can safely say that use of recursion in it
+happened `Later`.
 
     ▷ᶠ : ∀{A}{κ} → RecSetᵒ A κ → RecSetᵒ A Later
 
@@ -311,7 +297,21 @@ Here's the type of the "and" operator:
 
 The other propositions following a similar pattern.
 
-Let's now revisit the example of defining multi-step reduction.  The
+The special `recur` proposition invokes the recursion. It takes an
+argument of type `A` and produces a `RecSetᵒ` that indicates that the
+recursion happened `Now`.
+
+    recurᶠ : ∀{A} → A → RecSetᵒ A Now
+
+So the type of `recursiveᵒ` takes a non-recursive function from `A` to
+a `RecSetᵒ` and then produces a recursive predicate in `A`.
+
+    recursiveᵒ : ∀{A}
+       → (A → RecSetᵒ A Later)
+         ---------------------
+       → A → Setᵒ
+
+Let's revisit the example of defining multi-step reduction.  The
 non-recursive `mreduce` predicate is defined as follows.
 
 ```
@@ -321,10 +321,10 @@ mreduce (M , N) = (M ≡ N)ᶠ ⊎ᶠ (∃ᶠ[ L ] (M —→ L)ᶠ ×ᶠ ▷ᶠ 
 
 Note that the `R` parameter has become implicit; it is hidden inside
 the `RecSetᵒ` type. Also the use of `R`, the application `R (L , N)`
-is replaced by `recurᶠ (L , N)`.
+is replaced by `▷ᶠ (recurᶠ (L , N))`.
 
-We can now define the recursive predicate `M —→* N` by applying
-`recursiveᵒ` to `mreduce`.
+We define the recursive predicate `M —→* N` by applying `recursiveᵒ`
+to `mreduce`.
 
 ```
 infix 2 _—→*_
@@ -332,7 +332,7 @@ _—→*_ : Term → Term → Setᵒ
 M —→* N = recursiveᵒ mreduce (M , N)
 ```
 
-Here are a couple examples uses of the multi-step reduction relation.
+Here are a couple uses of the multi-step reduction relation.
 
 ```
 X₀ : #($ (Num 0) —→* $ (Num 0)) 1
