@@ -4,6 +4,7 @@
 {-# OPTIONS --rewriting #-}
 module rewriting.examples.BlogTypeSafety10Easy4Med1Hard where
 
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Nat
 open import Data.Product using (_,_;_×_; proj₁; proj₂; Σ-syntax; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -341,3 +342,100 @@ X₀ = inj₁ refl
 X₁ : #((ƛ ($ (Num 1))) · $ (Num 0) —→* $ (Num 1)) 2
 X₁ = inj₂ (_ , (β ($̬ _) , inj₁ refl))
 ```
+
+## Logical Relation for Type Safety
+
+With the Step-indexed Logic in hand, we are ready to define a logical
+relation for type safety. The two predicates 𝓔 and 𝓥 are mutually
+recursive, so we proceed by combining them into a single recursive
+predicate named `ℰ⊎𝒱` that takes a sum type, where the left side is
+for 𝓔 and the right side is for 𝓥. We shall define `ℰ⊎𝒱` by an
+application of `recursiveᵒ`, so we first need to define the non-recursive
+version of `ℰ⊎𝒱`, which we call `pre-ℰ⊎𝒱`, defined below. It simply
+dispatches to the non-recursive `pre-ℰ` and `pre-ℰ` which we define next.
+
+```
+Ty[ℰ⊎𝒱] : Set
+Ty[ℰ⊎𝒱] = (Type × Term) ⊎ (Type × Term)
+
+pre-ℰ : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Later
+pre-𝒱 : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Later
+
+pre-ℰ⊎𝒱 : Ty[ℰ⊎𝒱] → RecSetᵒ Ty[ℰ⊎𝒱] Later
+pre-ℰ⊎𝒱 (inj₁ (A , V)) = pre-𝒱 A V
+pre-ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
+```
+
+To improve the readability of our definitions, we define the following
+notation for recursive applications of the 𝓔 and 𝓥 predicates.
+
+```
+ℰᶠ⟦_⟧ : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Now
+ℰᶠ⟦ A ⟧ M = recurᶠ (inj₂ (A , M))
+
+𝒱ᶠ⟦_⟧ : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Now
+𝒱ᶠ⟦ A ⟧ V = recurᶠ (inj₁ (A , V))
+```
+
+The definition of pre-𝓔 and pre-𝓥 are of similar form to the
+explicitly step-indexed definition of 𝓔 and 𝓥 above, however the
+parameter `k` is gone and all of the logical connectives have a
+superscript `f`, indicating that we're building a `RecSetᵒ`.  Also,
+note that all the uses of `𝓔ᶠ` and `𝓥ᶠ` are guarded by the later
+operator `▷ᶠ`. Finally, in the definition of pre-𝓔, we do not use `▷ᶠ
+(𝓥⟦ A ⟧ M)` but instead use `pre-𝓥 A M` because we need to say there
+that `M` is a semantic value now, not later.
+
+```
+pre-ℰ A M = (pre-𝒱 A M ⊎ᶠ (reducible M)ᶠ ⊎ᶠ (Blame M)ᶠ)
+             ×ᶠ (∀ᶠ[ N ] (M —→ N)ᶠ →ᶠ ▷ᶠ (ℰᶠ⟦ A ⟧ N))
+pre-𝒱 ★ (V ⟨ G !⟩ )      = (Value V)ᶠ ×ᶠ ▷ᶠ (𝒱ᶠ⟦ typeofGround G ⟧ V)
+pre-𝒱 ($ₜ ι) ($ c)        = (ι ≡ typeof c)ᶠ
+pre-𝒱 (A ⇒ B) (ƛ N)      = ∀ᶠ[ W ] ▷ᶠ (𝒱ᶠ⟦ A ⟧ W) →ᶠ ▷ᶠ (ℰᶠ⟦ B ⟧ (N [ W ]))
+pre-𝒱 A M                = ⊥ ᶠ
+```
+
+```
+abstract
+  ℰ⟦_⟧ : Type → Term → Setᵒ
+  ℰ⟦ A ⟧ M = recursiveᵒ pre-ℰ⊎𝒱 (inj₂ (A , M))
+  
+  𝒱⟦_⟧ : Type → Term → Setᵒ
+  𝒱⟦ A ⟧ V = recursiveᵒ pre-ℰ⊎𝒱 (inj₁ (A , V))
+```
+
+
+
+```
+progress : Type → Term → Setᵒ
+progress A M = 𝒱⟦ A ⟧ M ⊎ᵒ (reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ
+
+preservation : Type → Term → Setᵒ
+preservation A M = ∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
+```
+
+
+
+
+When we reason about ℰ and 𝒱, we need to be able to unfold and fold
+their definitions. The following equations make this possible, which
+follow directly from the `fixpointᵒ` theorem provided by SIL.
+
+```
+abstract
+  ℰ-eq : ∀{A}{M} → ℰ⟦ A ⟧ M ≡ᵒ fun (pre-ℰ A M) (recursiveᵒ pre-ℰ⊎𝒱) tt
+  ℰ-eq {A}{M} =
+      ℰ⟦ A ⟧ M                                ⩦⟨ ≡ᵒ-refl refl ⟩
+      recursiveᵒ pre-ℰ⊎𝒱 (inj₂ (A , M))       ⩦⟨ fixpointᵒ pre-ℰ⊎𝒱 _ ⟩
+      fun (pre-ℰ A M) (recursiveᵒ pre-ℰ⊎𝒱) tt ∎
+```
+
+```
+abstract
+  𝒱-eq : ∀{A}{V} → 𝒱⟦ A ⟧ V ≡ᵒ fun (pre-𝒱 A V) (recursiveᵒ pre-ℰ⊎𝒱) tt
+  𝒱-eq {A}{V} =
+      𝒱⟦ A ⟧ V                                ⩦⟨ ≡ᵒ-refl refl ⟩
+      recursiveᵒ pre-ℰ⊎𝒱 (inj₁ (A , V))       ⩦⟨ fixpointᵒ pre-ℰ⊎𝒱 _ ⟩
+      fun (pre-𝒱 A V) (recursiveᵒ pre-ℰ⊎𝒱) tt ∎
+```
+

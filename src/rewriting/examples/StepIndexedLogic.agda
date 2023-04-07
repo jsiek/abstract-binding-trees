@@ -1163,7 +1163,7 @@ fixpoint F = equiv-down (λ k → lemma19 k F)
 {--------------- Make a Recursive Predicate -------------------}
 
 RecSetᵒ : Set → Kind → Set₁
-RecSetᵒ A κ = Fun A ⊤ Later
+RecSetᵒ A κ = Fun A ⊤ κ
 
 recursiveᵒ : ∀{A}
    → (A → RecSetᵒ A Later)
