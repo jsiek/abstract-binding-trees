@@ -86,10 +86,10 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M γ = ⊢ℰLM
      let w = 𝒱⇒Value A W 𝒱Wsn in
      V-fun-elim ⊢𝒱V λ {N′ refl 𝒱W→ℰNW →
      let prog : 𝓟₂ (ƛ N′) W ⊢ᵒ progress B (ƛ N′ · W)
-         prog = (inj₂ᵒ (inj₁ᵒ (⊢ᵒ-Sᵒ-intro (_ , (β w))))) in
+         prog = (inj₂ᵒ (inj₁ᵒ (constᵒI (_ , (β w))))) in
      let pres : 𝓟₂ (ƛ N′) W ⊢ᵒ preservation B (ƛ N′ · W)
          pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ {r →
-                let ⊢▷ℰN′W = appᵒ 𝒱W→ℰNW (⊢ᵒ-mono ⊢𝒱W) in
+                let ⊢▷ℰN′W = appᵒ 𝒱W→ℰNW (monoᵒ ⊢𝒱W) in
                 let eq = deterministic r (β w) in
                 subst (λ N → 𝓟₂ (ƛ N′) W ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ N) (sym eq) ⊢▷ℰN′W}) in
      ℰ-intro prog pres
@@ -108,7 +108,7 @@ compatible-lambda {Γ}{A}{B}{N} ⊨N γ = ⊢ℰγλN
    ▷𝓔N[W] : ∀{W} → ▷ᵒ 𝒱⟦ A ⟧ W ∷ 𝓖⟦ Γ ⟧ γ  ⊢ᵒ  ▷ᵒ ℰ⟦ B ⟧ ((⟪ ext γ ⟫ N) [ W ])
    ▷𝓔N[W] {W} =
      let ⊢𝒱W→ℰN[W] : 𝓖⟦ Γ ⟧ γ ⊢ᵒ (▷ᵒ (𝒱⟦ A ⟧ W) →ᵒ ▷ᵒ ℰ⟦ B ⟧ (⟪ W • γ ⟫ N))
-         ⊢𝒱W→ℰN[W] = ▷→ (⊢ᵒ-mono (→ᵒI (⊨N (W • γ)))) in
+         ⊢𝒱W→ℰN[W] = ▷→ (monoᵒ (→ᵒI (⊨N (W • γ)))) in
      appᵒ (Sᵒ ⊢𝒱W→ℰN[W]) Zᵒ
 
 compatible-inject : ∀{Γ}{G}{M}
@@ -128,7 +128,7 @@ compatible-inject {Γ}{G}{M} ⊨M γ = ℰMg!
   ⊢ℰVg!{V} =
    ⊢ᵒ-sucP Zᵒ λ 𝒱Vsn →
    let v = 𝒱⇒Value (typeofGround G) V 𝒱Vsn in
-   𝒱⇒ℰ (substᵒ (≡ᵒ-sym V-dyn) (⊢ᵒ-Sᵒ-intro v ,ᵒ (⊢ᵒ-mono Zᵒ)))
+   𝒱⇒ℰ (substᵒ (≡ᵒ-sym V-dyn) (constᵒI v ,ᵒ (monoᵒ Zᵒ)))
 
 red-inj-proj : ∀{G}{H}{W}
    → Value W
@@ -160,7 +160,7 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
    let ▷𝒱W = proj₂ᵒ ⊢w×▷𝒱W in
    ⊢ᵒ-sucP ⊢w λ{n} w →
    let prog : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ progress (typeofGround H) ((W ⟨ G !⟩) ⟨ H ?⟩)
-       prog = inj₂ᵒ (inj₁ᵒ (⊢ᵒ-Sᵒ-intro (red-inj-proj w))) in
+       prog = inj₂ᵒ (inj₁ᵒ (constᵒI (red-inj-proj w))) in
    let pres : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ preservation (typeofGround H) ((W ⟨ G !⟩) ⟨ H ?⟩)
        pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ r → Goal r w ▷𝒱W) in
    ℰ-intro prog pres
@@ -176,7 +176,7 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
     Goal {W} (ξξ-blame □⟨ H ?⟩ ())
     Goal {W}{G}{G}{W} (collapse{H} w′ refl) w ▷𝒱W =
        ▷→▷ ▷𝒱W (→ᵒI (𝒱⇒ℰ Zᵒ))
-    Goal {W} (collide x x₁ x₂) w ▷𝒱W = ⊢ᵒ-mono ℰ-blame
+    Goal {W} (collide x x₁ x₂) w ▷𝒱W = monoᵒ ℰ-blame
 
 fundamental : ∀ {Γ A} → (M : Term)
   → Γ ⊢ M ⦂ A

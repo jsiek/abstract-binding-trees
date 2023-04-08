@@ -1246,23 +1246,23 @@ downClosed-Πᵒ (P ∷ 𝓟) n (Pn , ⊨𝓟n) k k≤n =
 ▷-suc {S}{n} Ssn = Ssn
 
 abstract
-  ⊢ᵒ-mono : ∀ {𝓟}{P}
+  monoᵒ : ∀ {𝓟}{P}
      → 𝓟 ⊢ᵒ P
        ------------
      → 𝓟 ⊢ᵒ (▷ᵒ P)
-  ⊢ᵒ-mono {𝓟}{P} ⊢P zero ⊨𝓟n = tt
-  ⊢ᵒ-mono {𝓟}{P} ⊢P (suc n) ⊨𝓟n =
+  monoᵒ {𝓟}{P} ⊢P zero ⊨𝓟n = tt
+  monoᵒ {𝓟}{P} ⊢P (suc n) ⊨𝓟n =
     let ⊨𝓟n = downClosed-Πᵒ 𝓟 (suc n) ⊨𝓟n n (n≤1+n n) in
     ⊢P n ⊨𝓟n
 
-  ⊢ᵒ-lob : ∀ {𝓟}{P}
+  lobᵒ : ∀ {𝓟}{P}
      → (▷ᵒ P) ∷ 𝓟 ⊢ᵒ P
        -----------------------
      → 𝓟 ⊢ᵒ P
-  ⊢ᵒ-lob {𝓟}{P} step zero ⊨𝓟n = tz P
-  ⊢ᵒ-lob {𝓟}{P} step (suc n) ⊨𝓟sn =
+  lobᵒ {𝓟}{P} step zero ⊨𝓟n = tz P
+  lobᵒ {𝓟}{P} step (suc n) ⊨𝓟sn =
     let ⊨𝓟n = downClosed-Πᵒ 𝓟 (suc n) ⊨𝓟sn n (n≤1+n n) in
-    let Pn = ⊢ᵒ-lob {𝓟}{P} step n ⊨𝓟n in
+    let Pn = lobᵒ {𝓟}{P} step n ⊨𝓟n in
     step (suc n) (Pn , ⊨𝓟sn)
 
   ▷× : ∀{𝓟} {P Q : Setᵒ}
@@ -1418,7 +1418,7 @@ abstract
   ▷→▷ {𝓟}{P}{Q} ▷P P→Q n ⊨𝓟n =
     let ▷Q = appᵒ{𝓟}{▷ᵒ P}{▷ᵒ Q}
                 (▷→{𝓟}{P}{Q}
-                    (⊢ᵒ-mono{𝓟}{P →ᵒ Q} P→Q)) ▷P in
+                    (monoᵒ{𝓟}{P →ᵒ Q} P→Q)) ▷P in
     ▷Q n ⊨𝓟n
 
   ⊢ᵒ-∀-intro : ∀{𝓟 : List Setᵒ }{A}{P : A → Setᵒ}
@@ -1437,6 +1437,24 @@ abstract
 Λᵒ-syntax = ⊢ᵒ-∀-intro
 infix 1 Λᵒ-syntax
 syntax Λᵒ-syntax (λ a → ⊢Pa) = Λᵒ[ a ] ⊢Pa
+
+abstract
+  ⊢ᵒ-∃-intro : ∀{𝓟 : List Setᵒ }{A}{P : A → Setᵒ}{{_ : Inhabited A}}
+    → (a : A)
+    → 𝓟 ⊢ᵒ P a
+      ----------
+    → 𝓟 ⊢ᵒ ∃ᵒ P
+  ⊢ᵒ-∃-intro a ⊢Pa n ⊨𝓟n = a , (⊢Pa n ⊨𝓟n)
+
+  ⊢ᵒ-∃-elim : ∀{𝓟 : List Setᵒ }{A}{P : A → Setᵒ}{R : Setᵒ}{{_ : Inhabited A}}
+    → 𝓟 ⊢ᵒ ∃ᵒ P
+    → (∀ a → P a ∷ 𝓟 ⊢ᵒ R)
+      ---------------------
+    → 𝓟 ⊢ᵒ R
+  ⊢ᵒ-∃-elim{R = R} ⊢∃P cont zero ⊨𝒫n = tz R
+  ⊢ᵒ-∃-elim ⊢∃P cont (suc n) ⊨𝒫n
+      with ⊢∃P (suc n) ⊨𝒫n
+  ... | (a , Pasn) = cont a (suc n) (Pasn , ⊨𝒫n)
 
 abstract
   Zᵒ : ∀{𝓟 : List Setᵒ}{S : Setᵒ}
@@ -1465,11 +1483,11 @@ infix 1 λᵒ-syntax
 syntax λᵒ-syntax (λ ⊢P → ⊢Q) = λᵒ[ ⊢P ] ⊢Q
 
 abstract
-  ⊢ᵒ-Sᵒ-intro : ∀{𝓟}{S : Set}
+  constᵒI : ∀{𝓟}{S : Set}
      → S
      → 𝓟 ⊢ᵒ (S)ᵒ
-  ⊢ᵒ-Sᵒ-intro s zero ⊨𝓟n = tt
-  ⊢ᵒ-Sᵒ-intro s (suc n) ⊨𝓟n = s
+  constᵒI s zero ⊨𝓟n = tt
+  constᵒI s (suc n) ⊨𝓟n = s
 
   Sᵒ→Tᵒ⇒⊢ᵒ : ∀ {𝓟} {S T : Set}
     → 𝓟 ⊢ᵒ (S)ᵒ

@@ -266,25 +266,30 @@ function of type `A → (A → Setᵒ) → Setᵒ`. Instead, we need to place
 restrictions on the function. In particular, if we make sure that the
 recursion never happens "now", but only "later", then it becomes
 possible to construct `recursiveᵒ`. We define the `RecSetᵒ` type in
-Agda to capture this restriction.
+Agda to capture this restriction. We actually define `RecSetᵒ A κ` in
+terms of a more general type `Fun A B κ`, but the result is something
+equivalent to the following.
 
-    RecSetᵒ A κ
+    record RecSetᵒ (A : Set) (κ : Kind) : Set₁ where
+      field
+        fun : (A → Setᵒ) → (⊤ → Setᵒ)
+        ...
 
-The `A` in `RecSetᵒ A κ` the parameter type for the recursion
-and κ is `Now` or `Later`.  We then define variants of all the
-propositions that work on RecSetᵒ instead of Setᵒ and that track
-whether the recursive call happened now or later.
+The `A` in `RecSetᵒ A κ` is the parameter type for the recursion and κ
+is `Now` or `Later`.  We define variants of all the propositional
+connectives to work on RecSetᵒ and track whether the recursive call
+happened now or later.
 
-For example, the "later" operator, `▷ᶠ P`, asserts that `P` is true
-the future, so regardless of whether `P` contained any recursive
-calls, the predicate `▷ᶠ P` can safely say that use of recursion in it
-happened `Later`.
+For example, because the "later" operator asserts that `P` is true in
+the future, the predicate `▷ᶠ P` can safely say that use any use
+recursion in it happened `Later` regardless of whether `P` contained
+any recursive calls.
 
     ▷ᶠ : ∀{A}{κ} → RecSetᵒ A κ → RecSetᵒ A Later
 
-The "and" operator, `P ×ᶠ Q` is categorized as `Later` only if
-both `P` and `Q` are `Later`. Otherwise it is `Now`.
-So we use the following function to choose:
+The "and" operator, `P ×ᶠ Q` is categorized as `Later` only if both
+`P` and `Q` are `Later`. Otherwise it is `Now`.  We use the following
+function to make this choice:
 
     choose : Kind → Kind → Kind
     choose Now Now = Now
@@ -304,8 +309,8 @@ recursion happened `Now`.
 
     recurᶠ : ∀{A} → A → RecSetᵒ A Now
 
-So the type of `recursiveᵒ` takes a non-recursive function from `A` to
-a `RecSetᵒ` and then produces a recursive predicate in `A`.
+The type of `recursiveᵒ` takes a non-recursive function from `A` to
+`RecSetᵒ` and produces a recursive predicate in `A`.
 
     recursiveᵒ : ∀{A}
        → (A → RecSetᵒ A Later)
@@ -321,8 +326,8 @@ mreduce (M , N) = (M ≡ N)ᶠ ⊎ᶠ (∃ᶠ[ L ] (M —→ L)ᶠ ×ᶠ ▷ᶠ 
 ```
 
 Note that the `R` parameter has become implicit; it is hidden inside
-the `RecSetᵒ` type. Also the use of `R`, the application `R (L , N)`
-is replaced by `▷ᶠ (recurᶠ (L , N))`.
+the `RecSetᵒ` type. Also the application `R (L , N)` is replaced by
+`▷ᶠ (recurᶠ (L , N))`.
 
 We define the recursive predicate `M —→* N` by applying `recursiveᵒ`
 to `mreduce`.
@@ -343,16 +348,103 @@ X₁ : #((ƛ ($ (Num 1))) · $ (Num 0) —→* $ (Num 1)) 2
 X₁ = inj₂ (_ , (β ($̬ _) , inj₁ refl))
 ```
 
+## Proofs in Step-indexed Logic
+
+Just like first-orderd logic, SIL comes with rules of deduction for
+carrying out proofs. The judgement form is `𝓟 ⊢ᵒ P`, where `𝓟` is a
+list of assumptions and `P` is a formula.  The judgement `𝓟 ⊢ᵒ P` is
+true iff for every time `k`, all of `𝓟` are true at `k` implies that `P`
+is true at `k`. So in Agda we have the following definition.
+
+    Πᵒ : List Setᵒ → Setᵒ
+    Πᵒ [] = ⊤ᵒ
+    Πᵒ (P ∷ 𝓟) = P ×ᵒ Πᵒ 𝓟 
+
+    _⊢ᵒ_ : List Setᵒ → Setᵒ → Set
+    𝓟 ⊢ᵒ P = ∀ k → # (Πᵒ 𝓟) k → # P k
+
+Many of the deduction rules are the same as in first order logic.
+For example, here are the introduction and elimination rules
+for conjunction. We use the same notation as Agda, but with
+a superscript "o".
+
+    _,ᵒ_ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
+      → 𝓟 ⊢ᵒ P
+      → 𝓟 ⊢ᵒ Q
+        ------------
+      → 𝓟 ⊢ᵒ P ×ᵒ Q
+
+    proj₁ᵒ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
+      → 𝓟 ⊢ᵒ P ×ᵒ Q
+        ------------
+      → 𝓟 ⊢ᵒ P
+
+    proj₂ᵒ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
+      → 𝓟 ⊢ᵒ P ×ᵒ Q
+        ------------
+      → 𝓟 ⊢ᵒ Q
+
+Analogous to `subst` in Agda's standard library, SIL has `substᵒ`
+which says that if `P` and `Q` are equivant, then a proof of `P` gives
+a proof of `Q`.
+
+    substᵒ : ∀{𝓟}{P Q : Setᵒ}
+      → P ≡ᵒ Q
+        -------------------
+      → 𝓟 ⊢ᵒ P  →  𝓟 ⊢ᵒ Q
+
+The deduction rules also include ones for the "later" operator.  As we
+mentioned earlier, if a proposition is true now it will also be true
+later.
+
+  monoᵒ : ∀ {𝓟}{P}
+     → 𝓟 ⊢ᵒ P
+       ------------
+     → 𝓟 ⊢ᵒ (▷ᵒ P)
+
+One can transport induction on natural numbers into SIL to obtain the
+following Löb rule, which states that when proving any property `P`,
+one is allowed to assume that `P` is true later.
+
+  lobᵒ : ∀ {𝓟}{P}
+     → (▷ᵒ P) ∷ 𝓟 ⊢ᵒ P
+       -----------------------
+     → 𝓟 ⊢ᵒ P
+
+For comparison, here's induction on natural numbers
+
+      P 0
+    → (∀ k → P k → P (suc k))
+    → ∀ n → P n
+
+In the world of SIL, propositions are always true at zero, so the base
+case `P 0` is not necessary. The induction step `(∀ k → P k → P (suc k))`
+is similar to the premise `(▷ᵒ P) ∷ 𝓟 ⊢ᵒ P` because `▷ᵒ` subtracts one.
+
+As usual for temporal logics (or more generally, for modal logics),
+there are distribution rules that push "later" through the other
+logical connectives. For example, the following rule distributes
+"later" through conjunction.
+
+  ▷× : ∀{𝓟} {P Q : Setᵒ}
+     → 𝓟 ⊢ᵒ (▷ᵒ (P ×ᵒ Q))
+       ----------------------
+     → 𝓟 ⊢ᵒ (▷ᵒ P) ×ᵒ (▷ᵒ Q)
+
+This project was the first time for me conducting nontrivial proofs in
+a modal logic, and it took some getting use to.
+
+
 ## Logical Relation for Type Safety
 
 With the Step-indexed Logic in hand, we are ready to define a logical
 relation for type safety. The two predicates 𝓔 and 𝓥 are mutually
-recursive, so we proceed by combining them into a single recursive
-predicate named `ℰ⊎𝒱` that takes a sum type, where the left side is
-for 𝓔 and the right side is for 𝓥. We shall define `ℰ⊎𝒱` by an
-application of `recursiveᵒ`, so we first need to define the non-recursive
-version of `ℰ⊎𝒱`, which we call `pre-ℰ⊎𝒱`, defined below. It simply
-dispatches to the non-recursive `pre-ℰ` and `pre-ℰ` which we define next.
+recursive, so we combine them into a single recursive predicate named
+`ℰ⊎𝒱` that takes a sum type, where the left side is for 𝓔 and the
+right side is for 𝓥. We shall define `ℰ⊎𝒱` by an application of
+`recursiveᵒ`, so we first need to define the non-recursive version of
+`ℰ⊎𝒱`, which we call `pre-ℰ⊎𝒱`, defined below. It simply dispatches to
+the non-recursive `pre-ℰ` and `pre-ℰ` which we define next.
 
 ```
 Ty[ℰ⊎𝒱] : Set
@@ -395,16 +487,27 @@ pre-𝒱 (A ⇒ B) (ƛ N)      = ∀ᶠ[ W ] ▷ᶠ (𝒱ᶠ⟦ A ⟧ W) →ᶠ 
 pre-𝒱 A M                = ⊥ ᶠ
 ```
 
+As promised, we define `ℰ⊎𝒱` by applying `recursiveᵒ` to `pre-ℰ⊎𝒱`.
+
+```
+ℰ⊎𝒱 : (Type × Term) ⊎ (Type × Term) → Setᵒ
+ℰ⊎𝒱 = recursiveᵒ pre-ℰ⊎𝒱
+```
+
+We then define ℰ and 𝒱 by applying `ℰ⊎𝒱` to either `inj₁` for 𝒱 or
+`inj₂` for ℰ.
+
 ```
 abstract
   ℰ⟦_⟧ : Type → Term → Setᵒ
-  ℰ⟦ A ⟧ M = recursiveᵒ pre-ℰ⊎𝒱 (inj₂ (A , M))
+  ℰ⟦ A ⟧ M = ℰ⊎𝒱 (inj₂ (A , M))
   
   𝒱⟦_⟧ : Type → Term → Setᵒ
-  𝒱⟦ A ⟧ V = recursiveᵒ pre-ℰ⊎𝒱 (inj₁ (A , V))
+  𝒱⟦ A ⟧ V = ℰ⊎𝒱 (inj₁ (A , V))
 ```
 
-
+To succinctly talk about the two aspects of 𝓔, we define semantic
+`progress` and `preservation` as follows.
 
 ```
 progress : Type → Term → Setᵒ
@@ -414,28 +517,65 @@ preservation : Type → Term → Setᵒ
 preservation A M = ∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 ```
 
-
-
-
-When we reason about ℰ and 𝒱, we need to be able to unfold and fold
-their definitions. The following equations make this possible, which
-follow directly from the `fixpointᵒ` theorem provided by SIL.
+We can prove that 𝓔 is indeed equivalent to progress and preservation
+by use of the `fixpointᵒ` theorem in SIL.
 
 ```
 abstract
-  ℰ-eq : ∀{A}{M} → ℰ⟦ A ⟧ M ≡ᵒ fun (pre-ℰ A M) (recursiveᵒ pre-ℰ⊎𝒱) tt
-  ℰ-eq {A}{M} =
+  ℰ≡p×p : ∀{A}{M} → ℰ⟦ A ⟧ M ≡ᵒ progress A M ×ᵒ preservation A M
+  ℰ≡p×p {A}{M} =
       ℰ⟦ A ⟧ M                                ⩦⟨ ≡ᵒ-refl refl ⟩
       recursiveᵒ pre-ℰ⊎𝒱 (inj₂ (A , M))       ⩦⟨ fixpointᵒ pre-ℰ⊎𝒱 _ ⟩
-      fun (pre-ℰ A M) (recursiveᵒ pre-ℰ⊎𝒱) tt ∎
+      fun (pre-ℰ A M) ℰ⊎𝒱 tt
+                            ⩦⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (fixpointᵒ pre-ℰ⊎𝒱 _))
+                                               (≡ᵒ-refl refl)) (≡ᵒ-refl refl) ⟩
+      progress A M ×ᵒ preservation A M         ∎
 ```
 
+For convenience, we define introduction and elimination rules for ℰ.
+
 ```
+ℰ-intro : ∀ {𝓟}{A}{M}
+  → 𝓟 ⊢ᵒ progress A M
+  → 𝓟 ⊢ᵒ preservation A M
+    ----------------------
+  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
+ℰ-intro 𝓟⊢prog 𝓟⊢pres = substᵒ (≡ᵒ-sym ℰ≡p×p) (𝓟⊢prog ,ᵒ 𝓟⊢pres)
+
+ℰ-progress : ∀ {𝓟}{A}{M}
+  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
+  → 𝓟 ⊢ᵒ progress A M
+ℰ-progress 𝓟⊢ℰM = proj₁ᵒ (substᵒ ℰ≡p×p 𝓟⊢ℰM )
+
+ℰ-preservation : ∀ {𝓟}{A}{M}
+  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
+  → 𝓟 ⊢ᵒ preservation A M
+ℰ-preservation 𝓟⊢ℰM = proj₂ᵒ (substᵒ ℰ≡p×p 𝓟⊢ℰM )
+```
+
+
+```
+annot : (T : Set₁) → (e : T) → T
+annot T e = ((λ (x : T) → x) e)
+
 abstract
-  𝒱-eq : ∀{A}{V} → 𝒱⟦ A ⟧ V ≡ᵒ fun (pre-𝒱 A V) (recursiveᵒ pre-ℰ⊎𝒱) tt
-  𝒱-eq {A}{V} =
-      𝒱⟦ A ⟧ V                                ⩦⟨ ≡ᵒ-refl refl ⟩
-      recursiveᵒ pre-ℰ⊎𝒱 (inj₁ (A , V))       ⩦⟨ fixpointᵒ pre-ℰ⊎𝒱 _ ⟩
-      fun (pre-𝒱 A V) (recursiveᵒ pre-ℰ⊎𝒱) tt ∎
-```
+  V-base : ∀{ι}{c} → (𝒱⟦ $ₜ ι ⟧ ($ c)) ≡ᵒ (ι ≡ typeof c)ᵒ
+  V-base{ι}{c} = 
+    𝒱⟦ $ₜ ι ⟧ ($ c)                         ⩦⟨ ≡ᵒ-refl refl ⟩
+    recursiveᵒ pre-ℰ⊎𝒱 (inj₁ ($ₜ ι , $ c))  ⩦⟨ fixpointᵒ pre-ℰ⊎𝒱 _ ⟩
+    fun (pre-𝒱 ($ₜ ι) ($ c)) ℰ⊎𝒱 tt         ⩦⟨ ≡ᵒ-refl refl ⟩
+    (annot Setᵒ ((ι ≡ typeof c)ᵒ))           ∎
+  
+V-base-intro : ∀{𝒫}{c} → 𝒫 ⊢ᵒ 𝒱⟦ $ₜ (typeof c) ⟧ ($ c)
+V-base-intro = substᵒ (≡ᵒ-sym V-base) (constᵒI refl)
 
+instance
+  LitInhabited : Inhabited Lit
+  LitInhabited = record { elt = Num 0 }
+
+V-base-elim : ∀{𝒫}{ι}{M}
+   → 𝒫 ⊢ᵒ 𝒱⟦ $ₜ ι ⟧ M
+   → 𝒫 ⊢ᵒ (∃ᵒ[ c ] (M ≡ $ c)ᵒ ×ᵒ (ι ≡ typeof c)ᵒ)
+V-base-elim {𝒫}{ι}{M} ⊢𝒱M =
+  ⊢ᵒ-sucP ⊢𝒱M λ { 𝓥Vscn → {!!} }
+```

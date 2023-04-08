@@ -92,7 +92,7 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 
 ℰ-blame : ∀{𝓟}{A} → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ blame
 ℰ-blame {𝓟}{A} =
-    ℰ-intro (inj₂ᵒ (inj₂ᵒ (⊢ᵒ-Sᵒ-intro isBlame)))
+    ℰ-intro (inj₂ᵒ (inj₂ᵒ (constᵒI isBlame)))
             (Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ blame→ → ⊥-elim (blame-irreducible blame→)))
 
 𝒱⇒Value : ∀ {k} A M
@@ -157,13 +157,7 @@ V-dyn-elim {𝓟}{V}{R} ⊢𝒱V cont =
       with 𝒱⇒Value ★ (W ⟨ G !⟩) 𝒱Vsn
   ... | w 〈 _ 〉 =
       let ⊢▷𝒱W = proj₂ᵒ (substᵒ (V-dyn{V = W}) ⊢𝒱V) in
-      cont W _ refl (⊢ᵒ-Sᵒ-intro w ,ᵒ ⊢▷𝒱W)
-  G {` x}{n} ()
-  G {$ c}{n} ()
-  G {ƛ N}{n} ()
-  G {L · M}{n} ()
-  G {M ⟨ H ?⟩}{n} ()
-  G {blame}{n} ()
+      cont W _ refl (constᵒI w ,ᵒ ⊢▷𝒱W)
   
 V-fun : ∀{A B}{N}
    → (𝒱⟦ A ⇒ B ⟧ (ƛ N))
@@ -274,7 +268,7 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
     →ᵒI (→ᵒI M′→V→ℰFV)
 
 ℰ-frame-aux : ∀{𝓟}{A}{B}{F} → 𝓟 ⊢ᵒ ℰ-frame-prop A B F
-ℰ-frame-aux {𝓟}{A}{B}{F} = ⊢ᵒ-lob Goal
+ℰ-frame-aux {𝓟}{A}{B}{F} = lobᵒ Goal
  where     
  Goal : ▷ᵒ ℰ-frame-prop A B F ∷ 𝓟 ⊢ᵒ ℰ-frame-prop A B F
  Goal = Λᵒ[ M ] →ᵒI (→ᵒI Goal′)
@@ -297,7 +291,7 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
          ℰcontFM = Sᵒ Zᵒ in
      let Cont = λ V → (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧) in
      appᵒ (appᵒ (instᵒ{P = Cont} ℰcontFM M)
-                          (⊢ᵒ-Sᵒ-intro (M END)))
+                          (constᵒI (M END)))
                ⊢𝒱M
 
    Mred : (reducible M)ᵒ ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
@@ -325,13 +319,13 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
          let ▷ℰM′ : 𝓟′ ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M′
              ▷ℰM′ = appᵒ (instᵒ{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ B ⟧ N)}
                            (ℰ-preservation ℰM) M′)
-                         (⊢ᵒ-Sᵒ-intro M→M′) in
+                         (constᵒI M→M′) in
          let M→V→𝒱V→ℰFV : 𝓟′ ⊢ᵒ ℰ-f-cont A B F M
              M→V→𝒱V→ℰFV = Zᵒ in
          let M′→V→𝒱V→ℰFV : 𝓟′ ⊢ᵒ ℰ-f-cont A B F M′
              M′→V→𝒱V→ℰFV = ℰ-f-cont-lemma{𝓟′}{A}{B} M→M′ M→V→𝒱V→ℰFV in
          let ▷ℰFM′ : 𝓟′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))
-             ▷ℰFM′ = frame-prop-lemma IH ▷ℰM′ (⊢ᵒ-mono M′→V→𝒱V→ℰFV) in
+             ▷ℰFM′ = frame-prop-lemma IH ▷ℰM′ (monoᵒ M′→V→𝒱V→ℰFV) in
          subst (λ N → 𝓟′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym N≡) ▷ℰFM′
 
    Mblame : (Blame M)ᵒ ∷ 𝓟′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
@@ -349,7 +343,7 @@ frame-prop-lemma{𝓟}{A}{B}{M}{F} IH ℰM V→FV =
        → 𝓟′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
     blameM⇒▷ℰN {N} isBlame FM→N =
         let eq = blame-frame FM→N in
-        subst (λ N → 𝓟′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym eq) (⊢ᵒ-mono ℰ-blame)
+        subst (λ N → 𝓟′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym eq) (monoᵒ ℰ-blame)
 
 
 ℰ-frame : ∀{𝓟}{A}{B}{F}{M}
