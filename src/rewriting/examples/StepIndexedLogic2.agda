@@ -110,6 +110,14 @@ record Setᵒ (Γ : Context) (ts : Times Γ) : Set₁ where
     congr : ⊤
 open Setᵒ public
 
+⊤ᵒ : ∀{Γ}{ts : Times Γ} → Setᵒ Γ ts
+⊤ᵒ = record { # = λ μs k → ⊤
+            ; down = λ μs _ n _ k _ → tt
+            ; tz = λ μs _ → tt
+            ; good = tt
+            ; congr = tt
+            }
+
 ⊥ᵒ : ∀{Γ}{ts : Times Γ} → Setᵒ Γ ts
 ⊥ᵒ = record { # = λ { μs zero → ⊤ ; μs (suc k) → ⊥}
             ; down = λ { μs dμs zero x zero k≤n → tt}
@@ -117,6 +125,25 @@ open Setᵒ public
             ; good = tt
             ; congr = tt
             }
+
+later : ∀{Γ} (ts : Times Γ) → Times Γ
+later {[]} ts = ∅
+later {A ∷ Γ} (cons t ts) = cons Later (later ts)
+
+▷ᵒ : ∀{Γ}{ts : Times Γ}
+   → Setᵒ Γ ts
+     -----------------
+   → Setᵒ Γ (later ts)
+▷ᵒ S = record { # = λ { μs zero → ⊤ ; μs (suc k) → # S μs k }
+              ; down = λ { μs dcμs zero Sn .zero z≤n → tt
+                         ; μs dcμs (suc n) Sn .zero z≤n → tt
+                         ; μs dcμs (suc n) Sn (suc k) (s≤s k≤n) →
+                             down S μs dcμs n Sn k k≤n }
+              ; tz = λ μs tzμs → tt
+              ; good = tt
+              ; congr = tt
+              }
+
 
 {-
   Variable refering to a recursive predicate (from a μᵒ)
@@ -144,6 +171,40 @@ Apply recursive predicate to an argument.
          ; good = tt
          ; congr = tt
          }
+
+iter : ∀ {ℓ} {A : Set ℓ} → ℕ → (A → A) → (A → A)
+iter zero    F  =  id
+iter (suc n) F  =  F ∘ iter n F
+
+μᵒ : ∀{Γ}{ts : Times Γ}{A}
+   → (A → Setᵒ (A ∷ Γ) (cons Later ts))
+   → (A → Setᵒ Γ ts)
+μᵒ {Γ}{ts}{A} P a =
+    record { # = λ μs k → (iter{_}{Predₒ A} (suc k)
+                            (λ R → λ a → # (P a) (R , μs))
+                            (λ a k → ⊤))
+                           a k
+           ; down = λ μs dcμs n iterSn k k≤n → {!!}
+           ; tz = λ μs z → tz (P a) ((λ x x₁ → ⊤) , μs) ((λ x → tt) , z)
+           ; good = tt
+           ; congr = tt
+           }
+
+∀ᵒ : ∀{Γ}{ts : Times Γ}{A : Set}
+   → (A → Setᵒ Γ ts)
+   → Setᵒ Γ ts
+∀ᵒ{Γ}{ts}{A} P =
+    record { # = λ μs k → ∀ (a : A) → #(P a) μs k
+           ; down = λ μs dcμs n ∀Pn k k≤n a →
+                       down (P a) μs dcμs n (∀Pn a) k k≤n
+           ; tz = λ μs z a → tz (P a) μs z
+           ; good = tt
+           ; congr = tt
+           }
+
+∀ᵒ-syntax = ∀ᵒ
+infix 1 ∀ᵒ-syntax
+syntax ∀ᵒ-syntax (λ x → P) = ∀ᵒ[ x ] P
 
 choose : Time → Time → Time
 choose Now Now = Now
