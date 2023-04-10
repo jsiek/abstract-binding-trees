@@ -2,14 +2,14 @@
 
 module rewriting.examples.EquivalenceRelation where
 
-open import Agda.Primitive using (Level; lzero; lsuc)
+open import Agda.Primitive using (Level; lzero; lsuc; _⊔_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 open import Data.Product
    using (_×_; _,_; proj₁; proj₂; Σ; ∃; Σ-syntax; ∃-syntax)
 
-record EquivalenceRelation {ℓ : Level} (A : Set ℓ) : Set (lsuc ℓ) where
+record EquivalenceRelation {ℓ ℓ′ : Level} (A : Set ℓ) : Set (ℓ ⊔ lsuc ℓ′) where
   field
-    _⩦_ : A → A → Set
+    _⩦_ : A → A → Set ℓ′
     ⩦-refl : ∀{a b : A} → a ≡ b → a ⩦ b
     ⩦-sym : ∀{a b : A} → a ⩦ b → b ⩦ a
     ⩦-trans : ∀{a b c : A} → a ⩦ b → b ⩦ c → a ⩦ c
@@ -19,14 +19,14 @@ open EquivalenceRelation {{...}} public
 infixr 0 _⩦⟨_⟩_
 infix  1 _∎
   
-_⩦⟨_⟩_ : ∀{ℓ}{A : Set ℓ}{{_ : EquivalenceRelation A}}
+_⩦⟨_⟩_ : ∀{ℓ ℓ′}{A : Set ℓ}{{_ : EquivalenceRelation{ℓ}{ℓ′} A}}
      (P : A)
      {Q : A} → P ⩦ Q
    → {R : A} → Q ⩦ R
    → P ⩦ R
 P ⩦⟨ P⩦Q ⟩ Q⩦R = ⩦-trans P⩦Q Q⩦R
 
-_∎ : ∀{ℓ}{A : Set ℓ}{{_ : EquivalenceRelation A}}
+_∎ : ∀{ℓ ℓ′}{A : Set ℓ}{{_ : EquivalenceRelation{ℓ}{ℓ′} A}}
     (P : A)
    → P ⩦ P
 P ∎ = ⩦-refl refl
