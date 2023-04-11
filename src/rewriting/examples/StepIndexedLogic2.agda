@@ -1,6 +1,7 @@
 {-# OPTIONS --without-K --rewriting #-}
 
 {-
+ Authors: Siek, Thiemann, and Wadler
 
  Based on "Logical Step-Indexed Logical Relations"
  by Dreyer, Ahmed, and Birkedal.
@@ -88,9 +89,10 @@ data Times : Context → Set₁ where
   cons : ∀{Γ}{A} → Time → Times Γ → Times (A ∷ Γ)
 
 ↓ : ℕ → Setₒ → Setₒ
-↓ k S j = j ≤ k  ×  S j
---↓ k S zero = ⊤
---↓ k S (suc j) = suc j < k × (S (suc j))
+-- Phil: let's switch to the following
+-- ↓ k S j = j ≤ k  ×  S j
+↓ k S zero = ⊤
+↓ k S (suc j) = suc j < k × (S (suc j))
 
 --↓ᵖ : ℕ → ∀{A : Set} → Predₒ A → Predₒ A
 --↓ᵖ k P a = ↓ k (P a)
@@ -132,7 +134,7 @@ abstract
   ≡ᵒ-fro PQ k = ⇔-fro (PQ k)
   
   ≡ᵒ-refl : ∀{S T : Setᵒ}
-    → Eq._≡_ S T
+    → S ≡ T
     → S ≡ᵒ T
   ≡ᵒ-refl refl i = ⩦-refl refl
 
@@ -152,6 +154,16 @@ instance
   SIL-Eqᵒ = record { _⩦_ = _≡ᵒ_ ; ⩦-refl = ≡ᵒ-refl
                    ; ⩦-sym = ≡ᵒ-sym ; ⩦-trans = ≡ᵒ-trans }
 
+≡ᵖ-refl : ∀{A}{P Q : Predᵒ A}
+  → P ≡ Q
+  → ∀ {a} → P a ≡ᵒ Q a
+≡ᵖ-refl refl {a} = ≡ᵒ-refl refl
+
+≡ᵖ-sym : ∀{A}{P Q : Predᵒ A}
+  → (∀ {a} → P a ≡ᵒ Q a)
+  → ∀ {a} → Q a ≡ᵒ P a
+≡ᵖ-sym P=Q {a} = ≡ᵒ-sym P=Q
+
 infixr 7 _×ᵒ_
 infixr 7 _⊎ᵒ_
 infixr 6 _→ᵒ_
@@ -168,6 +180,9 @@ infixr 8 _ᵒ
             ; down = λ n _ k _ → tt
             ; tz = tt
             }
+
+⊤ᵖ : ∀{A} → Predᵒ A
+⊤ᵖ = (λ a → ⊤ᵒ)
 
 _×ᵒ_ : Setᵒ → Setᵒ → Setᵒ
 P ×ᵒ Q = record { # = λ k → # P k × # Q k
@@ -231,9 +246,12 @@ S ᵒ = record { # = λ { zero → ⊤ ; (suc k) → S }
 
 ↓ᵒ : ℕ → Setᵒ → Setᵒ
 ↓ᵒ k S = record { # = ↓ k (# S)
-                ; down = λ {j (j≤k , Sj) i i≤j →
-                             ≤-trans i≤j j≤k , down S j Sj i i≤j}
-                ; tz = z≤n  , tz S
+                ; down = λ { zero x .zero z≤n → tt
+                           ; (suc n) (sn<k , Sn) zero j≤n → tt
+                           ; (suc n) (sn<k , Ssn) (suc j) (s≤s j≤n) →
+                           (≤-trans (s≤s (s≤s j≤n)) sn<k)
+                           , (down S (suc n) Ssn (suc j) (s≤s j≤n))}
+                ; tz = tt
                 }
 
 {-
@@ -286,10 +304,17 @@ goodness {[]} ts S = topᵖ
 goodness {A ∷ Γ} (cons Now ts) S = ∀ δ → continuousˢ S δ
 goodness {A ∷ Γ} (cons Later ts) S = ∀ δ → wellfoundedˢ S δ
 
+
+congruent : ∀{Γ} → Times Γ → (Predsᵒ Γ → Setᵒ) → Set₁
+congruent {[]} ts S = topᵖ
+congruent {A ∷ Γ} (cons t ts) S =
+  ∀{P Q} → (∀ a → P a ≡ᵒ Q a) → (∀ δ → S (P , δ) ≡ᵒ S (Q , δ))
+
 record Setˢ (Γ : Context) (ts : Times Γ) : Set₁ where
   field
     # : Predsᵒ Γ → Setᵒ 
     good : goodness ts #
+    congr : congruent ts #
 open Setˢ public
 
 abstract
@@ -304,7 +329,7 @@ abstract
   ≡ˢ-intro S=T eq δ = S=T eq δ
 
   ≡ˢ-refl : ∀{Γ}{ts : Times Γ}{S T : Setˢ Γ ts}
-    → Eq._≡_ S T
+    → S ≡ T
     → S ≡ˢ T
   ≡ˢ-refl{S = S}{T} refl δ = ≡ᵒ-refl{# S δ}{# T δ} refl
 
@@ -332,7 +357,7 @@ later {A ∷ Γ} (cons t ts) = cons Later (later ts)
    → Setˢ Γ ts
      -----------------
    → Setˢ Γ (later ts)
-▷ˢ S = record { # = λ δ → ▷ᵒ (# S δ) }
+▷ˢ S = record { # = λ δ → ▷ᵒ (# S δ) ; good = {!!} ; congr = {!!} }
 
 
 {-
@@ -346,9 +371,9 @@ data _⊢_ : Context → Set → Set₁ where
 Apply recursive predicate to an argument.
 -}
 _·_ : ∀{Γ}{ts : Times Γ}{A} → (x : Γ ⊢ A) → A → Setˢ Γ ts
-ze · a = record { # = λ (μP , δ) → μP a }
+ze · a = record { # = λ (μP , δ) → μP a ; good = {!!} ; congr = {!!} }
 _·_ {A ∷ Γ}{cons t ts} (sc x) a =
-    record { # = λ {(μP , δ) → # (_·_{Γ}{ts} x a) δ} }
+    record { # = λ {(μP , δ) → # (_·_{Γ}{ts} x a) δ} ; good = {!!} ; congr = {!!}}
 
 iter : ∀ {ℓ} {A : Set ℓ} → ℕ → (A → A) → (A → A)
 iter zero    F  =  id
@@ -366,7 +391,7 @@ muˢ : ∀{Γ}{ts : Times Γ}{A}
    → Predsᵒ Γ
    → (A → Setᵒ)
 muˢ {Γ}{ts}{A} P δ a =
-  record { # = λ k → #(iter{_}{Predᵒ A} (suc k) (toFun δ P) (λ a → ⊤ᵒ) a) k
+  record { # = λ k → #(iter{_}{Predᵒ A} (suc k) (toFun δ P) ⊤ᵖ a) k
          ; down = {!!}
          ; tz = {!!}
          }
@@ -374,13 +399,13 @@ muˢ {Γ}{ts}{A} P δ a =
 μˢ : ∀{Γ}{ts : Times Γ}{A}
    → (A → Setˢ (A ∷ Γ) (cons Later ts))
    → (A → Setˢ Γ ts)
-μˢ {Γ}{ts}{A} P a = record { # = λ δ → muˢ P δ a ; good = {!!} }
+μˢ {Γ}{ts}{A} P a = record { # = λ δ → muˢ P δ a ; good = {!!} ; congr = {!!} }
 
 
 ∀ˢ : ∀{Γ}{ts : Times Γ}{A : Set}
    → (A → Setˢ Γ ts)
    → Setˢ Γ ts
-∀ˢ{Γ}{ts}{A} P = record { # = λ δ → ∀ᵒ[ a ] # (P a) δ ; good = {!!} }
+∀ˢ{Γ}{ts}{A} P = record { # = λ δ → ∀ᵒ[ a ] # (P a) δ ; good = {!!} ; congr = {!!}}
 
 ∀ˢ-syntax = ∀ˢ
 infix 1 ∀ˢ-syntax
@@ -402,21 +427,21 @@ _×ˢ_ : ∀{Γ}{ts₁ ts₂ : Times Γ}
    → Setˢ Γ ts₂
      ------------------------
    → Setˢ Γ (combine ts₁ ts₂)
-S ×ˢ T = record { # = λ δ → # S δ ×ᵒ # T δ }
+S ×ˢ T = record { # = λ δ → # S δ ×ᵒ # T δ ; good = {!!} ; congr = {!!}}
 
 ↓ˢ : ∀{Γ}{ts : Times Γ}
    → ℕ
    → Setˢ Γ ts
      ----------
    → Setˢ Γ ts
-↓ˢ k S = record { # = λ δ → ↓ᵒ k (# S δ) }
+↓ˢ k S = record { # = λ δ → ↓ᵒ k (# S δ) ; good = {!!} ; congr = {!!}}
 
 applyˢ : ∀ {Γ}{ts : Times Γ}{A}
    (S : Setˢ (A ∷ Γ) (cons Later ts))
    (P : A → Setˢ Γ ts)
    → Setˢ Γ ts   
 applyˢ S P =
-  record { # = λ δ → (# S) ((λ a → #(P a) δ) , δ) }
+  record { # = λ δ → (# S) ((λ a → #(P a) δ) , δ) ; good = {!!} ; congr = {!!}}
 
 abstract
   equiv-downᵒ : ∀{S T : Setᵒ}
@@ -424,9 +449,9 @@ abstract
     → S ≡ᵒ T
   equiv-downᵒ {S} {T} ↓S=↓T zero = (λ _ → tz T) , (λ _ → tz S)
   equiv-downᵒ {S} {T} ↓S=↓T (suc k) =
-    (λ Ssk → proj₂ (proj₁ (↓S=↓T (suc k) (suc k)) (≤-refl , Ssk)))
+    (λ Ssk → proj₂ (proj₁ (↓S=↓T (suc (suc k)) (suc k)) (≤-refl , Ssk)))
     ,
-    (λ Tsk → proj₂ (proj₂ (↓S=↓T (suc k) (suc k)) (≤-refl , Tsk)))
+    λ Tsk → proj₂ (proj₂ (↓S=↓T (suc (suc k)) (suc k)) (≤-refl , Tsk))
   
   equiv-downˢ : ∀{Γ}{ts : Times Γ}{S T : Setˢ Γ ts}
     → (∀ j → ↓ˢ j S ≡ˢ ↓ˢ j T)
@@ -436,7 +461,7 @@ abstract
 
 abstract 
   ↓ᵒ-zero : ∀{A}{P Q : Predᵒ A} (a : A) → ↓ᵒ zero (P a) ≡ᵒ ↓ᵒ zero (Q a)
-  ↓ᵒ-zero{A}{P}{Q} a zero = (λ _ → z≤n , tz (Q a)) , (λ _ → z≤n , tz (P a))
+  ↓ᵒ-zero{A}{P}{Q} a zero = (λ _ → tt) , λ _ → tt
   ↓ᵒ-zero{A}{P}{Q} a (suc i) = (λ {()}) , (λ {()})
 
 
@@ -475,8 +500,18 @@ WF-toFun : ∀{Γ}{A}{ts : Times Γ}{δ : Predsᵒ Γ}
 WF-toFun{Γ}{A}{ts}{δ} F a cont′ = cont′
 
 
+congᵖ : ∀{A}{B} (F : Predᵒ A → Predᵒ B) → Set₁
+congᵖ F = ∀ {P Q} → (∀ a → P a ≡ᵒ Q a) → ∀ b → (F P b) ≡ᵒ (F Q b)
 
-
+abstract
+  cong-↓ : ∀{A}{k : ℕ}
+     → congᵖ{A}{A} (↓ᵖ k)
+  cong-↓ {A} {k} {P} {Q} eq a zero =
+     (λ _ → tt) , λ _ → tt
+  cong-↓ {A} {k} {P} {Q} eq a (suc i) =
+     (λ {(si≤k , Pasi) → si≤k , (proj₁ (eq a (suc i)) Pasi)})
+     ,
+     λ {(si≤k , Qasi) → si≤k , (proj₂ (eq a (suc i)) Qasi)}
 
 lemma15a : ∀{Γ}{A}{ts : Times Γ}{P Q : Predᵒ A}{δ : Predsᵒ Γ}
   → (j : ℕ)
@@ -485,15 +520,38 @@ lemma15a : ∀{Γ}{A}{ts : Times Γ}{P Q : Predᵒ A}{δ : Predsᵒ Γ}
   → ↓ᵒ j (iter j (toFun δ F) P a) ≡ᵒ ↓ᵒ j (iter j (toFun δ F) Q a)
 lemma15a {Γ}{A}{ts}{P}{Q}{δ} zero F a = ↓ᵒ-zero{_}{P}{Q} a
 lemma15a {Γ}{A}{ts}{P}{Q}{δ} (suc j) F a =
-    let f = toFun δ F in
-    ↓ᵒ (suc j) (f (iter j f P) a)             ⩦⟨ good (F a) δ (iter j f P) j ⟩ 
-    ↓ᵒ (suc j) (f (↓ᵖ j (iter j f P)) a)
-                                  ⩦⟨ {!!} {- cong-↓ (congr F (lemma15a F)) -} ⟩
-    ↓ᵒ (suc j) (f (↓ᵖ j (iter j f Q)) a)
-                                      ⩦⟨ ≡ᵒ-sym (good (F a) δ (iter j f Q) j) ⟩
-    ↓ᵒ (suc j) (f (iter j f Q) a)
+  let f = toFun δ F in
+  ↓ᵒ (suc j) (f (iter j f P) a)             ⩦⟨ good (F a) δ (iter j f P) j ⟩ 
+  ↓ᵒ (suc j) (f (↓ᵖ j (iter j f P)) a)
+                   ⩦⟨ cong-↓ (λ a → congr (F a) (λ a → lemma15a j F a) δ) a ⟩
+  ↓ᵒ (suc j) (f (↓ᵖ j (iter j f Q)) a)
+                                    ⩦⟨ ≡ᵒ-sym (good (F a) δ (iter j f Q) j) ⟩
+  ↓ᵒ (suc j) (f (iter j f Q) a)
   ∎
 
+iter-subtract : ∀{ℓ}{A : Set ℓ}{P : A}
+  → (F : A → A)
+  → (j k : ℕ)
+  → j ≤ k
+  → (iter j F (iter (k ∸ j) F P)) ≡ (iter k F P)
+iter-subtract {A = A} {P} F .zero k z≤n = refl
+iter-subtract {A = A} {P} F (suc j) (suc k) (s≤s j≤k)
+  rewrite iter-subtract{A = A}{P} F j k j≤k = refl
+
+lemma15b : ∀{Γ}{A}{ts : Times Γ}{P : Predᵒ A}{δ : Predsᵒ Γ}
+  → (k : ℕ)
+  → (j : ℕ)
+  → (F : A → Setˢ (A ∷ Γ) (cons Later ts))
+  → (a : A)
+  → j ≤ k
+  → ↓ᵒ j (iter j (toFun δ F) P a) ≡ᵒ ↓ᵒ j (iter k (toFun δ F) P a)
+lemma15b{Γ}{A}{ts}{P}{δ} k j F a j≤k =
+  let f = toFun δ F in
+  ↓ᵒ j (iter j f P a)                     ⩦⟨ lemma15a j F a ⟩
+  ↓ᵒ j (iter j f (iter (k ∸ j) f P) a)
+                      ⩦⟨ cong-↓{A}{j}{iter j f (iter (k ∸ j) f P)}{iter k f P}
+                              (λ a → ≡ᵖ-refl (iter-subtract f j k j≤k)) a ⟩
+  ↓ᵒ j (iter k f P a)   ∎
 
 cong-⇔-× : ∀{P P′ Q Q′ : Set}
    → P ⇔ P′
@@ -501,55 +559,93 @@ cong-⇔-× : ∀{P P′ Q Q′ : Set}
    → (P × Q) ⇔ (P′ × Q′)
 cong-⇔-× P=P′ Q=Q′ = {!!}
 
-lemma18a : ∀{Γ}{ts : Times Γ}{A}
-   → (k : ℕ)
-   → (F : A → Setˢ (A ∷ Γ) (cons Later ts))
-   → (a : A)
-   → (δ : Predsᵒ Γ)
-   → ↓ᵒ k (muˢ F δ a) ≡ᵒ ↓ᵒ k (iter k (toFun δ F) (λ a → ⊤ᵒ) a)
-lemma18a k F a δ = ≡ᵒ-intro Goal
-  where
-  Goal : (j : ℕ) →
-         ↓ k (λ j₁ → # (toFun δ F (iter j₁ (toFun δ F) (λ a₁ → ⊤ᵒ)) a) j₁) j
-       ⇔ ↓ k (# (iter k (toFun δ F) (λ a₁ → ⊤ᵒ) a)) j
-  Goal j =
-    ↓ k (λ j₁ → # (toFun δ F (iter j₁ (toFun δ F) (λ a₁ → ⊤ᵒ)) a) j₁) j
-       ⩦⟨ ⩦-refl refl ⟩    
-    j ≤ k  ×  # (iter (suc j) (toFun δ F) (λ a₁ → ⊤ᵒ) a) j
-       ⩦⟨ {!!} ⟩
-    j ≤ k  ×  # (↓ᵒ (suc j) (iter (suc j) (toFun δ F) (λ a₁ → ⊤ᵒ) a)) j
-       ⩦⟨ {!!}  ⟩    
-    j ≤ k  ×  # (↓ᵒ (suc j) (iter k (toFun δ F) (λ a₁ → ⊤ᵒ) a)) j
-       ⩦⟨ {!!}  ⟩    
-    j ≤ k  ×  # (iter k (toFun δ F) (λ a₁ → ⊤ᵒ) a) j
+abstract
+  lemma18a : ∀{Γ}{ts : Times Γ}{A}
+     → (k : ℕ)
+     → (F : A → Setˢ (A ∷ Γ) (cons Later ts))
+     → (a : A)
+     → (δ : Predsᵒ Γ)
+     → ↓ᵒ k (muˢ F δ a) ≡ᵒ ↓ᵒ k (iter k (toFun δ F) ⊤ᵖ a)
+  lemma18a zero F a δ zero = (λ x → tt) , (λ {x → tt})
+  lemma18a zero F a δ (suc j) = (λ {()}) , λ {()}
+  lemma18a (suc k) F a δ zero = (λ {x → tt}) , λ {x → tt}
+  lemma18a (suc k′) F a δ (suc j′) =
+    let k = suc k′ in
+    let j = suc j′ in 
+    ↓ k (λ j₁ → # (toFun δ F (iter j₁ (toFun δ F) ⊤ᵖ) a) j₁) j
+         ⩦⟨ ⩦-refl refl ⟩    
+    j < k  ×  # (iter (suc j) (toFun δ F) ⊤ᵖ a) j
+         ⩦⟨ (λ {(s≤s x , y) → s≤s x , ≤-refl , y})
+            , (λ {(s≤s x , (y , z)) → (s≤s x) , z}) ⟩
+    j < k  ×  # (↓ᵒ (suc j) (iter (suc j) (toFun δ F) ⊤ᵖ a)) j
+         ⩦⟨ EQ  ⟩    
+    j < k  ×  # (↓ᵒ (suc j) (iter k (toFun δ F) ⊤ᵖ a)) j
+         ⩦⟨ (λ {(s≤s x , (s≤s y , z)) → (s≤s x) , z})
+             , (λ {(x , y) → x , (≤-refl , y)})  ⟩
+    j < k  ×  # (iter k (toFun δ F) ⊤ᵖ a) j
        ⩦⟨ ⩦-refl refl  ⟩    
-    ↓ k (# (iter k (toFun δ F) (λ a₁ → ⊤ᵒ) a)) j   ∎
+    ↓ k (# (iter k (toFun δ F) ⊤ᵖ a)) j   ∎
+    where
+    k : ℕ
+    k = suc k′
+    j : ℕ
+    j = suc j′
+    EQ : (j < k  ×  # (↓ᵒ (suc j) (iter (suc j) (toFun δ F) ⊤ᵖ a)) j)
+         ⇔ (j < k  ×  # (↓ᵒ (suc j) (iter k (toFun δ F) ⊤ᵖ a)) j)
+    EQ =
+      (λ {(s≤s x , y) →
+        let xx = proj₁ ((lemma15b (suc k′) (suc j) F a (s≤s x)) j) y in
+        (s≤s x) , (≤-refl , proj₂ xx)})
+      ,
+      λ {(s≤s x , (s≤s y , z)) →
+        let xx = proj₂ ((lemma15b(suc k′)(suc j) F a (s≤s x)) j) (≤-refl , z) in
+        s≤s x , (≤-refl , (proj₂ xx))}
 
-
+lemma18b : ∀{Γ}{ts : Times Γ}{A}
+     → (j : ℕ)
+     → (F : A → Setˢ (A ∷ Γ) (cons Later ts))
+     → (a : A)
+     → (δ : Predsᵒ Γ)
+     → ↓ᵒ (suc j) (# (F a) (muˢ F δ , δ))
+       ≡ᵒ ↓ᵒ (suc j) (iter (suc j) (toFun δ F) ⊤ᵖ a)
+lemma18b{Γ}{ts}{A} j F a δ =
+   ↓ᵒ (suc j) (# (F a) (muˢ F δ , δ))            ⩦⟨ good (F a) δ (muˢ F δ) j ⟩
+   ↓ᵒ (suc j) (# (F a) (↓ᵖ j (muˢ F δ) , δ))
+                  ⩦⟨ cong-↓ (λ a → congr (F a) (λ a → lemma18a j F a δ ) δ) a ⟩
+   ↓ᵒ (suc j) (# (F a) (↓ᵖ j (iter j (toFun δ F) ⊤ᵖ) , δ))
+                    ⩦⟨ ≡ᵖ-sym{A} (good (F a) δ (iter j (toFun δ F) ⊤ᵖ) j) {a} ⟩
+   ↓ᵒ (suc j) (# (F a) (iter j (toFun δ F) ⊤ᵖ , δ))           ⩦⟨ ≡ᵒ-refl refl ⟩
+   ↓ᵒ (suc j) (iter (suc j) (toFun δ F) ⊤ᵖ a)     ∎
+       
+{- ↓ᵒ is idempotent -}
+abstract
+  lemma17 : ∀{A}{P : Predᵒ A}{k}{a : A}
+     → ↓ᵖ k (↓ᵖ (suc k) P) a ≡ᵒ ↓ᵖ k P a
+  lemma17 {A} {P} {k} {a} zero = (λ _ → tt) , (λ _ → tt)
+  lemma17 {A} {P} {k} {a} (suc i) =
+    (λ {(x , (y , z)) → x , z})
+    ,
+    λ {(x , y) → x , ((s≤s (<⇒≤ x)) , y)}
+  
 lemma19 : ∀{Γ}{ts : Times Γ}{A}
    (F : A → Setˢ (A ∷ Γ) (cons Later ts))
    (a : A)
    (j : ℕ)
    → ↓ˢ j (μˢ F a) ≡ˢ ↓ˢ j (applyˢ (F a) (μˢ F))
-lemma19{Γ} F a j = ≡ˢ-intro λ δ → Goal δ -- ≡ᵒ-intro λ k → {!!}
+lemma19{Γ}{ts}{A} F a j = ≡ˢ-intro λ δ → Goal δ
   where
   Goal : (δ : Predsᵒ Γ) →
       ↓ᵒ j (muˢ F δ a) ≡ᵒ ↓ᵒ j (# (F a) (muˢ F δ , δ))
   Goal δ =
-    ↓ᵒ j (muˢ F δ a)                                 ⩦⟨ lemma18a j F a δ  ⟩
-    ↓ᵒ j (iter j (toFun δ F) (λ a → ⊤ᵒ) a)           ⩦⟨ {!!}  ⟩
-    ↓ᵒ j (iter (suc j) (toFun δ F) (λ a → ⊤ᵒ) a)     ⩦⟨ {!!}  ⟩
-    ↓ᵒ j (↓ᵒ (suc j) (iter (suc j) (toFun δ F) (λ a → ⊤ᵒ) a))  ⩦⟨ {!!}  ⟩
-    ↓ᵒ j (↓ᵒ (suc j) (# (F a) (muˢ F δ , δ)))        ⩦⟨ {!!}  ⟩
+    ↓ᵒ j (muˢ F δ a)                                     ⩦⟨ lemma18a j F a δ  ⟩
+    ↓ᵒ j (iter j (toFun δ F) ⊤ᵖ a)        ⩦⟨ lemma15b (suc j) j F a (n≤1+n j) ⟩
+    ↓ᵒ j (iter (suc j) (toFun δ F) ⊤ᵖ a)
+              ⩦⟨ ≡ᵖ-sym (lemma17{A}{(iter (suc j) (toFun δ F) ⊤ᵖ)}{j}{a}) {a} ⟩
+    ↓ᵒ j (↓ᵒ (suc j) (iter (suc j) (toFun δ F) ⊤ᵖ a))
+                              ⩦⟨ cong-↓ (λ a → ≡ᵒ-sym (lemma18b j F a δ))  a  ⟩
+    ↓ᵒ j (↓ᵒ (suc j) (# (F a) (muˢ F δ , δ)))
+                         ⩦⟨ lemma17{A}{λ a → (# (F a) (muˢ F δ , δ))}{j}{a}  ⟩
     ↓ᵒ j (# (F a) (muˢ F δ , δ))                      ∎
-
-
---    ↓ˢ j (μˢ F a)                  ⩦⟨ {!!} ⟩
---    ↓ˢ j (applyˢ (F a) (μˢ F))     ∎
-
-    -- ↓ˢ a (μˢ j F)                                  ⩦⟨ {!!} ⟩
-    -- ↓ˢ a (iter j ? ?)                               ⩦⟨ {!!} ⟩
-    -- ↓ˢ a (applyˢ (j F) (μˢ j))                     ∎
 
 fixpointˢ : ∀{Γ}{ts : Times Γ}{A}
    (F : A → Setˢ (A ∷ Γ) (cons Later ts))
