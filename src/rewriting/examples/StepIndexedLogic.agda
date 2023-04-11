@@ -474,9 +474,9 @@ dc-iter (suc i) F = λ v → down (F (iter i F ⊤ᵒ) v)
    Y = dc-iter (suc (suc k′)) (fun F) a (suc k′) μFak (suc j′) (s≤s j′≤k)
    Z : # (↓ᵒ (suc (suc j′)) (iter (suc (suc k′)) (fun F) ⊤ᵒ) a) (suc j′)
    Z = ↓ₒ-intro ((iter (suc (suc k′)) (fun F) ⊤ᵒ) a) ≤-refl Y
+   eq = lemma15b ⊤ᵒ F (s≤s (s≤s j′≤k))
    W : # (↓ᵒ (suc (suc j′)) (iter (suc (suc j′)) (fun F) ⊤ᵒ) a) (suc j′)
-   W = let eq = lemma15b ⊤ᵒ F (s≤s (s≤s j′≤k)) in
-       ≡ᵒ-to (apply-≡ᵖ (≡ᵖ-sym eq) a) (suc j′) Z 
+   W = ≡ᵒ-to (apply-≡ᵖ (≡ᵖ-sym eq) a) (suc j′) Z 
    T : #(iter (suc (suc j′)) (fun F) ⊤ᵒ a) (suc j′)
    T = proj₂ W
 
