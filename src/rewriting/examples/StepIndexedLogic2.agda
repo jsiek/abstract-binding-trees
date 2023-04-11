@@ -700,25 +700,30 @@ goodnesses-mu : ∀{Γ}{ts : Times Γ}{A}
    → goodnesses ts (λ δ → muˢ S δ a)
 goodnesses-mu {Γ} {ts} {A} S a x
     with timeof x ts in time-x
-... | Now = λ {δ zero → ↓ᵒ-zero{A}{(muˢ S δ)}{(muˢ S (↓ᵈ zero x δ))} a
-            ; δ (suc k′) →
-            let k = suc k′ in
-            let gSaz = good (S a) zeroˢ (muˢ S δ , ↓ᵈ k x δ) k′ in
-            let gSasx : good-one (sucˢ x) (timeof x ts) (# (S a))
-                gSasx = good (S a) (sucˢ x) in
-            let gSasxNow : good-one (sucˢ x) Now (# (S a))
-                gSasxNow  = subst (λ X → good-one (sucˢ x) X (# (S a)))
-                              time-x gSasx in
-            
-            ↓ᵒ k (muˢ S δ a)                              ⩦⟨ lemma19a S a k δ ⟩
-            ↓ᵒ k (# (S a) (muˢ S δ , δ))        ⩦⟨ gSasxNow ((muˢ S δ) , δ) k ⟩
-            ↓ᵒ k (# (S a) (muˢ S δ , ↓ᵈ k x δ))                       ⩦⟨ gSaz ⟩
-            ↓ᵒ k (# (S a) (↓ᵖ k′ (muˢ S δ) , ↓ᵈ k x δ))
-                     ⩦⟨ {!!} ⟩
-            ↓ᵒ k (# (S a) (muˢ S (↓ᵈ k x δ) , ↓ᵈ k x δ))
-                                        ⩦⟨ ≡ᵒ-sym (lemma19a S a k (↓ᵈ k x δ)) ⟩
-            ↓ᵒ k (muˢ S (↓ᵈ k x δ) a)   ∎
-            }
+... | Now =
+      λ {δ zero → ↓ᵒ-zero{A}{(muˢ S δ)}{(muˢ S (↓ᵈ zero x δ))} a
+      ; δ (suc k′) →
+      let k = suc k′ in
+      let gSaz = good (S a) zeroˢ (muˢ S δ , ↓ᵈ k x δ) k′ in
+      let gSaz2 = good (S a) zeroˢ (muˢ S (↓ᵈ k x δ) , ↓ᵈ k x δ) k′ in
+      let gSasx : good-one (sucˢ x) (timeof x ts) (# (S a))
+          gSasx = good (S a) (sucˢ x) in
+      let gSasxNow : good-one (sucˢ x) Now (# (S a))
+          gSasxNow  = subst (λ X → good-one (sucˢ x) X (# (S a)))
+                        time-x gSasx in
+
+      ↓ᵒ k (muˢ S δ a)                              ⩦⟨ lemma19a S a k δ ⟩
+      ↓ᵒ k (# (S a) (muˢ S δ , δ))        ⩦⟨ gSasxNow ((muˢ S δ) , δ) k ⟩
+      ↓ᵒ k (# (S a) (muˢ S δ , ↓ᵈ k x δ))                       ⩦⟨ gSaz ⟩
+      ↓ᵒ k (# (S a) (↓ᵖ k′ (muˢ S δ) , ↓ᵈ k x δ))
+               ⩦⟨ {!!} ⟩
+
+      ↓ᵒ k (# (S a) (↓ᵖ k′ (muˢ S (↓ᵈ k x δ)) , ↓ᵈ k x δ))
+               ⩦⟨ ≡ᵒ-sym gSaz2 ⟩
+      ↓ᵒ k (# (S a) (muˢ S (↓ᵈ k x δ) , ↓ᵈ k x δ))
+                                  ⩦⟨ ≡ᵒ-sym (lemma19a S a k (↓ᵈ k x δ)) ⟩
+      ↓ᵒ k (muˢ S (↓ᵈ k x δ) a)   ∎
+      }
                 
 ... | Later = {!!}
 
