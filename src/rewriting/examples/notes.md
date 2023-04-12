@@ -19,6 +19,10 @@ lemma18b (unrolled mu to iter + 1)
 lemma17  (↓ᵖ is idempotent)
       ↓ᵖ k (↓ᵖ (suc k) P) a ≡ᵒ ↓ᵖ k P a
 
+lemma17c
+   j < k →
+   ↓ᵖ j (↓ᵖ k P) a ≡ᵒ ↓ᵖ j P a
+
 lemma19a (unroll mu and toFun)
       ↓ᵒ j (muˢ F δ a) ≡ᵒ ↓ᵒ j (# (F a) (muˢ F δ , δ))
 
@@ -44,9 +48,9 @@ X[2] = # (S a) (X[1] , δ)
 X[3] = # (S a) (X[2] , δ)
 ...
 X[k] = # (S a) (X[k-1] , δ)
-     = iter k (toFun Δ S) ⊤ᵖ a
+     = iter k (toFun δ S) ⊤ᵖ a
 
-  ↓ᵒ k (iter k (toFun Δ S) ⊤ᵖ a)
+  ↓ᵒ k (iter k (toFun δ S) ⊤ᵖ a)
 = ↓ᵒ k (# (S a) (X[k-1] , δ))
 = ↓ᵒ k (# (S a) (↓ᵒ (k-1) X[k-1] , δ))
 = ↓ᵒ k (# (S a) (↓ᵒ (k-1) (# (S a) (↓ᵒ (k-2) X[k-2] , δ)) , δ))
