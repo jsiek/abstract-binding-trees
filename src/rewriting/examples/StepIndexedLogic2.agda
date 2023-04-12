@@ -592,7 +592,7 @@ lemma18b{Γ}{ts}{A} j F a δ =
    ↓ᵒ (suc j) (# (F a) (iter j (toFun δ F) ⊤ᵖ , δ))           ⩦⟨ ≡ᵒ-refl refl ⟩
    ↓ᵒ (suc j) (iter (suc j) (toFun δ F) ⊤ᵖ a)     ∎
        
-{- ↓ᵒ is idempotent -}
+{- ↓ᵖ is idempotent -}
 abstract
   lemma17 : ∀{A}{P : Predᵒ A}{k}{a : A}
      → ↓ᵖ k (↓ᵖ (suc k) P) a ≡ᵒ ↓ᵖ k P a
