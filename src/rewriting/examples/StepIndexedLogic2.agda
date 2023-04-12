@@ -650,17 +650,6 @@ lemma19a{Γ}{ts}{A} F a j δ =
     ↓ᵒ j (# (F a) (muˢ F δ , δ))                      ∎
 
 {-
-
-PROBLEMS!
-
-continuous-mu : ∀{Γ}{ts : Times Γ}{A}{B}
-   → (P : A → Setˢ (A ∷ B ∷ Γ) (cons Later (cons Now ts)))
-   → (a : A)
-   → (δ : Predsᵒ Γ)
-   → continuousˢ (λ δ′ → muˢ P δ′ a) δ
-continuous-mu P a δ = {!!}
--}
-
 ↓⇔ : ∀{j k : ℕ}{P Q : Setₒ}
    → (j < k → P j ⇔ Q j)
    → ↓ k P j ⇔ ↓ k Q j
@@ -669,6 +658,7 @@ continuous-mu P a δ = {!!}
 ↓⇔ {suc j} {suc k} {P} {Q} imp =
     (λ {(x , y) → x , proj₁ (imp x) y})
      , (λ {(x , y) → x , (proj₂ (imp x) y)})
+-}
 
 good-now-mu : ∀{Γ}{ts : Times Γ}{A}{B}
    → (S : A → Setˢ (A ∷ Γ) (cons Later ts))
@@ -698,6 +688,14 @@ good-now-mu {Γ} {ts} {A} S a x time-x δ (suc k′) j k≤j =
                                         ⩦⟨ ≡ᵒ-sym (lemma19a S a k (↓ᵈ j x δ)) ⟩
   ↓ᵒ k (muˢ S (↓ᵈ j x δ) a)   ∎
 
+abstract
+  down-1-mu : ∀{Γ}{ts : Times Γ}{A}{B}
+       (S : A → Setˢ (A ∷ Γ) (cons Later ts))
+       (a : A) (x : Γ ∋ B) (δ : Predsᵒ Γ) (j : ℕ)
+   → ↓ᵒ 1 (muˢ S δ a) ≡ᵒ ↓ᵒ 1 (muˢ S (↓ᵈ j x δ) a)
+  down-1-mu S a x δ j zero = (λ _ → tt) , (λ _ → tt)
+  down-1-mu S a x δ j (suc i) = (λ { (s≤s () , _)}) , λ { (s≤s () , _)}
+
 good-later-mu : ∀{Γ}{ts : Times Γ}{A}{B}
    → (S : A → Setˢ (A ∷ Γ) (cons Later ts))
      (a : A) (x : Γ ∋ B)
@@ -705,7 +703,26 @@ good-later-mu : ∀{Γ}{ts : Times Γ}{A}{B}
    → (δ : Predsᵒ Γ) (k j : ℕ)
    → (k ≤ j)
    → ↓ᵒ (suc k) (muˢ S δ a) ≡ᵒ ↓ᵒ (suc k) (muˢ S (↓ᵈ j x δ) a)
-good-later-mu {Γ} {ts} {A} S a x time-x δ k j k≤j = {!!}
+good-later-mu {Γ} {ts} {A} S a x time-x δ zero j k≤j = down-1-mu S a x δ j
+good-later-mu {Γ} {ts} {A} S a x time-x δ (suc k′) j k≤j =
+  let k = suc k′ in
+  let gSa = good-later{ts = cons Later ts}
+              (good (S a) (sucˢ x)) time-x (muˢ S δ , δ)
+              j k k≤j in
+  let gSaz = good (S a) zeroˢ (muˢ S δ , ↓ᵈ j x δ) (suc k′) k ≤-refl in
+  let gSaz2 = good (S a) zeroˢ (muˢ S (↓ᵈ j x δ) , ↓ᵈ j x δ) k k ≤-refl in
+  let IH = cong-↓ (λ a → congr (S a)
+           ((λ a → good-later-mu S a x time-x δ k′ j (≤-trans (n≤1+n _) k≤j))
+            , ≡ᵈ-refl)) a in
+
+  ↓ᵒ (suc k) (muˢ S δ a)                            ⩦⟨ lemma19a S a (suc k) δ ⟩
+  ↓ᵒ (suc k) (# (S a) (muˢ S δ , δ))                                   ⩦⟨ gSa ⟩
+  ↓ᵒ (suc k) (# (S a) (muˢ S δ , ↓ᵈ j x δ))                           ⩦⟨ gSaz ⟩
+  ↓ᵒ (suc k) (# (S a) (↓ᵖ k (muˢ S δ) , ↓ᵈ j x δ))                      ⩦⟨ IH ⟩
+  ↓ᵒ (suc k) (# (S a) (↓ᵖ k (muˢ S (↓ᵈ j x δ)) , ↓ᵈ j x δ))   ⩦⟨ ≡ᵒ-sym gSaz2 ⟩
+  ↓ᵒ (suc k) (# (S a) (muˢ S (↓ᵈ j x δ) , (↓ᵈ j x δ)))
+                              ⩦⟨ ≡ᵒ-sym (lemma19a S a (suc k) (↓ᵈ j x δ)) ⟩
+  ↓ᵒ (suc k) (muˢ S (↓ᵈ j x δ) a)   ∎
 
 goodnesses-mu : ∀{Γ}{ts : Times Γ}{A}
    → (S : A → Setˢ (A ∷ Γ) (cons Later ts))
