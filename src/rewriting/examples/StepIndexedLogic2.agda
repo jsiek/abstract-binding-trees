@@ -27,7 +27,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt; ⊤)
 open import Data.Unit.Polymorphic renaming (⊤ to topᵖ; tt to ttᵖ)
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; sym; trans; cong; cong₂; cong-app; subst)
+open Eq using (_≡_; _≢_; refl; sym; trans; cong; cong₂; cong-app; subst)
 open import Relation.Nullary using (¬_)
 open import Function using (id; _∘_)
 open import Level using (Lift)
@@ -492,13 +492,125 @@ lemma15b{Γ}{A}{ts}{P}{δ} k j F a j≤k =
                               (λ a → ≡ᵖ-refl (iter-subtract f j k j≤k)) a ⟩
   ↓ᵒ j (iter k f P a)   ∎
 
+{- ↓ᵖ is idempotent -}
+abstract
+  lemma17 : ∀{A}{P : Predᵒ A}{k}{a : A}
+     → ↓ᵖ k (↓ᵖ (suc k) P) a ≡ᵒ ↓ᵖ k P a
+  lemma17 {A} {P} {k} {a} zero = (λ _ → tt) , (λ _ → tt)
+  lemma17 {A} {P} {k} {a} (suc i) =
+    (λ {(x , (y , z)) → x , z})
+    ,
+    λ {(x , y) → x , ((s≤s (<⇒≤ x)) , y)}
+
+lemma17b : ∀{A}{P : Predᵒ A}{j}{k}{a : A}
+   → suc j ≤′ k
+   → ↓ᵖ j (↓ᵖ k P) a ≡ᵒ ↓ᵖ j P a
+lemma17b {A} {P} {j} {.(suc j)} {a} _≤′_.≤′-refl = lemma17{A}{P}{j}{a}
+lemma17b {A} {P} {j} {suc k} {a} (≤′-step j≤k) =
+    ↓ᵖ j (↓ᵖ (suc k) P) a           ⩦⟨ ≡ᵒ-sym (lemma17b{A}{↓ᵖ (suc k) P} j≤k) ⟩
+    ↓ᵖ j (↓ᵖ k (↓ᵖ (suc k) P)) a      ⩦⟨ E1 ⟩
+    ↓ᵖ j (↓ᵖ k P) a                   ⩦⟨ lemma17b{A}{P}{j}{k}{a} j≤k ⟩ 
+    ↓ᵖ j P a   ∎
+    where
+    E1 = cong-↓{A}{j}{(↓ᵖ k (↓ᵖ (suc k) P))}{(↓ᵖ k P)}
+         (λ a → lemma17{A}{P}{k}{a}) a 
+
+lemma17c : ∀{A}{P : Predᵒ A}{j}{k}{a : A}
+   → j < k
+   → ↓ᵖ j (↓ᵖ k P) a ≡ᵒ ↓ᵖ j P a
+lemma17c {A} {P} {j} {k} {a} j<k = lemma17b{A}{P}{j}{k}{a} (≤⇒≤′ j<k)
+
+abstract 
+  lemma17d : ∀{A}{P : Predᵒ A}{k}{a : A}
+       → ↓ᵖ k (↓ᵖ k P) a ≡ᵒ ↓ᵖ k P a
+  lemma17d {A} {P} {k} {a} zero = (λ x → tt) , (λ x → tt)
+  lemma17d {A} {P} {k} {a} (suc i) =
+      (λ {(x , (y , z)) → y , z})
+      ,
+      λ {(x , y) → x , (x , y)}
+
+lemma17e : ∀{A}{P : Predᵒ A}{j}{k}{a : A}
+   → j ≤ k
+   → ↓ᵖ j (↓ᵖ k P) a ≡ᵒ ↓ᵖ j P a
+lemma17e {A} {P} {j} {k} {a} j≤k
+    with ≤⇒≤′ j≤k
+... | _≤′_.≤′-refl = lemma17d{A}{P}
+... | ≤′-step j≤n = lemma17c{A}{P} (s≤s (≤′⇒≤ j≤n))
+
 {-
-Apply recursive predicate to an argument.
+Membership in a recursive predicate.
 -}
-_·_ : ∀{Γ}{ts : Times Γ}{A} → (x : Γ ∋ A) → A → Setˢ Γ ts
-zeroˢ · a = record { # = λ (μP , δ) → μP a ; good = {!!} ; congr = {!!} }
-_·_ {A ∷ Γ}{cons t ts} (sucˢ x) a =
-    record { # = λ {(μP , δ) → # (_·_{Γ}{ts} x a) δ} ; good = {!!} ; congr = {!!}}
+
+lookup : ∀{Γ}{ts : Times Γ}{A} → Γ ∋ A → Predsᵒ Γ → Predᵒ A
+lookup {B ∷ Γ} {ts} {.B} zeroˢ (P , δ) = P
+lookup {B ∷ Γ} {cons t ts} {A} (sucˢ x) (P , δ) = lookup{Γ}{ts}{A} x δ
+
+↓-lookup : ∀{Γ}{ts : Times Γ}{A}{B}{a}{k}{j}{δ : Predsᵒ Γ}
+   → (x : Γ ∋ A)
+   → (y : Γ ∋ B)
+   → k ≤ j
+   → ↓ᵒ k (lookup{Γ}{ts}{A} x δ a) ≡ᵒ ↓ᵒ k (lookup{Γ}{ts}{A} x (↓ᵈ j y δ) a)
+↓-lookup {C ∷ Γ} {ts} {.C} {.C} {a} {k} {j} {P , δ} zeroˢ zeroˢ k≤j =
+    ≡ᵒ-sym (lemma17e{_}{P}{k}{j}{a} k≤j)
+↓-lookup {C ∷ Γ} {ts} {.C} {B} {a} {k} {j} {P , δ} zeroˢ (sucˢ y) k≤j =
+    ≡ᵒ-refl refl
+↓-lookup {C ∷ Γ} {cons t ts} {A} {.C} {a} {k} {j} {P , δ} (sucˢ x) zeroˢ k≤j =
+   ≡ᵒ-refl refl
+↓-lookup {C ∷ Γ} {cons t ts} {A}{B}{a}{k} {j} {P , δ} (sucˢ x) (sucˢ y) k≤j =
+   ↓-lookup x y k≤j
+
+lookup-diff : ∀{Γ}{ts : Times Γ}{A}{B}{δ : Predsᵒ Γ}{j}
+   → (x : Γ ∋ A)
+   → (y : Γ ∋ B)
+   → timeof x ts ≢ timeof y ts
+   → lookup{Γ}{ts}{A} x (↓ᵈ j y δ) ≡ lookup{Γ}{ts}{A} x δ
+lookup-diff {C ∷ Γ} {cons t ts} zeroˢ zeroˢ neq = ⊥-elim (neq refl)
+lookup-diff {C ∷ Γ} {cons t ts} zeroˢ (sucˢ y) neq = refl
+lookup-diff {C ∷ Γ} {cons t ts} (sucˢ x) zeroˢ neq = refl
+lookup-diff {C ∷ Γ} {cons t ts} (sucˢ x) (sucˢ y) neq = lookup-diff x y neq
+
+timeof-diff : ∀{Γ}{ts : Times Γ}{A}{B}
+   → (x : Γ ∋ A)
+   → (y : Γ ∋ B)
+   → timeof x ts ≡ Now
+   → timeof y ts ≡ Later
+   → timeof x ts ≢ timeof y ts
+timeof-diff x y eq1 eq2 rewrite eq1 | eq2 = λ ()
+
+good-lookup : ∀{Γ}{ts : Times Γ}{A}{a}
+  → (x : Γ ∋ A)
+  → timeof x ts ≡ Now
+  → goodnesses ts (λ δ → lookup{Γ}{ts}{A} x δ a)
+good-lookup {B ∷ Γ} {cons Now ts} {.B} zeroˢ time-x zeroˢ (P , δ) j k k≤j =
+   ≡ᵒ-sym (lemma17e{_}{P} k≤j)
+good-lookup {B ∷ Γ} {cons Now ts} {.B} zeroˢ time-x (sucˢ y) 
+    with timeof y ts in eq
+... | Now = λ{(P , δ) j k k≤j → ≡ᵒ-refl refl}
+... | Later = λ{(P , δ) j k k≤j → ≡ᵒ-refl refl}
+good-lookup {B ∷ Γ} {cons Now ts} {A} (sucˢ x) time-x zeroˢ (P , δ) j k k≤j =
+    ≡ᵒ-refl refl
+good-lookup {B ∷ Γ} {cons Later ts} {A} (sucˢ x) time-x zeroˢ (P , δ) j k k≤j =
+    ≡ᵒ-refl refl
+good-lookup {B ∷ Γ} {cons t ts} {A}{a} (sucˢ x) time-x (sucˢ y)
+    with timeof y ts in eq-y
+... | Now = λ{(P , δ) j k k≤j → ↓-lookup x y k≤j }
+... | Later =
+      λ{(P , δ) j k k≤j →
+          let eq = (lookup-diff{Γ}{ts}{A}{_}{δ}{j} x y
+                        (timeof-diff x y time-x eq-y)) in
+          subst (λ X → ↓ᵒ (suc k) (lookup x δ a) ≡ᵒ ↓ᵒ (suc k) (X a))
+                (sym eq) (≡ᵒ-refl refl)}
+
+_∈_ : ∀{Γ}{ts : Times Γ}{A}
+   → A
+   → (x : Γ ∋ A)
+   → {now : timeof x ts ≡ Now}
+   → Setˢ Γ ts
+(_∈_ {Γ}{ts}{A} a x) {now} =
+  record { # = λ δ → (lookup{Γ}{ts}{A} x δ) a
+         ; good = good-lookup x now
+         ; congr = {!!}
+         }
 
 dc-iter : ∀(i : ℕ){A}
    → (F : Predᵒ A → Predᵒ A)
@@ -604,34 +716,6 @@ lemma18b{Γ}{ts}{A} j F a δ =
    ↓ᵒ (suc j) (# (F a) (iter j (toFun δ F) ⊤ᵖ , δ))           ⩦⟨ ≡ᵒ-refl refl ⟩
    ↓ᵒ (suc j) (iter (suc j) (toFun δ F) ⊤ᵖ a)     ∎
        
-{- ↓ᵖ is idempotent -}
-abstract
-  lemma17 : ∀{A}{P : Predᵒ A}{k}{a : A}
-     → ↓ᵖ k (↓ᵖ (suc k) P) a ≡ᵒ ↓ᵖ k P a
-  lemma17 {A} {P} {k} {a} zero = (λ _ → tt) , (λ _ → tt)
-  lemma17 {A} {P} {k} {a} (suc i) =
-    (λ {(x , (y , z)) → x , z})
-    ,
-    λ {(x , y) → x , ((s≤s (<⇒≤ x)) , y)}
-
-lemma17b : ∀{A}{P : Predᵒ A}{j}{k}{a : A}
-   → suc j ≤′ k
-   → ↓ᵖ j (↓ᵖ k P) a ≡ᵒ ↓ᵖ j P a
-lemma17b {A} {P} {j} {.(suc j)} {a} _≤′_.≤′-refl = lemma17{A}{P}{j}{a}
-lemma17b {A} {P} {j} {suc k} {a} (≤′-step j≤k) =
-    ↓ᵖ j (↓ᵖ (suc k) P) a           ⩦⟨ ≡ᵒ-sym (lemma17b{A}{↓ᵖ (suc k) P} j≤k) ⟩
-    ↓ᵖ j (↓ᵖ k (↓ᵖ (suc k) P)) a      ⩦⟨ E1 ⟩
-    ↓ᵖ j (↓ᵖ k P) a                   ⩦⟨ lemma17b{A}{P}{j}{k}{a} j≤k ⟩ 
-    ↓ᵖ j P a   ∎
-    where
-    E1 = cong-↓{A}{j}{(↓ᵖ k (↓ᵖ (suc k) P))}{(↓ᵖ k P)}
-         (λ a → lemma17{A}{P}{k}{a}) a 
-
-lemma17c : ∀{A}{P : Predᵒ A}{j}{k}{a : A}
-   → j < k
-   → ↓ᵖ j (↓ᵖ k P) a ≡ᵒ ↓ᵖ j P a
-lemma17c {A} {P} {j} {k} {a} j<k = lemma17b{A}{P}{j}{k}{a} (≤⇒≤′ j<k)
-
 lemma19a : ∀{Γ}{ts : Times Γ}{A}
    (F : A → Setˢ (A ∷ Γ) (cons Later ts))
    (a : A)
