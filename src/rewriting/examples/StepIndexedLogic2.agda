@@ -569,11 +569,8 @@ lookup-diff {C ∷ Γ} {cons t ts} zeroˢ (sucˢ y) neq = refl
 lookup-diff {C ∷ Γ} {cons t ts} (sucˢ x) zeroˢ neq = refl
 lookup-diff {C ∷ Γ} {cons t ts} (sucˢ x) (sucˢ y) neq = lookup-diff x y neq
 
-timeof-diff : ∀{Γ}{ts : Times Γ}{A}{B}
-   → (x : Γ ∋ A)
-   → (y : Γ ∋ B)
-   → timeof x ts ≡ Now
-   → timeof y ts ≡ Later
+timeof-diff : ∀{Γ}{ts : Times Γ}{A}{B} (x : Γ ∋ A) (y : Γ ∋ B)
+   → timeof x ts ≡ Now → timeof y ts ≡ Later
    → timeof x ts ≢ timeof y ts
 timeof-diff x y eq1 eq2 rewrite eq1 | eq2 = λ ()
 
