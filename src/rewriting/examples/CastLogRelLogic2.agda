@@ -7,6 +7,7 @@ open import Data.Bool using (true; false) renaming (Bool to 𝔹)
 open import Data.Nat.Properties
 open import Data.Product using (_,_;_×_; proj₁; proj₂; Σ-syntax; ∃-syntax)
 open import Data.Unit using (⊤; tt)
+open import Data.Unit.Polymorphic renaming (⊤ to topᵖ; tt to ttᵖ)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality as Eq
@@ -18,15 +19,18 @@ open import rewriting.examples.CastDeterministic
 open import rewriting.examples.StepIndexedLogic2
 
 ℰ⊎𝒱-type : Set
-ℰ⊎𝒱-type = ((Type × Term) ⊎ (Type × Term)) ∷ []
+ℰ⊎𝒱-type = (Type × Term) ⊎ (Type × Term)
 
-𝒱ˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-type (cons Now ∅)
-𝒱ˢ⟦ A ⟧ V = (inj₁ (A , V)) ∈ zeroˢ
+ℰ⊎𝒱-ctx : Context
+ℰ⊎𝒱-ctx = ℰ⊎𝒱-type ∷ []
 
-ℰˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-type (cons Now ∅)
-ℰˢ⟦ A ⟧ M = (inj₂ (A , M)) ∈ zeroˢ
+𝒱ˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Now ∅)
+𝒱ˢ⟦ A ⟧ V = ((inj₁ (A , V)) ∈ zeroˢ) {refl}
 
-pre-𝒱 : Type → Term → Setˢ ℰ⊎𝒱-type (cons Now ∅)
+ℰˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Now ∅)
+ℰˢ⟦ A ⟧ M = ((inj₂ (A , M)) ∈ zeroˢ) {refl}
+
+pre-𝒱 : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
 pre-𝒱 ★ (V ⟨ G !⟩ )  = (Value V)ˢ ×ˢ ▷ˢ (𝒱ˢ⟦ typeofGround G ⟧ V)
 pre-𝒱 ($ₜ ι) ($ c)        = (ι ≡ typeof c)ˢ
 pre-𝒱 (A ⇒ B) (ƛ N)      = ∀ˢ[ W ] ▷ˢ (𝒱ˢ⟦ A ⟧ W) →ˢ ▷ˢ (ℰˢ⟦ B ⟧ (N [ W ]))
@@ -34,11 +38,11 @@ pre-𝒱 A M                = ⊥ ˢ
 
 -- Type Safety = Progress & Preservation
 pre-ℰ : Type → Term
-       → Setˢ ℰ⊎𝒱-type (cons Later ∅)
+       → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
 pre-ℰ A M = (pre-𝒱 A M ⊎ˢ (reducible M)ˢ ⊎ˢ (Blame M)ˢ)    -- Progress
              ×ˢ (∀ˢ[ N ] (M —→ N)ˢ →ˢ ▷ˢ (ℰˢ⟦ A ⟧ N))        -- Preservation
 
-ℰ⊎𝒱 : ℰ⊎𝒱-type → Setˢ ℰ⊎𝒱-type (cons Later ∅)
+ℰ⊎𝒱 : ℰ⊎𝒱-type → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
 ℰ⊎𝒱 (inj₁ (A , V)) = pre-𝒱 A V
 ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
 
@@ -47,11 +51,11 @@ pre-ℰ A M = (pre-𝒱 A M ⊎ˢ (reducible M)ˢ ⊎ˢ (Blame M)ˢ)    -- Progr
 
 -- Semantically Well Typed Value
 𝒱⟦_⟧ : (A : Type) → Term → Setᵒ
-𝒱⟦ A ⟧ V = (μˢ ℰ⊎𝒱) (inj₁ (A , V))
+𝒱⟦ A ⟧ V = # ((μˢ ℰ⊎𝒱) (inj₁ (A , V))) ttᵖ
 
 -- Semantically Well Typed Term
 ℰ⟦_⟧ : (A : Type) → Term → Setᵒ
-ℰ⟦ A ⟧ M = (μˢ ℰ⊎𝒱) (inj₂ (A , M))
+ℰ⟦ A ⟧ M = # ((μˢ ℰ⊎𝒱) (inj₂ (A , M))) ttᵖ
 
 -- ℰ⊎𝒱-fixpointᵒ : ∀ X → (μᵒ ℰ⊎𝒱) X ≡ᵒ ((fun ℰ⊎𝒱) (μᵒ ℰ⊎𝒱)) X
 -- ℰ⊎𝒱-fixpointᵒ X = apply-≡ᵖ (fixpoint ℰ⊎𝒱) X 
