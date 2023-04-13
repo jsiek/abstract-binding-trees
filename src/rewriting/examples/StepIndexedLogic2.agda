@@ -495,14 +495,14 @@ good-▷{Γ}{ts} S x
   ↓ᵒ (suc k) (↓ᵒ (suc (suc k)) (▷ᵒ (# S (↓ᵈ j x δ))))     ⩦⟨ lemma17ᵒ (suc k) ⟩
   ↓ᵒ (suc k) (▷ᵒ (# S (↓ᵈ j x δ)))    ∎
 
-
 ▷ˢ : ∀{Γ}{ts : Times Γ}
    → Setˢ Γ ts
      -----------------
    → Setˢ Γ (later ts)
 ▷ˢ S = record { # = λ δ → ▷ᵒ (# S δ)
               ; good = good-▷ S
-              ; congr = {!!} }
+              ; congr = λ d=d′ → cong-▷ (congr S d=d′)
+              }
 
 {- Lemma's needed for defining recursive predicates -}
 
@@ -680,6 +680,21 @@ good-lookup {B ∷ Γ} {cons t ts} {A}{a} (sucˢ x) time-x (sucˢ y)
           subst (λ X → ↓ᵒ (suc k) (lookup x δ a) ≡ᵒ ↓ᵒ (suc k) (X a))
                 (sym eq) (≡ᵒ-refl refl)}
 
+cong-lookup : ∀{Γ}{ts : Times Γ}{A}{δ δ′ : Predsᵒ Γ}
+   → (x : Γ ∋ A)
+   → (a : A)
+   → δ ≡ᵈ δ′
+   → lookup{ts = ts} x δ a ≡ᵒ lookup{ts = ts} x δ′ a
+cong-lookup {B ∷ Γ} {ts} {.B}{P , δ}{P′ , δ′} zeroˢ a (P=P′ , d=d′) = P=P′ a
+cong-lookup {B ∷ Γ} {cons t ts} {A}{P , δ}{P′ , δ′} (sucˢ x) a (P=P′ , d=d′) =
+   cong-lookup{ts = ts} x a d=d′
+
+congruent-lookup : ∀{Γ}{ts : Times Γ}{A}
+   → (x : Γ ∋ A)
+   → (a : A)
+   → congruent (λ δ → lookup{ts = ts} x δ a)
+congruent-lookup {Γ}{ts}{A} x a d=d′ = cong-lookup x a d=d′
+
 _∈_ : ∀{Γ}{ts : Times Γ}{A}
    → A
    → (x : Γ ∋ A)
@@ -688,7 +703,7 @@ _∈_ : ∀{Γ}{ts : Times Γ}{A}
 (_∈_ {Γ}{ts}{A} a x) {now} =
   record { # = λ δ → (lookup{Γ}{ts}{A} x δ) a
          ; good = good-lookup x now
-         ; congr = {!!}
+         ; congr = congruent-lookup x a
          }
 
 dc-iter : ∀(i : ℕ){A}
@@ -971,7 +986,8 @@ good-all {Γ}{ts}{A} P x
 ∀ˢ{Γ}{ts}{A} P =
   record { # = λ δ → ∀ᵒ[ a ] # (P a) δ
          ; good = good-all P
-         ; congr = {!!}}
+         ; congr = λ d=d′ → cong-∀ λ a → congr (P a) d=d′
+         }
 
 ∀ˢ-syntax = ∀ˢ
 infix 1 ∀ˢ-syntax
@@ -1084,7 +1100,7 @@ _×ˢ_ : ∀{Γ}{ts₁ ts₂ : Times Γ}
    → Setˢ Γ (combine ts₁ ts₂)
 S ×ˢ T = record { # = λ δ → # S δ ×ᵒ # T δ
                 ; good = good-pair S T
-                ; congr = {!!}
+                ; congr = λ d=d′ → cong-× (congr S d=d′) (congr T d=d′)
                 }
 
 abstract
@@ -1119,7 +1135,7 @@ good-↓ {Γ}{ts}{i} S {A} x
    → Setˢ Γ ts
 ↓ˢ k S = record { # = λ δ → ↓ᵒ k (# S δ)
                 ; good = good-↓ S
-                ; congr = {!!}}
+                ; congr = λ d=d′ → cong-↓ᵒ k (congr S d=d′)}
 
 ⇓ : ℕ → ∀{Γ} → Predsᵒ Γ → Predsᵒ Γ
 ⇓ k {[]} ttᵖ = ttᵖ
@@ -1186,7 +1202,7 @@ applyˢ : ∀ {Γ}{ts : Times Γ}{A}
 applyˢ S P =
   record { # = λ δ → (# S) ((λ a → #(P a) δ) , δ)
          ; good = good-apply S P
-         ; congr = {!!}
+         ; congr = λ d=d′ → congr S ((λ a → congr (P a) d=d′) , d=d′)
          }
 
 abstract
