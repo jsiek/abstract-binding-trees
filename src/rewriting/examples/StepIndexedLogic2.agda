@@ -298,13 +298,18 @@ data _∋_ : Context → Set → Set₁ where
   zeroˢ : ∀{Γ}{A} → (A ∷ Γ) ∋ A
   sucˢ : ∀{Γ}{A}{B} → Γ ∋ B → (A ∷ Γ) ∋ B
 
-continuousˢ : ∀{Γ}{A} (S : Predsᵒ (A ∷ Γ) → Setᵒ) (δ : Predsᵒ Γ) → Set₁
-continuousˢ{Γ}{A} S δ =
+nonexpansiveˢ : ∀{Γ}{A} (S : Predsᵒ (A ∷ Γ) → Setᵒ) (δ : Predsᵒ Γ) → Set₁
+nonexpansiveˢ{Γ}{A} S δ =
   ∀ P k → ↓ᵒ k (S (P , δ)) ≡ᵒ ↓ᵒ k (S ((↓ᵖ k P) , δ))
 
 wellfoundedˢ : ∀{Γ}{A} (S : Predsᵒ (A ∷ Γ) → Setᵒ) (δ : Predsᵒ Γ) → Set₁
 wellfoundedˢ{Γ}{A} S δ =
   ∀ P k → ↓ᵒ (suc k) (S (P , δ)) ≡ᵒ ↓ᵒ (suc k) (S ((↓ᵖ k P) , δ))
+
+goodness : ∀{Γ} → Times Γ → (Predsᵒ Γ → Setᵒ) → Set₁
+goodness {[]} ts S = topᵖ
+goodness {A ∷ Γ} (cons Now ts) S = ∀ δ → nonexpansiveˢ S δ
+goodness {A ∷ Γ} (cons Later ts) S = ∀ δ → wellfoundedˢ S δ
 
 ↓ᵈ : ℕ → ∀{Γ}{A} → Γ ∋ A → Predsᵒ Γ → Predsᵒ Γ
 ↓ᵈ k {A ∷ Γ} {.A} zeroˢ (P , δ) = ↓ᵖ k P , δ
@@ -334,11 +339,6 @@ good-later gS eq rewrite eq = gS
 
 goodnesses : ∀{Γ} → Times Γ → (Predsᵒ Γ → Setᵒ) → Set₁
 goodnesses {Γ} ts S = ∀{A} (x : Γ ∋ A) → good-one x (timeof x ts) S
-
-goodness : ∀{Γ} → Times Γ → (Predsᵒ Γ → Setᵒ) → Set₁
-goodness {[]} ts S = topᵖ
-goodness {A ∷ Γ} (cons Now ts) S = ∀ δ → continuousˢ S δ
-goodness {A ∷ Γ} (cons Later ts) S = ∀ δ → wellfoundedˢ S δ
 
 g⇒g : ∀{Γ}{ts : Times Γ}{S : Predsᵒ Γ → Setᵒ}
    → goodnesses ts S
@@ -413,13 +413,21 @@ later : ∀{Γ} (ts : Times Γ) → Times Γ
 later {[]} ts = ∅
 later {A ∷ Γ} (cons t ts) = cons Later (later ts)
 
-▷ˢ : ∀{Γ}{ts : Times Γ}
-   → Setˢ Γ ts
-     -----------------
-   → Setˢ Γ (later ts)
-▷ˢ S = record { # = λ δ → ▷ᵒ (# S δ) ; good = {!!} ; congr = {!!} }
+timeof-later : ∀{Γ}{ts : Times Γ}{A}
+   → (x : Γ ∋ A)
+  → (timeof x (later ts)) ≡ Later
+timeof-later {B ∷ Γ} {cons t ts} zeroˢ = refl
+timeof-later {B ∷ Γ} {cons t ts} (sucˢ x) = timeof-later x
 
-{- Lemma's needed for defining recursive predicates -}
+abstract
+  cong-↓ᵒ : ∀{P Q : Setᵒ}
+    → (k : ℕ)
+    → P ≡ᵒ Q
+    → ↓ᵒ k P ≡ᵒ ↓ᵒ k Q
+  cong-↓ᵒ {P} {Q} k P=Q zero = (λ x → tt) , (λ x → tt)
+  cong-↓ᵒ {P} {Q} k P=Q (suc i) =
+      (λ {(a , b) → a , proj₁ (P=Q (suc i)) b})
+      , λ {(a , b) → a , proj₂ (P=Q (suc i)) b}
 
 congᵖ : ∀{A}{B} (F : Predᵒ A → Predᵒ B) → Set₁
 congᵖ F = ∀ {P Q} → (∀ a → P a ≡ᵒ Q a) → ∀ b → (F P b) ≡ᵒ (F Q b)
@@ -433,6 +441,70 @@ abstract
      (λ {(si≤k , Pasi) → si≤k , (proj₁ (eq a (suc i)) Pasi)})
      ,
      λ {(si≤k , Qasi) → si≤k , (proj₂ (eq a (suc i)) Qasi)}
+
+  cong-▷ : ∀{S T : Setᵒ}
+    → S ≡ᵒ T
+    → ▷ᵒ S ≡ᵒ ▷ᵒ T
+  cong-▷ S=T zero = (λ x → tt) , (λ x → tt)
+  cong-▷ S=T (suc i) = (proj₁ (S=T i)) , (proj₂ (S=T i))
+
+abstract
+  down-▷ : ∀{k} (S : Setᵒ)
+    → ↓ᵒ (suc k) (▷ᵒ S) ≡ᵒ ↓ᵒ (suc k) (▷ᵒ (↓ᵒ k S))
+  down-▷ S zero = ⇔-intro (λ x → tt) (λ x → tt)
+  down-▷ S (suc zero) =
+      ⇔-intro (λ {(a , b) → a , tt}) (λ {(a , b) → a , (tz S)})
+  down-▷ S (suc (suc i)) =
+    ⇔-intro
+    (λ {(s≤s i≤1+k , ▷Si) →
+                 s≤s i≤1+k , i≤1+k , ▷Si})
+    (λ {(i≤1+k , (_ , ▷Si)) → i≤1+k , ▷Si})
+
+abstract
+  lemma17ᵒ : ∀{S : Setᵒ}
+     → (k : ℕ)
+     → ↓ᵒ k (↓ᵒ (suc k) S) ≡ᵒ ↓ᵒ k S
+  lemma17ᵒ {S} k zero = (λ _ → tt) , (λ _ → tt)
+  lemma17ᵒ {S} k (suc i) =
+    (λ {(x , (y , z)) → x , z})
+    ,
+    λ {(x , y) → x , ((s≤s (<⇒≤ x)) , y)}
+
+good-▷ : ∀{Γ}{ts : Times Γ}
+   → (S : Setˢ Γ ts)
+   → goodnesses (later ts) (λ δ → ▷ᵒ (# S δ))
+good-▷{Γ}{ts} S x
+    with good S x
+... | gS
+    with timeof x ts
+... | Now rewrite timeof-later{Γ}{ts} x =
+  λ δ j k k≤j →
+  ↓ᵒ (suc k) (▷ᵒ (# S δ))                              ⩦⟨ down-▷ {k} (# S δ) ⟩ 
+  ↓ᵒ (suc k) (▷ᵒ (↓ᵒ k (# S δ)))  ⩦⟨ cong-↓ᵒ (suc k) (cong-▷ (gS δ j k k≤j)) ⟩ 
+  ↓ᵒ (suc k) (▷ᵒ (↓ᵒ k (# S (↓ᵈ j x δ))))
+                                     ⩦⟨ ≡ᵒ-sym (down-▷ {k} (# S (↓ᵈ j x δ))) ⟩ 
+  ↓ᵒ (suc k) (▷ᵒ (# S (↓ᵈ j x δ)))   ∎
+... | Later rewrite timeof-later{Γ}{ts} x =
+  λ δ j k k≤j →
+  ↓ᵒ (suc k) (▷ᵒ (# S δ))                       ⩦⟨ ≡ᵒ-sym (lemma17ᵒ (suc k)) ⟩ 
+  ↓ᵒ (suc k) (↓ᵒ (suc (suc k)) (▷ᵒ (# S δ)))    ⩦⟨ cong-↓ᵒ (suc k) (down-▷ _) ⟩
+  ↓ᵒ (suc k) (↓ᵒ (suc (suc k)) (▷ᵒ (↓ᵒ (suc k) (# S δ))))
+           ⩦⟨ cong-↓ᵒ (suc k) (cong-↓ᵒ (suc (suc k)) (cong-▷ (gS δ j k k≤j))) ⟩
+  ↓ᵒ (suc k) (↓ᵒ (suc (suc k)) (▷ᵒ (↓ᵒ (suc k) (# S (↓ᵈ j x δ)))))
+                                       ⩦⟨ ≡ᵒ-sym (cong-↓ᵒ (suc k) (down-▷ _)) ⟩
+  ↓ᵒ (suc k) (↓ᵒ (suc (suc k)) (▷ᵒ (# S (↓ᵈ j x δ))))     ⩦⟨ lemma17ᵒ (suc k) ⟩
+  ↓ᵒ (suc k) (▷ᵒ (# S (↓ᵈ j x δ)))    ∎
+
+
+▷ˢ : ∀{Γ}{ts : Times Γ}
+   → Setˢ Γ ts
+     -----------------
+   → Setˢ Γ (later ts)
+▷ˢ S = record { # = λ δ → ▷ᵒ (# S δ)
+              ; good = good-▷ S
+              ; congr = {!!} }
+
+{- Lemma's needed for defining recursive predicates -}
 
 iter : ∀ {ℓ} {A : Set ℓ} → ℕ → (A → A) → (A → A)
 iter zero    F  =  id
@@ -905,20 +977,20 @@ abstract
   equiv-downˢ {Γ}{ts}{S}{T} ↓S=↓T δ =
      equiv-downᵒ{# S δ}{# T δ} λ j → (↓S=↓T j) δ
 
-continuous : ∀{A} (F : Predᵒ A → Predᵒ A) (a : A) → Set₁
-continuous F a = ∀ P k → ↓ᵒ k (F P a) ≡ᵒ ↓ᵒ k (F (↓ᵖ k P) a)
+nonexpansive : ∀{A} (F : Predᵒ A → Predᵒ A) (a : A) → Set₁
+nonexpansive F a = ∀ P k → ↓ᵒ k (F P a) ≡ᵒ ↓ᵒ k (F (↓ᵖ k P) a)
 
-continuous′ : ∀{Γ}{A}{ts : Times Γ}{δ : Predsᵒ Γ}
+nonexpansive′ : ∀{Γ}{A}{ts : Times Γ}{δ : Predsᵒ Γ}
   (F : A → Setˢ (A ∷ Γ) (cons Later ts)) (a : A) → Set₁
-continuous′{Γ}{A}{ts}{δ} F a =
+nonexpansive′{Γ}{A}{ts}{δ} F a =
   ∀ P k → ↓ᵒ k (# (F a) (P , δ)) ≡ᵒ ↓ᵒ k (# (F a) ((↓ᵖ k P) , δ))
 
 {- sanity check -}
 cont-toFun : ∀{Γ}{A}{ts : Times Γ}{δ : Predsᵒ Γ}
   → (F : A → Setˢ (A ∷ Γ) (cons Later ts))
   → (a : A)
-  → continuous′{δ = δ} F a
-  → continuous (toFun δ F) a
+  → nonexpansive′{δ = δ} F a
+  → nonexpansive (toFun δ F) a
 cont-toFun{Γ}{A}{ts}{δ} F a cont′ = cont′
 
 wellfounded : ∀{A} (F : Predᵒ A → Predᵒ A) (a : A) → Set₁
