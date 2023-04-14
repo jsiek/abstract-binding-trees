@@ -566,12 +566,11 @@ We define ℰ and 𝒱 by creating a recursive predicate (apply `μᵒ` to
 `ℰ⊎𝒱`) and then apply it to either `inj₁` for 𝒱 or `inj₂` for ℰ.
 
 ```
-abstract
-  ℰ⟦_⟧ : Type → Term → Setᵒ
-  ℰ⟦ A ⟧ M = (μᵒ ℰ⊎𝒱) (inj₂ (A , M))
-  
-  𝒱⟦_⟧ : Type → Term → Setᵒ
-  𝒱⟦ A ⟧ V = (μᵒ ℰ⊎𝒱) (inj₁ (A , V))
+ℰ⟦_⟧ : Type → Term → Setᵒ
+ℰ⟦ A ⟧ M = (μᵒ ℰ⊎𝒱) (inj₂ (A , M))
+
+𝒱⟦_⟧ : Type → Term → Setᵒ
+𝒱⟦ A ⟧ V = (μᵒ ℰ⊎𝒱) (inj₁ (A , V))
 ```
 
 To succinctly talk about the two aspects of 𝓔, we define semantic
@@ -588,38 +587,37 @@ preservation A M = ∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 We can prove that ℰ is indeed equivalent to progress and preservation
 by use of the `fixpointᵒ` theorem in SIL.
 
--- ```
--- ℰ-stmt : ∀{A}{M}
---   → ℰ⟦ A ⟧ M ≡ᵒ progress A M ×ᵒ preservation A M
--- ℰ-stmt {A}{M} =
---   ℰ⟦ A ⟧ M                                                  ⩦⟨ ≡ᵒ-refl refl ⟩
---   μᵒ ℰ⊎𝒱 (inj₂ (A , M))                 ⩦⟨ fixpointᵒ ℰ⊎𝒱 (inj₂ (A , M)) ⟩
---   # (ℰ⊎𝒱 (inj₂ (A , M))) ((μᵒ ℰ⊎𝒱) , ttᵖ)
---               ⩦⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (fixpointᵒ ℰ⊎𝒱 (inj₁ (A , M))))
---                                   (≡ᵒ-refl refl)) (≡ᵒ-refl refl) ⟩
---   progress A M ×ᵒ preservation A M
---   ∎
--- ```
+```
+ℰ-stmt : ∀{A}{M}
+  → ℰ⟦ A ⟧ M ≡ᵒ progress A M ×ᵒ preservation A M
+ℰ-stmt {A}{M} =
+  ℰ⟦ A ⟧ M                                                  ⩦⟨ ≡ᵒ-refl refl ⟩
+  μᵒ ℰ⊎𝒱 (inj₂ (A , M))                 ⩦⟨ fixpointᵒ ℰ⊎𝒱 (inj₂ (A , M)) ⟩
+  # (ℰ⊎𝒱 (inj₂ (A , M))) ((μᵒ ℰ⊎𝒱) , ttᵖ)
+              ⩦⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (fixpointᵒ ℰ⊎𝒱 (inj₁ (A , M))))
+                                  (≡ᵒ-refl refl)) (≡ᵒ-refl refl) ⟩
+  progress A M ×ᵒ preservation A M
+  ∎
+```
 
--- For convenience, we define introduction and elimination rules for ℰ.
+For convenience, we define introduction and elimination rules for ℰ.
 
--- ```
--- ℰ-intro : ∀ {𝓟}{A}{M}
---   → 𝓟 ⊢ᵒ progress A M
---   → 𝓟 ⊢ᵒ preservation A M
---     ----------------------
---   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
--- ℰ-intro 𝓟⊢prog 𝓟⊢pres = substᵒ (≡ᵒ-sym ℰ-stmt) (𝓟⊢prog ,ᵒ 𝓟⊢pres)
+```
+ℰ-intro : ∀ {𝓟}{A}{M}
+  → 𝓟 ⊢ᵒ progress A M
+  → 𝓟 ⊢ᵒ preservation A M
+    ----------------------
+  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
+ℰ-intro 𝓟⊢prog 𝓟⊢pres = substᵒ (≡ᵒ-sym ℰ-stmt) (𝓟⊢prog ,ᵒ 𝓟⊢pres)
 
--- ℰ-progress : ∀ {𝓟}{A}{M}
---   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
---   → 𝓟 ⊢ᵒ progress A M
--- ℰ-progress 𝓟⊢ℰM = proj₁ᵒ (substᵒ ℰ-stmt 𝓟⊢ℰM )
+ℰ-progress : ∀ {𝓟}{A}{M}
+  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
+  → 𝓟 ⊢ᵒ progress A M
+ℰ-progress 𝓟⊢ℰM = proj₁ᵒ (substᵒ ℰ-stmt 𝓟⊢ℰM )
 
--- ℰ-preservation : ∀ {𝓟}{A}{M}
---   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
---   → 𝓟 ⊢ᵒ preservation A M
--- ℰ-preservation 𝓟⊢ℰM = proj₂ᵒ (substᵒ ℰ-stmt 𝓟⊢ℰM )
--- ```
-
+ℰ-preservation : ∀ {𝓟}{A}{M}
+  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
+  → 𝓟 ⊢ᵒ preservation A M
+ℰ-preservation 𝓟⊢ℰM = proj₂ᵒ (substᵒ ℰ-stmt 𝓟⊢ℰM )
+```
 

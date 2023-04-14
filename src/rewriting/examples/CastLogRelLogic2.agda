@@ -24,11 +24,11 @@ open import rewriting.examples.StepIndexedLogic2
 ℰ⊎𝒱-ctx : Context
 ℰ⊎𝒱-ctx = ℰ⊎𝒱-type ∷ []
 
-𝒱ˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Now ∅)
-𝒱ˢ⟦ A ⟧ V = (inj₁ (A , V)) ∈ zeroˢ
-
 ℰˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Now ∅)
 ℰˢ⟦ A ⟧ M = (inj₂ (A , M)) ∈ zeroˢ
+
+𝒱ˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Now ∅)
+𝒱ˢ⟦ A ⟧ V = (inj₁ (A , V)) ∈ zeroˢ
 
 pre-𝒱 : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
 pre-𝒱 ★ (V ⟨ G !⟩ )  = (Value V)ˢ ×ˢ ▷ˢ (𝒱ˢ⟦ typeofGround G ⟧ V)
