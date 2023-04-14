@@ -6,9 +6,11 @@ module rewriting.examples.BlogTypeSafety10Easy4Med1Hard where
 
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Nat
+open import Data.List using (List; []; _∷_)
 open import Data.Product using (_,_;_×_; proj₁; proj₂; Σ-syntax; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
+open import Data.Unit.Polymorphic renaming (⊤ to topᵖ; tt to ttᵖ)
 open import Relation.Binary.PropositionalEquality as Eq
   using (_≡_; _≢_; refl; sym; cong; subst; trans)
 
@@ -351,16 +353,20 @@ Here's the type of the "and" operator:
 
 The other propositions follow a similar pattern.
 
-The membership formula `v ∈ x` is true when `v` is in the predicate
+The membership formula `a ∈ x` is true when `a` is in the predicate
 bound to variable `x` in the environment. The time for `x` is required
 to be `Now`.
 
-    _∈_ : ∀{Γ}{ts : Times Γ}{A}
-       → A → (x : Γ ∋ A) → {now : timeof x ts ≡ Now}
-         -------------------------------------------
-       → Setˢ Γ ts
-    (v ∈ x) =
-      record { # = λ δ → (lookup x δ) v
+    one-now : ∀ (Γ : Context) → ∀{A} → (x : Γ ∋ A) → Times Γ
+    one-now (B ∷ Γ) zeroˢ = cons Now (laters Γ)
+    one-now (B ∷ Γ) (sucˢ x) = cons Later (one-now Γ x)
+
+    _∈_ : ∀{Γ}{A}
+       → A
+       → (x : Γ ∋ A)
+       → Setˢ Γ (one-now Γ x)
+    a ∈ x =
+      record { # = λ δ → (lookup x δ) a
              ; ... }
 
 The `μˢ` formula defines a (possibly nested) recursive predicate.
@@ -386,8 +392,8 @@ Let's revisit the example of defining multi-step reduction.  The
 non-recursive `mreduce` predicate is defined as follows.
 
 ```
-mreduce : Term × Term → Setˢ (Term × Term ∷ []) (cons Later ∅)
-mreduce (M , N) = (M ≡ N)ˢ ⊎ˢ (∃ˢ[ L ] (M —→ L)ˢ ×ˢ ▷ˢ ((L , N) ∈ zeroˢ))
+mreduce : Term × Term → Setˢ ((Term × Term) ∷ []) (cons Later ∅)
+mreduce (M , N) = (M ≡ N)ˢ ⊎ˢ (∃ˢ[ L ] (M —→ L)ˢ ×ˢ ▷ˢ (((L , N) ∈ zeroˢ)))
 ```
 
 Note that the `R` parameter has become implicit; it has moved into the
@@ -465,8 +471,8 @@ later.
 
   monoᵒ : ∀ {𝓟}{P}
      → 𝓟 ⊢ᵒ P
-       ------------
-     → 𝓟 ⊢ᵒ (▷ᵒ P)
+       -----------
+     → 𝓟 ⊢ᵒ  ▷ᵒ P
 
 One can transport induction on natural numbers into SIL to obtain the
 following Löb rule, which states that when proving any property `P`,
@@ -513,26 +519,29 @@ right side is for 𝓥. We shall define `ℰ⊎𝒱` by an application of
 the non-recursive `pre-ℰ` and `pre-ℰ` which we define next.
 
 ```
-Ty[ℰ⊎𝒱] : Set
-Ty[ℰ⊎𝒱] = (Type × Term) ⊎ (Type × Term)
+ℰ⊎𝒱-type : Set
+ℰ⊎𝒱-type = (Type × Term) ⊎ (Type × Term)
 
-pre-ℰ : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Later
-pre-𝒱 : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Later
+ℰ⊎𝒱-ctx : Context
+ℰ⊎𝒱-ctx = ℰ⊎𝒱-type ∷ []
 
-pre-ℰ⊎𝒱 : Ty[ℰ⊎𝒱] → RecSetᵒ Ty[ℰ⊎𝒱] Later
-pre-ℰ⊎𝒱 (inj₁ (A , V)) = pre-𝒱 A V
-pre-ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
+pre-ℰ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
+pre-𝒱 : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
+
+ℰ⊎𝒱 : ℰ⊎𝒱-type → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
+ℰ⊎𝒱 (inj₁ (A , V)) = pre-𝒱 A V
+ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
 ```
 
 To improve the readability of our definitions, we define the following
 notation for recursive applications of the 𝓔 and 𝓥 predicates.
 
 ```
-ℰˢ⟦_⟧ : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Now
-ℰˢ⟦ A ⟧ M = recurˢ (inj₂ (A , M))
+ℰˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Now ∅)
+ℰˢ⟦ A ⟧ M = (inj₂ (A , M)) ∈ zeroˢ
 
-𝒱ˢ⟦_⟧ : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Now
-𝒱ˢ⟦ A ⟧ V = recurˢ (inj₁ (A , V))
+𝒱ˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Now ∅)
+𝒱ˢ⟦ A ⟧ V = (inj₁ (A , V)) ∈ zeroˢ
 ```
 
 The definition of pre-𝓔 and pre-𝓥 are of similar form to the
@@ -553,23 +562,16 @@ pre-𝒱 (A ⇒ B) (ƛ N)      = ∀ˢ[ W ] ▷ˢ (𝒱ˢ⟦ A ⟧ W) →ˢ ▷�
 pre-𝒱 A M                = ⊥ ˢ
 ```
 
-As promised, we define `ℰ⊎𝒱` by applying `recursiveᵒ` to `pre-ℰ⊎𝒱`.
-
-```
-ℰ⊎𝒱 : (Type × Term) ⊎ (Type × Term) → Setᵒ
-ℰ⊎𝒱 = recursiveᵒ pre-ℰ⊎𝒱
-```
-
-We then define ℰ and 𝒱 by applying `ℰ⊎𝒱` to either `inj₁` for 𝒱 or
-`inj₂` for ℰ.
+We define ℰ and 𝒱 by creating a recursive predicate (apply `μᵒ` to
+`ℰ⊎𝒱`) and then apply it to either `inj₁` for 𝒱 or `inj₂` for ℰ.
 
 ```
 abstract
   ℰ⟦_⟧ : Type → Term → Setᵒ
-  ℰ⟦ A ⟧ M = ℰ⊎𝒱 (inj₂ (A , M))
+  ℰ⟦ A ⟧ M = (μᵒ ℰ⊎𝒱) (inj₂ (A , M))
   
   𝒱⟦_⟧ : Type → Term → Setᵒ
-  𝒱⟦ A ⟧ V = ℰ⊎𝒱 (inj₁ (A , V))
+  𝒱⟦ A ⟧ V = (μᵒ ℰ⊎𝒱) (inj₁ (A , V))
 ```
 
 To succinctly talk about the two aspects of 𝓔, we define semantic
@@ -583,65 +585,41 @@ preservation : Type → Term → Setᵒ
 preservation A M = ∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 ```
 
-We can prove that 𝓔 is indeed equivalent to progress and preservation
+We can prove that ℰ is indeed equivalent to progress and preservation
 by use of the `fixpointᵒ` theorem in SIL.
 
-```
-abstract
-  ℰ≡p×p : ∀{A}{M} → ℰ⟦ A ⟧ M ≡ᵒ progress A M ×ᵒ preservation A M
-  ℰ≡p×p {A}{M} =
-      ℰ⟦ A ⟧ M                                ⩦⟨ ≡ᵒ-refl refl ⟩
-      recursiveᵒ pre-ℰ⊎𝒱 (inj₂ (A , M))       ⩦⟨ fixpointᵒ pre-ℰ⊎𝒱 _ ⟩
-      fun (pre-ℰ A M) ℰ⊎𝒱 tt
-                            ⩦⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (fixpointᵒ pre-ℰ⊎𝒱 _))
-                                               (≡ᵒ-refl refl)) (≡ᵒ-refl refl) ⟩
-      progress A M ×ᵒ preservation A M         ∎
-```
+-- ```
+-- ℰ-stmt : ∀{A}{M}
+--   → ℰ⟦ A ⟧ M ≡ᵒ progress A M ×ᵒ preservation A M
+-- ℰ-stmt {A}{M} =
+--   ℰ⟦ A ⟧ M                                                  ⩦⟨ ≡ᵒ-refl refl ⟩
+--   μᵒ ℰ⊎𝒱 (inj₂ (A , M))                 ⩦⟨ fixpointᵒ ℰ⊎𝒱 (inj₂ (A , M)) ⟩
+--   # (ℰ⊎𝒱 (inj₂ (A , M))) ((μᵒ ℰ⊎𝒱) , ttᵖ)
+--               ⩦⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (fixpointᵒ ℰ⊎𝒱 (inj₁ (A , M))))
+--                                   (≡ᵒ-refl refl)) (≡ᵒ-refl refl) ⟩
+--   progress A M ×ᵒ preservation A M
+--   ∎
+-- ```
 
-For convenience, we define introduction and elimination rules for ℰ.
+-- For convenience, we define introduction and elimination rules for ℰ.
 
-```
-ℰ-intro : ∀ {𝓟}{A}{M}
-  → 𝓟 ⊢ᵒ progress A M
-  → 𝓟 ⊢ᵒ preservation A M
-    ----------------------
-  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-ℰ-intro 𝓟⊢prog 𝓟⊢pres = substᵒ (≡ᵒ-sym ℰ≡p×p) (𝓟⊢prog ,ᵒ 𝓟⊢pres)
+-- ```
+-- ℰ-intro : ∀ {𝓟}{A}{M}
+--   → 𝓟 ⊢ᵒ progress A M
+--   → 𝓟 ⊢ᵒ preservation A M
+--     ----------------------
+--   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
+-- ℰ-intro 𝓟⊢prog 𝓟⊢pres = substᵒ (≡ᵒ-sym ℰ-stmt) (𝓟⊢prog ,ᵒ 𝓟⊢pres)
 
-ℰ-progress : ∀ {𝓟}{A}{M}
-  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-  → 𝓟 ⊢ᵒ progress A M
-ℰ-progress 𝓟⊢ℰM = proj₁ᵒ (substᵒ ℰ≡p×p 𝓟⊢ℰM )
+-- ℰ-progress : ∀ {𝓟}{A}{M}
+--   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
+--   → 𝓟 ⊢ᵒ progress A M
+-- ℰ-progress 𝓟⊢ℰM = proj₁ᵒ (substᵒ ℰ-stmt 𝓟⊢ℰM )
 
-ℰ-preservation : ∀ {𝓟}{A}{M}
-  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-  → 𝓟 ⊢ᵒ preservation A M
-ℰ-preservation 𝓟⊢ℰM = proj₂ᵒ (substᵒ ℰ≡p×p 𝓟⊢ℰM )
-```
+-- ℰ-preservation : ∀ {𝓟}{A}{M}
+--   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
+--   → 𝓟 ⊢ᵒ preservation A M
+-- ℰ-preservation 𝓟⊢ℰM = proj₂ᵒ (substᵒ ℰ-stmt 𝓟⊢ℰM )
+-- ```
 
 
-```
-annot : (T : Set₁) → (e : T) → T
-annot T e = ((λ (x : T) → x) e)
-
-abstract
-  V-base : ∀{ι}{c} → (𝒱⟦ $ₜ ι ⟧ ($ c)) ≡ᵒ (ι ≡ typeof c)ᵒ
-  V-base{ι}{c} = 
-    𝒱⟦ $ₜ ι ⟧ ($ c)                         ⩦⟨ ≡ᵒ-refl refl ⟩
-    recursiveᵒ pre-ℰ⊎𝒱 (inj₁ ($ₜ ι , $ c))  ⩦⟨ fixpointᵒ pre-ℰ⊎𝒱 _ ⟩
-    fun (pre-𝒱 ($ₜ ι) ($ c)) ℰ⊎𝒱 tt         ⩦⟨ ≡ᵒ-refl refl ⟩
-    (annot Setᵒ ((ι ≡ typeof c)ᵒ))           ∎
-  
-V-base-intro : ∀{𝒫}{c} → 𝒫 ⊢ᵒ 𝒱⟦ $ₜ (typeof c) ⟧ ($ c)
-V-base-intro = substᵒ (≡ᵒ-sym V-base) (constᵒI refl)
-
-instance
-  LitInhabited : Inhabited Lit
-  LitInhabited = record { elt = Num 0 }
-
-V-base-elim : ∀{𝒫}{ι}{M}
-   → 𝒫 ⊢ᵒ 𝒱⟦ $ₜ ι ⟧ M
-   → 𝒫 ⊢ᵒ (∃ᵒ[ c ] (M ≡ $ c)ᵒ ×ᵒ (ι ≡ typeof c)ᵒ)
-V-base-elim {𝒫}{ι}{M} ⊢𝒱M =
-  ⊢ᵒ-sucP ⊢𝒱M λ { 𝓥Vscn → {!!} }
-```

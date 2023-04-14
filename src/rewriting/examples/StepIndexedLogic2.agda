@@ -388,7 +388,7 @@ laters (A ∷ Γ) = cons Later (laters Γ)
 
 timeof-later : ∀{Γ}{A}
    → (x : Γ ∋ A)
-  → (timeof x (laters Γ)) ≡ Later
+   → (timeof x (laters Γ)) ≡ Later
 timeof-later {B ∷ Γ} zeroˢ = refl
 timeof-later {B ∷ Γ} (sucˢ x) = timeof-later x
 
@@ -597,29 +597,29 @@ lemma17e {A} {P} {j} {k} {a} j≤k
 
 {---------------------- Membership in Recursive Predicate ---------------------}
 
-lookup : ∀{Γ}{ts : Times Γ}{A} → Γ ∋ A → RecEnv Γ → Predᵒ A
-lookup {B ∷ Γ} {ts} {.B} zeroˢ (P , δ) = P
-lookup {B ∷ Γ} {cons t ts} {A} (sucˢ x) (P , δ) = lookup{Γ}{ts}{A} x δ
+lookup : ∀{Γ}{A} → Γ ∋ A → RecEnv Γ → Predᵒ A
+lookup {B ∷ Γ} {.B} zeroˢ (P , δ) = P
+lookup {B ∷ Γ} {A} (sucˢ x) (P , δ) = lookup{Γ}{A} x δ
 
-↓-lookup : ∀{Γ}{ts : Times Γ}{A}{B}{a}{k}{j}{δ : RecEnv Γ}
+↓-lookup : ∀{Γ}{A}{B}{a}{k}{j}{δ : RecEnv Γ}
    → (x : Γ ∋ A)
    → (y : Γ ∋ B)
    → k ≤ j
-   → ↓ᵒ k (lookup{Γ}{ts}{A} x δ a) ≡ᵒ ↓ᵒ k (lookup{Γ}{ts}{A} x (↓ᵈ j y δ) a)
-↓-lookup {C ∷ Γ} {ts} {.C} {.C} {a} {k} {j} {P , δ} zeroˢ zeroˢ k≤j =
+   → ↓ᵒ k (lookup{Γ}{A} x δ a) ≡ᵒ ↓ᵒ k (lookup{Γ}{A} x (↓ᵈ j y δ) a)
+↓-lookup {C ∷ Γ}  {.C} {.C} {a} {k} {j} {P , δ} zeroˢ zeroˢ k≤j =
     ≡ᵒ-sym (lemma17e{_}{P}{k}{j}{a} k≤j)
-↓-lookup {C ∷ Γ} {ts} {.C} {B} {a} {k} {j} {P , δ} zeroˢ (sucˢ y) k≤j =
+↓-lookup {C ∷ Γ} {.C} {B} {a} {k} {j} {P , δ} zeroˢ (sucˢ y) k≤j =
     ≡ᵒ-refl refl
-↓-lookup {C ∷ Γ} {cons t ts} {A} {.C} {a} {k} {j} {P , δ} (sucˢ x) zeroˢ k≤j =
+↓-lookup {C ∷ Γ} {A} {.C} {a} {k} {j} {P , δ} (sucˢ x) zeroˢ k≤j =
    ≡ᵒ-refl refl
-↓-lookup {C ∷ Γ} {cons t ts} {A}{B}{a}{k} {j} {P , δ} (sucˢ x) (sucˢ y) k≤j =
+↓-lookup {C ∷ Γ} {A}{B}{a}{k} {j} {P , δ} (sucˢ x) (sucˢ y) k≤j =
    ↓-lookup x y k≤j
 
 lookup-diff : ∀{Γ}{ts : Times Γ}{A}{B}{δ : RecEnv Γ}{j}
    → (x : Γ ∋ A)
    → (y : Γ ∋ B)
    → timeof x ts ≢ timeof y ts
-   → lookup{Γ}{ts}{A} x (↓ᵈ j y δ) ≡ lookup{Γ}{ts}{A} x δ
+   → lookup{Γ}{A} x (↓ᵈ j y δ) ≡ lookup{Γ}{A} x δ
 lookup-diff {C ∷ Γ} {cons t ts} zeroˢ zeroˢ neq = ⊥-elim (neq refl)
 lookup-diff {C ∷ Γ} {cons t ts} zeroˢ (sucˢ y) neq = refl
 lookup-diff {C ∷ Γ} {cons t ts} (sucˢ x) zeroˢ neq = refl
@@ -630,53 +630,57 @@ timeof-diff : ∀{Γ}{ts : Times Γ}{A}{B} (x : Γ ∋ A) (y : Γ ∋ B)
    → timeof x ts ≢ timeof y ts
 timeof-diff x y eq1 eq2 rewrite eq1 | eq2 = λ ()
 
-good-lookup : ∀{Γ}{ts : Times Γ}{A}{a}
+one-now : ∀ (Γ : Context) → ∀{A} → (x : Γ ∋ A) → Times Γ
+one-now (B ∷ Γ) zeroˢ = cons Now (laters Γ)
+one-now (B ∷ Γ) (sucˢ x) = cons Later (one-now Γ x)
+
+timeof-one-now : ∀{Γ}{A}
+   → (x : Γ ∋ A)
+   → timeof x (one-now Γ x) ≡ Now
+timeof-one-now {B ∷ Γ} zeroˢ = refl
+timeof-one-now {B ∷ Γ} (sucˢ x) = timeof-one-now x
+
+good-lookup : ∀{Γ}{A}{a}
   → (x : Γ ∋ A)
-  → timeof x ts ≡ Now
-  → goodnesses ts (λ δ → lookup{Γ}{ts}{A} x δ a)
-good-lookup {B ∷ Γ} {cons Now ts} {.B} zeroˢ time-x zeroˢ (P , δ) j k k≤j =
+  → goodnesses (one-now Γ x) (λ δ → lookup x δ a)
+good-lookup {.(A ∷ _)} {A} {a} zeroˢ zeroˢ (P , δ) j k k≤j =
    ≡ᵒ-sym (lemma17e{_}{P} k≤j)
-good-lookup {B ∷ Γ} {cons Now ts} {.B} zeroˢ time-x (sucˢ y) 
-    with timeof y ts in eq
-... | Now = λ{(P , δ) j k k≤j → ≡ᵒ-refl refl}
-... | Later = λ{(P , δ) j k k≤j → ≡ᵒ-refl refl}
-good-lookup {B ∷ Γ} {cons Now ts} {A} (sucˢ x) time-x zeroˢ (P , δ) j k k≤j =
-    ≡ᵒ-refl refl
-good-lookup {B ∷ Γ} {cons Later ts} {A} (sucˢ x) time-x zeroˢ (P , δ) j k k≤j =
-    ≡ᵒ-refl refl
-good-lookup {B ∷ Γ} {cons t ts} {A}{a} (sucˢ x) time-x (sucˢ y)
-    with timeof y ts in eq-y
+good-lookup {.(A ∷ _)} {A} {a} zeroˢ (sucˢ y) rewrite timeof-later y =
+   λ{(P , δ) j k k≤j → ≡ᵒ-refl refl}
+good-lookup {.(_ ∷ _)} {A} {a} (sucˢ x) zeroˢ =
+   λ{(P , δ) j k k≤j → ≡ᵒ-refl refl}
+good-lookup {B ∷ Γ} {A} {a} (sucˢ x) (sucˢ y)
+    with timeof y (one-now Γ x) in eq-y
 ... | Now = λ{(P , δ) j k k≤j → ↓-lookup x y k≤j }
 ... | Later =
       λ{(P , δ) j k k≤j →
-          let eq = (lookup-diff{Γ}{ts}{A}{_}{δ}{j} x y
-                        (timeof-diff x y time-x eq-y)) in
+          let eq = (lookup-diff{Γ}{_}{_}{_}{δ}{j} x y
+                        (timeof-diff x y (timeof-one-now x) eq-y)) in
           subst (λ X → ↓ᵒ (suc k) (lookup x δ a) ≡ᵒ ↓ᵒ (suc k) (X a))
                 (sym eq) (≡ᵒ-refl refl)}
 
-cong-lookup : ∀{Γ}{ts : Times Γ}{A}{δ δ′ : RecEnv Γ}
+cong-lookup : ∀{Γ}{A}{δ δ′ : RecEnv Γ}
    → (x : Γ ∋ A)
    → (a : A)
    → δ ≡ᵈ δ′
-   → lookup{ts = ts} x δ a ≡ᵒ lookup{ts = ts} x δ′ a
-cong-lookup {B ∷ Γ} {ts} {.B}{P , δ}{P′ , δ′} zeroˢ a (P=P′ , d=d′) = P=P′ a
-cong-lookup {B ∷ Γ} {cons t ts} {A}{P , δ}{P′ , δ′} (sucˢ x) a (P=P′ , d=d′) =
-   cong-lookup{ts = ts} x a d=d′
+   → lookup x δ a ≡ᵒ lookup x δ′ a
+cong-lookup {B ∷ Γ} {.B}{P , δ}{P′ , δ′} zeroˢ a (P=P′ , d=d′) = P=P′ a
+cong-lookup {B ∷ Γ} {A}{P , δ}{P′ , δ′} (sucˢ x) a (P=P′ , d=d′) =
+   cong-lookup x a d=d′
 
-congruent-lookup : ∀{Γ}{ts : Times Γ}{A}
+congruent-lookup : ∀{Γ}{A}
    → (x : Γ ∋ A)
    → (a : A)
-   → congruent (λ δ → lookup{ts = ts} x δ a)
-congruent-lookup {Γ}{ts}{A} x a d=d′ = cong-lookup x a d=d′
+   → congruent (λ δ → lookup x δ a)
+congruent-lookup {Γ}{A} x a d=d′ = cong-lookup x a d=d′
 
-_∈_ : ∀{Γ}{ts : Times Γ}{A}
+_∈_ : ∀{Γ}{A}
    → A
    → (x : Γ ∋ A)
-   → {now : timeof x ts ≡ Now}
-   → Setˢ Γ ts
-(_∈_ a x) {now} =
+   → Setˢ Γ (one-now Γ x)
+a ∈ x =
   record { # = λ δ → (lookup x δ) a
-         ; good = good-lookup x now
+         ; good = good-lookup x
          ; congr = congruent-lookup x a
          }
 
@@ -1566,8 +1570,8 @@ downClosed-Πᵒ (P ∷ 𝓟) n (Pn , ⊨𝓟n) k k≤n =
 abstract
   monoᵒ : ∀ {𝓟}{P}
      → 𝓟 ⊢ᵒ P
-       ------------
-     → 𝓟 ⊢ᵒ (▷ᵒ P)
+       -----------
+     → 𝓟 ⊢ᵒ  ▷ᵒ P
   monoᵒ {𝓟}{P} ⊢P zero ⊨𝓟n = tt
   monoᵒ {𝓟}{P} ⊢P (suc n) ⊨𝓟n =
     let ⊨𝓟n = downClosed-Πᵒ 𝓟 (suc n) ⊨𝓟n n (n≤1+n n) in

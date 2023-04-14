@@ -25,10 +25,10 @@ open import rewriting.examples.StepIndexedLogic2
 ℰ⊎𝒱-ctx = ℰ⊎𝒱-type ∷ []
 
 𝒱ˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Now ∅)
-𝒱ˢ⟦ A ⟧ V = ((inj₁ (A , V)) ∈ zeroˢ) {refl}
+𝒱ˢ⟦ A ⟧ V = (inj₁ (A , V)) ∈ zeroˢ
 
 ℰˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Now ∅)
-ℰˢ⟦ A ⟧ M = ((inj₂ (A , M)) ∈ zeroˢ) {refl}
+ℰˢ⟦ A ⟧ M = (inj₂ (A , M)) ∈ zeroˢ
 
 pre-𝒱 : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
 pre-𝒱 ★ (V ⟨ G !⟩ )  = (Value V)ˢ ×ˢ ▷ˢ (𝒱ˢ⟦ typeofGround G ⟧ V)
@@ -51,11 +51,11 @@ pre-ℰ A M = (pre-𝒱 A M ⊎ˢ (reducible M)ˢ ⊎ˢ (Blame M)ˢ)    -- Progr
 
 -- Semantically Well Typed Value
 𝒱⟦_⟧ : (A : Type) → Term → Setᵒ
-𝒱⟦ A ⟧ V = # ((μˢ ℰ⊎𝒱) (inj₁ (A , V))) ttᵖ
+𝒱⟦ A ⟧ V = (μᵒ ℰ⊎𝒱) (inj₁ (A , V))
 
 -- Semantically Well Typed Term
 ℰ⟦_⟧ : (A : Type) → Term → Setᵒ
-ℰ⟦ A ⟧ M = # ((μˢ ℰ⊎𝒱) (inj₂ (A , M))) ttᵖ
+ℰ⟦ A ⟧ M = (μᵒ ℰ⊎𝒱) (inj₂ (A , M))
 
 {-
 foo : ∀ (X : ℰ⊎𝒱-type) → Type → Term → ⊤
@@ -81,9 +81,9 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
   → ℰ⟦ A ⟧ M ≡ᵒ progress A M ×ᵒ preservation A M
 ℰ-stmt {A}{M} =
   ℰ⟦ A ⟧ M                                                  ⩦⟨ ≡ᵒ-refl refl ⟩
-  μᵒ ℰ⊎𝒱 (inj₂ (A , M))                 ⩦⟨ ℰ⊎𝒱-fixpointᵒ (inj₂ (A , M)) ⟩
+  μᵒ ℰ⊎𝒱 (inj₂ (A , M))                 ⩦⟨ fixpointᵒ ℰ⊎𝒱 (inj₂ (A , M)) ⟩
   # (ℰ⊎𝒱 (inj₂ (A , M))) ((μᵒ ℰ⊎𝒱) , ttᵖ)
-              ⩦⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (ℰ⊎𝒱-fixpointᵒ (inj₁ (A , M))))
+              ⩦⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (fixpointᵒ ℰ⊎𝒱 (inj₁ (A , M))))
                                   (≡ᵒ-refl refl)) (≡ᵒ-refl refl) ⟩
   progress A M ×ᵒ preservation A M
   ∎
@@ -127,7 +127,7 @@ V-dyn : ∀{G}{V}
 V-dyn {G}{V} =
    let X = (inj₁ (★ , V ⟨ G !⟩)) in
    𝒱⟦ ★ ⟧ (V ⟨ G !⟩)                              ⩦⟨ ≡ᵒ-refl refl ⟩
-   (μᵒ ℰ⊎𝒱) X                                 ⩦⟨ ℰ⊎𝒱-fixpointᵒ X ⟩
+   (μᵒ ℰ⊎𝒱) X                                 ⩦⟨ fixpointᵒ ℰ⊎𝒱 X ⟩
    # (ℰ⊎𝒱 X) (μᵒ ℰ⊎𝒱 , ttᵖ)                  ⩦⟨ ≡ᵒ-refl refl ⟩ 
    (Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ typeofGround G ⟧ V)       ∎
 
@@ -160,7 +160,7 @@ V-fun : ∀{A B}{N}
 V-fun {A}{B}{N} =
    let X = (inj₁ (A ⇒ B , ƛ N)) in
    𝒱⟦ A ⇒ B ⟧ (ƛ N)                                         ⩦⟨ ≡ᵒ-refl refl ⟩
-   μᵒ ℰ⊎𝒱 X                                         ⩦⟨ ℰ⊎𝒱-fixpointᵒ X ⟩
+   μᵒ ℰ⊎𝒱 X                                         ⩦⟨ fixpointᵒ ℰ⊎𝒱 X ⟩
    # (ℰ⊎𝒱 X) (μᵒ ℰ⊎𝒱 , ttᵖ)                            ⩦⟨ ≡ᵒ-refl refl ⟩ 
    (∀ᵒ[ W ] ((▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ])))))
    ∎
