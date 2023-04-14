@@ -235,7 +235,7 @@ S ᵒ = record { # = λ { zero → ⊤ ; (suc k) → S }
              ; tz = tt
              }
 
-▷ᵒ : Setᵒ → Setᵒ
+▷ᵒ_ : Setᵒ → Setᵒ
 ▷ᵒ P = record
              { # = λ { zero → ⊤ ; (suc k) → # P k }
              ; down = λ { zero ▷Pn .zero z≤n → tt
