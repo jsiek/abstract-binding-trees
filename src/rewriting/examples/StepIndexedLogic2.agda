@@ -388,6 +388,12 @@ abstract
     → S ≡ˢ T
   ≡ˢ-intro S=T eq δ = S=T eq δ
 
+  ≡ˢ-elim : ∀{Γ}{ts : Times Γ}{S T : Setˢ Γ ts}
+    → S ≡ˢ T
+      ---------------------
+    → (∀ δ → # S δ ≡ᵒ # T δ)
+  ≡ˢ-elim S=T δ = S=T δ
+
   ≡ˢ-refl : ∀{Γ}{ts : Times Γ}{S T : Setˢ Γ ts}
     → S ≡ T
     → S ≡ˢ T
@@ -409,9 +415,14 @@ instance
   SIL-Eqˢ = record { _⩦_ = _≡ˢ_ ; ⩦-refl = ≡ˢ-refl
                    ; ⩦-sym = ≡ˢ-sym ; ⩦-trans = ≡ˢ-trans }
 
+-- TODO: replace uses of later with laters
 later : ∀{Γ} (ts : Times Γ) → Times Γ
 later {[]} ts = ∅
 later {A ∷ Γ} (cons t ts) = cons Later (later ts)
+
+laters : ∀ (Γ : Context) → Times Γ
+laters [] = ∅
+laters (A ∷ Γ) = cons Later (laters Γ)
 
 timeof-later : ∀{Γ}{ts : Times Γ}{A}
    → (x : Γ ∋ A)
@@ -728,11 +739,11 @@ cong-iter{A}{a} (suc i) F G F=G I =
 μₒ : ∀{A} → (Predᵒ A → Predᵒ A) → A → Setₒ 
 μₒ {A} F a k = #(iter{_}{Predᵒ A} (suc k) F ⊤ᵖ a) k
 
-muˢ : ∀{Γ}{ts : Times Γ}{A}
+μᵒ : ∀{Γ}{ts : Times Γ}{A}
    → (A → Setˢ (A ∷ Γ) (cons Later ts))
    → Predsᵒ Γ
    → (A → Setᵒ)
-muˢ {Γ}{ts}{A} P δ a =
+μᵒ {Γ}{ts}{A} P δ a =
   record { # = μₒ (toFun δ P) a
          ; down = dc
          ; tz = tz ((toFun δ P) ⊤ᵖ a)
@@ -759,7 +770,7 @@ abstract
      → (F : A → Setˢ (A ∷ Γ) (cons Later ts))
      → (a : A)
      → (δ : Predsᵒ Γ)
-     → ↓ᵒ k (muˢ F δ a) ≡ᵒ ↓ᵒ k (iter k (toFun δ F) ⊤ᵖ a)
+     → ↓ᵒ k (μᵒ F δ a) ≡ᵒ ↓ᵒ k (iter k (toFun δ F) ⊤ᵖ a)
   lemma18a zero F a δ zero = (λ x → tt) , (λ {x → tt})
   lemma18a zero F a δ (suc j) = (λ {()}) , λ {()}
   lemma18a (suc k) F a δ zero = (λ {x → tt}) , λ {x → tt}
@@ -800,11 +811,11 @@ lemma18b : ∀{Γ}{ts : Times Γ}{A}
      → (F : A → Setˢ (A ∷ Γ) (cons Later ts))
      → (a : A)
      → (δ : Predsᵒ Γ)
-     → ↓ᵒ (suc j) (# (F a) (muˢ F δ , δ))
+     → ↓ᵒ (suc j) (# (F a) (μᵒ F δ , δ))
        ≡ᵒ ↓ᵒ (suc j) (iter (suc j) (toFun δ F) ⊤ᵖ a)
 lemma18b{Γ}{ts}{A} j F a δ =
-   ↓ᵒ (suc j) (# (F a) (muˢ F δ , δ))      ⩦⟨ g⇒g (good (F a)) δ (muˢ F δ) j ⟩
-   ↓ᵒ (suc j) (# (F a) (↓ᵖ j (muˢ F δ) , δ))
+   ↓ᵒ (suc j) (# (F a) (μᵒ F δ , δ))      ⩦⟨ g⇒g (good (F a)) δ (μᵒ F δ) j ⟩
+   ↓ᵒ (suc j) (# (F a) (↓ᵖ j (μᵒ F δ) , δ))
                                      ⩦⟨ cong-↓ (λ a → cong⇒head (congr (F a))
                                                (λ a → lemma18a j F a δ ) δ) a ⟩
    ↓ᵒ (suc j) (# (F a) (↓ᵖ j (iter j (toFun δ F) ⊤ᵖ) , δ))
@@ -817,17 +828,17 @@ lemma19a : ∀{Γ}{ts : Times Γ}{A}
    (a : A)
    (j : ℕ)
    (δ : Predsᵒ Γ)
-   → ↓ᵒ j (muˢ F δ a) ≡ᵒ ↓ᵒ j (# (F a) (muˢ F δ , δ))
+   → ↓ᵒ j (μᵒ F δ a) ≡ᵒ ↓ᵒ j (# (F a) (μᵒ F δ , δ))
 lemma19a{Γ}{ts}{A} F a j δ = 
-    ↓ᵒ j (muˢ F δ a)                                     ⩦⟨ lemma18a j F a δ  ⟩
+    ↓ᵒ j (μᵒ F δ a)                                     ⩦⟨ lemma18a j F a δ  ⟩
     ↓ᵒ j (iter j (toFun δ F) ⊤ᵖ a)        ⩦⟨ lemma15b (suc j) j F a (n≤1+n j) ⟩
     ↓ᵒ j (iter (suc j) (toFun δ F) ⊤ᵖ a)
               ⩦⟨ ≡ᵖ-sym (lemma17{A}{(iter (suc j) (toFun δ F) ⊤ᵖ)}{j}{a}) {a} ⟩
     ↓ᵒ j (↓ᵒ (suc j) (iter (suc j) (toFun δ F) ⊤ᵖ a))
                               ⩦⟨ cong-↓ (λ a → ≡ᵒ-sym (lemma18b j F a δ))  a  ⟩
-    ↓ᵒ j (↓ᵒ (suc j) (# (F a) (muˢ F δ , δ)))
-                         ⩦⟨ lemma17{A}{λ a → (# (F a) (muˢ F δ , δ))}{j}{a}  ⟩
-    ↓ᵒ j (# (F a) (muˢ F δ , δ))                      ∎
+    ↓ᵒ j (↓ᵒ (suc j) (# (F a) (μᵒ F δ , δ)))
+                         ⩦⟨ lemma17{A}{λ a → (# (F a) (μᵒ F δ , δ))}{j}{a}  ⟩
+    ↓ᵒ j (# (F a) (μᵒ F δ , δ))                      ∎
 
 {-
 ↓⇔ : ∀{j k : ℕ}{P Q : Setₒ}
@@ -846,33 +857,33 @@ good-now-mu : ∀{Γ}{ts : Times Γ}{A}{B}
    → timeof x ts ≡ Now
    → (δ : Predsᵒ Γ) (k j : ℕ)
    → (k ≤ j)
-   → ↓ᵒ k (muˢ S δ a) ≡ᵒ ↓ᵒ k (muˢ S (↓ᵈ j x δ) a)
+   → ↓ᵒ k (μᵒ S δ a) ≡ᵒ ↓ᵒ k (μᵒ S (↓ᵈ j x δ) a)
 good-now-mu {Γ} {ts} {A} S a x time-x δ zero j k≤j =
-    ↓ᵒ-zero{A}{muˢ S δ}{muˢ S (↓ᵈ _ x δ)} a
+    ↓ᵒ-zero{A}{μᵒ S δ}{μᵒ S (↓ᵈ _ x δ)} a
 good-now-mu {Γ} {ts} {A} S a x time-x δ (suc k′) j k≤j =
   let k = suc k′ in
   let gSa = good-now{ts = cons Later ts}
-              (good (S a) (sucˢ x)) time-x (muˢ S δ , δ)
+              (good (S a) (sucˢ x)) time-x (μᵒ S δ , δ)
               j k k≤j in
-  let gSaz = good (S a) zeroˢ (muˢ S δ , ↓ᵈ j x δ) k′ k′ ≤-refl in
-  let gSaz2 = good (S a) zeroˢ (muˢ S (↓ᵈ j x δ) , ↓ᵈ j x δ) k′ k′ ≤-refl in
+  let gSaz = good (S a) zeroˢ (μᵒ S δ , ↓ᵈ j x δ) k′ k′ ≤-refl in
+  let gSaz2 = good (S a) zeroˢ (μᵒ S (↓ᵈ j x δ) , ↓ᵈ j x δ) k′ k′ ≤-refl in
   let IH = cong-↓ (λ a → congr (S a)
            ((λ a → good-now-mu S a x time-x δ k′ j (≤-trans (n≤1+n _) k≤j))
             , ≡ᵈ-refl)) a in
-  ↓ᵒ k (muˢ S δ a)                                        ⩦⟨ lemma19a S a k δ ⟩
-  ↓ᵒ k (# (S a) (muˢ S δ , δ))                                         ⩦⟨ gSa ⟩
-  ↓ᵒ k (# (S a) (muˢ S δ , ↓ᵈ j x δ))                                 ⩦⟨ gSaz ⟩
-  ↓ᵒ k (# (S a) (↓ᵖ k′ (muˢ S δ) , ↓ᵈ j x δ))                           ⩦⟨ IH ⟩
-  ↓ᵒ k (# (S a) (↓ᵖ k′ (muˢ S (↓ᵈ j x δ)) , ↓ᵈ j x δ))        ⩦⟨ ≡ᵒ-sym gSaz2 ⟩
-  ↓ᵒ k (# (S a) (muˢ S (↓ᵈ j x δ) , ↓ᵈ j x δ))
+  ↓ᵒ k (μᵒ S δ a)                                        ⩦⟨ lemma19a S a k δ ⟩
+  ↓ᵒ k (# (S a) (μᵒ S δ , δ))                                         ⩦⟨ gSa ⟩
+  ↓ᵒ k (# (S a) (μᵒ S δ , ↓ᵈ j x δ))                                 ⩦⟨ gSaz ⟩
+  ↓ᵒ k (# (S a) (↓ᵖ k′ (μᵒ S δ) , ↓ᵈ j x δ))                           ⩦⟨ IH ⟩
+  ↓ᵒ k (# (S a) (↓ᵖ k′ (μᵒ S (↓ᵈ j x δ)) , ↓ᵈ j x δ))        ⩦⟨ ≡ᵒ-sym gSaz2 ⟩
+  ↓ᵒ k (# (S a) (μᵒ S (↓ᵈ j x δ) , ↓ᵈ j x δ))
                                         ⩦⟨ ≡ᵒ-sym (lemma19a S a k (↓ᵈ j x δ)) ⟩
-  ↓ᵒ k (muˢ S (↓ᵈ j x δ) a)   ∎
+  ↓ᵒ k (μᵒ S (↓ᵈ j x δ) a)   ∎
 
 abstract
   down-1-mu : ∀{Γ}{ts : Times Γ}{A}{B}
        (S : A → Setˢ (A ∷ Γ) (cons Later ts))
        (a : A) (x : Γ ∋ B) (δ : Predsᵒ Γ) (j : ℕ)
-   → ↓ᵒ 1 (muˢ S δ a) ≡ᵒ ↓ᵒ 1 (muˢ S (↓ᵈ j x δ) a)
+   → ↓ᵒ 1 (μᵒ S δ a) ≡ᵒ ↓ᵒ 1 (μᵒ S (↓ᵈ j x δ) a)
   down-1-mu S a x δ j zero = (λ _ → tt) , (λ _ → tt)
   down-1-mu S a x δ j (suc i) = (λ { (s≤s () , _)}) , λ { (s≤s () , _)}
 
@@ -882,32 +893,32 @@ good-later-mu : ∀{Γ}{ts : Times Γ}{A}{B}
    → timeof x ts ≡ Later
    → (δ : Predsᵒ Γ) (k j : ℕ)
    → (k ≤ j)
-   → ↓ᵒ (suc k) (muˢ S δ a) ≡ᵒ ↓ᵒ (suc k) (muˢ S (↓ᵈ j x δ) a)
+   → ↓ᵒ (suc k) (μᵒ S δ a) ≡ᵒ ↓ᵒ (suc k) (μᵒ S (↓ᵈ j x δ) a)
 good-later-mu {Γ} {ts} {A} S a x time-x δ zero j k≤j = down-1-mu S a x δ j
 good-later-mu {Γ} {ts} {A} S a x time-x δ (suc k′) j k≤j =
   let k = suc k′ in
   let gSa = good-later{ts = cons Later ts}
-              (good (S a) (sucˢ x)) time-x (muˢ S δ , δ)
+              (good (S a) (sucˢ x)) time-x (μᵒ S δ , δ)
               j k k≤j in
-  let gSaz = good (S a) zeroˢ (muˢ S δ , ↓ᵈ j x δ) (suc k′) k ≤-refl in
-  let gSaz2 = good (S a) zeroˢ (muˢ S (↓ᵈ j x δ) , ↓ᵈ j x δ) k k ≤-refl in
+  let gSaz = good (S a) zeroˢ (μᵒ S δ , ↓ᵈ j x δ) (suc k′) k ≤-refl in
+  let gSaz2 = good (S a) zeroˢ (μᵒ S (↓ᵈ j x δ) , ↓ᵈ j x δ) k k ≤-refl in
   let IH = cong-↓ (λ a → congr (S a)
            ((λ a → good-later-mu S a x time-x δ k′ j (≤-trans (n≤1+n _) k≤j))
             , ≡ᵈ-refl)) a in
 
-  ↓ᵒ (suc k) (muˢ S δ a)                            ⩦⟨ lemma19a S a (suc k) δ ⟩
-  ↓ᵒ (suc k) (# (S a) (muˢ S δ , δ))                                   ⩦⟨ gSa ⟩
-  ↓ᵒ (suc k) (# (S a) (muˢ S δ , ↓ᵈ j x δ))                           ⩦⟨ gSaz ⟩
-  ↓ᵒ (suc k) (# (S a) (↓ᵖ k (muˢ S δ) , ↓ᵈ j x δ))                      ⩦⟨ IH ⟩
-  ↓ᵒ (suc k) (# (S a) (↓ᵖ k (muˢ S (↓ᵈ j x δ)) , ↓ᵈ j x δ))   ⩦⟨ ≡ᵒ-sym gSaz2 ⟩
-  ↓ᵒ (suc k) (# (S a) (muˢ S (↓ᵈ j x δ) , (↓ᵈ j x δ)))
+  ↓ᵒ (suc k) (μᵒ S δ a)                            ⩦⟨ lemma19a S a (suc k) δ ⟩
+  ↓ᵒ (suc k) (# (S a) (μᵒ S δ , δ))                                   ⩦⟨ gSa ⟩
+  ↓ᵒ (suc k) (# (S a) (μᵒ S δ , ↓ᵈ j x δ))                           ⩦⟨ gSaz ⟩
+  ↓ᵒ (suc k) (# (S a) (↓ᵖ k (μᵒ S δ) , ↓ᵈ j x δ))                      ⩦⟨ IH ⟩
+  ↓ᵒ (suc k) (# (S a) (↓ᵖ k (μᵒ S (↓ᵈ j x δ)) , ↓ᵈ j x δ))   ⩦⟨ ≡ᵒ-sym gSaz2 ⟩
+  ↓ᵒ (suc k) (# (S a) (μᵒ S (↓ᵈ j x δ) , (↓ᵈ j x δ)))
                               ⩦⟨ ≡ᵒ-sym (lemma19a S a (suc k) (↓ᵈ j x δ)) ⟩
-  ↓ᵒ (suc k) (muˢ S (↓ᵈ j x δ) a)   ∎
+  ↓ᵒ (suc k) (μᵒ S (↓ᵈ j x δ) a)   ∎
 
 goodnesses-mu : ∀{Γ}{ts : Times Γ}{A}
    → (S : A → Setˢ (A ∷ Γ) (cons Later ts))
    → (a : A)
-   → goodnesses ts (λ δ → muˢ S δ a)
+   → goodnesses ts (λ δ → μᵒ S δ a)
 goodnesses-mu {Γ} {ts} {A} S a x
     with timeof x ts in time-x
 ... | Now = λ δ j k k≤j → good-now-mu S a x time-x δ k j k≤j
@@ -928,7 +939,7 @@ cong-toFun{A}{Γ}{δ}{δ′} S δ=δ′ P Q a P=Q =
 congruent-mu : ∀{Γ}{ts : Times Γ}{A}
    (P : A → Setˢ (A ∷ Γ) (cons Later ts))
    (a : A)
-   → congruent (λ δ → muˢ P δ a)
+   → congruent (λ δ → μᵒ P δ a)
 congruent-mu{Γ}{ts}{A} P a {δ}{δ′} δ=δ′ = ≡ᵒ-intro Goal
   where
   Goal : (k : ℕ) → μₒ (toFun δ P) a k ⇔ μₒ (toFun δ′ P) a k
@@ -939,7 +950,7 @@ congruent-mu{Γ}{ts}{A} P a {δ}{δ′} δ=δ′ = ≡ᵒ-intro Goal
    → (A → Setˢ (A ∷ Γ) (cons Later ts))
    → (A → Setˢ Γ ts)
 μˢ {Γ}{ts}{A} P a =
-  record { # = λ δ → muˢ P δ a
+  record { # = λ δ → μᵒ P δ a
          ; good = goodnesses-mu P a
          ; congr = congruent-mu P a
          }
@@ -1007,7 +1018,7 @@ const-good{Γ}{ts} S x
 ... | Now = λ δ j k k≤j → ≡ᵒ-refl refl
 ... | Later = λ δ j k k≤j → ≡ᵒ-refl refl
 
-_ˢ : ∀{Γ}{ts : Times Γ} → Set → Setˢ Γ ts
+_ˢ : ∀{Γ} → Set → Setˢ Γ (laters Γ)
 S ˢ = record { # = λ δ → S ᵒ
              ; good = λ x → const-good S x
              ; congr = λ d=d′ → ≡ᵒ-refl refl
@@ -1039,11 +1050,11 @@ abstract
       (λ { (si<k , Ssi , Tsi) → si<k , ((si<k , Ssi) , (si<k , Tsi))})
       (λ { (si<k , (_ , Ssi) , _ , Tsi) → si<k , Ssi , Tsi})
 
-  cong-× : ∀{S S′ T T′ : Setᵒ}
+  cong-×ᵒ : ∀{S S′ T T′ : Setᵒ}
      → S ≡ᵒ S′
      → T ≡ᵒ T′
      → S ×ᵒ T ≡ᵒ S′ ×ᵒ T′
-  cong-× {S}{S′}{T}{T′} SS′ TT′ k = ⇔-intro to fro
+  cong-×ᵒ {S}{S′}{T}{T′} SS′ TT′ k = ⇔-intro to fro
     where
     to : # (S ×ᵒ T) k → # (S′ ×ᵒ T′) k
     to (Sk , Tk) = (⇔-to (SS′ k) Sk) , (⇔-to (TT′ k) Tk)
@@ -1061,9 +1072,9 @@ good-pair {Γ}{ts₁}{ts₂} S T {A} x
     let gT = good-now (good T x) time-x2 δ j k k≤j in
     ↓ᵒ k (# S δ ×ᵒ # T δ)                                         ⩦⟨ down-× ⟩ 
     ↓ᵒ k (↓ᵒ k (# S δ) ×ᵒ ↓ᵒ k (# T δ))
-                                     ⩦⟨ cong-↓ᵒ k (cong-× gS (≡ᵒ-refl refl)) ⟩ 
+                                     ⩦⟨ cong-↓ᵒ k (cong-×ᵒ gS (≡ᵒ-refl refl)) ⟩ 
     ↓ᵒ k (↓ᵒ k (# S (↓ᵈ j x δ)) ×ᵒ ↓ᵒ k (# T δ))
-                                     ⩦⟨ cong-↓ᵒ k (cong-× (≡ᵒ-refl refl) gT) ⟩ 
+                                     ⩦⟨ cong-↓ᵒ k (cong-×ᵒ (≡ᵒ-refl refl) gT) ⟩ 
     ↓ᵒ k (↓ᵒ k (# S (↓ᵈ j x δ)) ×ᵒ ↓ᵒ k (# T (↓ᵈ j x δ)))   ⩦⟨ ≡ᵒ-sym down-× ⟩
     ↓ᵒ k (# S (↓ᵈ j x δ) ×ᵒ # T (↓ᵈ j x δ))  ∎
 ... | Now | Later = λ δ j k k≤j →
@@ -1072,7 +1083,7 @@ good-pair {Γ}{ts₁}{ts₂} S T {A} x
     ↓ᵒ k (# S δ ×ᵒ # T δ)                             ⩦⟨ ≡ᵒ-sym (lemma17ᵒ k) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (# S δ ×ᵒ # T δ))                ⩦⟨ cong-↓ᵒ k down-× ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (↓ᵒ (suc k) (# S δ) ×ᵒ ↓ᵒ (suc k) (# T δ)))
-                   ⩦⟨ cong-↓ᵒ k (cong-↓ᵒ (suc k) (cong-× (≡ᵒ-refl refl) gT)) ⟩ 
+                   ⩦⟨ cong-↓ᵒ k (cong-↓ᵒ (suc k) (cong-×ᵒ (≡ᵒ-refl refl) gT)) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (↓ᵒ (suc k) (# S δ) ×ᵒ ↓ᵒ (suc k) (# T (↓ᵈ j x δ))))
                                                 ⩦⟨ ≡ᵒ-sym (cong-↓ᵒ k down-×) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (# S δ ×ᵒ # T (↓ᵈ j x δ)))
@@ -1080,7 +1091,7 @@ good-pair {Γ}{ts₁}{ts₂} S T {A} x
     ↓ᵒ k (# S δ ×ᵒ # T (↓ᵈ j x δ))
                ⩦⟨ down-× ⟩ 
     ↓ᵒ k (↓ᵒ k (# S δ) ×ᵒ ↓ᵒ k (# T (↓ᵈ j x δ)))
-               ⩦⟨ cong-↓ᵒ k (cong-× gS (≡ᵒ-refl refl)) ⟩ 
+               ⩦⟨ cong-↓ᵒ k (cong-×ᵒ gS (≡ᵒ-refl refl)) ⟩ 
     ↓ᵒ k (↓ᵒ k (# S (↓ᵈ j x δ)) ×ᵒ ↓ᵒ k (# T (↓ᵈ j x δ)))
                ⩦⟨ ≡ᵒ-sym down-× ⟩ 
     ↓ᵒ k (# S (↓ᵈ j x δ) ×ᵒ # T (↓ᵈ j x δ))    ∎
@@ -1090,7 +1101,7 @@ good-pair {Γ}{ts₁}{ts₂} S T {A} x
     ↓ᵒ k (# S δ ×ᵒ # T δ)                             ⩦⟨ ≡ᵒ-sym (lemma17ᵒ k) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (# S δ ×ᵒ # T δ))                ⩦⟨ cong-↓ᵒ k down-× ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (↓ᵒ (suc k) (# S δ) ×ᵒ ↓ᵒ (suc k) (# T δ)))
-                   ⩦⟨ cong-↓ᵒ k (cong-↓ᵒ (suc k) (cong-× gS (≡ᵒ-refl refl))) ⟩ 
+                   ⩦⟨ cong-↓ᵒ k (cong-↓ᵒ (suc k) (cong-×ᵒ gS (≡ᵒ-refl refl))) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (↓ᵒ (suc k) (# S (↓ᵈ j x δ)) ×ᵒ ↓ᵒ (suc k) (# T δ)))
                                                 ⩦⟨ ≡ᵒ-sym (cong-↓ᵒ k down-×) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (# S (↓ᵈ j x δ) ×ᵒ # T δ))
@@ -1098,7 +1109,7 @@ good-pair {Γ}{ts₁}{ts₂} S T {A} x
     ↓ᵒ k (# S (↓ᵈ j x δ) ×ᵒ # T δ)
                ⩦⟨ down-× ⟩ 
     ↓ᵒ k (↓ᵒ k (# S (↓ᵈ j x δ)) ×ᵒ ↓ᵒ k (# T δ))
-               ⩦⟨ cong-↓ᵒ k (cong-× (≡ᵒ-refl refl) gT) ⟩ 
+               ⩦⟨ cong-↓ᵒ k (cong-×ᵒ (≡ᵒ-refl refl) gT) ⟩ 
     ↓ᵒ k (↓ᵒ k (# S (↓ᵈ j x δ)) ×ᵒ ↓ᵒ k (# T (↓ᵈ j x δ)))
                ⩦⟨ ≡ᵒ-sym down-× ⟩ 
     ↓ᵒ k (# S (↓ᵈ j x δ) ×ᵒ # T (↓ᵈ j x δ))    ∎
@@ -1107,7 +1118,7 @@ good-pair {Γ}{ts₁}{ts₂} S T {A} x
     let gT = good-later (good T x) time-x2 δ j k k≤j in
     ↓ᵒ (suc k) (# S δ ×ᵒ # T δ)                ⩦⟨ down-× ⟩ 
     ↓ᵒ (suc k) (↓ᵒ (suc k) (# S δ) ×ᵒ ↓ᵒ (suc k) (# T δ))
-                   ⩦⟨ cong-↓ᵒ (suc k) (cong-× gS gT) ⟩ 
+                   ⩦⟨ cong-↓ᵒ (suc k) (cong-×ᵒ gS gT) ⟩ 
     ↓ᵒ (suc k) (↓ᵒ (suc k) (# S (↓ᵈ j x δ))
                                   ×ᵒ ↓ᵒ (suc k) (# T (↓ᵈ j x δ)))
                                                 ⩦⟨ ≡ᵒ-sym down-× ⟩ 
@@ -1121,7 +1132,7 @@ _×ˢ_ : ∀{Γ}{ts₁ ts₂ : Times Γ}
    → Setˢ Γ (combine ts₁ ts₂)
 S ×ˢ T = record { # = λ δ → # S δ ×ᵒ # T δ
                 ; good = good-pair S T
-                ; congr = λ d=d′ → cong-× (congr S d=d′) (congr T d=d′)
+                ; congr = λ d=d′ → cong-×ᵒ (congr S d=d′) (congr T d=d′)
                 }
 
 {---------------------- Disjunction -----------------------------------------}
@@ -1137,11 +1148,11 @@ abstract
       λ { (x , inj₁ x₁) → x , inj₁ (proj₂ x₁)
         ; (x , inj₂ y) → x , inj₂ (proj₂ y)}
 
-  cong-⊎ : ∀{S S′ T T′ : Setᵒ}
+  cong-⊎ᵒ : ∀{S S′ T T′ : Setᵒ}
      → S ≡ᵒ S′
      → T ≡ᵒ T′
      → S ⊎ᵒ T ≡ᵒ S′ ⊎ᵒ T′
-  cong-⊎ {S}{S′}{T}{T′} SS′ TT′ k = ⇔-intro to fro
+  cong-⊎ᵒ {S}{S′}{T}{T′} SS′ TT′ k = ⇔-intro to fro
     where
     to : # (S ⊎ᵒ T) k → # (S′ ⊎ᵒ T′) k
     to (inj₁ x) = inj₁ (proj₁ (SS′ k) x)
@@ -1161,9 +1172,9 @@ good-sum {Γ}{ts₁}{ts₂} S T {A} x
     let gT = good-now (good T x) time-x2 δ j k k≤j in
     ↓ᵒ k (# S δ ⊎ᵒ # T δ)                                         ⩦⟨ down-⊎ ⟩ 
     ↓ᵒ k (↓ᵒ k (# S δ) ⊎ᵒ ↓ᵒ k (# T δ))
-                                     ⩦⟨ cong-↓ᵒ k (cong-⊎ gS (≡ᵒ-refl refl)) ⟩ 
+                                     ⩦⟨ cong-↓ᵒ k (cong-⊎ᵒ gS (≡ᵒ-refl refl)) ⟩ 
     ↓ᵒ k (↓ᵒ k (# S (↓ᵈ j x δ)) ⊎ᵒ ↓ᵒ k (# T δ))
-                                     ⩦⟨ cong-↓ᵒ k (cong-⊎ (≡ᵒ-refl refl) gT) ⟩ 
+                                     ⩦⟨ cong-↓ᵒ k (cong-⊎ᵒ (≡ᵒ-refl refl) gT) ⟩ 
     ↓ᵒ k (↓ᵒ k (# S (↓ᵈ j x δ)) ⊎ᵒ ↓ᵒ k (# T (↓ᵈ j x δ)))   ⩦⟨ ≡ᵒ-sym down-⊎ ⟩
     ↓ᵒ k (# S (↓ᵈ j x δ) ⊎ᵒ # T (↓ᵈ j x δ))  ∎
 ... | Now | Later = λ δ j k k≤j →
@@ -1172,7 +1183,7 @@ good-sum {Γ}{ts₁}{ts₂} S T {A} x
     ↓ᵒ k (# S δ ⊎ᵒ # T δ)                             ⩦⟨ ≡ᵒ-sym (lemma17ᵒ k) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (# S δ ⊎ᵒ # T δ))                ⩦⟨ cong-↓ᵒ k down-⊎ ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (↓ᵒ (suc k) (# S δ) ⊎ᵒ ↓ᵒ (suc k) (# T δ)))
-                   ⩦⟨ cong-↓ᵒ k (cong-↓ᵒ (suc k) (cong-⊎ (≡ᵒ-refl refl) gT)) ⟩ 
+                   ⩦⟨ cong-↓ᵒ k (cong-↓ᵒ (suc k) (cong-⊎ᵒ (≡ᵒ-refl refl) gT)) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (↓ᵒ (suc k) (# S δ) ⊎ᵒ ↓ᵒ (suc k) (# T (↓ᵈ j x δ))))
                                                 ⩦⟨ ≡ᵒ-sym (cong-↓ᵒ k down-⊎) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (# S δ ⊎ᵒ # T (↓ᵈ j x δ)))
@@ -1180,7 +1191,7 @@ good-sum {Γ}{ts₁}{ts₂} S T {A} x
     ↓ᵒ k (# S δ ⊎ᵒ # T (↓ᵈ j x δ))
                ⩦⟨ down-⊎ ⟩ 
     ↓ᵒ k (↓ᵒ k (# S δ) ⊎ᵒ ↓ᵒ k (# T (↓ᵈ j x δ)))
-               ⩦⟨ cong-↓ᵒ k (cong-⊎ gS (≡ᵒ-refl refl)) ⟩ 
+               ⩦⟨ cong-↓ᵒ k (cong-⊎ᵒ gS (≡ᵒ-refl refl)) ⟩ 
     ↓ᵒ k (↓ᵒ k (# S (↓ᵈ j x δ)) ⊎ᵒ ↓ᵒ k (# T (↓ᵈ j x δ)))
                ⩦⟨ ≡ᵒ-sym down-⊎ ⟩ 
     ↓ᵒ k (# S (↓ᵈ j x δ) ⊎ᵒ # T (↓ᵈ j x δ))    ∎
@@ -1190,7 +1201,7 @@ good-sum {Γ}{ts₁}{ts₂} S T {A} x
     ↓ᵒ k (# S δ ⊎ᵒ # T δ)                             ⩦⟨ ≡ᵒ-sym (lemma17ᵒ k) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (# S δ ⊎ᵒ # T δ))                ⩦⟨ cong-↓ᵒ k down-⊎ ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (↓ᵒ (suc k) (# S δ) ⊎ᵒ ↓ᵒ (suc k) (# T δ)))
-                   ⩦⟨ cong-↓ᵒ k (cong-↓ᵒ (suc k) (cong-⊎ gS (≡ᵒ-refl refl))) ⟩ 
+                   ⩦⟨ cong-↓ᵒ k (cong-↓ᵒ (suc k) (cong-⊎ᵒ gS (≡ᵒ-refl refl))) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (↓ᵒ (suc k) (# S (↓ᵈ j x δ)) ⊎ᵒ ↓ᵒ (suc k) (# T δ)))
                                                 ⩦⟨ ≡ᵒ-sym (cong-↓ᵒ k down-⊎) ⟩ 
     ↓ᵒ k (↓ᵒ (suc k) (# S (↓ᵈ j x δ) ⊎ᵒ # T δ))
@@ -1198,7 +1209,7 @@ good-sum {Γ}{ts₁}{ts₂} S T {A} x
     ↓ᵒ k (# S (↓ᵈ j x δ) ⊎ᵒ # T δ)
                ⩦⟨ down-⊎ ⟩ 
     ↓ᵒ k (↓ᵒ k (# S (↓ᵈ j x δ)) ⊎ᵒ ↓ᵒ k (# T δ))
-               ⩦⟨ cong-↓ᵒ k (cong-⊎ (≡ᵒ-refl refl) gT) ⟩ 
+               ⩦⟨ cong-↓ᵒ k (cong-⊎ᵒ (≡ᵒ-refl refl) gT) ⟩ 
     ↓ᵒ k (↓ᵒ k (# S (↓ᵈ j x δ)) ⊎ᵒ ↓ᵒ k (# T (↓ᵈ j x δ)))
                ⩦⟨ ≡ᵒ-sym down-⊎ ⟩ 
     ↓ᵒ k (# S (↓ᵈ j x δ) ⊎ᵒ # T (↓ᵈ j x δ))    ∎
@@ -1207,7 +1218,7 @@ good-sum {Γ}{ts₁}{ts₂} S T {A} x
     let gT = good-later (good T x) time-x2 δ j k k≤j in
     ↓ᵒ (suc k) (# S δ ⊎ᵒ # T δ)                ⩦⟨ down-⊎ ⟩ 
     ↓ᵒ (suc k) (↓ᵒ (suc k) (# S δ) ⊎ᵒ ↓ᵒ (suc k) (# T δ))
-                   ⩦⟨ cong-↓ᵒ (suc k) (cong-⊎ gS gT) ⟩ 
+                   ⩦⟨ cong-↓ᵒ (suc k) (cong-⊎ᵒ gS gT) ⟩ 
     ↓ᵒ (suc k) (↓ᵒ (suc k) (# S (↓ᵈ j x δ))
                                   ⊎ᵒ ↓ᵒ (suc k) (# T (↓ᵈ j x δ)))
                                                 ⩦⟨ ≡ᵒ-sym down-⊎ ⟩ 
@@ -1221,7 +1232,7 @@ _⊎ˢ_ : ∀{Γ}{ts₁ ts₂ : Times Γ}
    → Setˢ Γ (combine ts₁ ts₂)
 S ⊎ˢ T = record { # = λ δ → # S δ ⊎ᵒ # T δ
                 ; good = good-sum S T
-                ; congr = λ d=d′ → cong-⊎ (congr S d=d′) (congr T d=d′)
+                ; congr = λ d=d′ → cong-⊎ᵒ (congr S d=d′) (congr T d=d′)
                 }
 
 {---------------------- Implication -----------------------------------------}

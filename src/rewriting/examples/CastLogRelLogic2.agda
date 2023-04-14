@@ -57,25 +57,34 @@ pre-ℰ A M = (pre-𝒱 A M ⊎ˢ (reducible M)ˢ ⊎ˢ (Blame M)ˢ)    -- Progr
 ℰ⟦_⟧ : (A : Type) → Term → Setᵒ
 ℰ⟦ A ⟧ M = # ((μˢ ℰ⊎𝒱) (inj₂ (A , M))) ttᵖ
 
--- ℰ⊎𝒱-fixpointᵒ : ∀ X → (μᵒ ℰ⊎𝒱) X ≡ᵒ ((fun ℰ⊎𝒱) (μᵒ ℰ⊎𝒱)) X
--- ℰ⊎𝒱-fixpointᵒ X = apply-≡ᵖ (fixpoint ℰ⊎𝒱) X 
+foo : ∀ (X : ℰ⊎𝒱-type) → Type → Term → ⊤
+foo X A M =
+   let m = #(μˢ ℰ⊎𝒱 X) ttᵖ in
+   let n = #(ℰ⊎𝒱 X) {!!} in
+   let x = ℰ⟦ A ⟧ M in
+   let fp = ≡ˢ-elim (fixpointˢ {[]}{∅}{ℰ⊎𝒱-type} ℰ⊎𝒱 X) ttᵖ in
+   {!!}
 
--- progress : Type → Term → Setᵒ
--- progress A M = (𝒱⟦ A ⟧ M) ⊎ᵒ (reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ
+ℰ⊎𝒱-fixpointᵒ : ∀ X
+   → μᵒ ℰ⊎𝒱 ttᵖ X ≡ᵒ # (ℰ⊎𝒱 X) ((μᵒ ℰ⊎𝒱 ttᵖ) , ttᵖ)
+ℰ⊎𝒱-fixpointᵒ X = ≡ˢ-elim (fixpointˢ {[]}{∅}{ℰ⊎𝒱-type} ℰ⊎𝒱 X) ttᵖ 
 
--- preservation : Type → Term → Setᵒ
--- preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)))
+progress : Type → Term → Setᵒ
+progress A M = (𝒱⟦ A ⟧ M) ⊎ᵒ (reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ
 
--- ℰ-stmt : ∀{A}{M}
---   → ℰ⟦ A ⟧ M ≡ᵒ progress A M ×ᵒ preservation A M
--- ℰ-stmt {A}{M} =
---   ℰ⟦ A ⟧ M                                                  ⩦⟨ ≡ᵒ-refl refl ⟩
---   (μᵒ ℰ⊎𝒱) (inj₂ (A , M))                  ⩦⟨ ℰ⊎𝒱-fixpointᵒ (inj₂ (A , M)) ⟩
---   ((fun ℰ⊎𝒱) (μᵒ ℰ⊎𝒱)) (inj₂ (A , M))
---                   ⩦⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (ℰ⊎𝒱-fixpointᵒ (inj₁ (A , M))))
---                                        (≡ᵒ-refl refl)) (≡ᵒ-refl refl) ⟩
---   progress A M ×ᵒ preservation A M
---   ∎
+preservation : Type → Term → Setᵒ
+preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)))
+
+ℰ-stmt : ∀{A}{M}
+  → ℰ⟦ A ⟧ M ≡ᵒ progress A M ×ᵒ preservation A M
+ℰ-stmt {A}{M} =
+  ℰ⟦ A ⟧ M                                                  ⩦⟨ ≡ᵒ-refl refl ⟩
+  μᵒ ℰ⊎𝒱 ttᵖ (inj₂ (A , M))                 ⩦⟨ ℰ⊎𝒱-fixpointᵒ (inj₂ (A , M)) ⟩
+  # (ℰ⊎𝒱 (inj₂ (A , M))) ((μᵒ ℰ⊎𝒱 ttᵖ) , ttᵖ)
+              ⩦⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (ℰ⊎𝒱-fixpointᵒ (inj₁ (A , M))))
+                                  (≡ᵒ-refl refl)) (≡ᵒ-refl refl) ⟩
+  progress A M ×ᵒ preservation A M
+  ∎
 
 -- ℰ-progress : ∀ {𝓟}{A}{M}
 --   → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
