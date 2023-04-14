@@ -948,7 +948,7 @@ abstract
   
 good-all : ∀{Γ}{ts : Times Γ}{A : Set}
    (P : A → Setˢ Γ ts)
-  → goodnesses ts (λ δ → ∀ᵒ-syntax (λ a → # (P a) δ))
+  → goodnesses ts (λ δ → ∀ᵒ[ a ] # (P a) δ)
 good-all {Γ}{ts}{A} P x
     with timeof x ts in time-x
 ... | Now = λ δ j k k≤j →
@@ -978,6 +978,56 @@ good-all {Γ}{ts}{A} P x
 ∀ˢ-syntax = ∀ˢ
 infix 1 ∀ˢ-syntax
 syntax ∀ˢ-syntax (λ x → P) = ∀ˢ[ x ] P
+
+{---------------------- Exists -----------------------------------------}
+
+abstract
+  down-∃ : ∀{A}{P : Predᵒ A}{k}{{_ : Inhabited A}}
+    → ↓ᵒ k (∃ᵒ[ a ] P a) ≡ᵒ ↓ᵒ k (∃ᵒ[ a ] ↓ᵒ k (P a))
+  down-∃ {A} {P} {k} zero = (λ x → tt) , (λ x → tt)
+  down-∃ {A} {P} {k} (suc i) =
+    (λ {(a , (b , c)) → a , (b , (a , c))})
+    , λ { (a , b , c) → a , b , proj₂ c}
+
+  cong-∃ : ∀{A}{P Q : Predᵒ A}{{_ : Inhabited A}}
+    → (∀ a → P a ≡ᵒ Q a)
+    → (∃ᵒ P) ≡ᵒ (∃ᵒ Q)
+  cong-∃ {A} {P} {Q} P=Q i =
+      (λ {(a , b) → a , proj₁ (P=Q a i) b})
+      , λ {(a , b) → a , (proj₂ (P=Q a i) b)}
+
+good-exists : ∀{Γ}{ts : Times Γ}{A : Set}{{_ : Inhabited A}}
+   (P : A → Setˢ Γ ts)
+  → goodnesses ts (λ δ → ∃ᵒ[ a ] # (P a) δ)
+good-exists {Γ}{ts}{A} P x
+    with timeof x ts in time-x
+... | Now = λ δ j k k≤j →
+      ↓ᵒ k (∃ᵒ[ a ] # (P a) δ)                                      ⩦⟨ down-∃ ⟩
+      ↓ᵒ k (∃ᵒ[ a ] ↓ᵒ k (# (P a) δ))
+          ⩦⟨ cong-↓ᵒ k (cong-∃(λ a → good-now(good(P a) x) time-x δ j k k≤j)) ⟩
+      ↓ᵒ k (∃ᵒ[ a ] ↓ᵒ k (# (P a) (↓ᵈ j x δ)))               ⩦⟨ ≡ᵒ-sym down-∃ ⟩
+      ↓ᵒ k (∃ᵒ[ a ] # (P a) (↓ᵈ j x δ))   ∎
+... | Later = λ δ j k k≤j →
+      ↓ᵒ (suc k) (∃ᵒ[ a ] # (P a) δ)                                ⩦⟨ down-∃ ⟩
+      ↓ᵒ (suc k) (∃ᵒ[ a ] ↓ᵒ (suc k) (# (P a) δ))
+                      ⩦⟨ cong-↓ᵒ (suc k) (cong-∃
+                          (λ a → good-later (good (P a) x) time-x δ j k k≤j)) ⟩
+      ↓ᵒ (suc k) (∃ᵒ[ a ] ↓ᵒ (suc k) (# (P a) (↓ᵈ j x δ)))   ⩦⟨ ≡ᵒ-sym down-∃ ⟩
+      ↓ᵒ (suc k) (∃ᵒ[ a ] # (P a) (↓ᵈ j x δ))            ∎
+
+∃ˢ : ∀{Γ}{ts : Times Γ}{A : Set}{{_ : Inhabited A}}
+   → (A → Setˢ Γ ts)
+   → Setˢ Γ ts
+∃ˢ{Γ}{ts}{A} P =
+  record { # = λ δ → ∃ᵒ[ a ] # (P a) δ
+         ; good = good-exists P
+         ; congr = λ d=d′ → cong-∃ λ a → congr (P a) d=d′
+         }
+
+∃ˢ-syntax = ∃ˢ
+infix 1 ∃ˢ-syntax
+syntax ∃ˢ-syntax (λ x → P) = ∃ˢ[ x ] P
+
 
 {---------------------- Constant -----------------------------------------}
 

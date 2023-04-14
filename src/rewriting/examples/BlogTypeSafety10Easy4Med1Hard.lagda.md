@@ -386,21 +386,22 @@ Let's revisit the example of defining multi-step reduction.  The
 non-recursive `mreduce` predicate is defined as follows.
 
 ```
-mreduce : Term × Term → Setˢ (Term × Term) [] (cons Later ∅)
-mreduce (M , N) = (M ≡ N)ˢ ⊎ˢ (∃ˢ[ L ] (M —→ L)ˢ ×ˢ ▷ˢ (recurˢ (L , N)))
+mreduce : Term × Term → Setˢ (Term × Term ∷ []) (cons Later ∅)
+mreduce (M , N) = (M ≡ N)ˢ ⊎ˢ (∃ˢ[ L ] (M —→ L)ˢ ×ˢ ▷ˢ ((L , N) ∈ zeroˢ))
 ```
 
-Note that the `R` parameter has become implicit; it is hidden inside
-the `RecSetᵒ` type. Also the application `R (L , N)` is replaced by
-`▷ˢ (recurˢ (L , N))`.
+Note that the `R` parameter has become implicit; it has moved into the
+environment. Also the application `R (L , N)` is replaced by
+`▷ˢ ((L , N) ∈ zeroˢ)`, where the de Bruijn index `zeroˢ` refers to
+the predicate `R` in the environment.
 
-We define the recursive predicate `M —→* N` by applying `recursiveᵒ`
+We define the recursive predicate `M —→* N` by applying `μᵒ`
 to `mreduce`.
 
 ```
 infix 2 _—→*_
 _—→*_ : Term → Term → Setᵒ
-M —→* N = recursiveᵒ mreduce (M , N)
+M —→* N = μᵒ mreduce (M , N)
 ```
 
 Here are a couple uses of the multi-step reduction relation.
