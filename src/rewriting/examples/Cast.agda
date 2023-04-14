@@ -65,9 +65,9 @@ data Ground : Set where
        ------
        Ground
 
-typeofGround : Ground → Type
-typeofGround ($ᵍ ι) = $ₜ ι
-typeofGround ★⇒★ = ★ ⇒ ★
+gnd⇒ty : Ground → Type
+gnd⇒ty ($ᵍ ι) = $ₜ ι
+gnd⇒ty ★⇒★ = ★ ⇒ ★
 
 _≡ᵍ_ : ∀ (G : Ground) (H : Ground) → Dec (G ≡ H)
 ($ᵍ ι) ≡ᵍ ($ᵍ ι′)
@@ -197,15 +197,15 @@ data _⊢_⦂_ where
     → Γ ⊢ ƛ N ⦂ (A ⇒ B)
 
   ⊢⟨!⟩ : ∀{Γ M G}
-    → Γ ⊢ M ⦂ typeofGround G
+    → Γ ⊢ M ⦂ gnd⇒ty G
       --------------------
     → Γ ⊢ M ⟨ G !⟩ ⦂ ★
 
   ⊢⟨?⟩ : ∀{Γ M}
     → Γ ⊢ M ⦂ ★
     → (H : Ground)
-      -----------------------------
-    → Γ ⊢ M ⟨ H ?⟩ ⦂ typeofGround H
+      -----------------------
+    → Γ ⊢ M ⟨ H ?⟩ ⦂ gnd⇒ty H
 
   ⊢blame : ∀{Γ A}
       ---------------

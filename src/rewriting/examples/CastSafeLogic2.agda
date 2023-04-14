@@ -37,18 +37,12 @@ compatibility-var {Γ}{A}{x} ∋x γ =
 compatible-nat : ∀{Γ}{n : ℕ}
     --------------------------
    → Γ ⊨ ($ (Num n)) ⦂ ($ₜ ′ℕ)
-compatible-nat {Γ}{n} γ =
-     let ⊢𝒱n : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ $ₜ ′ℕ ⟧ ($ (Num n))
-         ⊢𝒱n = ⊢ᵒ-intro λ { zero x → tt ; (suc k) x → refl} in
-     𝒱⇒ℰ ⊢𝒱n
+compatible-nat {Γ}{n} γ = 𝒱⇒ℰ (substᵒ (≡ᵒ-sym 𝒱-base) (constᵒI refl))
 
 compatible-bool : ∀{Γ}{b : 𝔹}
     ---------------------------
    → Γ ⊨ ($ (Bool b)) ⦂ ($ₜ ′𝔹)
-compatible-bool {Γ}{b} γ =
-     let ⊢𝒱b : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ $ₜ ′𝔹 ⟧ ($ (Bool b))
-         ⊢𝒱b = ⊢ᵒ-intro λ { zero x → tt ; (suc k) x → refl} in
-     𝒱⇒ℰ ⊢𝒱b
+compatible-bool {Γ}{b} γ = 𝒱⇒ℰ (substᵒ (≡ᵒ-sym 𝒱-base) (constᵒI refl))
 
 compatible-app : ∀{Γ}{A}{B}{L}{M}
     → Γ ⊨ L ⦂ (A ⇒ B)
@@ -84,7 +78,7 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M γ = ⊢ℰLM
          ⊢𝒱W = Zᵒ in
      ⊢ᵒ-sucP ⊢𝒱W λ 𝒱Wsn →
      let w = 𝒱⇒Value A W 𝒱Wsn in
-     V-fun-elim ⊢𝒱V λ {N′ refl 𝒱W→ℰNW →
+     𝒱-fun-elim ⊢𝒱V λ {N′ refl 𝒱W→ℰNW →
      let prog : 𝓟₂ (ƛ N′) W ⊢ᵒ progress B (ƛ N′ · W)
          prog = (inj₂ᵒ (inj₁ᵒ (constᵒI (_ , (β w))))) in
      let pres : 𝓟₂ (ƛ N′) W ⊢ᵒ preservation B (ƛ N′ · W)
@@ -103,7 +97,7 @@ compatible-lambda {Γ}{A}{B}{N} ⊨N γ = ⊢ℰγλN
  where
  ⊢ℰγλN : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ A ⇒ B ⟧ (ƛ (⟪ ext γ ⟫ N))
  ⊢ℰγλN =
-   𝒱⇒ℰ (substᵒ (≡ᵒ-sym V-fun) (Λᵒ[ W ] →ᵒI ▷𝓔N[W]))
+   𝒱⇒ℰ (𝒱-fun-intro (Λᵒ[ W ] →ᵒI ▷𝓔N[W]))
    where
    ▷𝓔N[W] : ∀{W} → ▷ᵒ 𝒱⟦ A ⟧ W ∷ 𝓖⟦ Γ ⟧ γ  ⊢ᵒ  ▷ᵒ ℰ⟦ B ⟧ ((⟪ ext γ ⟫ N) [ W ])
    ▷𝓔N[W] {W} =
@@ -112,24 +106,24 @@ compatible-lambda {Γ}{A}{B}{N} ⊨N γ = ⊢ℰγλN
      appᵒ (Sᵒ ⊢𝒱W→ℰN[W]) Zᵒ
 
 compatible-inject : ∀{Γ}{G}{M}
-  → Γ ⊨ M ⦂ typeofGround G
+  → Γ ⊨ M ⦂ gnd⇒ty G
     --------------------
   → Γ ⊨ M ⟨ G !⟩ ⦂ ★
 compatible-inject {Γ}{G}{M} ⊨M γ = ℰMg!
  where
- ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ typeofGround G ⟧ (⟪ γ ⟫ M)
+ ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ gnd⇒ty G ⟧ (⟪ γ ⟫ M)
  ⊢ℰM = ⊨M γ
   
  ℰMg! : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ ★ ⟧ ((⟪ γ ⟫ M) ⟨ G !⟩)
  ℰMg! = ℰ-frame {F = □⟨ G !⟩} ⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVg!))
   where
-  𝓟₁ = λ V → 𝒱⟦ typeofGround G ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
+  𝓟₁ = λ V → 𝒱⟦ gnd⇒ty G ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
   ⊢ℰVg! : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ ★ ⟧ (V ⟨ G !⟩)
   ⊢ℰVg!{V} =
    ⊢ᵒ-sucP Zᵒ λ 𝒱Vsn →
-   let v = 𝒱⇒Value (typeofGround G) V 𝒱Vsn in
-   𝒱⇒ℰ (substᵒ (≡ᵒ-sym V-dyn) (constᵒI v ,ᵒ (monoᵒ Zᵒ)))
-
+   let v = 𝒱⇒Value (gnd⇒ty G) V 𝒱Vsn in
+   𝒱⇒ℰ (𝒱-dyn-intro (constᵒI v) (monoᵒ Zᵒ))
+   
 red-inj-proj : ∀{G}{H}{W}
    → Value W
    → reducible ((W ⟨ G !⟩) ⟨ H ?⟩)
@@ -141,27 +135,27 @@ red-inj-proj {G} {H} {W} w
 compatible-project : ∀{Γ}{H}{M}
   → Γ ⊨ M ⦂ ★
     -----------------------------
-  → Γ ⊨ M ⟨ H ?⟩ ⦂ typeofGround H
+  → Γ ⊨ M ⟨ H ?⟩ ⦂ gnd⇒ty H
 compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
  where
  ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ ★ ⟧ (⟪ γ ⟫ M)
  ⊢ℰM = ⊨M γ
   
- ℰMh? : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ typeofGround H ⟧ ((⟪ γ ⟫ M) ⟨ H ?⟩)
+ ℰMh? : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ gnd⇒ty H ⟧ ((⟪ γ ⟫ M) ⟨ H ?⟩)
  ℰMh? = ℰ-frame {F = □⟨ H ?⟩} ⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVh?))
   where
   𝓟₁ = λ V → 𝒱⟦ ★ ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
-  ⊢ℰVh? : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ typeofGround H ⟧ (V ⟨ H ?⟩)
+  ⊢ℰVh? : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ gnd⇒ty H ⟧ (V ⟨ H ?⟩)
   ⊢ℰVh?{V} =
    let ⊢𝒱V : 𝓟₁ V ⊢ᵒ 𝒱⟦ ★ ⟧ V
        ⊢𝒱V = Zᵒ in
-   V-dyn-elim ⊢𝒱V λ { W G refl ⊢w×▷𝒱W →
+   𝒱-dyn-elim ⊢𝒱V λ { W G refl ⊢w×▷𝒱W →
    let ⊢w = proj₁ᵒ ⊢w×▷𝒱W in
    let ▷𝒱W = proj₂ᵒ ⊢w×▷𝒱W in
    ⊢ᵒ-sucP ⊢w λ{n} w →
-   let prog : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ progress (typeofGround H) ((W ⟨ G !⟩) ⟨ H ?⟩)
+   let prog : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ progress (gnd⇒ty H) ((W ⟨ G !⟩) ⟨ H ?⟩)
        prog = inj₂ᵒ (inj₁ᵒ (constᵒI (red-inj-proj w))) in
-   let pres : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ preservation (typeofGround H) ((W ⟨ G !⟩) ⟨ H ?⟩)
+   let pres : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ preservation (gnd⇒ty H)((W ⟨ G !⟩) ⟨ H ?⟩)
        pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ r → Goal r w ▷𝒱W) in
    ℰ-intro prog pres
    }
@@ -169,8 +163,8 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
     Goal : ∀{W}{G}{H}{N}
        → (W ⟨ G !⟩ ⟨ H ?⟩) —→ N
        → Value W
-       → 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ 𝒱⟦ typeofGround G ⟧ W
-       → 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ ℰ⟦ typeofGround H ⟧ N
+       → 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ 𝒱⟦ gnd⇒ty G ⟧ W
+       → 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ ℰ⟦ gnd⇒ty H ⟧ N
     Goal (ξξ □⟨ H ?⟩ refl refl r) w ▷𝒱W =
         ⊥-elim (value-irreducible (w 〈 _ 〉) r)
     Goal {W} (ξξ-blame □⟨ H ?⟩ ())

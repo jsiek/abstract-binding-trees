@@ -4,6 +4,7 @@
 {-# OPTIONS --rewriting #-}
 module rewriting.examples.BlogTypeSafety10Easy4Med1Hard where
 
+open import Data.Bool using (true; false) renaming (Bool to 𝔹)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Nat
 open import Data.List using (List; []; _∷_)
@@ -34,6 +35,7 @@ logic of Dreyer, Ahmed, and Birkedal (2011), that we embed in Agda.
 ## Review of the Cast Calculus
 
 ```
+open import Var
 open import rewriting.examples.Cast
 ```
 
@@ -87,7 +89,7 @@ The reduction rules of the cast calculus are as follows:
 ## A First Attempt at a Logical Relation for Type Safety
 
 The following is a first attempt to define a logical relation for type
-safety for the cast calculus. The predicate 𝓔 expresses the semantic
+safety for the cast calculus. The predicate ℰ expresses the semantic
 notion of a term being well typed at a given type A. Here we define that
 a term M is well typed at type A if it satisfies "progress" and
 "preservation". The progress part says that M is either (1) a
@@ -111,27 +113,27 @@ must be semantically well typed at `G`.
     𝒱⟦_⟧ : (A : Type) → Term → Set
     𝒱⟦ ι ⟧ ($ c) = ι ≡ typeof c
     𝒱⟦ A ⇒ B ⟧ (ƛ N) = ∀ W → 𝒱⟦ A ⟧ W → ℰ⟦ B ⟧ (N [ W ])
-    𝒱⟦ ★ ⟧ (V ⟨ G !⟩) = Value V × 𝒱⟦ typeofGround G ⟧ V
+    𝒱⟦ ★ ⟧ (V ⟨ G !⟩) = Value V × 𝒱⟦ gnd⇒ty G ⟧ V
     𝒱⟦ _ ⟧ _ = ⊥
 
-Note that the definitions of 𝓔 and 𝓥 are recursive. Unfortunately they
+Note that the definitions of ℰ and 𝓥 are recursive. Unfortunately they
 are not proper definitions of (total) functions because there is no
 guarantee of their termination. For simple languages, like the Simply
 Typed Lambda Calculus, 𝓥 can be defined by recursion on the type
 `A`. However, here we have the unknown type `★` and the recursion in that
-clause invokes `𝒱⟦ typeofGround G ⟧ V`, but `typeofGround G` is
+clause invokes `𝒱⟦ gnd⇒ty G ⟧ V`, but `gnd⇒ty G` is
 not a structural part of ★ (nothing is).
-(The definition of 𝓔 above is also problematic, but one could
-reformulate 𝓔 to remove the recursion in 𝓔.)
+(The definition of ℰ above is also problematic, but one could
+reformulate ℰ to remove the recursion in ℰ.)
 
 ## An Explicitly Step-indexed Logical Relation for Type Safety
 
-We can force the definitions of 𝓔 and 𝓥 to terminate using
+We can force the definitions of ℰ and 𝓥 to terminate using
 step-indexing (aka. the "gasoline" technique), which was first applied
 to logical relations by Appel and McAllester (TOPLAS 2001). We add a
-parameter k (a natural number) to 𝓔 and 𝓥, and decrement k on each
-recursive call. When k is zero, 𝓔 and 𝓥 accept all terms. Thus, the
-meaning of `𝓔⟦ A ⟧ M k` is that term `M` is guaranteed to behave
+parameter k (a natural number) to ℰ and 𝓥, and decrement k on each
+recursive call. When k is zero, ℰ and 𝓥 accept all terms. Thus, the
+meaning of `ℰ⟦ A ⟧ M k` is that term `M` is guaranteed to behave
 according to type `A` for `k` reduction steps, but after that there
 are no guarantees.
 
@@ -144,10 +146,10 @@ are no guarantees.
     𝒱⟦ A ⟧ M 0 = ⊤
     𝒱⟦ ι ⟧ ($ ι′ c) (suc k) = ι ≡ ι′
     𝒱⟦ A ⇒ B ⟧ (ƛ N) (suc k) = ∀ W → 𝒱⟦ A ⟧ W k → ℰ⟦ B ⟧ (N [ W ]) k
-    𝒱⟦ ★ ⟧ (V ⟨ G !⟩) (suc k) = Value V × 𝒱⟦ typeofGround G ⟧ V k
+    𝒱⟦ ★ ⟧ (V ⟨ G !⟩) (suc k) = Value V × 𝒱⟦ gnd⇒ty G ⟧ V k
     𝒱⟦ _ ⟧ _ (suc k) = ⊥
 
-We now have proper definitions of 𝓔 and 𝓥 but proving theorems about
+We now have proper definitions of ℰ and 𝓥 but proving theorems about
 these definitions involves a fair bit of reasoning about the step
 indices, which is tedious, especially in Agda because it's support for
 automating arithmetic proofs is cumbersome to use.  To streamline the
@@ -507,14 +509,14 @@ This project was the first time for me conducting nontrivial proofs in
 a modal logic, and it took some getting use to.
 
 
-## Logical Relation for Type Safety
+## Defining a Logical Relation for Type Safety
 
 With the Step-indexed Logic in hand, we are ready to define a logical
-relation for type safety. The two predicates 𝓔 and 𝓥 are mutually
+relation for type safety. The two predicates ℰ and 𝓥 are mutually
 recursive, so we combine them into a single recursive predicate named
-`ℰ⊎𝒱` that takes a sum type, where the left side is for 𝓔 and the
+`ℰ⊎𝒱` that takes a sum type, where the left side is for ℰ and the
 right side is for 𝓥. We shall define `ℰ⊎𝒱` by an application of
-`recursiveᵒ`, so we first need to define the non-recursive version of
+`μᵒ`, so we first need to define the non-recursive version of
 `ℰ⊎𝒱`, which we call `pre-ℰ⊎𝒱`, defined below. It simply dispatches to
 the non-recursive `pre-ℰ` and `pre-ℰ` which we define next.
 
@@ -528,13 +530,13 @@ the non-recursive `pre-ℰ` and `pre-ℰ` which we define next.
 pre-ℰ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
 pre-𝒱 : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
 
-ℰ⊎𝒱 : ℰ⊎𝒱-type → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
-ℰ⊎𝒱 (inj₁ (A , V)) = pre-𝒱 A V
-ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
+pre-ℰ⊎𝒱 : ℰ⊎𝒱-type → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
+pre-ℰ⊎𝒱 (inj₁ (A , V)) = pre-𝒱 A V
+pre-ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
 ```
 
 To improve the readability of our definitions, we define the following
-notation for recursive applications of the 𝓔 and 𝓥 predicates.
+notation for recursive applications of the ℰ and 𝓥 predicates.
 
 ```
 ℰˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Now ∅)
@@ -544,36 +546,40 @@ notation for recursive applications of the 𝓔 and 𝓥 predicates.
 𝒱ˢ⟦ A ⟧ V = (inj₁ (A , V)) ∈ zeroˢ
 ```
 
-The definition of pre-𝓔 and pre-𝓥 are of similar form to the
-explicitly step-indexed definition of 𝓔 and 𝓥 above, however the
+The definition of pre-ℰ and pre-𝓥 are of similar form to the
+explicitly step-indexed definition of ℰ and 𝓥 above, however the
 parameter `k` is gone and all of the logical connectives have a
 superscript `f`, indicating that we're building a `RecSetᵒ`.  Also,
-note that all the uses of `𝓔ˢ` and `𝓥ˢ` are guarded by the later
-operator `▷ˢ`. Finally, in the definition of pre-𝓔, we do not use `▷ˢ
+note that all the uses of `ℰˢ` and `𝓥ˢ` are guarded by the later
+operator `▷ˢ`. Finally, in the definition of pre-ℰ, we do not use `▷ˢ
 (𝓥⟦ A ⟧ M)` but instead use `pre-𝓥 A M` because we need to say there
 that `M` is a semantic value now, not later.
 
 ```
 pre-ℰ A M = (pre-𝒱 A M ⊎ˢ (reducible M)ˢ ⊎ˢ (Blame M)ˢ)
              ×ˢ (∀ˢ[ N ] (M —→ N)ˢ →ˢ ▷ˢ (ℰˢ⟦ A ⟧ N))
-pre-𝒱 ★ (V ⟨ G !⟩ )      = (Value V)ˢ ×ˢ ▷ˢ (𝒱ˢ⟦ typeofGround G ⟧ V)
+pre-𝒱 ★ (V ⟨ G !⟩ )      = (Value V)ˢ ×ˢ ▷ˢ (𝒱ˢ⟦ gnd⇒ty G ⟧ V)
 pre-𝒱 ($ₜ ι) ($ c)        = (ι ≡ typeof c)ˢ
 pre-𝒱 (A ⇒ B) (ƛ N)      = ∀ˢ[ W ] ▷ˢ (𝒱ˢ⟦ A ⟧ W) →ˢ ▷ˢ (ℰˢ⟦ B ⟧ (N [ W ]))
 pre-𝒱 A M                = ⊥ ˢ
 ```
 
 We define ℰ and 𝒱 by creating a recursive predicate (apply `μᵒ` to
-`ℰ⊎𝒱`) and then apply it to either `inj₁` for 𝒱 or `inj₂` for ℰ.
+`ℰ⊎𝒱`) and then apply it to an argument injected with either `inj₁`
+for 𝒱 or `inj₂` for ℰ.
 
 ```
+ℰ⊎𝒱 : ℰ⊎𝒱-type → Setᵒ
+ℰ⊎𝒱 X = μᵒ pre-ℰ⊎𝒱 X
+
 ℰ⟦_⟧ : Type → Term → Setᵒ
-ℰ⟦ A ⟧ M = (μᵒ ℰ⊎𝒱) (inj₂ (A , M))
+ℰ⟦ A ⟧ M = ℰ⊎𝒱 (inj₂ (A , M))
 
 𝒱⟦_⟧ : Type → Term → Setᵒ
-𝒱⟦ A ⟧ V = (μᵒ ℰ⊎𝒱) (inj₁ (A , V))
+𝒱⟦ A ⟧ V = ℰ⊎𝒱 (inj₁ (A , V))
 ```
 
-To succinctly talk about the two aspects of 𝓔, we define semantic
+To succinctly talk about the two aspects of ℰ, we define semantic
 `progress` and `preservation` as follows.
 
 ```
@@ -591,11 +597,11 @@ by use of the `fixpointᵒ` theorem in SIL.
 ℰ-stmt : ∀{A}{M}
   → ℰ⟦ A ⟧ M ≡ᵒ progress A M ×ᵒ preservation A M
 ℰ-stmt {A}{M} =
-  ℰ⟦ A ⟧ M                                                  ⩦⟨ ≡ᵒ-refl refl ⟩
-  μᵒ ℰ⊎𝒱 (inj₂ (A , M))                 ⩦⟨ fixpointᵒ ℰ⊎𝒱 (inj₂ (A , M)) ⟩
-  # (ℰ⊎𝒱 (inj₂ (A , M))) ((μᵒ ℰ⊎𝒱) , ttᵖ)
-              ⩦⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (fixpointᵒ ℰ⊎𝒱 (inj₁ (A , M))))
-                                  (≡ᵒ-refl refl)) (≡ᵒ-refl refl) ⟩
+  ℰ⟦ A ⟧ M                                                    ⩦⟨ ≡ᵒ-refl refl ⟩
+  μᵒ pre-ℰ⊎𝒱 (inj₂ (A , M))              ⩦⟨ fixpointᵒ pre-ℰ⊎𝒱 (inj₂ (A , M)) ⟩
+  # (pre-ℰ⊎𝒱 (inj₂ (A , M))) (ℰ⊎𝒱 , ttᵖ)
+             ⩦⟨ cong-×ᵒ (cong-⊎ᵒ (≡ᵒ-sym (fixpointᵒ pre-ℰ⊎𝒱 (inj₁ (A , M))))
+                                      (≡ᵒ-refl refl)) (≡ᵒ-refl refl) ⟩
   progress A M ×ᵒ preservation A M
   ∎
 ```
@@ -621,3 +627,155 @@ For convenience, we define introduction and elimination rules for ℰ.
 ℰ-preservation 𝓟⊢ℰM = proj₂ᵒ (substᵒ ℰ-stmt 𝓟⊢ℰM )
 ```
 
+Similarly, we can derive the expected equations for 𝒱.
+
+```
+𝒱-base : ∀{ι}{c : Lit} → (𝒱⟦ $ₜ ι ⟧ ($ c)) ≡ᵒ (ι ≡ typeof c)ᵒ
+𝒱-base = ≡ᵒ-intro λ k → (λ x → x) , (λ x → x)
+
+𝒱-dyn : ∀{G}{V} → 𝒱⟦ ★ ⟧ (V ⟨ G !⟩) ≡ᵒ ((Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ gnd⇒ty G ⟧ V))
+𝒱-dyn {G}{V} =
+   let X = (inj₁ (★ , V ⟨ G !⟩)) in
+   𝒱⟦ ★ ⟧ (V ⟨ G !⟩)                              ⩦⟨ ≡ᵒ-refl refl ⟩
+   ℰ⊎𝒱 X                                          ⩦⟨ fixpointᵒ pre-ℰ⊎𝒱 X ⟩
+   # (pre-ℰ⊎𝒱 X) (ℰ⊎𝒱 , ttᵖ)                     ⩦⟨ ≡ᵒ-refl refl ⟩ 
+   (Value V)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ gnd⇒ty G ⟧ V)             ∎
+
+𝒱-fun : ∀{A B}{N}
+   → 𝒱⟦ A ⇒ B ⟧ (ƛ N)
+      ≡ᵒ (∀ᵒ[ W ] ((▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ])))))
+𝒱-fun {A}{B}{N} =
+   let X = (inj₁ (A ⇒ B , ƛ N)) in
+   𝒱⟦ A ⇒ B ⟧ (ƛ N)                                         ⩦⟨ ≡ᵒ-refl refl ⟩
+   ℰ⊎𝒱 X                                            ⩦⟨ fixpointᵒ pre-ℰ⊎𝒱 X ⟩
+   # (pre-ℰ⊎𝒱 X) (ℰ⊎𝒱 , ttᵖ)                               ⩦⟨ ≡ᵒ-refl refl ⟩ 
+   (∀ᵒ[ W ] ((▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ])))))   ∎
+```
+
+We have defined `𝒱` such that it only accepts terms that are syntactic
+values. (We included `Value V` in `𝒱-dyn` above.)
+
+```
+𝒱⇒Value : ∀ {k} A M
+   → # (𝒱⟦ A ⟧ M) (suc k)
+     ---------------------
+   → Value M
+𝒱⇒Value ★ (M ⟨ G !⟩) (v , _) = v 〈 G 〉
+𝒱⇒Value ($ₜ ι) ($ c) 𝒱M = $̬ c
+𝒱⇒Value (A ⇒ B) (ƛ N) 𝒱M = ƛ̬ N
+```
+
+A value `V` in 𝒱 is also in ℰ. The definition of `progress` includes
+values, and to prove preservation we not that a value is irreducible.
+
+```
+𝒱⇒ℰ : ∀{A}{𝒫}{V}
+   → 𝒫 ⊢ᵒ 𝒱⟦ A ⟧ V
+     ---------------
+   → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ V
+𝒱⇒ℰ {A}{𝒫}{V} 𝒫⊢𝒱V = ℰ-intro prog pres
+    where
+    prog = inj₁ᵒ 𝒫⊢𝒱V
+    pres = Λᵒ[ N ] →ᵒI
+            (Sᵒ⊢ᵒ λ V—→N →
+             ⊢ᵒ-sucP 𝒫⊢𝒱V λ 𝒱V →
+             ⊥-elim (value-irreducible (𝒱⇒Value A V 𝒱V ) V—→N))
+```
+
+## Semantic Type Safety
+
+The `ℰ` predicate applies to closed terms, that is, terms without any
+free variables, such as a whole program. However, we'll need a notion
+of semantic type safety that also includes open terms. The standard
+way to define safety for an open term `M` is to substitute the free
+variables for values and then use `ℰ`. That is, we apply a
+substitution `γ` to `M` where all the values in `γ` must be
+semantically well typed. The following `𝓖` expresses this contraint on
+`γ`.
+
+```
+𝓖⟦_⟧ : (Γ : List Type) → Subst → List Setᵒ
+𝓖⟦ [] ⟧ σ = []
+𝓖⟦ A ∷ Γ ⟧ σ = (𝒱⟦ A ⟧ (σ 0)) ∷ 𝓖⟦ Γ ⟧ (λ x → σ (suc x))
+```
+
+A term `M` is semantically well typed at `A` in context `Γ` if, 
+for any well-typed substitution `γ`, we have `ℰ⟦ A ⟧ (⟪ γ ⟫ M)`.
+
+```
+_⊨_⦂_ : List Type → Term → Type → Set
+Γ ⊨ M ⦂ A = ∀ (γ : Subst) → 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ A ⟧ (⟪ γ ⟫ M)
+```
+
+## Fundamental Lemma
+
+The main lemma on our way to proving type safety is the Fundamental
+Lemma, which states that well-typed programs are semantically type
+safe. That is, well-typed programs behave as expected according to
+their types.
+
+    fundamental : ∀ {Γ A} → (M : Term)
+      → Γ ⊢ M ⦂ A
+        ----------
+      → Γ ⊨ M ⦂ A
+
+The proof of `fundamental` is by induction on the typing derivation,
+with each case dispatching to a compatibility lemma.
+
+The compatibility lemma for number literals is proved by proving that
+`$ (Num n)` is in `𝒱⟦ $ₜ ′ℕ ⟧` via the definition of `𝒱` and then
+apply the `𝒱⇒ℰ` lemma.
+
+```
+compatible-nat : ∀{Γ}{n : ℕ}
+    --------------------------
+   → Γ ⊨ $ (Num n) ⦂ ($ₜ ′ℕ)
+compatible-nat {Γ}{n} γ = 𝒱⇒ℰ (substᵒ (≡ᵒ-sym 𝒱-base) (constᵒI refl))
+```
+
+The compability lemma for Boolean literals is the same.
+
+```
+compatible-bool : ∀{Γ}{b : 𝔹}
+    ---------------------------
+   → Γ ⊨ ($ (Bool b)) ⦂ ($ₜ ′𝔹)
+compatible-bool {Γ}{b} γ = 𝒱⇒ℰ (substᵒ (≡ᵒ-sym 𝒱-base) (constᵒI refl))
+```
+
+The compatibility lemma for the `blame` term is similar to the `𝒱⇒ℰ`
+lemma in that `blame` is one of the alternatives allowed in `progress`
+and `blame` is irreducible.
+
+```
+ℰ-blame : ∀{𝒫}{A} → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ blame
+ℰ-blame {𝒫}{A} = ℰ-intro prog pres
+    where
+    prog = inj₂ᵒ (inj₂ᵒ (constᵒI isBlame))
+    pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ blame→ → ⊥-elim (blame-irreducible blame→))
+
+compatible-blame : ∀{Γ}{A}
+     -------------
+   → Γ ⊨ blame ⦂ A
+compatible-blame {Γ}{A} γ = ℰ-blame
+```
+
+
+```
+lookup-𝓖 : (Γ : List Type) → (γ : Subst)
+  → ∀ {A}{y} → (Γ ∋ y ⦂ A)
+  → 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ A ⟧ (γ y)
+lookup-𝓖 (B ∷ Γ) γ {A} {zero} refl = Zᵒ
+lookup-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
+    Sᵒ (lookup-𝓖 Γ (λ x → γ (suc x)) ∋y) 
+
+{-# REWRITE sub-var #-}
+
+compatibility-var : ∀ {Γ A x}
+  → Γ ∋ x ⦂ A
+    -----------
+  → Γ ⊨ ` x ⦂ A
+compatibility-var {Γ}{A}{x} ∋x γ =
+     let ⊢𝒱γx : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ A ⟧ (γ x)
+         ⊢𝒱γx = lookup-𝓖 Γ γ ∋x in
+     𝒱⇒ℰ ⊢𝒱γx
+```
