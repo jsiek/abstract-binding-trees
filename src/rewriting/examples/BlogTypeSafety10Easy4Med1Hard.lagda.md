@@ -157,13 +157,13 @@ step indexing. Next we discuss the embedding of such a logic in Agda.
 ## Step-indexed Logic
 
 ```
-open import rewriting.examples.StepIndexedLogic
+open import rewriting.examples.StepIndexedLogic2
 ```
 
 Our Step-indexed Logic (SIL) is a first-order logic (i.e., a logic
 with "and", "or", "implies", "for all"). To distinguish its
 connectives from Agda's, we add a superscript "o". So "and" is written
-`×ᵒ`, "implies" is written `→ᵒ`, and so on.  The SIL also includes a
+`×ᵒ`, "implies" is written `→ᵒ`, and so on.  SIL also includes a
 notion of time in which there is clock counting down. The logic is
 designed in such a way that if a formula `P` is true at some time then
 `P` stays true in the future (at lower counts). When the clock reaches
@@ -225,13 +225,13 @@ attempt at writing down the type of this proposition. The idea is that
 this constructor of recursive predicates works like the Y-combinator
 in that it turns a non-recursive predicate into a recursive one.
 
-    recursiveᵒ : ∀{A}
+    μᵒ : ∀{A}
        → (A → (A → Setᵒ) → Setᵒ)
          -----------------------
        → A → Setᵒ
 
 The non-recursive predicate has type `A → (A → Setᵒ) → Setᵒ`. It has
-an extra parameter `(A → Setᵒ)` that will be supplied with the
+an extra parameter `(A → Setᵒ)` that will be bound to the
 recursive predicate itself. To clarify, lets look at an example.
 Suppose we wanted to define multi-step reduction according to
 the following rules:
@@ -254,40 +254,80 @@ instance
   TermInhabited = record { elt = ` 0 }
 
 ```
-We then apply the `recursiveᵒ` proposition to `mreduce` to
+We then apply the `μᵒ` proposition to `mreduce` to
 obtain the desired recursive predicate `—→*`.
 
     _—→*_ : Term → Term → Setᵒ
-    M —→* N = recursiveᵒ mreduce (M , N)
+    M —→* N = μᵒ mreduce (M , N)
 
 The problem with the above story is that it's not possible (to my
 knowledge) to construct a recursive predicate from an arbitrary
 function of type `A → (A → Setᵒ) → Setᵒ`. Instead, we need to place
 restrictions on the function. In particular, if we make sure that the
 recursion never happens "now", but only "later", then it becomes
-possible to construct `recursiveᵒ`. We define the `RecSetᵒ` type in
-Agda to capture this restriction. We actually define `RecSetᵒ A κ` in
-terms of a more general type `Fun A B κ`, but the result is something
-equivalent to the following.
+possible to construct `μᵒ`. We define the `Setˢ` type in Agda to
+capture this restriction. (The superscript "s" stands for step
+indexed.) Furthermore, to allow the nesting of recursive definitions,
+we must generalize from a single predicate parameter to an environment
+of predicates. The type of the environment is given by a `Context`:
 
-    record RecSetᵒ (A : Set) (κ : Kind) : Set₁ where
+    Context : Set₁
+    Context = List Set
+
+We represent recursive environments with tuples.
+
+    RecEnv : Context → Set₁
+    RecEnv [] = topᵖ 
+    RecEnv (A ∷ Γ) = (A → Setᵒ) × RecEnv Γ
+
+We use de Bruijn indices to represent the variables that refer to the
+recursive predicates, which we define as follows.
+
+    data _∋_ : Context → Set → Set₁ where
+      zeroˢ : ∀{Γ}{A} → (A ∷ Γ) ∋ A
+      sucˢ : ∀{Γ}{A}{B} → Γ ∋ B → (A ∷ Γ) ∋ B
+
+For each variable, we track whether it has been used "now"
+or not. So we define `Time` as follows.
+
+    data Time : Set where
+      Now : Time
+      Later : Time
+
+and the following defines a list of times, one for each variable in `Γ`.
+
+    data Times : Context → Set₁ where
+      ∅ : Times []
+      cons : ∀{Γ}{A} → Time → Times Γ → Times (A ∷ Γ)
+
+The `Setˢ` type is a record indexed by the type of the environment and
+by the times for each variable. The representation of `Setˢ` (the `#`
+field) is a function that maps an environment of predicates
+(one predicate for each in-scope μ) to a `Setᵒ`.
+
+    record Setˢ (Γ : Context) (ts : Times Γ) : Set₁ where
       field
-        fun : (A → Setᵒ) → (⊤ → Setᵒ)
+        # : RecEnv Γ → Setᵒ 
         ...
+    open Setˢ public
 
-The `A` in `RecSetᵒ A κ` is the parameter type for the recursion and κ
-is `Now` or `Later`.  We define variants of all the propositional
-connectives to work on RecSetᵒ and track whether the recursive call
-happened now or later.
+We define variants of all the propositional connectives to work on
+Setˢ.
 
-For example, because the "later" operator asserts that `P` is true in
-the future, the predicate `▷ᶠ P` can safely say that use any use
-recursion in it happened `Later` regardless of whether `P` contained
-any recursive calls.
+The "later" operator asserts that `P` is true in the future, so the
+predicate `▷ˢ P` can safely say that any use of recursive predicate in
+`P` happen `Later`.
 
-    ▷ᶠ : ∀{A}{κ} → RecSetᵒ A κ → RecSetᵒ A Later
+    laters : ∀ (Γ : Context) → Times Γ
+    laters [] = ∅
+    laters (A ∷ Γ) = cons Later (laters Γ)
 
-The "and" operator, `P ×ᶠ Q` is categorized as `Later` only if both
+    ▷ˢ : ∀{Γ}{ts : Times Γ}
+       → Setˢ Γ ts
+         -----------------
+       → Setˢ Γ (laters Γ)
+
+The "and" operator, `P ×ˢ Q` is categorized as `Later` only if both
 `P` and `Q` are `Later`. Otherwise it is `Now`.  We use the following
 function to make this choice:
 
@@ -297,37 +337,62 @@ function to make this choice:
     choose Later Now = Now
     choose Later Later = Later
 
+We define `combine` to apply `choose` to a list of times.
+
+    combine : ∀{Γ} (ts₁ ts₂ : Times Γ) → Times Γ
+    combine {[]} ts₁ ts₂ = ∅
+    combine {A ∷ Γ} (cons x ts₁) (cons y ts₂) =
+        cons (choose x y) (combine ts₁ ts₂)
+
 Here's the type of the "and" operator:
 
-    _×ᶠ_ : ∀{A}{κ₁ κ₂} → RecSetᵒ A κ₁ → RecSetᵒ A κ₂ → RecSetᵒ A (choose κ₁ κ₂)
+    _×ˢ_ : ∀{Γ}{ts₁ ts₂ : Times Γ} → Setˢ Γ ts₁ → Setˢ Γ ts₂
+       → Setˢ Γ (combine ts₁ ts₂)
 
-The other propositions following a similar pattern.
+The other propositions follow a similar pattern.
 
-The special `recur` proposition invokes the recursion. It takes an
-argument of type `A` and produces a `RecSetᵒ` that indicates that the
-recursion happened `Now`.
+The membership formula `v ∈ x` is true when `v` is in the predicate
+bound to variable `x` in the environment. The time for `x` is required
+to be `Now`.
 
-    recurᶠ : ∀{A} → A → RecSetᵒ A Now
+    _∈_ : ∀{Γ}{ts : Times Γ}{A}
+       → A → (x : Γ ∋ A) → {now : timeof x ts ≡ Now}
+         -------------------------------------------
+       → Setˢ Γ ts
+    (v ∈ x) =
+      record { # = λ δ → (lookup x δ) v
+             ; ... }
 
-The type of `recursiveᵒ` takes a non-recursive function from `A` to
-`RecSetᵒ` and produces a recursive predicate in `A`.
+The `μˢ` formula defines a (possibly nested) recursive predicate.
 
-    recursiveᵒ : ∀{A}
-       → (A → RecSetᵒ A Later)
-         ---------------------
-       → A → Setᵒ
+    μˢ : ∀{Γ}{ts : Times Γ}{A}
+       → (A → Setˢ (A ∷ Γ) (cons Later ts))
+         ----------------------------------
+       → (A → Setˢ Γ ts)
+
+It takes a non-recursive predicate from `A` to `Setˢ` and produces a
+recursive predicate in `A`. Note that the variable `zeroˢ`, the
+one introduced by this `μˢ`, is required to have time `Later`.
+
+If the recursive predicate is not nested inside other recursive
+predicates, then you can directly use the following `μᵒ` operator.
+
+    μᵒ : ∀{A}
+       → (A → Setˢ (A ∷ []) (cons Later ∅))
+         ----------------------------------
+       → (A → Setᵒ)
 
 Let's revisit the example of defining multi-step reduction.  The
 non-recursive `mreduce` predicate is defined as follows.
 
 ```
-mreduce : Term × Term → RecSetᵒ (Term × Term) Later
-mreduce (M , N) = (M ≡ N)ᶠ ⊎ᶠ (∃ᶠ[ L ] (M —→ L)ᶠ ×ᶠ ▷ᶠ (recurᶠ (L , N)))
+mreduce : Term × Term → Setˢ (Term × Term) [] (cons Later ∅)
+mreduce (M , N) = (M ≡ N)ˢ ⊎ˢ (∃ˢ[ L ] (M —→ L)ˢ ×ˢ ▷ˢ (recurˢ (L , N)))
 ```
 
 Note that the `R` parameter has become implicit; it is hidden inside
 the `RecSetᵒ` type. Also the application `R (L , N)` is replaced by
-`▷ᶠ (recurᶠ (L , N))`.
+`▷ˢ (recurˢ (L , N))`.
 
 We define the recursive predicate `M —→* N` by applying `recursiveᵒ`
 to `mreduce`.
@@ -462,29 +527,29 @@ To improve the readability of our definitions, we define the following
 notation for recursive applications of the 𝓔 and 𝓥 predicates.
 
 ```
-ℰᶠ⟦_⟧ : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Now
-ℰᶠ⟦ A ⟧ M = recurᶠ (inj₂ (A , M))
+ℰˢ⟦_⟧ : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Now
+ℰˢ⟦ A ⟧ M = recurˢ (inj₂ (A , M))
 
-𝒱ᶠ⟦_⟧ : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Now
-𝒱ᶠ⟦ A ⟧ V = recurᶠ (inj₁ (A , V))
+𝒱ˢ⟦_⟧ : Type → Term → RecSetᵒ Ty[ℰ⊎𝒱] Now
+𝒱ˢ⟦ A ⟧ V = recurˢ (inj₁ (A , V))
 ```
 
 The definition of pre-𝓔 and pre-𝓥 are of similar form to the
 explicitly step-indexed definition of 𝓔 and 𝓥 above, however the
 parameter `k` is gone and all of the logical connectives have a
 superscript `f`, indicating that we're building a `RecSetᵒ`.  Also,
-note that all the uses of `𝓔ᶠ` and `𝓥ᶠ` are guarded by the later
-operator `▷ᶠ`. Finally, in the definition of pre-𝓔, we do not use `▷ᶠ
+note that all the uses of `𝓔ˢ` and `𝓥ˢ` are guarded by the later
+operator `▷ˢ`. Finally, in the definition of pre-𝓔, we do not use `▷ˢ
 (𝓥⟦ A ⟧ M)` but instead use `pre-𝓥 A M` because we need to say there
 that `M` is a semantic value now, not later.
 
 ```
-pre-ℰ A M = (pre-𝒱 A M ⊎ᶠ (reducible M)ᶠ ⊎ᶠ (Blame M)ᶠ)
-             ×ᶠ (∀ᶠ[ N ] (M —→ N)ᶠ →ᶠ ▷ᶠ (ℰᶠ⟦ A ⟧ N))
-pre-𝒱 ★ (V ⟨ G !⟩ )      = (Value V)ᶠ ×ᶠ ▷ᶠ (𝒱ᶠ⟦ typeofGround G ⟧ V)
-pre-𝒱 ($ₜ ι) ($ c)        = (ι ≡ typeof c)ᶠ
-pre-𝒱 (A ⇒ B) (ƛ N)      = ∀ᶠ[ W ] ▷ᶠ (𝒱ᶠ⟦ A ⟧ W) →ᶠ ▷ᶠ (ℰᶠ⟦ B ⟧ (N [ W ]))
-pre-𝒱 A M                = ⊥ ᶠ
+pre-ℰ A M = (pre-𝒱 A M ⊎ˢ (reducible M)ˢ ⊎ˢ (Blame M)ˢ)
+             ×ˢ (∀ˢ[ N ] (M —→ N)ˢ →ˢ ▷ˢ (ℰˢ⟦ A ⟧ N))
+pre-𝒱 ★ (V ⟨ G !⟩ )      = (Value V)ˢ ×ˢ ▷ˢ (𝒱ˢ⟦ typeofGround G ⟧ V)
+pre-𝒱 ($ₜ ι) ($ c)        = (ι ≡ typeof c)ˢ
+pre-𝒱 (A ⇒ B) (ƛ N)      = ∀ˢ[ W ] ▷ˢ (𝒱ˢ⟦ A ⟧ W) →ˢ ▷ˢ (ℰˢ⟦ B ⟧ (N [ W ]))
+pre-𝒱 A M                = ⊥ ˢ
 ```
 
 As promised, we define `ℰ⊎𝒱` by applying `recursiveᵒ` to `pre-ℰ⊎𝒱`.
