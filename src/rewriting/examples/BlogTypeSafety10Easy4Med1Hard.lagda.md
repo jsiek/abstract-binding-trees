@@ -310,7 +310,7 @@ and the following defines a list of times, one for each variable in `Γ`.
       cons : ∀{Γ}{A} → Time → Times Γ → Times (A ∷ Γ)
 
 The `Setˢ` type is a record indexed by the type of the environment and
-by the times for each variable. The representation of `Setˢ` (the `#`
+by the time for each variable. The representation of `Setˢ` (the `#`
 field) is a function that maps an environment of predicates
 (one predicate for each in-scope μ) to a `Setᵒ`.
 
@@ -336,9 +336,9 @@ predicate `▷ˢ P` can safely say that any use of recursive predicate in
          -----------------
        → Setˢ Γ (laters Γ)
 
-The "and" operator, `P ×ˢ Q` is categorized as `Later` only if both
-`P` and `Q` are `Later`. Otherwise it is `Now`.  We use the following
-function to make this choice:
+The "and" operator, `P ×ˢ Q` is categorized as `Later` for a variable
+only if both `P` and `Q` are `Later` for that variable. Otherwise it
+is `Now`.  We use the following function to make this choice:
 
     choose : Kind → Kind → Kind
     choose Now Now = Now
