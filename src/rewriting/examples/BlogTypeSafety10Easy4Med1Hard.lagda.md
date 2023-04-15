@@ -843,7 +843,9 @@ for some semantically safe value `V` that `M` reduced to.
        → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
 
 In the title of the blog post I alluded to 1 hard lemma.  This one's
-it. Here's the proof. I'm too tired to explain it now!
+it. Here's the proof. I'm too tired to explain it now!  But perhaps
+the most interesting part of the proof is that it employs the `lobᵒ`
+rule of SIL.
 
 ```
 
