@@ -283,7 +283,7 @@ of predicates. The type of the environment is given by a `Context`:
     Context : Set₁
     Context = List Set
 
-We represent recursive environments with tuples.
+We represent an environment of recursive predicates with a tuple.
 
     RecEnv : Context → Set₁
     RecEnv [] = topᵖ 
