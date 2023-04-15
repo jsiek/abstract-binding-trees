@@ -7,6 +7,7 @@ module rewriting.examples.BlogTypeSafety10Easy4Med1Hard where
 open import Data.Bool using (true; false) renaming (Bool to 𝔹)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Nat
+open import Data.Nat.Properties using (≤-refl)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_,_;_×_; proj₁; proj₂; Σ-syntax; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -14,7 +15,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Unit.Polymorphic renaming (⊤ to topᵖ; tt to ttᵖ)
 open import Relation.Binary.PropositionalEquality as Eq
   using (_≡_; _≢_; refl; sym; cong; subst; trans)
-
+open import Relation.Nullary using (¬_; yes; no)
 ```
 
 Ok, so logical relations are overkill for proving type safety. The
@@ -707,7 +708,7 @@ _⊨_⦂_ : List Type → Term → Type → Set
 Γ ⊨ M ⦂ A = ∀ (γ : Subst) → 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ A ⟧ (⟪ γ ⟫ M)
 ```
 
-## Fundamental Lemma
+## The Fundamental Lemma via Compatibility Lemmas
 
 The main lemma on our way to proving type safety is the Fundamental
 Lemma, which states that well-typed programs are semantically type
@@ -722,7 +723,7 @@ their types.
 The proof of `fundamental` is by induction on the typing derivation,
 with each case dispatching to a compatibility lemma.
 
-The compatibility lemma for number literals is proved by proving that
+The compatibility lemma for number literals is proved by show that
 `$ (Num n)` is in `𝒱⟦ $ₜ ′ℕ ⟧` via the definition of `𝒱` and then
 apply the `𝒱⇒ℰ` lemma.
 
@@ -759,6 +760,10 @@ compatible-blame : ∀{Γ}{A}
 compatible-blame {Γ}{A} γ = ℰ-blame
 ```
 
+The compatibility lemma for variables makes use of the premise that
+the values in the environment are semantically well typed.
+The following lemma proves that for any variable `y` in `Γ`,
+`γ` in `𝓖⟦ Γ ⟧` imples that `γ y` in `𝒱⟦ A ⟧`.
 
 ```
 lookup-𝓖 : (Γ : List Type) → (γ : Subst)
@@ -767,15 +772,423 @@ lookup-𝓖 : (Γ : List Type) → (γ : Subst)
 lookup-𝓖 (B ∷ Γ) γ {A} {zero} refl = Zᵒ
 lookup-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
     Sᵒ (lookup-𝓖 Γ (λ x → γ (suc x)) ∋y) 
+```
 
-{-# REWRITE sub-var #-}
+Once we have `γ y` in `𝒱⟦ A ⟧`, we conclude by applying the `𝒱⇒ℰ`
+lemma. (The `sub-var` lemma just says that `⟪ γ ⟫ (` x) ≡ γ x`.)
 
+```
 compatibility-var : ∀ {Γ A x}
   → Γ ∋ x ⦂ A
     -----------
   → Γ ⊨ ` x ⦂ A
-compatibility-var {Γ}{A}{x} ∋x γ =
-     let ⊢𝒱γx : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ A ⟧ (γ x)
-         ⊢𝒱γx = lookup-𝓖 Γ γ ∋x in
-     𝒱⇒ℰ ⊢𝒱γx
+compatibility-var {Γ}{A}{x} ∋x γ rewrite sub-var γ x = 𝒱⇒ℰ (lookup-𝓖 Γ γ ∋x)
+```
+
+The next compatibility lemma is for lambda abstraction.  To show that
+`ƛ N` is in `ℰ⟦A ⇒ B⟧` we shows that `ƛ N` is in `𝒱⟦A ⇒ B⟧`.  According
+to that definition, we need to show that for any argument value `W` in
+`𝒱⟦ A ⟧` (later), we have `(⟪ ext γ ⟫ N) [ W ]` in `ℰ⟦ B ⟧` (also later).  But
+that follows almost directly from the premise that `N` is semantically
+type safe. From that premise we have
+
+    ▷ᵒ ℰ ⟦ B ⟧ (⟪ W • γ ⟫ N)
+
+and the Abstract Binding Tree library provides rewrites for the
+following equation
+
+    ⟪ W • γ ⟫ N = (⟪ ext γ ⟫ N) [ W ]
+
+which gives us what we need:
+
+    ▷ᵒ ℰ ⟦ B ⟧ (⟪ ext γ ⟫ N) [ W ]
+
+Here's all the details in Agda:
+```
+compatible-lambda : ∀{Γ}{A}{B}{N}
+   → (A ∷ Γ) ⊨ N ⦂ B
+     -------------------
+   → Γ ⊨ (ƛ N) ⦂ (A ⇒ B)
+compatible-lambda {Γ}{A}{B}{N} ⊨N γ = 𝒱⇒ℰ ⊢𝒱λN
+ where
+ ⊢𝒱λN : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ A ⇒ B ⟧ (ƛ (⟪ ext γ ⟫ N))
+ ⊢𝒱λN = (substᵒ (≡ᵒ-sym 𝒱-fun) (Λᵒ[ W ] →ᵒI ▷𝓔N[W]))
+  where
+  ▷𝓔N[W] : ∀{W} → ▷ᵒ 𝒱⟦ A ⟧ W ∷ 𝓖⟦ Γ ⟧ γ  ⊢ᵒ  ▷ᵒ ℰ⟦ B ⟧ ((⟪ ext γ ⟫ N) [ W ])
+  ▷𝓔N[W] {W} = appᵒ (Sᵒ (▷→ (monoᵒ (→ᵒI (⊨N (W • γ)))))) Zᵒ
+```
+
+The next few compatibility lemmas, for application and casts, all
+involve reasoning about the reduction of subexpressions.  Instead of
+duplicating this reasoning, the standard approach is to put that
+reasoning in the "bind" lemma, which we discuss next.
+
+## Interlude: the "Bind" Lemma
+
+The bind lemma says that if we have an expression `N` with a
+subexpression `M` (so `N` is equal to plugging `M` into
+an appropriate frame `F`, i.e. `N = F ⟦ M ⟧`), if
+`M` is semantically safe, then to prove `ℰ⟦ A ⟧ (F ⟦ M ⟧)`
+it suffices to prove that `ℰ⟦ A ⟧ (F ⟦ V ⟧))`
+for some semantically safe value `V` that `M` reduced to.
+
+    ℰ-bind : ∀{𝒫}{A}{B}{F}{M}
+       → 𝒫 ⊢ᵒ ℰ⟦ B ⟧ M
+       → 𝒫 ⊢ᵒ (∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧))
+         ----------------------------------------------------------
+       → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+
+In the title of the blog post I alluded to 1 hard lemma.  This one's
+it. Here's the proof. I'm too tired to explain it now!
+
+```
+
+ℰ-f-cont : Type → Type → Frame → Term → Setᵒ
+ℰ-f-cont A B F M = ∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
+
+ℰ-fp : Type → Type → Frame → Term → Setᵒ
+ℰ-fp A B F M = ℰ⟦ B ⟧ M →ᵒ ℰ-f-cont A B F M →ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+
+ℰ-bind-prop : Type → Type → Frame → Setᵒ
+ℰ-bind-prop A B F = ∀ᵒ[ M ] ℰ-fp A B F M
+
+frame-prop-lemma : ∀{𝒫}{A}{B}{M}{F}
+   → 𝒫 ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F
+   → 𝒫 ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M
+   → 𝒫 ⊢ᵒ ▷ᵒ ℰ-f-cont A B F M
+   → 𝒫 ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M ⟧))
+frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
+  appᵒ (▷→ (appᵒ (▷→ (instᵒ (▷∀{P = λ M → ℰ-fp A B F M} IH) M)) ℰM)) V→FV
+
+ℰ-f-cont-lemma : ∀{𝒫}{A}{B}{F}{M}{M′}
+   → M —→ M′
+   → 𝒫 ⊢ᵒ ℰ-f-cont A B F M
+     -----------------------
+   → 𝒫 ⊢ᵒ ℰ-f-cont A B F M′
+ℰ-f-cont-lemma {𝒫}{A}{B}{F}{M}{M′} M→M′ ℰ-cont =
+   Λᵒ[ V ]
+    let M→V→ℰFV : 𝒫 ⊢ᵒ (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
+        M→V→ℰFV = instᵒ ℰ-cont V in
+    let M′→V→ℰFV : 𝒱⟦ B ⟧ V ∷ (M′ —↠ V)ᵒ ∷ 𝒫 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
+        M′→V→ℰFV = ⊢ᵒ-intro λ{ zero (𝒱Vn , M′→Vn , ⊨𝒫n) →
+                                tz (ℰ⟦ A ⟧ (F ⟦ V ⟧))
+                             ; (suc n) (𝒱Vsn , M′→Vsn , ⊨𝒫sn) →
+                               ⊢ᵒ-elim M→V→ℰFV (suc n) ⊨𝒫sn (suc n) ≤-refl
+                               (M —→⟨ M→M′ ⟩ M′→Vsn)
+                               (suc n) ≤-refl 𝒱Vsn } in
+    →ᵒI (→ᵒI M′→V→ℰFV)
+
+open import rewriting.examples.CastDeterministic
+  using (frame-inv2; deterministic)
+
+ℰ-bind-aux : ∀{𝒫}{A}{B}{F} → 𝒫 ⊢ᵒ ℰ-bind-prop A B F
+ℰ-bind-aux {𝒫}{A}{B}{F} = lobᵒ Goal
+ where     
+ Goal : ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫 ⊢ᵒ ℰ-bind-prop A B F
+ Goal = Λᵒ[ M ] →ᵒI (→ᵒI Goal′)
+  where
+  Goal′ : ∀{M}
+     → (ℰ-f-cont A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫
+        ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+  Goal′{M} =
+   let ⊢ℰM : 𝒫′ ⊢ᵒ ℰ⟦ B ⟧ M
+       ⊢ℰM = Sᵒ Zᵒ in
+   case3ᵒ (ℰ-progress ⊢ℰM) Mval Mred Mblame
+   where
+   𝒫′ = (ℰ-f-cont A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫
+
+   Mval : 𝒱⟦ B ⟧ M ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+   Mval =
+     let ⊢𝒱M : 𝒱⟦ B ⟧ M ∷ 𝒫′ ⊢ᵒ 𝒱⟦ B ⟧ M
+         ⊢𝒱M = Zᵒ in
+     let ℰcontFM : 𝒱⟦ B ⟧ M ∷ 𝒫′ ⊢ᵒ ℰ-f-cont A B F M
+         ℰcontFM = Sᵒ Zᵒ in
+     let Cont = λ V → (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧) in
+     appᵒ (appᵒ (instᵒ{P = Cont} ℰcontFM M) (constᵒI (M END))) ⊢𝒱M
+
+   Mred : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+   Mred = ℰ-intro progressMred
+         (Sᵒ⊢ᵒ λ redM → Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ FM→N → (redM⇒▷ℰN redM FM→N)))
+    where
+    progressMred : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ progress A (F ⟦ M ⟧)
+    progressMred =
+       let redFM : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
+           redFM = Sᵒ→Tᵒ⇒⊢ᵒ Zᵒ λ {(M′ , M→M′) → _ , (ξ F M→M′)} in
+       inj₂ᵒ (inj₁ᵒ redFM)
+
+    redM⇒▷ℰN : ∀{N} → reducible M → (F ⟦ M ⟧ —→ N)
+       → 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
+    redM⇒▷ℰN {N} rM FM→N =
+         let finv = frame-inv2{M}{N}{F} rM FM→N in
+         let M′ = proj₁ finv in
+         let M→M′ = proj₁ (proj₂ finv) in
+         let N≡ = proj₂ (proj₂ finv) in
+
+         let IH : 𝒫′ ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F
+             IH = Sᵒ (Sᵒ Zᵒ) in
+         let ℰM : 𝒫′ ⊢ᵒ ℰ⟦ B ⟧ M
+             ℰM = Sᵒ Zᵒ in
+         let ▷ℰM′ : 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M′
+             ▷ℰM′ = appᵒ (instᵒ{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ B ⟧ N)}
+                           (ℰ-preservation ℰM) M′)
+                         (constᵒI M→M′) in
+         let M→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ ℰ-f-cont A B F M
+             M→V→𝒱V→ℰFV = Zᵒ in
+         let M′→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ ℰ-f-cont A B F M′
+             M′→V→𝒱V→ℰFV = ℰ-f-cont-lemma{𝒫′}{A}{B} M→M′ M→V→𝒱V→ℰFV in
+         let ▷ℰFM′ : 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))
+             ▷ℰFM′ = frame-prop-lemma IH ▷ℰM′ (monoᵒ M′→V→𝒱V→ℰFV) in
+         subst (λ N → 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym N≡) ▷ℰFM′
+
+   Mblame : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+   Mblame = ℰ-intro progressMblame
+            (Sᵒ⊢ᵒ λ blameM → Λᵒ[ N ]
+               →ᵒI (Sᵒ⊢ᵒ λ FM→N → blameM⇒▷ℰN blameM FM→N))
+    where
+    progressMblame : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ progress A (F ⟦ M ⟧)
+    progressMblame =
+       let redFM : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
+           redFM = Sᵒ→Tᵒ⇒⊢ᵒ Zᵒ λ {isBlame → _ , (ξ-blame F)} in
+       inj₂ᵒ (inj₁ᵒ redFM)
+
+    blameM⇒▷ℰN : ∀{N} → Blame M → (F ⟦ M ⟧ —→ N)
+       → 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
+    blameM⇒▷ℰN {N} isBlame FM→N =
+        let eq = blame-frame FM→N in
+        subst (λ N → 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym eq) (monoᵒ ℰ-blame)
+
+ℰ-bind : ∀{𝒫}{A}{B}{F}{M}
+   → 𝒫 ⊢ᵒ ℰ⟦ B ⟧ M
+   → 𝒫 ⊢ᵒ (∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧))
+     ----------------------------------------------------------
+   → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+ℰ-bind {𝒫}{A}{B}{F}{M} ⊢ℰM ⊢𝒱V→ℰFV =
+  appᵒ (appᵒ (instᵒ{𝒫}{P = λ M → ℰ-fp A B F M} ℰ-bind-aux M) ⊢ℰM) ⊢𝒱V→ℰFV
+```
+
+## More Compatibility Lemmas
+
+```
+𝒱-fun-elim : ∀{𝒫}{A}{B}{V}{R}
+   → 𝒫 ⊢ᵒ 𝒱⟦ A ⇒ B ⟧ V
+   → (∀ N → V ≡ ƛ N
+          → (∀{W} → 𝒫 ⊢ᵒ (▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ]))))
+          → 𝒫 ⊢ᵒ R)
+    --------------------------------------------------------------------
+   → 𝒫 ⊢ᵒ R
+𝒱-fun-elim {𝒫}{A}{B}{V}{R} ⊢𝒱V cont =
+  ⊢ᵒ-sucP ⊢𝒱V λ { 𝒱Vsn → G {V} 𝒱Vsn ⊢𝒱V cont}
+  where
+  G : ∀{V}{n}
+     → # (𝒱⟦ A ⇒ B ⟧ V) (suc n)
+     → 𝒫 ⊢ᵒ 𝒱⟦ A ⇒ B ⟧ V
+     → (∀ N → V ≡ ƛ N
+             → (∀{W} → 𝒫 ⊢ᵒ (▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ]))))
+             → 𝒫 ⊢ᵒ R)
+     → 𝒫 ⊢ᵒ R
+  G{ƛ N}{n} 𝒱V ⊢𝒱V cont = cont N refl λ {W} →
+      instᵒ{P = λ W → (▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ])))}
+                 (substᵒ 𝒱-fun ⊢𝒱V) W
+```
+
+```
+compatible-app : ∀{Γ}{A}{B}{L}{M}
+   → Γ ⊨ L ⦂ (A ⇒ B)
+   → Γ ⊨ M ⦂ A
+     -------------------
+   → Γ ⊨ L · M ⦂ B
+compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M γ = ⊢ℰLM
+ where
+ ⊢ℰL : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ A ⇒ B ⟧ (⟪ γ ⟫ L)
+ ⊢ℰL = ⊨L γ
+
+ ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ A ⟧ (⟪ γ ⟫ M)
+ ⊢ℰM = ⊨M γ
+
+ ⊢ℰLM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ B ⟧ (⟪ γ ⟫ (L · M))
+ ⊢ℰLM = ℰ-bind {F = □· (⟪ γ ⟫ M)} ⊢ℰL (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVM))
+  where
+  𝓟₁ = λ V → 𝒱⟦ A ⇒ B ⟧ V ∷ (⟪ γ ⟫ L —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
+  ⊢ℰVM : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ B ⟧ (V · ⟪ γ ⟫ M)
+  ⊢ℰVM {V} = sucP⊢ᵒQ λ 𝒱Vsn →
+       let v = 𝒱⇒Value (A ⇒ B) V 𝒱Vsn in
+       let 𝓟₁⊢ℰM : 𝓟₁ V ⊢ᵒ ℰ⟦ A ⟧ (⟪ γ ⟫ M)
+           𝓟₁⊢ℰM = Sᵒ (Sᵒ ⊢ℰM) in
+       ℰ-bind {F = v ·□} 𝓟₁⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVW))
+   where
+   𝓟₂ = λ V W → 𝒱⟦ A ⟧ W ∷ (⟪ γ ⟫ M —↠ W)ᵒ ∷ 𝒱⟦ A ⇒ B ⟧ V ∷ (⟪ γ ⟫ L —↠ V)ᵒ
+                 ∷ 𝓖⟦ Γ ⟧ γ
+   ⊢ℰVW : ∀{V W} → 𝓟₂ V W ⊢ᵒ ℰ⟦ B ⟧ (V · W)
+   ⊢ℰVW {V}{W} =
+     let ⊢𝒱V : 𝓟₂ V W ⊢ᵒ 𝒱⟦ A ⇒ B ⟧ V
+         ⊢𝒱V = Sᵒ (Sᵒ Zᵒ) in
+     let ⊢𝒱W : 𝓟₂ V W ⊢ᵒ 𝒱⟦ A ⟧ W
+         ⊢𝒱W = Zᵒ in
+     ⊢ᵒ-sucP ⊢𝒱W λ 𝒱Wsn →
+     let w = 𝒱⇒Value A W 𝒱Wsn in
+     𝒱-fun-elim ⊢𝒱V λ {N′ refl 𝒱W→ℰNW →
+     let prog : 𝓟₂ (ƛ N′) W ⊢ᵒ progress B (ƛ N′ · W)
+         prog = (inj₂ᵒ (inj₁ᵒ (constᵒI (_ , (β w))))) in
+     let pres : 𝓟₂ (ƛ N′) W ⊢ᵒ preservation B (ƛ N′ · W)
+         pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ {r →
+                let ⊢▷ℰN′W = appᵒ 𝒱W→ℰNW (monoᵒ ⊢𝒱W) in
+                let eq = deterministic r (β w) in
+                subst (λ N → 𝓟₂ (ƛ N′) W ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ N) (sym eq) ⊢▷ℰN′W}) in
+     ℰ-intro prog pres
+     }
+```
+
+
+
+```
+compatible-inject : ∀{Γ}{G}{M}
+  → Γ ⊨ M ⦂ gnd⇒ty G
+    --------------------
+  → Γ ⊨ M ⟨ G !⟩ ⦂ ★
+compatible-inject {Γ}{G}{M} ⊨M γ = ℰMg!
+ where
+ ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ gnd⇒ty G ⟧ (⟪ γ ⟫ M)
+ ⊢ℰM = ⊨M γ
+  
+ ℰMg! : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ ★ ⟧ ((⟪ γ ⟫ M) ⟨ G !⟩)
+ ℰMg! = ℰ-bind {F = □⟨ G !⟩} ⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVg!))
+  where
+  𝓟₁ = λ V → 𝒱⟦ gnd⇒ty G ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
+  ⊢ℰVg! : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ ★ ⟧ (V ⟨ G !⟩)
+  ⊢ℰVg!{V} =
+   ⊢ᵒ-sucP Zᵒ λ 𝒱Vsn →
+   let v = 𝒱⇒Value (gnd⇒ty G) V 𝒱Vsn in
+   𝒱⇒ℰ (substᵒ (≡ᵒ-sym 𝒱-dyn) (constᵒI v ,ᵒ monoᵒ Zᵒ))
+```
+
+```
+𝒱-dyn-elim : ∀{𝒫}{V}{R}
+   → 𝒫 ⊢ᵒ 𝒱⟦ ★ ⟧ V
+   → (∀ W G → V ≡ W ⟨ G !⟩
+             → 𝒫 ⊢ᵒ ((Value W)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ gnd⇒ty G ⟧ W))
+             → 𝒫 ⊢ᵒ R)
+     ----------------------------------------------
+   → 𝒫 ⊢ᵒ R
+𝒱-dyn-elim {𝒫}{V}{R} ⊢𝒱V cont =
+  ⊢ᵒ-sucP ⊢𝒱V λ { 𝒱Vsn → G 𝒱Vsn ⊢𝒱V cont }
+  where
+  G : ∀{V}{n}
+      → # (𝒱⟦ ★ ⟧ V) (suc n)
+      → 𝒫 ⊢ᵒ 𝒱⟦ ★ ⟧ V
+      → (∀ W G → V ≡ W ⟨ G !⟩
+               → 𝒫 ⊢ᵒ ((Value W)ᵒ ×ᵒ ▷ᵒ (𝒱⟦ gnd⇒ty G ⟧ W))
+               → 𝒫 ⊢ᵒ R)
+      → 𝒫 ⊢ᵒ R
+  G {W ⟨ G !⟩}{n} 𝒱Vsn ⊢𝒱V cont
+      with 𝒱⇒Value ★ (W ⟨ G !⟩) 𝒱Vsn
+  ... | w 〈 _ 〉 =
+      let ⊢▷𝒱W = proj₂ᵒ (substᵒ (𝒱-dyn{V = W}) ⊢𝒱V) in
+      cont W _ refl (constᵒI w ,ᵒ ⊢▷𝒱W)
+```
+
+```
+red-inj-proj : ∀{G}{H}{W}
+   → Value W
+   → reducible ((W ⟨ G !⟩) ⟨ H ?⟩)
+red-inj-proj {G} {H} {W} w
+    with G ≡ᵍ H
+... | yes refl = W , (collapse w  refl)
+... | no neq = blame , (collide w neq refl)
+```
+
+```
+compatible-project : ∀{Γ}{H}{M}
+  → Γ ⊨ M ⦂ ★
+    -----------------------------
+  → Γ ⊨ M ⟨ H ?⟩ ⦂ gnd⇒ty H
+compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
+ where
+ ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ ★ ⟧ (⟪ γ ⟫ M)
+ ⊢ℰM = ⊨M γ
+  
+ ℰMh? : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ gnd⇒ty H ⟧ ((⟪ γ ⟫ M) ⟨ H ?⟩)
+ ℰMh? = ℰ-bind {F = □⟨ H ?⟩} ⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVh?))
+  where
+  𝓟₁ = λ V → 𝒱⟦ ★ ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
+  ⊢ℰVh? : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ gnd⇒ty H ⟧ (V ⟨ H ?⟩)
+  ⊢ℰVh?{V} =
+   let ⊢𝒱V : 𝓟₁ V ⊢ᵒ 𝒱⟦ ★ ⟧ V
+       ⊢𝒱V = Zᵒ in
+   𝒱-dyn-elim ⊢𝒱V λ { W G refl ⊢w×▷𝒱W →
+   let ⊢w = proj₁ᵒ ⊢w×▷𝒱W in
+   let ▷𝒱W = proj₂ᵒ ⊢w×▷𝒱W in
+   ⊢ᵒ-sucP ⊢w λ{n} w →
+   let prog : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ progress (gnd⇒ty H) ((W ⟨ G !⟩) ⟨ H ?⟩)
+       prog = inj₂ᵒ (inj₁ᵒ (constᵒI (red-inj-proj w))) in
+   let pres : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ preservation (gnd⇒ty H)((W ⟨ G !⟩) ⟨ H ?⟩)
+       pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ r → Goal r w ▷𝒱W) in
+   ℰ-intro prog pres
+   }
+    where
+    Goal : ∀{W}{G}{H}{N}
+       → (W ⟨ G !⟩ ⟨ H ?⟩) —→ N
+       → Value W
+       → 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ 𝒱⟦ gnd⇒ty G ⟧ W
+       → 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ ℰ⟦ gnd⇒ty H ⟧ N
+    Goal (ξξ □⟨ H ?⟩ refl refl r) w ▷𝒱W =
+        ⊥-elim (value-irreducible (w 〈 _ 〉) r)
+    Goal {W} (ξξ-blame □⟨ H ?⟩ ())
+    Goal {W}{G}{G}{W} (collapse{H} w′ refl) w ▷𝒱W =
+       ▷→▷ ▷𝒱W (→ᵒI (𝒱⇒ℰ Zᵒ))
+    Goal {W} (collide x x₁ x₂) w ▷𝒱W = monoᵒ ℰ-blame
+```
+
+## Fundamental Lemma
+
+```
+fundamental : ∀ {Γ A} → (M : Term)
+  → Γ ⊢ M ⦂ A
+    ----------
+  → Γ ⊨ M ⦂ A
+fundamental {Γ} {A} .(` _) (⊢` ∋x) =
+    compatibility-var ∋x
+fundamental {Γ} {.($ₜ ′ℕ)} .($ (Num _)) (⊢$ (Num n)) =
+    compatible-nat
+fundamental {Γ} {.($ₜ ′𝔹)} .($ (Bool _)) (⊢$ (Bool b)) =
+    compatible-bool
+fundamental {Γ} {A} (L · M) (⊢· ⊢L ⊢M) =
+    compatible-app{L = L}{M} (fundamental L ⊢L) (fundamental M ⊢M)
+fundamental {Γ} {.(_ ⇒ _)} (ƛ N) (⊢ƛ ⊢N) =
+    compatible-lambda {N = N} (fundamental N ⊢N)
+fundamental {Γ} {.★} (M ⟨ G !⟩) (⊢⟨!⟩ ⊢M) =
+    compatible-inject {M = M} (fundamental M ⊢M)
+fundamental {Γ} {A} (M ⟨ H ?⟩) (⊢⟨?⟩ ⊢M H) =
+    compatible-project {M = M} (fundamental M ⊢M)
+fundamental {Γ} {A} .blame ⊢blame = compatible-blame
+```
+
+## Proof of Type Safety
+
+```
+sem-type-safety : ∀ {A} → (M N : Term)
+  → (r : M —↠ N)
+  → # (ℰ⟦ A ⟧ M) (suc (len r))
+    ---------------------------------------------
+  → Value N  ⊎  (∃[ N′ ] (N —→ N′))  ⊎  N ≡ blame   
+sem-type-safety {A} M .M (.M END) (inj₁ 𝒱M , presM) =
+    inj₁ (𝒱⇒Value A M 𝒱M)
+sem-type-safety {A} M .M (.M END) (inj₂ (inj₁ r) , presM) =
+    inj₂ (inj₁ r)
+sem-type-safety {A} M .M (.M END) (inj₂ (inj₂ isBlame) , presM) =
+    inj₂ (inj₂ refl)
+sem-type-safety {A} M N (_—→⟨_⟩_ .M {M′} M→M′ M′→N) (_ , presM) =
+    let ℰM′ : # (ℰ⟦ A ⟧ M′) (suc (len M′→N))
+        ℰM′ = presM M′ (suc (suc (len M′→N))) ≤-refl M→M′ in
+    sem-type-safety M′ N M′→N ℰM′
+```
+
+```
+type-safety : ∀ {A} → (M N : Term)
+  → [] ⊢ M ⦂ A
+  → M —↠ N
+    ---------------------------------------------
+  → Value N  ⊎  (∃[ N′ ] (N —→ N′))  ⊎  N ≡ blame   
+type-safety M N ⊢M M→N =
+  let ℰM = ⊢ᵒ-elim ((fundamental M ⊢M) id) (suc (len M→N)) tt in
+  sem-type-safety M N M→N ℰM 
 ```
