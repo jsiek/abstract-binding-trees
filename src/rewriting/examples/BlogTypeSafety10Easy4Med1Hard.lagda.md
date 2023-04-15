@@ -155,10 +155,11 @@ are no guarantees.
 We now have proper definitions of ℰ and 𝒱 but proving theorems about
 these definitions involves a fair bit of reasoning about the step
 indices, which is tedious, especially in Agda because it's support for
-automating arithmetic proofs is cumbersome to use.  To streamline the
-definitions and proofs that involve step indexing, Dreyer, Ahmed, and
-Birkedal (2011) propose the use of a temporal logic that hides the
-step indexing. Next we discuss the embedding of such a logic in Agda.
+automating proofs about arithmetic is cumbersome to use.  To
+streamline the definitions and proofs that involve step indexing,
+Dreyer, Ahmed, and Birkedal (2011) propose the use of a temporal logic
+that hides the step indexing. Next we discuss the embedding of such a
+logic in Agda.
 
 
 ## Step-indexed Logic
