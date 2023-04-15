@@ -28,10 +28,11 @@ more advanced techniques, such as step indexing.  In this blog post I
 prove type safety of a cast calculus (an intermediate language of the
 gradually typed lambda calculus).  The proof is in Agda and the proof
 uses step-indexed logical relations because the presence of the
-unknown type (aka. dynamic type) prevents the use of regular logical
-relations. To reduce the clutter of reasoning about step indexing, we
-conduct the proof using a temporal logic, in the spirit of the LSLR
-logic of Dreyer, Ahmed, and Birkedal (2011), that we embed in Agda.
+unknown type (aka. dynamic type) prevents the use of logical relations
+that are only indexed by types. To reduce the clutter of reasoning
+about step indexing, we conduct the proof using a temporal logic, in
+the spirit of the LSLR logic of Dreyer, Ahmed, and Birkedal (2011),
+that we embed in Agda.
 
 ## Review of the Cast Calculus
 
@@ -52,21 +53,22 @@ The ground types are
 
     G,H ::= ι | ★⇒★
 
-Just like the lambda calculus, there are variables (de Bruijn indices),
-lambdas, and application. We also throw in literals (Booleans and
-natural numbers).  To support gradual typing, we include a term
-`M ⟨ G !⟩` for injecting from a ground type `G` to the unknown type, and
-a term `M ⟨ H ?⟩` for projecting from the unknown type
-back out to a ground type.  Finally, we include the `blame` term to
-represent trapped runtime errors.  The syntax is a bit odd to make
+Just like the lambda calculus, there are variables (de Bruijn
+indices), lambdas, and application. We also throw in literals
+(Booleans and natural numbers).  Also, to support gradual typing, we
+include a term `M ⟨ G !⟩` for injecting from a ground type `G` to the
+unknown type, and a term `M ⟨ H ?⟩` for projecting from the unknown
+type back out to a ground type.  Finally, we include the `blame` term
+to represent trapped runtime errors.  The syntax is a bit odd to make
 Agda happy.
 
     L,M,N ::= ` x | ƛ N | L · M | $ k | M ⟨ G !⟩ | M ⟨ H ?⟩ | blame
 
-This cast calculus is somewhat unusual in that it only includes injections
-and projections but not the other kinds of casts that one typically
-has in a cast calculus, e.g. from `★ ⇒ ℕ` to `ℕ ⇒ ℕ`. That is OK
-because those other casts can still be expressed in this cast calculus.
+This cast calculus is somewhat unusual in that it only includes
+injections and projections but not the other kinds of casts that one
+typically has in a cast calculus, e.g. a cast from one function type
+`★ ⇒ ℕ` to another function type `ℕ ⇒ ℕ`. That is OK because those
+other casts can still be expressed in this cast calculus.
 
 The values include lambdas, literals, and injected values.
 
@@ -101,7 +103,7 @@ says that if M reduces to N, then N is also semantically well typed at A.
     ℰ⟦ A ⟧ M = (𝒱 ⟦ A ⟧ M ⊎ reducible M ⊎ Blame M)
                 × (∀ N → (M —→ N) → ℰ⟦ A ⟧ N)
 
-The predicate 𝓥 expresses the semantic notion of a value being well
+The predicate 𝒱 expresses the semantic notion of a value being well
 typed a some type A. For a base type `ι` (𝔹 or ℕ), the value must be
 the appropriate kind of literal (Boolean or natural number). For a
 function type `A ⇒ B`, the value must be a lambda expression `ƛ N`,
@@ -117,10 +119,10 @@ must be semantically well typed at `G`.
     𝒱⟦ ★ ⟧ (V ⟨ G !⟩) = Value V × 𝒱⟦ gnd⇒ty G ⟧ V
     𝒱⟦ _ ⟧ _ = ⊥
 
-Note that the definitions of ℰ and 𝓥 are recursive. Unfortunately they
+Note that the definitions of ℰ and 𝒱 are recursive. Unfortunately they
 are not proper definitions of (total) functions because there is no
 guarantee of their termination. For simple languages, like the Simply
-Typed Lambda Calculus, 𝓥 can be defined by recursion on the type
+Typed Lambda Calculus, 𝒱 can be defined by recursion on the type
 `A`. However, here we have the unknown type `★` and the recursion in that
 clause invokes `𝒱⟦ gnd⇒ty G ⟧ V`, but `gnd⇒ty G` is
 not a structural part of ★ (nothing is).
@@ -129,11 +131,11 @@ reformulate ℰ to remove the recursion in ℰ.)
 
 ## An Explicitly Step-indexed Logical Relation for Type Safety
 
-We can force the definitions of ℰ and 𝓥 to terminate using
+We can force the definitions of ℰ and 𝒱 to terminate using
 step-indexing (aka. the "gasoline" technique), which was first applied
 to logical relations by Appel and McAllester (TOPLAS 2001). We add a
-parameter k (a natural number) to ℰ and 𝓥, and decrement k on each
-recursive call. When k is zero, ℰ and 𝓥 accept all terms. Thus, the
+parameter k (a natural number) to ℰ and 𝒱, and decrement k on each
+recursive call. When k is zero, ℰ and 𝒱 accept all terms. Thus, the
 meaning of `ℰ⟦ A ⟧ M k` is that term `M` is guaranteed to behave
 according to type `A` for `k` reduction steps, but after that there
 are no guarantees.
@@ -150,7 +152,7 @@ are no guarantees.
     𝒱⟦ ★ ⟧ (V ⟨ G !⟩) (suc k) = Value V × 𝒱⟦ gnd⇒ty G ⟧ V k
     𝒱⟦ _ ⟧ _ (suc k) = ⊥
 
-We now have proper definitions of ℰ and 𝓥 but proving theorems about
+We now have proper definitions of ℰ and 𝒱 but proving theorems about
 these definitions involves a fair bit of reasoning about the step
 indices, which is tedious, especially in Agda because it's support for
 automating arithmetic proofs is cumbersome to use.  To streamline the
@@ -513,10 +515,10 @@ a modal logic, and it took some getting use to.
 ## Defining a Logical Relation for Type Safety
 
 With the Step-indexed Logic in hand, we are ready to define a logical
-relation for type safety. The two predicates ℰ and 𝓥 are mutually
+relation for type safety. The two predicates ℰ and 𝒱 are mutually
 recursive, so we combine them into a single recursive predicate named
 `ℰ⊎𝒱` that takes a sum type, where the left side is for ℰ and the
-right side is for 𝓥. We shall define `ℰ⊎𝒱` by an application of
+right side is for 𝒱. We shall define `ℰ⊎𝒱` by an application of
 `μᵒ`, so we first need to define the non-recursive version of
 `ℰ⊎𝒱`, which we call `pre-ℰ⊎𝒱`, defined below. It simply dispatches to
 the non-recursive `pre-ℰ` and `pre-ℰ` which we define next.
@@ -537,7 +539,7 @@ pre-ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
 ```
 
 To improve the readability of our definitions, we define the following
-notation for recursive applications of the ℰ and 𝓥 predicates.
+notation for recursive applications of the ℰ and 𝒱 predicates.
 
 ```
 ℰˢ⟦_⟧ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Now ∅)
@@ -547,13 +549,13 @@ notation for recursive applications of the ℰ and 𝓥 predicates.
 𝒱ˢ⟦ A ⟧ V = (inj₁ (A , V)) ∈ zeroˢ
 ```
 
-The definition of pre-ℰ and pre-𝓥 are of similar form to the
-explicitly step-indexed definition of ℰ and 𝓥 above, however the
+The definition of pre-ℰ and pre-𝒱 are of similar form to the
+explicitly step-indexed definition of ℰ and 𝒱 above, however the
 parameter `k` is gone and all of the logical connectives have a
 superscript `f`, indicating that we're building a `RecSetᵒ`.  Also,
-note that all the uses of `ℰˢ` and `𝓥ˢ` are guarded by the later
+note that all the uses of `ℰˢ` and `𝒱ˢ` are guarded by the later
 operator `▷ˢ`. Finally, in the definition of pre-ℰ, we do not use `▷ˢ
-(𝓥⟦ A ⟧ M)` but instead use `pre-𝓥 A M` because we need to say there
+(𝒱⟦ A ⟧ M)` but instead use `pre-𝒱 A M` because we need to say there
 that `M` is a semantic value now, not later.
 
 ```
@@ -968,13 +970,18 @@ open import rewriting.examples.CastDeterministic
 
 ## More Compatibility Lemmas
 
+The next compatibility lemma to proof is the one for function
+application.  For that we'll need the following elimination lemma for
+a value `V` in `𝒱⟦ A ⇒ B ⟧`.
+
 ```
+safe-body : List Setᵒ → Term → Type → Type → Set
+safe-body 𝒫 N A B = ∀{W} → 𝒫 ⊢ᵒ (▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ])))
+
 𝒱-fun-elim : ∀{𝒫}{A}{B}{V}{R}
    → 𝒫 ⊢ᵒ 𝒱⟦ A ⇒ B ⟧ V
-   → (∀ N → V ≡ ƛ N
-          → (∀{W} → 𝒫 ⊢ᵒ (▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ]))))
-          → 𝒫 ⊢ᵒ R)
-    --------------------------------------------------------------------
+   → (∀ N → V ≡ ƛ N → safe-body 𝒫 N A B → 𝒫 ⊢ᵒ R)
+    ------------------------------------------------
    → 𝒫 ⊢ᵒ R
 𝒱-fun-elim {𝒫}{A}{B}{V}{R} ⊢𝒱V cont =
   ⊢ᵒ-sucP ⊢𝒱V λ { 𝒱Vsn → G {V} 𝒱Vsn ⊢𝒱V cont}
@@ -982,14 +989,23 @@ open import rewriting.examples.CastDeterministic
   G : ∀{V}{n}
      → # (𝒱⟦ A ⇒ B ⟧ V) (suc n)
      → 𝒫 ⊢ᵒ 𝒱⟦ A ⇒ B ⟧ V
-     → (∀ N → V ≡ ƛ N
-             → (∀{W} → 𝒫 ⊢ᵒ (▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ]))))
-             → 𝒫 ⊢ᵒ R)
+     → (∀ N → V ≡ ƛ N → safe-body 𝒫 N A B → 𝒫 ⊢ᵒ R)
      → 𝒫 ⊢ᵒ R
   G{ƛ N}{n} 𝒱V ⊢𝒱V cont = cont N refl λ {W} →
       instᵒ{P = λ W → (▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ (▷ᵒ (ℰ⟦ B ⟧ (N [ W ])))}
                  (substᵒ 𝒱-fun ⊢𝒱V) W
 ```
+
+The proof of compatibility for application begins with two uses of the
+`ℰ-bind` lemma, once for subexpression `L` and again for `M`.  So we
+obtain that `L` reduces to value `V` and `M` reduces to `W` and that
+`𝒱⟦ A ⇒ B ⟧ V` and `𝒱⟦ A ⟧ W`.  At this point, our goal is to show
+that `ℰ⟦ B ⟧ (V · W)`.  Next we use the elimination lemma on `𝒱⟦ A ⇒ B
+⟧ V` which tells us that `V` is a lambda abstraction `ƛ N` with a
+semantically safe body `N`.  We thus obtain the `progress` part of
+`ℰ⟦ B ⟧ (V · W)` because `(ƛ N) · W —→ N [ W ]`.  For the preservation
+part, we need to show that `ℰ⟦ B ⟧ (N [ W ])`, but that follows from
+`𝒱⟦ A ⟧ W` and that `N` is a semantically safe body.
 
 ```
 compatible-app : ∀{Γ}{A}{B}{L}{M}
@@ -999,21 +1015,15 @@ compatible-app : ∀{Γ}{A}{B}{L}{M}
    → Γ ⊨ L · M ⦂ B
 compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M γ = ⊢ℰLM
  where
- ⊢ℰL : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ A ⇒ B ⟧ (⟪ γ ⟫ L)
- ⊢ℰL = ⊨L γ
-
- ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ A ⟧ (⟪ γ ⟫ M)
- ⊢ℰM = ⊨M γ
-
  ⊢ℰLM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ B ⟧ (⟪ γ ⟫ (L · M))
- ⊢ℰLM = ℰ-bind {F = □· (⟪ γ ⟫ M)} ⊢ℰL (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVM))
+ ⊢ℰLM = ℰ-bind {F = □· (⟪ γ ⟫ M)} (⊨L γ) (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVM))
   where
   𝓟₁ = λ V → 𝒱⟦ A ⇒ B ⟧ V ∷ (⟪ γ ⟫ L —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
   ⊢ℰVM : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ B ⟧ (V · ⟪ γ ⟫ M)
   ⊢ℰVM {V} = sucP⊢ᵒQ λ 𝒱Vsn →
        let v = 𝒱⇒Value (A ⇒ B) V 𝒱Vsn in
        let 𝓟₁⊢ℰM : 𝓟₁ V ⊢ᵒ ℰ⟦ A ⟧ (⟪ γ ⟫ M)
-           𝓟₁⊢ℰM = Sᵒ (Sᵒ ⊢ℰM) in
+           𝓟₁⊢ℰM = Sᵒ (Sᵒ (⊨M γ)) in
        ℰ-bind {F = v ·□} 𝓟₁⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVW))
    where
    𝓟₂ = λ V W → 𝒱⟦ A ⟧ W ∷ (⟪ γ ⟫ M —↠ W)ᵒ ∷ 𝒱⟦ A ⇒ B ⟧ V ∷ (⟪ γ ⟫ L —↠ V)ᵒ
@@ -1038,7 +1048,11 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M γ = ⊢ℰLM
      }
 ```
 
-
+The compability lemma for an injection cast also begins with applying
+the bind lemma to subexpression `M`, taking us from `ℰ⟦ gnd⇒ty G ⟧ M`
+to `𝒱⟦ gnd⇒ty G ⟧ V`. This also gives us that `V` is a syntactic
+value via `𝒱⇒Value`. So we have `𝒱⟦ ★ ⟧ (V ⟨ G !⟩)` and then
+conclude using `𝒱⇒ℰ`.
 
 ```
 compatible-inject : ∀{Γ}{G}{M}
@@ -1047,11 +1061,8 @@ compatible-inject : ∀{Γ}{G}{M}
   → Γ ⊨ M ⟨ G !⟩ ⦂ ★
 compatible-inject {Γ}{G}{M} ⊨M γ = ℰMg!
  where
- ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ gnd⇒ty G ⟧ (⟪ γ ⟫ M)
- ⊢ℰM = ⊨M γ
-  
  ℰMg! : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ ★ ⟧ ((⟪ γ ⟫ M) ⟨ G !⟩)
- ℰMg! = ℰ-bind {F = □⟨ G !⟩} ⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVg!))
+ ℰMg! = ℰ-bind {F = □⟨ G !⟩} (⊨M γ) (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVg!))
   where
   𝓟₁ = λ V → 𝒱⟦ gnd⇒ty G ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
   ⊢ℰVg! : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ ★ ⟧ (V ⟨ G !⟩)
@@ -1087,10 +1098,10 @@ compatible-inject {Γ}{G}{M} ⊨M γ = ℰMg!
 ```
 
 ```
-red-inj-proj : ∀{G}{H}{W}
+reduce-inj-proj : ∀{G}{H}{W}
    → Value W
    → reducible ((W ⟨ G !⟩) ⟨ H ?⟩)
-red-inj-proj {G} {H} {W} w
+reduce-inj-proj {G} {H} {W} w
     with G ≡ᵍ H
 ... | yes refl = W , (collapse w  refl)
 ... | no neq = blame , (collide w neq refl)
@@ -1119,7 +1130,7 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
    let ▷𝒱W = proj₂ᵒ ⊢w×▷𝒱W in
    ⊢ᵒ-sucP ⊢w λ{n} w →
    let prog : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ progress (gnd⇒ty H) ((W ⟨ G !⟩) ⟨ H ?⟩)
-       prog = inj₂ᵒ (inj₁ᵒ (constᵒI (red-inj-proj w))) in
+       prog = inj₂ᵒ (inj₁ᵒ (constᵒI (reduce-inj-proj w))) in
    let pres : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ preservation (gnd⇒ty H)((W ⟨ G !⟩) ⟨ H ?⟩)
        pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ r → Goal r w ▷𝒱W) in
    ℰ-intro prog pres
