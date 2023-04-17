@@ -517,7 +517,7 @@ logical connectives. For example, the following rule distributes
        → 𝓟 ⊢ᵒ (▷ᵒ P) ×ᵒ (▷ᵒ Q)
 
 This project was the first time for me conducting nontrivial proofs in
-a modal logic, and it took some getting use to.
+a modal logic, and it took some getting use to!
 
 
 ## Defining a Logical Relation for Type Safety
@@ -557,7 +557,7 @@ notation for recursive applications of the ℰ and 𝒱 predicates.
 𝒱ˢ⟦ A ⟧ V = (inj₁ (A , V)) ∈ zeroˢ
 ```
 
-The definition of pre-ℰ and pre-𝒱 are of similar form to the
+The definition of `pre-ℰ` and `pre-𝒱` below are of similar form to the
 explicitly step-indexed definition of ℰ and 𝒱 above, however the
 parameter `k` is gone and all of the logical connectives have a
 superscript `f`, indicating that we're building a `RecSetᵒ`.  Also,
