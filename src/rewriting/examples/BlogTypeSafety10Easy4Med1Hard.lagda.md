@@ -1076,6 +1076,10 @@ compatible-inject {Γ}{G}{M} ⊨M γ = ℰMg!
    𝒱⇒ℰ (substᵒ (≡ᵒ-sym 𝒱-dyn) (constᵒI v ,ᵒ monoᵒ Zᵒ))
 ```
 
+The last compatibility lemma is for a projection cast.
+Here we also need an elimination lemma, this time for
+a value `V` of type `★`.
+
 ```
 𝒱-dyn-elim : ∀{𝒫}{V}{R}
    → 𝒫 ⊢ᵒ 𝒱⟦ ★ ⟧ V
@@ -1101,15 +1105,14 @@ compatible-inject {Γ}{G}{M} ⊨M γ = ℰMg!
       cont W _ refl (constᵒI w ,ᵒ ⊢▷𝒱W)
 ```
 
-```
-reduce-inj-proj : ∀{G}{H}{W}
-   → Value W
-   → reducible ((W ⟨ G !⟩) ⟨ H ?⟩)
-reduce-inj-proj {G} {H} {W} w
-    with G ≡ᵍ H
-... | yes refl = W , (collapse w  refl)
-... | no neq = blame , (collide w neq refl)
-```
+The compatibility lemma for a projection `M ⟨ H ?⟩` begins by using
+`ℰ-bind` on the subexpression `M` to obtain a value `V` where
+`⟪ γ ⟫ M —↠ V` and `𝒱⟦ ★ ⟧ V`. We then apply lemma `𝒱-dyn-elim`
+to compose `V` into an injection `W ⟨ G !⟩` of a value `W`
+where `▷ᵒ 𝒱⟦ G ⟧ W`. We need to show `ℰ⟦ H ⟧ (W ⟨ G !⟩ ⟨ H ?⟩)`.
+The progress part comes from showing that it reduces to `W`
+(if `G ≡ H`) or to `blame`. The preservation part is from
+`▷ᵒ 𝒱⟦ G ⟧ W` (in the `G ≡ H` case) or because `ℰ⟦ H ⟧ blame`.
 
 ```
 compatible-project : ∀{Γ}{H}{M}
@@ -1118,11 +1121,8 @@ compatible-project : ∀{Γ}{H}{M}
   → Γ ⊨ M ⟨ H ?⟩ ⦂ gnd⇒ty H
 compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
  where
- ⊢ℰM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ ★ ⟧ (⟪ γ ⟫ M)
- ⊢ℰM = ⊨M γ
-  
  ℰMh? : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ gnd⇒ty H ⟧ ((⟪ γ ⟫ M) ⟨ H ?⟩)
- ℰMh? = ℰ-bind {F = □⟨ H ?⟩} ⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVh?))
+ ℰMh? = ℰ-bind {F = □⟨ H ?⟩} (⊨M γ) (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVh?))
   where
   𝓟₁ = λ V → 𝒱⟦ ★ ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
   ⊢ℰVh? : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ gnd⇒ty H ⟧ (V ⟨ H ?⟩)
@@ -1140,6 +1140,14 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
    ℰ-intro prog pres
    }
     where
+    reduce-inj-proj : ∀{G}{H}{W}
+       → Value W
+       → reducible ((W ⟨ G !⟩) ⟨ H ?⟩)
+    reduce-inj-proj {G} {H} {W} w
+        with G ≡ᵍ H
+    ... | yes refl = W , (collapse w  refl)
+    ... | no neq = blame , (collide w neq refl)
+    
     Goal : ∀{W}{G}{H}{N}
        → (W ⟨ G !⟩ ⟨ H ?⟩) —→ N
        → Value W
@@ -1154,6 +1162,11 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
 ```
 
 ## Fundamental Lemma
+
+The Fundamental Lemma states that a syntactically well-typed term is
+also a semantically well-typed term. Or given how we have defined the
+logical relations, it means that a well-typed term satisfies progress
+and preservation.
 
 ```
 fundamental : ∀ {Γ A} → (M : Term)
@@ -1179,6 +1192,11 @@ fundamental {Γ} {A} .blame ⊢blame = compatible-blame
 
 ## Proof of Type Safety
 
+For the Type Safety theorem, we need to consider multi-step reduction.
+So we first prove the following lemma which states that if
+`M —↠ N` and `M` is in `ℰ⟦ A⟧`, then `N` satisfies progress.
+The lemma is by induction on the multi-step reduction.
+
 ```
 sem-type-safety : ∀ {A} → (M N : Term)
   → (r : M —↠ N)
@@ -1196,6 +1214,9 @@ sem-type-safety {A} M N (_—→⟨_⟩_ .M {M′} M→M′ M′→N) (_ , presM
         ℰM′ = presM M′ (suc (suc (len M′→N))) ≤-refl M→M′ in
     sem-type-safety M′ N M′→N ℰM′
 ```
+
+The Type Safety theorem is then a corollary of the Fundamental Lemma
+together with the above lemma regarding multi-step reduction.
 
 ```
 type-safety : ∀ {A} → (M N : Term)
