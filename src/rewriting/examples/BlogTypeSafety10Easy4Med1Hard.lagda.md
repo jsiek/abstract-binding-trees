@@ -471,15 +471,16 @@ a superscript "o".
 
 
 The introduction rule for a constant formula `S ᵒ` is straightforward.
-A proof of `S` in regular Agda is sufficient to build a proof of `S ᵒ`.
+A proof of `S` in regular Agda is sufficient to build a proof of `S ᵒ`
+in SIL.
 
     constᵒI : ∀{𝒫}{S : Set}
        → S
        → 𝒫 ⊢ᵒ S ᵒ
 
-On the other hand, given a proof of `S ᵒ`, one cannot obtain a proof
-of `S` directly. That is, the following rule is invalid because `𝒫`
-could be false at every index.
+On the other hand, given a proof of `S ᵒ` in SIL, one cannot obtain a
+proof of `S` directly in Agda. That is, the following rule is invalid
+because `𝒫` could be false at every index.
 
     bogus-constᵒE : ∀ {𝒫}{S : Set}{R : Setᵒ}
        → 𝒫 ⊢ᵒ S ᵒ
