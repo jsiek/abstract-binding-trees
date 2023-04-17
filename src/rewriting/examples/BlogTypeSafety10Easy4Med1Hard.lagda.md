@@ -95,8 +95,8 @@ safety for the cast calculus. The predicate ℰ expresses the semantic
 notion of a term being well typed at a given type A. Here "semantic"
 means "runtime behavior". We define that a term M is semantically well
 typed at type A if it satisfies "progress" and "preservation". The
-progress part says that M is either (1) a (semantic) value, (2)
-reducible, or (3) an error. The preservation part says that if M
+progress part says that M is either (1) a semantic value at type `A`,
+(2) reducible, or (3) an error. The preservation part says that if M
 reduces to N, then N is also semantically well typed at A.
 
     ℰ⟦_⟧ : (A : Type) → Term → Set
