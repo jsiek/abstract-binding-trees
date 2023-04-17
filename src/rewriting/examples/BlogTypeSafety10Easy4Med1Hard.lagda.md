@@ -331,7 +331,7 @@ Setˢ.
 
 The "later" operator `▷ˢ` asserts that `P` is true in the future, so the
 predicate `▷ˢ P` can safely say that any use of recursive predicate in
-`P` happen `Later`.
+`P` happens `Later`.
 
     laters : ∀ (Γ : Context) → Times Γ
     laters [] = ∅
@@ -370,14 +370,14 @@ The membership formula `a ∈ x` is true when `a` is in the predicate
 bound to variable `x` in the environment. The time for `x` is required
 to be `Now`.
 
-    one-now : ∀ (Γ : Context) → ∀{A} → (x : Γ ∋ A) → Times Γ
-    one-now (B ∷ Γ) zeroˢ = cons Now (laters Γ)
-    one-now (B ∷ Γ) (sucˢ x) = cons Later (one-now Γ x)
+    var-now : ∀ (Γ : Context) → ∀{A} → (x : Γ ∋ A) → Times Γ
+    var-now (B ∷ Γ) zeroˢ = cons Now (laters Γ)
+    var-now (B ∷ Γ) (sucˢ x) = cons Later (var-now Γ x)
 
     _∈_ : ∀{Γ}{A}
        → A
        → (x : Γ ∋ A)
-       → Setˢ Γ (one-now Γ x)
+       → Setˢ Γ (var-now Γ x)
     a ∈ x =
       record { # = λ δ → (lookup x δ) a
              ; ... }

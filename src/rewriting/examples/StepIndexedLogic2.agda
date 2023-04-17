@@ -630,19 +630,19 @@ timeof-diff : ∀{Γ}{ts : Times Γ}{A}{B} (x : Γ ∋ A) (y : Γ ∋ B)
    → timeof x ts ≢ timeof y ts
 timeof-diff x y eq1 eq2 rewrite eq1 | eq2 = λ ()
 
-one-now : ∀ (Γ : Context) → ∀{A} → (x : Γ ∋ A) → Times Γ
-one-now (B ∷ Γ) zeroˢ = cons Now (laters Γ)
-one-now (B ∷ Γ) (sucˢ x) = cons Later (one-now Γ x)
+var-now : ∀ (Γ : Context) → ∀{A} → (x : Γ ∋ A) → Times Γ
+var-now (B ∷ Γ) zeroˢ = cons Now (laters Γ)
+var-now (B ∷ Γ) (sucˢ x) = cons Later (var-now Γ x)
 
-timeof-one-now : ∀{Γ}{A}
+timeof-var-now : ∀{Γ}{A}
    → (x : Γ ∋ A)
-   → timeof x (one-now Γ x) ≡ Now
-timeof-one-now {B ∷ Γ} zeroˢ = refl
-timeof-one-now {B ∷ Γ} (sucˢ x) = timeof-one-now x
+   → timeof x (var-now Γ x) ≡ Now
+timeof-var-now {B ∷ Γ} zeroˢ = refl
+timeof-var-now {B ∷ Γ} (sucˢ x) = timeof-var-now x
 
 good-lookup : ∀{Γ}{A}{a}
   → (x : Γ ∋ A)
-  → goodnesses (one-now Γ x) (λ δ → lookup x δ a)
+  → goodnesses (var-now Γ x) (λ δ → lookup x δ a)
 good-lookup {.(A ∷ _)} {A} {a} zeroˢ zeroˢ (P , δ) j k k≤j =
    ≡ᵒ-sym (lemma17e{_}{P} k≤j)
 good-lookup {.(A ∷ _)} {A} {a} zeroˢ (sucˢ y) rewrite timeof-later y =
@@ -650,12 +650,12 @@ good-lookup {.(A ∷ _)} {A} {a} zeroˢ (sucˢ y) rewrite timeof-later y =
 good-lookup {.(_ ∷ _)} {A} {a} (sucˢ x) zeroˢ =
    λ{(P , δ) j k k≤j → ≡ᵒ-refl refl}
 good-lookup {B ∷ Γ} {A} {a} (sucˢ x) (sucˢ y)
-    with timeof y (one-now Γ x) in eq-y
+    with timeof y (var-now Γ x) in eq-y
 ... | Now = λ{(P , δ) j k k≤j → ↓-lookup x y k≤j }
 ... | Later =
       λ{(P , δ) j k k≤j →
           let eq = (lookup-diff{Γ}{_}{_}{_}{δ}{j} x y
-                        (timeof-diff x y (timeof-one-now x) eq-y)) in
+                        (timeof-diff x y (timeof-var-now x) eq-y)) in
           subst (λ X → ↓ᵒ (suc k) (lookup x δ a) ≡ᵒ ↓ᵒ (suc k) (X a))
                 (sym eq) (≡ᵒ-refl refl)}
 
@@ -677,7 +677,7 @@ congruent-lookup {Γ}{A} x a d=d′ = cong-lookup x a d=d′
 _∈_ : ∀{Γ}{A}
    → A
    → (x : Γ ∋ A)
-   → Setˢ Γ (one-now Γ x)
+   → Setˢ Γ (var-now Γ x)
 a ∈ x =
   record { # = λ δ → (lookup x δ) a
          ; good = good-lookup x
