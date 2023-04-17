@@ -125,7 +125,7 @@ guarantee of their termination. For simple languages, like the Simply
 Typed Lambda Calculus, 𝒱 can be defined by recursion on the type
 `A`. However, here we have the unknown type `★` and the recursion in that
 clause invokes `𝒱⟦ gnd⇒ty G ⟧ V`, but `gnd⇒ty G` is
-not a structural part of ★ (nothing is).
+not a structural part of `★` (nothing is).
 (The definition of ℰ above is also problematic, but one could
 reformulate ℰ to remove the recursion in ℰ.)
 
@@ -174,11 +174,12 @@ connectives from Agda's, we add a superscript "o". So "and" is written
 `×ᵒ`, "implies" is written `→ᵒ`, and so on.  SIL also includes a
 notion of time in which there is clock counting down. The logic is
 designed in such a way that if a formula `P` is true at some time then
-`P` stays true in the future (at lower counts). When the clock reaches
-zero, every formula becomes true.  Furthermore, the logic includes a
-"later" operator, written `▷ᵒ P`, meaning that `P` is true one clock
-tick in the future. When we use SIL to reason about the cast calculus,
-one clock tick will correspond to one reduction step.
+`P` stays true in the future (at lower counts). So formulas are
+downward closed.  When the clock reaches zero, every formula becomes
+true.  Furthermore, the logic includes a "later" operator, written `▷ᵒ
+P`, meaning that `P` is true one clock tick in the future. When we use
+SIL to reason about the cast calculus, one clock tick will correspond
+to one reduction step.
 
 Just as `Set` is the type of true/false formulas in Agda, `Setᵒ` is
 the type of true/false formulas in SIL. It is a record that bundles
@@ -214,15 +215,16 @@ the predicate `P` is true for all `a` at time `k`.
 
 The "exists" proposition `∃ᵒ[ a ] P` is true at a given time `k` if
 the predicate `P` is true for some `a` at time `k`. However, we
-must require that the type `A` is inhabited.
+must require that the type `A` is inhabited so that this proposition
+is true at time zero.
 
     ∃ᵒ : ∀{A : Set}{{_ : Inhabited A}} → (A → Setᵒ) → Setᵒ
     ∃ᵒ{A} P = record { # = λ k → Σ[ a ∈ A ] # (P a) k
                          ; down = ... ; tz = ... }
 
 We embed arbitrary Agda formulas into the step-indexed logic with the
-following operator, written `S ᵒ`, which is true if and only if `S` is
-true, except at time zero, when `S ᵒ` has to be true.
+following constant operator, written `S ᵒ`, which is true if and only
+if `S` is true, except at time zero, when `S ᵒ` has to be true.
 
     _ᵒ  : Set → Setᵒ
     S ᵒ = record { # = λ { zero → ⊤ ; (suc k) → S }
@@ -242,7 +244,7 @@ in that it turns a non-recursive predicate into a recursive one.
 The non-recursive predicate has type `A → (A → Setᵒ) → Setᵒ`. It has
 an extra parameter `(A → Setᵒ)` that will be bound to the
 recursive predicate itself. To clarify, lets look at an example.
-Suppose we wanted to define multi-step reduction according to
+Suppose we want to define multi-step reduction according to
 the following rules:
 
                 M —→ L    L —→* N
@@ -250,12 +252,14 @@ the following rules:
     M —→* M     M —→* N
 
 We would first define a non-recursive predicate that has an extra
-parameter, let us name it `R` for recursion.
+parameter, let us name it `R` for recursion. Inside the definition of
+`mreduce`, we use `R` is the place where we would recursively use
+`mreduce`, as follows.
 
     mreduce : Term × Term → (Term × Term → Setᵒ) → Setᵒ
     mreduce (M , N) R = (M ≡ N)ᵒ ⊎ᵒ (∃ᵒ[ L ] (M —→ L)ᵒ ×ᵒ R (L , N))
 
-Because we use "exists" with a Term, we need to prove that Term is inhabited.
+Because we use `∃ᵒ` with a Term, we need to prove that Term is inhabited.
 
 ```
 instance
