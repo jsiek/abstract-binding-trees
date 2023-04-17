@@ -1873,16 +1873,6 @@ abstract
   ◁Pᵒ ⊢◁P (suc n) ⊨𝒫n = ⊢◁P (suc n) ⊨𝒫n
 -}
 
-sucP⊢ᵒQ : ∀{𝒫}{P Q : Setᵒ}
-   → (∀{n} → # P (suc n) → P ∷ 𝒫 ⊢ᵒ Q)
-   → P ∷ 𝒫 ⊢ᵒ Q
-sucP⊢ᵒQ {𝒫}{P}{Q} Psn⊢Q =
-    ⊢ᵒ-intro λ { zero (Pn , 𝒫n) → tz Q
-               ; (suc n) (Psn , 𝒫sn) →
-                  let ⊢Q = Psn⊢Q Psn in
-                  let Qsn = ⊢ᵒ-elim ⊢Q (suc n) (Psn , 𝒫sn) in
-                  Qsn}
-
 ⊢ᵒ-sucP : ∀{𝒫}{P Q : Setᵒ}
    → 𝒫 ⊢ᵒ P
    → (∀{n} → # P (suc n) → 𝒫 ⊢ᵒ Q)

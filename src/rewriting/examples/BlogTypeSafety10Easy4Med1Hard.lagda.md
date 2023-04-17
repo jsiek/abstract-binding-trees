@@ -533,6 +533,15 @@ In the world of SIL, propositions are always true at zero, so the base
 case `P 0` is not necessary. The induction step `(∀ k → P k → P (suc k))`
 is similar to the premise `(▷ᵒ P) ∷ 𝒫 ⊢ᵒ P` because `▷ᵒ` subtracts one.
 
+The following is a handy proof rule that turns a proof of `P` in SIL
+into an assumption in Agda that `P` is true for some positive natural
+number.
+
+    ⊢ᵒ-sucP : ∀{𝒫}{P Q : Setᵒ}
+       → 𝒫 ⊢ᵒ P
+       → (∀{n} → # P (suc n) → 𝒫 ⊢ᵒ Q)
+       → 𝒫 ⊢ᵒ Q
+
 As usual for temporal logics (or more generally, for modal logics),
 there are distribution rules that push "later" through the other
 logical connectives. For example, the following rule distributes
@@ -1060,7 +1069,7 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M γ = ⊢ℰLM
   where
   𝒫₁ = λ V → 𝒱⟦ A ⇒ B ⟧ V ∷ (⟪ γ ⟫ L —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
   ⊢ℰVM : ∀{V} → 𝒫₁ V ⊢ᵒ ℰ⟦ B ⟧ (V · ⟪ γ ⟫ M)
-  ⊢ℰVM {V} = sucP⊢ᵒQ λ 𝒱Vsn →
+  ⊢ℰVM {V} = ⊢ᵒ-sucP Zᵒ λ 𝒱Vsn →
        let v = 𝒱⇒Value (A ⇒ B) V 𝒱Vsn in
        let 𝒫₁⊢ℰM : 𝒫₁ V ⊢ᵒ ℰ⟦ A ⟧ (⟪ γ ⟫ M)
            𝒫₁⊢ℰM = Sᵒ (Sᵒ (⊨M γ)) in
