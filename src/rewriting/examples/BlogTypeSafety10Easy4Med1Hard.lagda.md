@@ -273,8 +273,8 @@ obtain the desired recursive predicate `—→*`.
     _—→*_ : Term → Term → Setᵒ
     M —→* N = μᵒ mreduce (M , N)
 
-The problem with the above story is that it's not possible (to my
-knowledge) to construct a recursive predicate from an arbitrary
+The problem with the above story is that it's not possible in Agda (to
+my knowledge) to construct a recursive predicate from an arbitrary
 function of type `A → (A → Setᵒ) → Setᵒ`. Instead, we need to place
 restrictions on the function. In particular, if we make sure that the
 recursion never happens "now", but only "later", then it becomes
@@ -287,7 +287,8 @@ of predicates. The type of the environment is given by a `Context`:
     Context : Set₁
     Context = List Set
 
-We represent an environment of recursive predicates with a tuple.
+We represent an environment of recursive predicates with a tuple of
+the following type.
 
     RecEnv : Context → Set₁
     RecEnv [] = topᵖ 
@@ -300,14 +301,15 @@ recursive predicates, which we define as follows.
       zeroˢ : ∀{Γ}{A} → (A ∷ Γ) ∋ A
       sucˢ : ∀{Γ}{A}{B} → Γ ∋ B → (A ∷ Γ) ∋ B
 
-For each variable, we track whether it has been used "now"
-or not. So we define `Time` as follows.
+For each variable, we track whether it has been used "now" or not. So
+we define `Time` as follows. The `Later` constructor does double duty
+to mean a predicate has either been used "later" or not at all.
 
     data Time : Set where
       Now : Time
       Later : Time
 
-and the following defines a list of times, one for each variable in `Γ`.
+The following defines a list of times, one for each variable in `Γ`.
 
     data Times : Context → Set₁ where
       ∅ : Times []
@@ -327,7 +329,7 @@ field) is a function that maps an environment of predicates
 We define variants of all the propositional connectives to work on
 Setˢ.
 
-The "later" operator asserts that `P` is true in the future, so the
+The "later" operator `▷ˢ` asserts that `P` is true in the future, so the
 predicate `▷ˢ P` can safely say that any use of recursive predicate in
 `P` happen `Later`.
 
