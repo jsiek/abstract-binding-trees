@@ -560,11 +560,11 @@ notation for recursive applications of the ℰ and 𝒱 predicates.
 The definition of `pre-ℰ` and `pre-𝒱` below are of similar form to the
 explicitly step-indexed definition of ℰ and 𝒱 above, however the
 parameter `k` is gone and all of the logical connectives have a
-superscript `f`, indicating that we're building a `RecSetᵒ`.  Also,
+superscript `s`, indicating that we're building a `Setˢ`.  Also,
 note that all the uses of `ℰˢ` and `𝒱ˢ` are guarded by the later
-operator `▷ˢ`. Finally, in the definition of pre-ℰ, we do not use `▷ˢ
-(𝒱⟦ A ⟧ M)` but instead use `pre-𝒱 A M` because we need to say there
-that `M` is a semantic value now, not later.
+operator `▷ˢ`. Finally, in the definition of `pre-ℰ`, we do not use `▷ˢ
+(𝒱⟦ A ⟧ M)` but instead use `pre-𝒱 A M` because we need to say in that
+spot that `M` is a semantic value now, not later.
 
 ```
 pre-ℰ A M = (pre-𝒱 A M ⊎ˢ (reducible M)ˢ ⊎ˢ (Blame M)ˢ)
