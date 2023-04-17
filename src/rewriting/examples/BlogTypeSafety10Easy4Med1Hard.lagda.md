@@ -37,6 +37,8 @@ imports several items whose root on github is here:
 
     https://github.com/jsiek/abstract-binding-trees/tree/master/src
 
+This post is based on work with Philip Wadler and Peter Thiemann.
+
 ## Review of the Cast Calculus
 
 ```
@@ -175,7 +177,7 @@ Our Step-indexed Logic (SIL) includes first-order logic (i.e., a logic
 with "and", "or", "implies", "for all", etc.). To distinguish its
 connectives from Agda's, we add a superscript "o". So "and" is written
 `×ᵒ`, "implies" is written `→ᵒ`, and so on.  SIL also includes a
-notion of time in which there is clock counting down. The logic is
+notion of time in which there is a clock counting down. The logic is
 designed in such a way that if a formula `P` is true at some time then
 `P` stays true in the future (at lower counts). So formulas are
 downward closed.  When the clock reaches zero, every formula becomes
