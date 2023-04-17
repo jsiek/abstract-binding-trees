@@ -436,65 +436,91 @@ X₁ = inj₂ (_ , (β ($̬ _) , inj₁ refl))
 ## Proofs in Step-indexed Logic
 
 Just like first-orderd logic, SIL comes with rules of deduction for
-carrying out proofs. The judgement form is `𝓟 ⊢ᵒ P`, where `𝓟` is a
-list of assumptions and `P` is a formula.  The judgement `𝓟 ⊢ᵒ P` is
-true iff for every time `k`, all of `𝓟` are true at `k` implies that `P`
+carrying out proofs. The judgement form is `𝒫 ⊢ᵒ P`, where `𝒫` is a
+list of assumptions and `P` is a formula.  The judgement `𝒫 ⊢ᵒ P` is
+true iff for every time `k`, all of `𝒫` are true at `k` implies that `P`
 is true at `k`. So in Agda we have the following definition.
 
     Πᵒ : List Setᵒ → Setᵒ
     Πᵒ [] = ⊤ᵒ
-    Πᵒ (P ∷ 𝓟) = P ×ᵒ Πᵒ 𝓟 
+    Πᵒ (P ∷ 𝒫) = P ×ᵒ Πᵒ 𝒫 
 
     _⊢ᵒ_ : List Setᵒ → Setᵒ → Set
-    𝓟 ⊢ᵒ P = ∀ k → # (Πᵒ 𝓟) k → # P k
+    𝒫 ⊢ᵒ P = ∀ k → # (Πᵒ 𝒫) k → # P k
 
 Many of the deduction rules are the same as in first order logic.
 For example, here are the introduction and elimination rules
 for conjunction. We use the same notation as Agda, but with
 a superscript "o".
 
-    _,ᵒ_ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
-      → 𝓟 ⊢ᵒ P
-      → 𝓟 ⊢ᵒ Q
+    _,ᵒ_ : ∀{𝒫 : List Setᵒ }{P Q : Setᵒ}
+      → 𝒫 ⊢ᵒ P
+      → 𝒫 ⊢ᵒ Q
         ------------
-      → 𝓟 ⊢ᵒ P ×ᵒ Q
+      → 𝒫 ⊢ᵒ P ×ᵒ Q
 
-    proj₁ᵒ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
-      → 𝓟 ⊢ᵒ P ×ᵒ Q
+    proj₁ᵒ : ∀{𝒫 : List Setᵒ }{P Q : Setᵒ}
+      → 𝒫 ⊢ᵒ P ×ᵒ Q
         ------------
-      → 𝓟 ⊢ᵒ P
+      → 𝒫 ⊢ᵒ P
 
-    proj₂ᵒ : ∀{𝓟 : List Setᵒ }{P Q : Setᵒ}
-      → 𝓟 ⊢ᵒ P ×ᵒ Q
+    proj₂ᵒ : ∀{𝒫 : List Setᵒ }{P Q : Setᵒ}
+      → 𝒫 ⊢ᵒ P ×ᵒ Q
         ------------
-      → 𝓟 ⊢ᵒ Q
+      → 𝒫 ⊢ᵒ Q
+
+
+The introduction rule for a constant formula `S ᵒ` is straightforward.
+A proof of `S` in regular Agda is sufficient to build a proof of `S ᵒ`.
+
+    constᵒI : ∀{𝒫}{S : Set}
+       → S
+       → 𝒫 ⊢ᵒ S ᵒ
+
+On the other hand, given a proof of `S ᵒ`, one cannot obtain a proof
+of `S` directly. That is, the following rule is invalid because `𝒫`
+could be false at every index.
+
+    bogus-constᵒE : ∀ {𝒫}{S : Set}{R : Setᵒ}
+       → 𝒫 ⊢ᵒ S ᵒ
+       → S
+
+Instead, we have an elimination rule in continuation-passing style.
+That is, if we have a proof of `S ᵒ` and need to prove some arbitrary
+goal `R`, then it suffices to prove `R` under the assumption that `S`
+is true.
+
+    constᵒE : ∀ {𝒫}{S : Set}{R : Setᵒ}
+       → 𝒫 ⊢ᵒ S ᵒ
+       → (S → 𝒫 ⊢ᵒ R)
+       → 𝒫 ⊢ᵒ R
 
 Analogous to `subst` in Agda's standard library, SIL has `substᵒ`
 which says that if `P` and `Q` are equivalent, then a proof of `P` gives
 a proof of `Q`.
 
-    substᵒ : ∀{𝓟}{P Q : Setᵒ}
+    substᵒ : ∀{𝒫}{P Q : Setᵒ}
       → P ≡ᵒ Q
         -------------------
-      → 𝓟 ⊢ᵒ P  →  𝓟 ⊢ᵒ Q
+      → 𝒫 ⊢ᵒ P  →  𝒫 ⊢ᵒ Q
 
 The deduction rules also include ones for the "later" operator.  As we
 mentioned earlier, if a proposition is true now it will also be true
 later.
 
-    monoᵒ : ∀ {𝓟}{P}
-       → 𝓟 ⊢ᵒ P
+    monoᵒ : ∀ {𝒫}{P}
+       → 𝒫 ⊢ᵒ P
          -----------
-       → 𝓟 ⊢ᵒ  ▷ᵒ P
+       → 𝒫 ⊢ᵒ  ▷ᵒ P
 
 One can transport induction on natural numbers into SIL to obtain the
 following Löb rule, which states that when proving any property `P`,
 one is allowed to assume that `P` is true later.
 
-    lobᵒ : ∀ {𝓟}{P}
-       → (▷ᵒ P) ∷ 𝓟 ⊢ᵒ P
+    lobᵒ : ∀ {𝒫}{P}
+       → (▷ᵒ P) ∷ 𝒫 ⊢ᵒ P
          -----------------------
-       → 𝓟 ⊢ᵒ P
+       → 𝒫 ⊢ᵒ P
 
 For comparison, here's induction on natural numbers
 
@@ -504,17 +530,17 @@ For comparison, here's induction on natural numbers
 
 In the world of SIL, propositions are always true at zero, so the base
 case `P 0` is not necessary. The induction step `(∀ k → P k → P (suc k))`
-is similar to the premise `(▷ᵒ P) ∷ 𝓟 ⊢ᵒ P` because `▷ᵒ` subtracts one.
+is similar to the premise `(▷ᵒ P) ∷ 𝒫 ⊢ᵒ P` because `▷ᵒ` subtracts one.
 
 As usual for temporal logics (or more generally, for modal logics),
 there are distribution rules that push "later" through the other
 logical connectives. For example, the following rule distributes
 "later" through conjunction.
 
-    ▷× : ∀{𝓟} {P Q : Setᵒ}
-       → 𝓟 ⊢ᵒ (▷ᵒ (P ×ᵒ Q))
+    ▷× : ∀{𝒫} {P Q : Setᵒ}
+       → 𝒫 ⊢ᵒ (▷ᵒ (P ×ᵒ Q))
          ----------------------
-       → 𝓟 ⊢ᵒ (▷ᵒ P) ×ᵒ (▷ᵒ Q)
+       → 𝒫 ⊢ᵒ (▷ᵒ P) ×ᵒ (▷ᵒ Q)
 
 This project was the first time for me conducting nontrivial proofs in
 a modal logic, and it took some getting use to!
@@ -569,6 +595,7 @@ spot that `M` is a semantic value now, not later.
 ```
 pre-ℰ A M = (pre-𝒱 A M ⊎ˢ (reducible M)ˢ ⊎ˢ (Blame M)ˢ)
              ×ˢ (∀ˢ[ N ] (M —→ N)ˢ →ˢ ▷ˢ (ℰˢ⟦ A ⟧ N))
+
 pre-𝒱 ★ (V ⟨ G !⟩ )      = (Value V)ˢ ×ˢ ▷ˢ (𝒱ˢ⟦ gnd⇒ty G ⟧ V)
 pre-𝒱 ($ₜ ι) ($ c)        = (ι ≡ typeof c)ˢ
 pre-𝒱 (A ⇒ B) (ƛ N)      = ∀ˢ[ W ] ▷ˢ (𝒱ˢ⟦ A ⟧ W) →ˢ ▷ˢ (ℰˢ⟦ B ⟧ (N [ W ]))
@@ -576,7 +603,7 @@ pre-𝒱 A M                = ⊥ ˢ
 ```
 
 We define ℰ and 𝒱 by creating a recursive predicate (apply `μᵒ` to
-`ℰ⊎𝒱`) and then apply it to an argument injected with either `inj₁`
+`pre-ℰ⊎𝒱`) and then apply it to an argument injected with either `inj₁`
 for 𝒱 or `inj₂` for ℰ.
 
 ```
@@ -620,22 +647,22 @@ by use of the `fixpointᵒ` theorem in SIL.
 For convenience, we define introduction and elimination rules for ℰ.
 
 ```
-ℰ-intro : ∀ {𝓟}{A}{M}
-  → 𝓟 ⊢ᵒ progress A M
-  → 𝓟 ⊢ᵒ preservation A M
+ℰ-intro : ∀ {𝒫}{A}{M}
+  → 𝒫 ⊢ᵒ progress A M
+  → 𝒫 ⊢ᵒ preservation A M
     ----------------------
-  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-ℰ-intro 𝓟⊢prog 𝓟⊢pres = substᵒ (≡ᵒ-sym ℰ-stmt) (𝓟⊢prog ,ᵒ 𝓟⊢pres)
+  → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ M
+ℰ-intro 𝒫⊢prog 𝒫⊢pres = substᵒ (≡ᵒ-sym ℰ-stmt) (𝒫⊢prog ,ᵒ 𝒫⊢pres)
 
-ℰ-progress : ∀ {𝓟}{A}{M}
-  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-  → 𝓟 ⊢ᵒ progress A M
-ℰ-progress 𝓟⊢ℰM = proj₁ᵒ (substᵒ ℰ-stmt 𝓟⊢ℰM )
+ℰ-progress : ∀ {𝒫}{A}{M}
+  → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ M
+  → 𝒫 ⊢ᵒ progress A M
+ℰ-progress 𝒫⊢ℰM = proj₁ᵒ (substᵒ ℰ-stmt 𝒫⊢ℰM )
 
-ℰ-preservation : ∀ {𝓟}{A}{M}
-  → 𝓟 ⊢ᵒ ℰ⟦ A ⟧ M
-  → 𝓟 ⊢ᵒ preservation A M
-ℰ-preservation 𝓟⊢ℰM = proj₂ᵒ (substᵒ ℰ-stmt 𝓟⊢ℰM )
+ℰ-preservation : ∀ {𝒫}{A}{M}
+  → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ M
+  → 𝒫 ⊢ᵒ preservation A M
+ℰ-preservation 𝒫⊢ℰM = proj₂ᵒ (substᵒ ℰ-stmt 𝒫⊢ℰM )
 ```
 
 Similarly, we can derive the expected equations for 𝒱.
@@ -677,7 +704,7 @@ values. (We included `Value V` in the case for `★` of `pre-𝒱`.)
 ```
 
 A value `V` in 𝒱 is also in ℰ. The definition of `progress` includes
-values, and to prove preservation we not that a value is irreducible.
+values, and to prove preservation we note that a value is irreducible.
 
 ```
 𝒱⇒ℰ : ∀{A}{𝒫}{V}
@@ -687,13 +714,12 @@ values, and to prove preservation we not that a value is irreducible.
 𝒱⇒ℰ {A}{𝒫}{V} 𝒫⊢𝒱V = ℰ-intro prog pres
     where
     prog = inj₁ᵒ 𝒫⊢𝒱V
-    pres = Λᵒ[ N ] →ᵒI
-            (Sᵒ⊢ᵒ λ V—→N →
-             ⊢ᵒ-sucP 𝒫⊢𝒱V λ 𝒱V →
-             ⊥-elim (value-irreducible (𝒱⇒Value A V 𝒱V ) V—→N))
+    pres = Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ V—→N →
+             ⊢ᵒ-sucP (⊢ᵒ-weaken 𝒫⊢𝒱V) λ 𝒱V →
+                ⊥-elim (value-irreducible (𝒱⇒Value A V 𝒱V ) V—→N))
 ```
 
-## Semantic Type Safety
+## Semantic Type Safety for Open Terms
 
 The `ℰ` predicate applies to closed terms, that is, terms without any
 free variables, such as a whole program. However, we'll need a notion
@@ -733,13 +759,13 @@ their types.
 The proof of `fundamental` is by induction on the typing derivation,
 with each case dispatching to a compatibility lemma.
 
-The compatibility lemma for number literals is proved by show that
+The compatibility lemma for number literals is proved by showing that
 `$ (Num n)` is in `𝒱⟦ $ₜ ′ℕ ⟧` via the definition of `𝒱` and then
 apply the `𝒱⇒ℰ` lemma.
 
 ```
 compatible-nat : ∀{Γ}{n : ℕ}
-    --------------------------
+     -----------------------
    → Γ ⊨ $ (Num n) ⦂ ($ₜ ′ℕ)
 compatible-nat {Γ}{n} γ = 𝒱⇒ℰ (substᵒ (≡ᵒ-sym 𝒱-base) (constᵒI refl))
 ```
@@ -748,7 +774,7 @@ The compability lemma for Boolean literals is the same.
 
 ```
 compatible-bool : ∀{Γ}{b : 𝔹}
-    ---------------------------
+     --------------------------
    → Γ ⊨ ($ (Bool b)) ⦂ ($ₜ ′𝔹)
 compatible-bool {Γ}{b} γ = 𝒱⇒ℰ (substᵒ (≡ᵒ-sym 𝒱-base) (constᵒI refl))
 ```
@@ -762,7 +788,7 @@ and `blame` is irreducible.
 ℰ-blame {𝒫}{A} = ℰ-intro prog pres
     where
     prog = inj₂ᵒ (inj₂ᵒ (constᵒI isBlame))
-    pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ blame→ → ⊥-elim (blame-irreducible blame→))
+    pres = Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ blame→ → ⊥-elim (blame-irreducible blame→))
 
 compatible-blame : ∀{Γ}{A}
      -------------
@@ -920,12 +946,14 @@ open import rewriting.examples.CastDeterministic
 
    Mred : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mred = ℰ-intro progressMred
-         (Sᵒ⊢ᵒ λ redM → Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ FM→N → (redM⇒▷ℰN redM FM→N)))
+         (constᵒE Zᵒ λ redM →
+             ⊢ᵒ-weaken (Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ FM→N →
+                                          ⊢ᵒ-weaken (redM⇒▷ℰN redM FM→N))))
     where
     progressMred : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ progress A (F ⟦ M ⟧)
     progressMred =
        let redFM : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
-           redFM = Sᵒ→Tᵒ⇒⊢ᵒ Zᵒ λ {(M′ , M→M′) → _ , (ξ F M→M′)} in
+           redFM = constᵒE Zᵒ λ {(M′ , M→M′) → constᵒI (_ , (ξ F M→M′))} in
        inj₂ᵒ (inj₁ᵒ redFM)
 
     redM⇒▷ℰN : ∀{N} → reducible M → (F ⟦ M ⟧ —→ N)
@@ -954,13 +982,14 @@ open import rewriting.examples.CastDeterministic
 
    Mblame : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mblame = ℰ-intro progressMblame
-            (Sᵒ⊢ᵒ λ blameM → Λᵒ[ N ]
-               →ᵒI (Sᵒ⊢ᵒ λ FM→N → blameM⇒▷ℰN blameM FM→N))
+            (constᵒE Zᵒ λ blameM →
+               ⊢ᵒ-weaken (Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ FM→N →
+                                        ⊢ᵒ-weaken (blameM⇒▷ℰN blameM FM→N))))
     where
     progressMblame : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ progress A (F ⟦ M ⟧)
     progressMblame =
        let redFM : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
-           redFM = Sᵒ→Tᵒ⇒⊢ᵒ Zᵒ λ {isBlame → _ , (ξ-blame F)} in
+           redFM = constᵒE Zᵒ λ {isBlame → constᵒI (_ , (ξ-blame F))} in
        inj₂ᵒ (inj₁ᵒ redFM)
 
     blameM⇒▷ℰN : ∀{N} → Blame M → (F ⟦ M ⟧ —→ N)
@@ -1028,32 +1057,33 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M γ = ⊢ℰLM
  ⊢ℰLM : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ B ⟧ (⟪ γ ⟫ (L · M))
  ⊢ℰLM = ℰ-bind {F = □· (⟪ γ ⟫ M)} (⊨L γ) (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVM))
   where
-  𝓟₁ = λ V → 𝒱⟦ A ⇒ B ⟧ V ∷ (⟪ γ ⟫ L —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
-  ⊢ℰVM : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ B ⟧ (V · ⟪ γ ⟫ M)
+  𝒫₁ = λ V → 𝒱⟦ A ⇒ B ⟧ V ∷ (⟪ γ ⟫ L —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
+  ⊢ℰVM : ∀{V} → 𝒫₁ V ⊢ᵒ ℰ⟦ B ⟧ (V · ⟪ γ ⟫ M)
   ⊢ℰVM {V} = sucP⊢ᵒQ λ 𝒱Vsn →
        let v = 𝒱⇒Value (A ⇒ B) V 𝒱Vsn in
-       let 𝓟₁⊢ℰM : 𝓟₁ V ⊢ᵒ ℰ⟦ A ⟧ (⟪ γ ⟫ M)
-           𝓟₁⊢ℰM = Sᵒ (Sᵒ (⊨M γ)) in
-       ℰ-bind {F = v ·□} 𝓟₁⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVW))
+       let 𝒫₁⊢ℰM : 𝒫₁ V ⊢ᵒ ℰ⟦ A ⟧ (⟪ γ ⟫ M)
+           𝒫₁⊢ℰM = Sᵒ (Sᵒ (⊨M γ)) in
+       ℰ-bind {F = v ·□} 𝒫₁⊢ℰM (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVW))
    where
-   𝓟₂ = λ V W → 𝒱⟦ A ⟧ W ∷ (⟪ γ ⟫ M —↠ W)ᵒ ∷ 𝒱⟦ A ⇒ B ⟧ V ∷ (⟪ γ ⟫ L —↠ V)ᵒ
+   𝒫₂ = λ V W → 𝒱⟦ A ⟧ W ∷ (⟪ γ ⟫ M —↠ W)ᵒ ∷ 𝒱⟦ A ⇒ B ⟧ V ∷ (⟪ γ ⟫ L —↠ V)ᵒ
                  ∷ 𝓖⟦ Γ ⟧ γ
-   ⊢ℰVW : ∀{V W} → 𝓟₂ V W ⊢ᵒ ℰ⟦ B ⟧ (V · W)
+   ⊢ℰVW : ∀{V W} → 𝒫₂ V W ⊢ᵒ ℰ⟦ B ⟧ (V · W)
    ⊢ℰVW {V}{W} =
-     let ⊢𝒱V : 𝓟₂ V W ⊢ᵒ 𝒱⟦ A ⇒ B ⟧ V
+     let ⊢𝒱V : 𝒫₂ V W ⊢ᵒ 𝒱⟦ A ⇒ B ⟧ V
          ⊢𝒱V = Sᵒ (Sᵒ Zᵒ) in
-     let ⊢𝒱W : 𝓟₂ V W ⊢ᵒ 𝒱⟦ A ⟧ W
+     let ⊢𝒱W : 𝒫₂ V W ⊢ᵒ 𝒱⟦ A ⟧ W
          ⊢𝒱W = Zᵒ in
      ⊢ᵒ-sucP ⊢𝒱W λ 𝒱Wsn →
      let w = 𝒱⇒Value A W 𝒱Wsn in
      𝒱-fun-elim ⊢𝒱V λ {N′ refl 𝒱W→ℰNW →
-     let prog : 𝓟₂ (ƛ N′) W ⊢ᵒ progress B (ƛ N′ · W)
+     let prog : 𝒫₂ (ƛ N′) W ⊢ᵒ progress B (ƛ N′ · W)
          prog = (inj₂ᵒ (inj₁ᵒ (constᵒI (_ , (β w))))) in
-     let pres : 𝓟₂ (ƛ N′) W ⊢ᵒ preservation B (ƛ N′ · W)
-         pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ {r →
+     let pres : 𝒫₂ (ƛ N′) W ⊢ᵒ preservation B (ƛ N′ · W)
+         pres = Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ {r →
                 let ⊢▷ℰN′W = appᵒ 𝒱W→ℰNW (monoᵒ ⊢𝒱W) in
                 let eq = deterministic r (β w) in
-                subst (λ N → 𝓟₂ (ƛ N′) W ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ N) (sym eq) ⊢▷ℰN′W}) in
+                ⊢ᵒ-weaken (subst (λ N → 𝒫₂ (ƛ N′) W ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ N)
+                                 (sym eq) ⊢▷ℰN′W)}) in
      ℰ-intro prog pres
      }
 ```
@@ -1074,8 +1104,8 @@ compatible-inject {Γ}{G}{M} ⊨M γ = ℰMg!
  ℰMg! : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ ★ ⟧ ((⟪ γ ⟫ M) ⟨ G !⟩)
  ℰMg! = ℰ-bind {F = □⟨ G !⟩} (⊨M γ) (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVg!))
   where
-  𝓟₁ = λ V → 𝒱⟦ gnd⇒ty G ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
-  ⊢ℰVg! : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ ★ ⟧ (V ⟨ G !⟩)
+  𝒫₁ = λ V → 𝒱⟦ gnd⇒ty G ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
+  ⊢ℰVg! : ∀{V} → 𝒫₁ V ⊢ᵒ ℰ⟦ ★ ⟧ (V ⟨ G !⟩)
   ⊢ℰVg!{V} =
    ⊢ᵒ-sucP Zᵒ λ 𝒱Vsn →
    let v = 𝒱⇒Value (gnd⇒ty G) V 𝒱Vsn in
@@ -1130,19 +1160,19 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
  ℰMh? : 𝓖⟦ Γ ⟧ γ ⊢ᵒ ℰ⟦ gnd⇒ty H ⟧ ((⟪ γ ⟫ M) ⟨ H ?⟩)
  ℰMh? = ℰ-bind {F = □⟨ H ?⟩} (⊨M γ) (Λᵒ[ V ] →ᵒI (→ᵒI ⊢ℰVh?))
   where
-  𝓟₁ = λ V → 𝒱⟦ ★ ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
-  ⊢ℰVh? : ∀{V} → 𝓟₁ V ⊢ᵒ ℰ⟦ gnd⇒ty H ⟧ (V ⟨ H ?⟩)
+  𝒫₁ = λ V → 𝒱⟦ ★ ⟧ V ∷ (⟪ γ ⟫ M —↠ V)ᵒ ∷ 𝓖⟦ Γ ⟧ γ
+  ⊢ℰVh? : ∀{V} → 𝒫₁ V ⊢ᵒ ℰ⟦ gnd⇒ty H ⟧ (V ⟨ H ?⟩)
   ⊢ℰVh?{V} =
-   let ⊢𝒱V : 𝓟₁ V ⊢ᵒ 𝒱⟦ ★ ⟧ V
+   let ⊢𝒱V : 𝒫₁ V ⊢ᵒ 𝒱⟦ ★ ⟧ V
        ⊢𝒱V = Zᵒ in
    𝒱-dyn-elim ⊢𝒱V λ { W G refl ⊢w×▷𝒱W →
    let ⊢w = proj₁ᵒ ⊢w×▷𝒱W in
    let ▷𝒱W = proj₂ᵒ ⊢w×▷𝒱W in
    ⊢ᵒ-sucP ⊢w λ{n} w →
-   let prog : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ progress (gnd⇒ty H) ((W ⟨ G !⟩) ⟨ H ?⟩)
+   let prog : 𝒫₁ (W ⟨ G !⟩) ⊢ᵒ progress (gnd⇒ty H) ((W ⟨ G !⟩) ⟨ H ?⟩)
        prog = inj₂ᵒ (inj₁ᵒ (constᵒI (reduce-inj-proj w))) in
-   let pres : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ preservation (gnd⇒ty H)((W ⟨ G !⟩) ⟨ H ?⟩)
-       pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ r → Goal r w ▷𝒱W) in
+   let pres : 𝒫₁ (W ⟨ G !⟩) ⊢ᵒ preservation (gnd⇒ty H)((W ⟨ G !⟩) ⟨ H ?⟩)
+       pres = Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ r → ⊢ᵒ-weaken (Goal r w ▷𝒱W)) in
    ℰ-intro prog pres
    }
     where
@@ -1157,8 +1187,8 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
     Goal : ∀{W}{G}{H}{N}
        → (W ⟨ G !⟩ ⟨ H ?⟩) —→ N
        → Value W
-       → 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ 𝒱⟦ gnd⇒ty G ⟧ W
-       → 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ ℰ⟦ gnd⇒ty H ⟧ N
+       → 𝒫₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ 𝒱⟦ gnd⇒ty G ⟧ W
+       → 𝒫₁ (W ⟨ G !⟩) ⊢ᵒ ▷ᵒ ℰ⟦ gnd⇒ty H ⟧ N
     Goal (ξξ □⟨ H ?⟩ refl refl r) w ▷𝒱W =
         ⊥-elim (value-irreducible (w 〈 _ 〉) r)
     Goal {W} (ξξ-blame □⟨ H ?⟩ ())

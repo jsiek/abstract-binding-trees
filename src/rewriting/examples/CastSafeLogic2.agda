@@ -98,10 +98,11 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M γ = ⊢ℰLM
      let prog : 𝓟₂ (ƛ N′) W ⊢ᵒ progress B (ƛ N′ · W)
          prog = (inj₂ᵒ (inj₁ᵒ (constᵒI (_ , (β w))))) in
      let pres : 𝓟₂ (ƛ N′) W ⊢ᵒ preservation B (ƛ N′ · W)
-         pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ {r →
+         pres = Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ {r →
                 let ⊢▷ℰN′W = appᵒ 𝒱W→ℰNW (monoᵒ ⊢𝒱W) in
                 let eq = deterministic r (β w) in
-                subst (λ N → 𝓟₂ (ƛ N′) W ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ N) (sym eq) ⊢▷ℰN′W}) in
+                ⊢ᵒ-weaken (subst (λ N → 𝓟₂ (ƛ N′) W ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ N) 
+                                 (sym eq) ⊢▷ℰN′W)}) in
      ℰ-intro prog pres
      }
 
@@ -156,7 +157,7 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
    let prog : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ progress (gnd⇒ty H) ((W ⟨ G !⟩) ⟨ H ?⟩)
        prog = inj₂ᵒ (inj₁ᵒ (constᵒI (red-inj-proj w))) in
    let pres : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ preservation (gnd⇒ty H)((W ⟨ G !⟩) ⟨ H ?⟩)
-       pres = Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ r → Goal r w ▷𝒱W) in
+       pres = Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ r → ⊢ᵒ-weaken (Goal r w ▷𝒱W)) in
    ℰ-intro prog pres
    }
     where

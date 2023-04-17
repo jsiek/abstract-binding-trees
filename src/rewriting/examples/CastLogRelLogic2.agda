@@ -207,7 +207,7 @@ preservation A M = (∀ᵒ[ N ] ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ A ⟧ N))
 ℰ-blame : ∀{𝒫}{A} → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ blame
 ℰ-blame {𝒫}{A} =
     ℰ-intro (inj₂ᵒ (inj₂ᵒ (constᵒI isBlame)))
-            (Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ blame→N → ⊥-elim (blame-irreducible blame→N)))
+        (Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ blame→N → ⊥-elim (blame-irreducible blame→N)))
 
 {- Semantic Type Safety -}
 
@@ -305,12 +305,14 @@ frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
 
    Mred : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mred = ℰ-intro progressMred
-         (Sᵒ⊢ᵒ λ redM → Λᵒ[ N ] →ᵒI (Sᵒ⊢ᵒ λ FM→N → (redM⇒▷ℰN redM FM→N)))
+            (constᵒE Zᵒ λ redM →
+               ⊢ᵒ-weaken (Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ FM→N →
+                                           (⊢ᵒ-weaken (redM⇒▷ℰN redM FM→N)))))
     where
     progressMred : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ progress A (F ⟦ M ⟧)
     progressMred =
        let redFM : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
-           redFM = Sᵒ→Tᵒ⇒⊢ᵒ Zᵒ λ {(M′ , M→M′) → _ , (ξ F M→M′)} in
+           redFM = constᵒE Zᵒ λ {(M′ , M→M′) → constᵒI (_ , (ξ F M→M′))} in
        inj₂ᵒ (inj₁ᵒ redFM)
 
     redM⇒▷ℰN : ∀{N} → reducible M → (F ⟦ M ⟧ —→ N)
@@ -339,13 +341,14 @@ frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
 
    Mblame : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mblame = ℰ-intro progressMblame
-            (Sᵒ⊢ᵒ λ blameM → Λᵒ[ N ]
-               →ᵒI (Sᵒ⊢ᵒ λ FM→N → blameM⇒▷ℰN blameM FM→N))
+            (constᵒE Zᵒ λ blameM →
+             ⊢ᵒ-weaken (Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ FM→N →
+                                           ⊢ᵒ-weaken (blameM⇒▷ℰN blameM FM→N))))
     where
     progressMblame : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ progress A (F ⟦ M ⟧)
     progressMblame =
        let redFM : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
-           redFM = Sᵒ→Tᵒ⇒⊢ᵒ Zᵒ λ {isBlame → _ , (ξ-blame F)} in
+           redFM = constᵒE Zᵒ λ {isBlame → constᵒI (_ , (ξ-blame F))} in
        inj₂ᵒ (inj₁ᵒ redFM)
 
     blameM⇒▷ℰN : ∀{N} → Blame M → (F ⟦ M ⟧ —→ N)
@@ -374,7 +377,7 @@ exp-▷{𝒫}{A}{M}{N} 𝒫⊢M→N ⊢▷ℰN =
   substᵒ (≡ᵒ-sym (ℰ-stmt{A}{M})) Goal 
   where
   redM : 𝒫 ⊢ᵒ reducible M ᵒ
-  redM = Sᵒ→Tᵒ⇒⊢ᵒ 𝒫⊢M→N λ M→N → _ , M→N
+  redM = constᵒE 𝒫⊢M→N λ M→N → constᵒI (_ , M→N)
 
   ⊢prog : 𝒫 ⊢ᵒ progress A M
   ⊢prog = inj₂ᵒ{𝒫}{𝒱⟦ A ⟧ M}{(reducible M)ᵒ ⊎ᵒ (Blame M)ᵒ}
