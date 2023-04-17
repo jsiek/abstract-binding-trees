@@ -1,5 +1,3 @@
-# Type Safety in 10 Easy, 4 Medium, and 1 Hard Lemma using Step-indexed Logical Relations
-
 ```
 {-# OPTIONS --rewriting #-}
 module rewriting.examples.BlogTypeSafety10Easy4Med1Hard where
@@ -33,6 +31,11 @@ that are only indexed by types. To reduce the clutter of reasoning
 about step indexing, we conduct the proof using a temporal logic, in
 the spirit of the LSLR logic of Dreyer, Ahmed, and Birkedal (2011),
 that we embed in Agda.
+
+This is a literate Agda file, so most of the details are here, but it
+imports several items whose root on github is here:
+
+    https://github.com/jsiek/abstract-binding-trees/tree/master/src
 
 ## Review of the Cast Calculus
 
