@@ -658,7 +658,7 @@ Similarly, we can derive the expected equations for 𝒱.
 ```
 
 We have defined `𝒱` such that it only accepts terms that are syntactic
-values. (We included `Value V` in `𝒱-dyn` above.)
+values. (We included `Value V` in the case for `★` of `pre-𝒱`.)
 
 ```
 𝒱⇒Value : ∀ {k} A M
