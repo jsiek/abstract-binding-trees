@@ -109,7 +109,7 @@ reduces to N, then N is also semantically well typed at A.
                 × (∀ N → (M —→ N) → ℰ⟦ A ⟧ N)
 
 The predicate 𝒱 expresses the semantic notion of a value being well
-typed a some type A. For a base type `ι` (𝔹 or ℕ), the value must be
+typed at some type A. For a base type `ι` (𝔹 or ℕ), the value must be
 the appropriate kind of literal (Boolean or natural number). For a
 function type `A ⇒ B`, the value must be a lambda expression `ƛ N`,
 and furthermore, substituting any value `W` that is semantically well
