@@ -470,7 +470,7 @@ a superscript "o".
       → 𝓟 ⊢ᵒ Q
 
 Analogous to `subst` in Agda's standard library, SIL has `substᵒ`
-which says that if `P` and `Q` are equivant, then a proof of `P` gives
+which says that if `P` and `Q` are equivalent, then a proof of `P` gives
 a proof of `Q`.
 
     substᵒ : ∀{𝓟}{P Q : Setᵒ}
