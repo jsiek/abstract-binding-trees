@@ -511,10 +511,10 @@ there are distribution rules that push "later" through the other
 logical connectives. For example, the following rule distributes
 "later" through conjunction.
 
-  ▷× : ∀{𝓟} {P Q : Setᵒ}
-     → 𝓟 ⊢ᵒ (▷ᵒ (P ×ᵒ Q))
-       ----------------------
-     → 𝓟 ⊢ᵒ (▷ᵒ P) ×ᵒ (▷ᵒ Q)
+    ▷× : ∀{𝓟} {P Q : Setᵒ}
+       → 𝓟 ⊢ᵒ (▷ᵒ (P ×ᵒ Q))
+         ----------------------
+       → 𝓟 ⊢ᵒ (▷ᵒ P) ×ᵒ (▷ᵒ Q)
 
 This project was the first time for me conducting nontrivial proofs in
 a modal logic, and it took some getting use to.
