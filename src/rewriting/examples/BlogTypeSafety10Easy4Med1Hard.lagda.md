@@ -21,7 +21,7 @@ proof technique is better suited to proving more interesting
 properties such as parametricity, program equivalence, and the gradual
 guarantee.  Nevertheless, understanding a proof of type safety via
 logical relations is a helpful stepping stone to understanding these
-more complex use cases, especial when the logical relations employ
+more complex use cases, especially when the logical relations employ
 more advanced techniques, such as step indexing.  In this blog post I
 prove type safety of a cast calculus (an intermediate language of the
 gradually typed lambda calculus).  The proof is in Agda and the proof
@@ -943,9 +943,9 @@ lemma `ℰ-bind-aux` that restates the lemma so that the term `M` is
 universally quantified in SIL (instead of Agda), so that we can do the
 proof by Löb induction, that is, by use of the `lobᵒ` rule of SIL.
 So after the use of `lobᵒ`, it remains to prove that `ℰ⟦ A ⟧ (F ⟦ M ⟧)`,
-but now we have the addition assumption that we can apply the
+but now we have the additional assumption that we can apply the
 bind lemma in the future to any term, i.e., we have `▷ᵒ ℰ-bind-prop A B F`.
-From the premise `ℰ⟦ B ⟧ M` we have the `M` satisfies progress,
+From the premise `ℰ⟦ B ⟧ M` we have that `M` satisfies progress,
 so either (1) it is a semantic value, (2) it can reduce, or (3) it is blame.
 We proceed by reasoning about each of these three cases.
 
@@ -959,12 +959,12 @@ We proceed by reasoning about each of these three cases.
   `F ⟦ M ⟧ —→ F ⟦ M′ ⟧` because `M —→ M′ for some `M′`.
   The preservation part is more involved.
   We are given that `F ⟦ M ⟧ —→ N` and need to prove that `▷ᵒ (ℰ⟦ A ⟧ N)`.
-  By the `frame-inv2` lemma, we obtain an `M′` such that `M —→w M′`
+  By the `frame-inv2` lemma, we obtain an `M′` such that `M —→ M′`
   and `N ≡ F ⟦ M′ ⟧`. So we need to prove that `▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))`
   We shall obtain this via the induction hypothesis, and for that we
   need to prove (1) `▷ᵒ ℰ⟦ B ⟧ M′` and (2) `▷ᵒ (𝒱V→ℰF[V] A B F M′)`.
   We obtain (1) from the preservation part of `ℰ⟦ B ⟧ M`.
-  We obtain (2) by the `𝒱V→ℰF[V]-expansion` lemma shift it to later
+  We obtain (2) by the `𝒱V→ℰF[V]-expansion` lemma and shift it to later
   using `monoᵒ`.
 
 * `M` is blame. We need to show `ℰ⟦ A ⟧ (F ⟦ blame ⟧)`.
@@ -1093,10 +1093,10 @@ to `W` and that `𝒱⟦ A ⇒ B ⟧ V` and `𝒱⟦ A ⟧ W`.  At this point, o
 goal is to show that `ℰ⟦ B ⟧ (V · W)`.  Next we use the elimination
 lemma on `𝒱⟦ A ⇒ B ⟧ V` which tells us that `V` is a lambda
 abstraction `ƛ N` with a semantically safe body `N`.  We thus obtain
-the `progress` part of `ℰ⟦ B ⟧ (V · W)` because `(ƛ N) · W —→ N [ W
-]`.  For the preservation part, we need to show that `ℰ⟦ B ⟧ (N [ W
-])`, but that follows from `𝒱⟦ A ⟧ W` and that `N` is a semantically
-safe body.
+the `progress` part of `ℰ⟦ B ⟧ (V · W)` because `(ƛ N) · W —→ N [ W ]`.
+For the preservation part, we need to show that `ℰ⟦ B ⟧ (N [ W ])`,
+but that follows from `𝒱⟦ A ⟧ W` and that `N` is a semantically safe
+body.
 
 ```
 compatible-app : ∀{Γ}{A}{B}{L}{M}
@@ -1228,9 +1228,7 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
    ℰ-intro prog pres
    }
     where
-    reduce-inj-proj : ∀{G}{H}{W}
-       → Value W
-       → reducible ((W ⟨ G !⟩) ⟨ H ?⟩)
+    reduce-inj-proj : ∀{G}{H}{W} → Value W → reducible ((W ⟨ G !⟩) ⟨ H ?⟩)
     reduce-inj-proj {G} {H} {W} w
         with G ≡ᵍ H
     ... | yes refl = W , (collapse w  refl)
@@ -1282,8 +1280,9 @@ fundamental {Γ} {A} .blame ⊢blame = compatible-blame
 
 For the Type Safety theorem, we need to consider multi-step reduction.
 So we first prove the following lemma which states that if
-`M —↠ N` and `M` is in `ℰ⟦ A⟧`, then `N` satisfies progress.
-The lemma is by induction on the multi-step reduction.
+`M —↠ N` and `M` is in `ℰ⟦ A ⟧`, then `N` satisfies progress.
+The lemma is by induction on the multi-step reduction, using
+the preservation part of `ℰ⟦ A ⟧` at each step.
 
 ```
 sem-type-safety : ∀ {A} → (M N : Term)
