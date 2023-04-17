@@ -482,19 +482,19 @@ The deduction rules also include ones for the "later" operator.  As we
 mentioned earlier, if a proposition is true now it will also be true
 later.
 
-  monoᵒ : ∀ {𝓟}{P}
-     → 𝓟 ⊢ᵒ P
-       -----------
-     → 𝓟 ⊢ᵒ  ▷ᵒ P
+    monoᵒ : ∀ {𝓟}{P}
+       → 𝓟 ⊢ᵒ P
+         -----------
+       → 𝓟 ⊢ᵒ  ▷ᵒ P
 
 One can transport induction on natural numbers into SIL to obtain the
 following Löb rule, which states that when proving any property `P`,
 one is allowed to assume that `P` is true later.
 
-  lobᵒ : ∀ {𝓟}{P}
-     → (▷ᵒ P) ∷ 𝓟 ⊢ᵒ P
-       -----------------------
-     → 𝓟 ⊢ᵒ P
+    lobᵒ : ∀ {𝓟}{P}
+       → (▷ᵒ P) ∷ 𝓟 ⊢ᵒ P
+         -----------------------
+       → 𝓟 ⊢ᵒ P
 
 For comparison, here's induction on natural numbers
 
