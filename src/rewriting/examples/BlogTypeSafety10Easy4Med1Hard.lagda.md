@@ -54,19 +54,18 @@ The ground types are
     G,H ::= ι | ★⇒★
 
 Just like the lambda calculus, there are variables (de Bruijn
-indices), lambdas, and application. We also throw in literals
+indices), lambdas, and application. We throw in literals
 (Booleans and natural numbers).  Also, to support gradual typing, we
 include a term `M ⟨ G !⟩` for injecting from a ground type `G` to the
 unknown type, and a term `M ⟨ H ?⟩` for projecting from the unknown
 type back out to a ground type.  Finally, we include the `blame` term
-to represent trapped runtime errors.  The syntax is a bit odd to make
-Agda happy.
+to represent trapped runtime errors.
 
     L,M,N ::= ` x | ƛ N | L · M | $ k | M ⟨ G !⟩ | M ⟨ H ?⟩ | blame
 
 This cast calculus is somewhat unusual in that it only includes
 injections and projections but not the other kinds of casts that one
-typically has in a cast calculus, e.g. a cast from one function type
+typically has in a cast calculus, such as a cast from one function type
 `★ ⇒ ℕ` to another function type `ℕ ⇒ ℕ`. That is OK because those
 other casts can still be expressed in this cast calculus.
 
