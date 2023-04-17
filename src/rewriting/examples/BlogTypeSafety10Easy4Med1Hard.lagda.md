@@ -474,7 +474,6 @@ a superscript "o".
         ------------
       → 𝒫 ⊢ᵒ Q
 
-
 The introduction rule for a constant formula `S ᵒ` is straightforward.
 A proof of `S` in regular Agda is sufficient to build a proof of `S ᵒ`
 in SIL.
