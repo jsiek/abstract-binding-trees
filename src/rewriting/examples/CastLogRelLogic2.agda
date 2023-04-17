@@ -241,11 +241,11 @@ lookup-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
 
 {- ℰ-bind (Monadic Bind Lemma) -}
 
-ℰ-f-cont : Type → Type → Frame → Term → Setᵒ
-ℰ-f-cont A B F M = ∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
+𝒱V→ℰF[V] : Type → Type → Frame → Term → Setᵒ
+𝒱V→ℰF[V] A B F M = ∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
 
 ℰ-fp : Type → Type → Frame → Term → Setᵒ
-ℰ-fp A B F M = ℰ⟦ B ⟧ M →ᵒ ℰ-f-cont A B F M →ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+ℰ-fp A B F M = ℰ⟦ B ⟧ M →ᵒ 𝒱V→ℰF[V] A B F M →ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
 
 ℰ-bind-prop : Type → Type → Frame → Setᵒ
 ℰ-bind-prop A B F = ∀ᵒ[ M ] ℰ-fp A B F M
@@ -253,27 +253,23 @@ lookup-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
 frame-prop-lemma : ∀{𝒫}{A}{B}{M}{F}
    → 𝒫 ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F
    → 𝒫 ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M
-   → 𝒫 ⊢ᵒ ▷ᵒ ℰ-f-cont A B F M
+   → 𝒫 ⊢ᵒ ▷ᵒ 𝒱V→ℰF[V] A B F M
    → 𝒫 ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M ⟧))
 frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
   appᵒ (▷→ (appᵒ (▷→ (instᵒ (▷∀{P = λ M → ℰ-fp A B F M} IH) M)) ℰM)) V→FV
 
-ℰ-f-cont-lemma : ∀{𝒫}{A}{B}{F}{M}{M′}
+𝒱V→ℰF[V]-expansion : ∀{𝒫}{A}{B}{F}{M}{M′}
    → M —→ M′
-   → 𝒫 ⊢ᵒ ℰ-f-cont A B F M
+   → 𝒫 ⊢ᵒ 𝒱V→ℰF[V] A B F M
      -----------------------
-   → 𝒫 ⊢ᵒ ℰ-f-cont A B F M′
-ℰ-f-cont-lemma {𝒫}{A}{B}{F}{M}{M′} M→M′ ℰ-cont =
+   → 𝒫 ⊢ᵒ 𝒱V→ℰF[V] A B F M′
+𝒱V→ℰF[V]-expansion {𝒫}{A}{B}{F}{M}{M′} M→M′ 𝒱V→ℰF[V][M] =
    Λᵒ[ V ]
-    let M→V→ℰFV : 𝒫 ⊢ᵒ (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
-        M→V→ℰFV = instᵒ ℰ-cont V in
     let M′→V→ℰFV : 𝒱⟦ B ⟧ V ∷ (M′ —↠ V)ᵒ ∷ 𝒫 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
-        M′→V→ℰFV = ⊢ᵒ-intro λ{ zero (𝒱Vn , M′→Vn , ⊨𝒫n) →
-                                tz (ℰ⟦ A ⟧ (F ⟦ V ⟧))
-                             ; (suc n) (𝒱Vsn , M′→Vsn , ⊨𝒫sn) →
-                               ⊢ᵒ-elim M→V→ℰFV (suc n) ⊨𝒫sn (suc n) ≤-refl
-                               (M —→⟨ M→M′ ⟩ M′→Vsn)
-                               (suc n) ≤-refl 𝒱Vsn } in
+        M′→V→ℰFV = ⊢ᵒ-sucP (Sᵒ Zᵒ) λ M′→V → 
+                     let M—↠V = constᵒI (M —→⟨ M→M′ ⟩ M′→V) in
+                     let M→V→ℰFV = ⊢ᵒ-weaken(⊢ᵒ-weaken(instᵒ 𝒱V→ℰF[V][M] V)) in
+                     appᵒ (appᵒ M→V→ℰFV M—↠V) Zᵒ in
     →ᵒI (→ᵒI M′→V→ℰFV)
 
 ℰ-bind-aux : ∀{𝒫}{A}{B}{F} → 𝒫 ⊢ᵒ ℰ-bind-prop A B F
@@ -283,20 +279,20 @@ frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
  Goal = Λᵒ[ M ] →ᵒI (→ᵒI Goal′)
   where
   Goal′ : ∀{M}
-     → (ℰ-f-cont A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫
+     → (𝒱V→ℰF[V] A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫
         ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
   Goal′{M} =
    let ⊢ℰM : 𝒫′ ⊢ᵒ ℰ⟦ B ⟧ M
        ⊢ℰM = Sᵒ Zᵒ in
    case3ᵒ (ℰ-progress ⊢ℰM) Mval Mred Mblame
    where
-   𝒫′ = (ℰ-f-cont A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫
+   𝒫′ = (𝒱V→ℰF[V] A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫
 
    Mval : 𝒱⟦ B ⟧ M ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mval =
      let ⊢𝒱M : 𝒱⟦ B ⟧ M ∷ 𝒫′ ⊢ᵒ 𝒱⟦ B ⟧ M
          ⊢𝒱M = Zᵒ in
-     let ℰcontFM : 𝒱⟦ B ⟧ M ∷ 𝒫′ ⊢ᵒ ℰ-f-cont A B F M
+     let ℰcontFM : 𝒱⟦ B ⟧ M ∷ 𝒫′ ⊢ᵒ 𝒱V→ℰF[V] A B F M
          ℰcontFM = Sᵒ Zᵒ in
      let Cont = λ V → (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧) in
      appᵒ (appᵒ (instᵒ{P = Cont} ℰcontFM M)
@@ -331,10 +327,10 @@ frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
              ▷ℰM′ = appᵒ (instᵒ{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ B ⟧ N)}
                            (ℰ-preservation ℰM) M′)
                          (constᵒI M→M′) in
-         let M→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ ℰ-f-cont A B F M
+         let M→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ 𝒱V→ℰF[V] A B F M
              M→V→𝒱V→ℰFV = Zᵒ in
-         let M′→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ ℰ-f-cont A B F M′
-             M′→V→𝒱V→ℰFV = ℰ-f-cont-lemma{𝒫′}{A}{B} M→M′ M→V→𝒱V→ℰFV in
+         let M′→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ 𝒱V→ℰF[V] A B F M′
+             M′→V→𝒱V→ℰFV = 𝒱V→ℰF[V]-expansion{𝒫′}{A}{B} M→M′ M→V→𝒱V→ℰFV in
          let ▷ℰFM′ : 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))
              ▷ℰFM′ = frame-prop-lemma IH ▷ℰM′ (monoᵒ M′→V→𝒱V→ℰFV) in
          subst (λ N → 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym N≡) ▷ℰFM′

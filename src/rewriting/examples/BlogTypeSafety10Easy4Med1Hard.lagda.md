@@ -864,10 +864,11 @@ compatible-lambda {Γ}{A}{B}{N} ⊨N γ = 𝒱⇒ℰ ⊢𝒱λN
   ▷𝓔N[W] {W} = appᵒ (Sᵒ (▷→ (monoᵒ (→ᵒI (⊨N (W • γ)))))) Zᵒ
 ```
 
-The next few compatibility lemmas, for application and casts, all
-involve reasoning about the reduction of subexpressions.  Instead of
-duplicating this reasoning, the standard approach is to put that
-reasoning in the "bind" lemma, which we discuss next.
+The next few compatibility lemmas, for application, injection, and
+projection all involve reasoning about the reduction of one or two
+subexpressions.  Instead of duplicating this reasoning, the standard
+approach is to put that reasoning in the "bind" lemma, which we
+discuss next.
 
 ## Interlude: the "Bind" Lemma
 
@@ -884,111 +885,144 @@ for some semantically safe value `V` that `M` reduced to.
          ----------------------------------------------------------
        → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
 
-In the title of the blog post I alluded to 1 hard lemma.  This one's
-it. Here's the proof. I'm too tired to explain it now!  But perhaps
-the most interesting part of the proof is that it employs the `lobᵒ`
-rule of SIL.
+In the title of this blog post I alluded to one hard lemma. This is
+the one!
+
+We begin by creating some names for parts of the statement of this
+lemma. First we have a name for the second premise.
 
 ```
+𝒱V→ℰF[V] : Type → Type → Frame → Term → Setᵒ
+𝒱V→ℰF[V] A B F M = ∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
+```
 
-ℰ-f-cont : Type → Type → Frame → Term → Setᵒ
-ℰ-f-cont A B F M = ∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
+Then we have a name for the two premises and the conclusion, with the
+implications expressed in SIL.
 
-ℰ-fp : Type → Type → Frame → Term → Setᵒ
-ℰ-fp A B F M = ℰ⟦ B ⟧ M →ᵒ ℰ-f-cont A B F M →ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+```
+ℰ-bind-M : Type → Type → Frame → Term → Setᵒ
+ℰ-bind-M A B F M = ℰ⟦ B ⟧ M →ᵒ 𝒱V→ℰF[V] A B F M →ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+```
 
+The following adds universal quantification (in SIL) over the term `M`.
+
+```
 ℰ-bind-prop : Type → Type → Frame → Setᵒ
-ℰ-bind-prop A B F = ∀ᵒ[ M ] ℰ-fp A B F M
+ℰ-bind-prop A B F = ∀ᵒ[ M ] ℰ-bind-M A B F M
+```
 
-frame-prop-lemma : ∀{𝒫}{A}{B}{M}{F}
-   → 𝒫 ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F
-   → 𝒫 ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M
-   → 𝒫 ⊢ᵒ ▷ᵒ ℰ-f-cont A B F M
-   → 𝒫 ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M ⟧))
-frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
-  appᵒ (▷→ (appᵒ (▷→ (instᵒ (▷∀{P = λ M → ℰ-fp A B F M} IH) M)) ℰM)) V→FV
+We shall need the `𝒱V→ℰF[V]` property to be preserved under reverse
+reduction, i.e., expansion. The proof is as follows. We need to show
+that `ℰ⟦ A ⟧ (F ⟦ V ⟧)` under the assumption that `M′ —↠ V` and
+`𝒱⟦ B ⟧ V`. With the first premise `M —→ M′`, we obtain `M —↠ V`. Then we
+apply the second premise to conclude that `ℰ⟦ A ⟧ (F ⟦ V ⟧)`.
 
-ℰ-f-cont-lemma : ∀{𝒫}{A}{B}{F}{M}{M′}
+```
+𝒱V→ℰF[V]-expansion : ∀{𝒫}{A}{B}{F}{M}{M′}
    → M —→ M′
-   → 𝒫 ⊢ᵒ ℰ-f-cont A B F M
+   → 𝒫 ⊢ᵒ 𝒱V→ℰF[V] A B F M
      -----------------------
-   → 𝒫 ⊢ᵒ ℰ-f-cont A B F M′
-ℰ-f-cont-lemma {𝒫}{A}{B}{F}{M}{M′} M→M′ ℰ-cont =
+   → 𝒫 ⊢ᵒ 𝒱V→ℰF[V] A B F M′
+𝒱V→ℰF[V]-expansion {𝒫}{A}{B}{F}{M}{M′} M→M′ 𝒱V→ℰF[V][M] =
    Λᵒ[ V ]
-    let M→V→ℰFV : 𝒫 ⊢ᵒ (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
-        M→V→ℰFV = instᵒ ℰ-cont V in
     let M′→V→ℰFV : 𝒱⟦ B ⟧ V ∷ (M′ —↠ V)ᵒ ∷ 𝒫 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
-        M′→V→ℰFV = ⊢ᵒ-intro λ{ zero (𝒱Vn , M′→Vn , ⊨𝒫n) →
-                                tz (ℰ⟦ A ⟧ (F ⟦ V ⟧))
-                             ; (suc n) (𝒱Vsn , M′→Vsn , ⊨𝒫sn) →
-                               ⊢ᵒ-elim M→V→ℰFV (suc n) ⊨𝒫sn (suc n) ≤-refl
-                               (M —→⟨ M→M′ ⟩ M′→Vsn)
-                               (suc n) ≤-refl 𝒱Vsn } in
+        M′→V→ℰFV = ⊢ᵒ-sucP (Sᵒ Zᵒ) λ M′→V → 
+                     let M—↠V = constᵒI (M —→⟨ M→M′ ⟩ M′→V) in
+                     let M→V→ℰFV = ⊢ᵒ-weaken(⊢ᵒ-weaken(instᵒ 𝒱V→ℰF[V][M] V)) in
+                     appᵒ (appᵒ M→V→ℰFV M—↠V) Zᵒ in
     →ᵒI (→ᵒI M′→V→ℰFV)
+```
 
+We now proceed to prove the `ℰ-bind` lemma by way of an auxilliary
+lemma `ℰ-bind-aux` that restates the lemma so that the term `M` is
+universally quantified in SIL (instead of Agda), so that we can do the
+proof by Löb induction, that is, by use of the `lobᵒ` rule of SIL.
+So after the use of `lobᵒ`, it remains to prove that `ℰ⟦ A ⟧ (F ⟦ M ⟧)`,
+but now we have the addition assumption that we can apply the
+bind lemma in the future to any term, i.e., we have `▷ᵒ ℰ-bind-prop A B F`.
+From the premise `ℰ⟦ B ⟧ M` we have the `M` satisfies progress,
+so either (1) it is a semantic value, (2) it can reduce, or (3) it is blame.
+We proceed by reasoning about each of these three cases.
+
+* `M` is already a value, so it can multi-step reduce to itself in
+  zero steps, and then we apply the `𝒱V→ℰF[V]` premise to immediately
+  conclude.
+
+* `M` is reducible.
+  Now to prove `ℰ⟦ A ⟧ (F ⟦ M ⟧)` we need to prove progress and preservation.
+  The progress part is immediate, because by rule `ξ` we have
+  `F ⟦ M ⟧ —→ F ⟦ M′ ⟧` because `M —→ M′ for some `M′`.
+  The preservation part is more involved.
+  We are given that `F ⟦ M ⟧ —→ N` and need to prove that `▷ᵒ (ℰ⟦ A ⟧ N)`.
+  By the `frame-inv2` lemma, we obtain an `M′` such that `M —→w M′`
+  and `N ≡ F ⟦ M′ ⟧`. So we need to prove that `▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))`
+  We shall obtain this via the induction hypothesis, and for that we
+  need to prove (1) `▷ᵒ ℰ⟦ B ⟧ M′` and (2) `▷ᵒ (𝒱V→ℰF[V] A B F M′)`.
+  We obtain (1) from the preservation part of `ℰ⟦ B ⟧ M`.
+  We obtain (2) by the `𝒱V→ℰF[V]-expansion` lemma shift it to later
+  using `monoᵒ`.
+
+* `M` is blame. We need to show `ℰ⟦ A ⟧ (F ⟦ blame ⟧)`.
+   For the progress part, we have the reduction `F ⟦ blame ⟧ —→ blame`
+   by rule `ξ-blame`. For preservation, we have `F ⟦ blame ⟧ —→ N`
+   and need to prove that `▷ᵒ (ℰ⟦ A ⟧ N)`. The `blame-frame`
+   lemma tells us that `N ≡ blame`, so we conclude by use of
+   `ℰ-blame` and then `monoᵒ`.
+
+```
 open import rewriting.examples.CastDeterministic
   using (frame-inv2; deterministic)
 
 ℰ-bind-aux : ∀{𝒫}{A}{B}{F} → 𝒫 ⊢ᵒ ℰ-bind-prop A B F
-ℰ-bind-aux {𝒫}{A}{B}{F} = lobᵒ Goal
- where     
- Goal : ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫 ⊢ᵒ ℰ-bind-prop A B F
- Goal = Λᵒ[ M ] →ᵒI (→ᵒI Goal′)
+ℰ-bind-aux {𝒫}{A}{B}{F} = lobᵒ (Λᵒ[ M ] →ᵒI (→ᵒI Goal))
   where
-  Goal′ : ∀{M}
-     → (ℰ-f-cont A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫
-        ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
-  Goal′{M} =
-   let ⊢ℰM : 𝒫′ ⊢ᵒ ℰ⟦ B ⟧ M
-       ⊢ℰM = Sᵒ Zᵒ in
-   case3ᵒ (ℰ-progress ⊢ℰM) Mval Mred Mblame
+  Goal : ∀{M} → (𝒱V→ℰF[V] A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫
+                 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+  Goal{M} =
+   case3ᵒ (ℰ-progress (Sᵒ Zᵒ)) Mval Mred Mblame
    where
-   𝒫′ = (ℰ-f-cont A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫
+   𝒫′ = (𝒱V→ℰF[V] A B F M) ∷ ℰ⟦ B ⟧ M ∷ ▷ᵒ ℰ-bind-prop A B F ∷ 𝒫
 
    Mval : 𝒱⟦ B ⟧ M ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mval =
-     let ⊢𝒱M : 𝒱⟦ B ⟧ M ∷ 𝒫′ ⊢ᵒ 𝒱⟦ B ⟧ M
-         ⊢𝒱M = Zᵒ in
-     let ℰcontFM : 𝒱⟦ B ⟧ M ∷ 𝒫′ ⊢ᵒ ℰ-f-cont A B F M
-         ℰcontFM = Sᵒ Zᵒ in
-     let Cont = λ V → (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧) in
-     appᵒ (appᵒ (instᵒ{P = Cont} ℰcontFM M) (constᵒI (M END))) ⊢𝒱M
+     let 𝒱V→ℰF[V][M] = λ V → (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧) in
+     appᵒ (appᵒ (instᵒ{P = 𝒱V→ℰF[V][M]} (Sᵒ Zᵒ) M) (constᵒI (M END))) Zᵒ
 
    Mred : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
-   Mred = ℰ-intro progressMred
-         (constᵒE Zᵒ λ redM →
-             ⊢ᵒ-weaken (Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ FM→N →
-                                          ⊢ᵒ-weaken (redM⇒▷ℰN redM FM→N))))
+   Mred = ℰ-intro progressMred preservationMred
     where
     progressMred : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ progress A (F ⟦ M ⟧)
-    progressMred =
-       let redFM : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
-           redFM = constᵒE Zᵒ λ {(M′ , M→M′) → constᵒI (_ , (ξ F M→M′))} in
-       inj₂ᵒ (inj₁ᵒ redFM)
+    progressMred = inj₂ᵒ (inj₁ᵒ (constᵒE Zᵒ λ {(M′ , M→M′) →
+                                            constᵒI (_ , (ξ F M→M′))}))
 
-    redM⇒▷ℰN : ∀{N} → reducible M → (F ⟦ M ⟧ —→ N)
-       → 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
-    redM⇒▷ℰN {N} rM FM→N =
-         let finv = frame-inv2{M}{N}{F} rM FM→N in
-         let M′ = proj₁ finv in
-         let M→M′ = proj₁ (proj₂ finv) in
-         let N≡ = proj₂ (proj₂ finv) in
-
-         let IH : 𝒫′ ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F
-             IH = Sᵒ (Sᵒ Zᵒ) in
-         let ℰM : 𝒫′ ⊢ᵒ ℰ⟦ B ⟧ M
-             ℰM = Sᵒ Zᵒ in
-         let ▷ℰM′ : 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M′
-             ▷ℰM′ = appᵒ (instᵒ{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ B ⟧ N)}
-                           (ℰ-preservation ℰM) M′)
-                         (constᵒI M→M′) in
-         let M→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ ℰ-f-cont A B F M
-             M→V→𝒱V→ℰFV = Zᵒ in
-         let M′→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ ℰ-f-cont A B F M′
-             M′→V→𝒱V→ℰFV = ℰ-f-cont-lemma{𝒫′}{A}{B} M→M′ M→V→𝒱V→ℰFV in
-         let ▷ℰFM′ : 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))
-             ▷ℰFM′ = frame-prop-lemma IH ▷ℰM′ (monoᵒ M′→V→𝒱V→ℰFV) in
-         subst (λ N → 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym N≡) ▷ℰFM′
+    preservationMred : (reducible M)ᵒ ∷ 𝒫′ ⊢ᵒ preservation A (F ⟦ M ⟧)
+    preservationMred = (constᵒE Zᵒ λ redM →
+                ⊢ᵒ-weaken (Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ FM→N →
+                                          ⊢ᵒ-weaken (redM⇒▷ℰN redM FM→N))))
+     where
+     redM⇒▷ℰN : ∀{N} → reducible M → (F ⟦ M ⟧ —→ N) → 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
+     redM⇒▷ℰN {N} rM FM→N =
+        let finv = frame-inv2{M}{N}{F} rM FM→N in
+        let M′ = proj₁ finv in
+        let M→M′ = proj₁ (proj₂ finv) in
+        let N≡ = proj₂ (proj₂ finv) in
+        let ▷ℰM′ : 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M′
+            ▷ℰM′ = appᵒ (instᵒ{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ B ⟧ N)}
+                          (ℰ-preservation (Sᵒ Zᵒ)) M′)
+                        (constᵒI M→M′) in
+        let ▷M′→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ ▷ᵒ (𝒱V→ℰF[V] A B F M′)
+            ▷M′→V→𝒱V→ℰFV = monoᵒ (𝒱V→ℰF[V]-expansion{𝒫′}{A}{B} M→M′ Zᵒ) in
+        let IH : 𝒫′ ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F
+            IH = Sᵒ (Sᵒ Zᵒ) in
+        let ▷ℰFM′ : 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))
+            ▷ℰFM′ = frame-prop-lemma IH ▷ℰM′ ▷M′→V→𝒱V→ℰFV in
+        subst (λ N → 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym N≡) ▷ℰFM′
+      where
+      frame-prop-lemma : ∀{𝒫}{A}{B}{M}{F}
+         → 𝒫 ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F  →  𝒫 ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M
+         → 𝒫 ⊢ᵒ ▷ᵒ 𝒱V→ℰF[V] A B F M   →  𝒫 ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M ⟧))
+      frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
+        appᵒ(▷→ (appᵒ(▷→ (instᵒ(▷∀{P = λ M → ℰ-bind-M A B F M} IH) M)) ℰM)) V→FV
 
    Mblame : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mblame = ℰ-intro progressMblame
@@ -998,28 +1032,30 @@ open import rewriting.examples.CastDeterministic
     where
     progressMblame : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ progress A (F ⟦ M ⟧)
     progressMblame =
-       let redFM : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ (reducible (F ⟦ M ⟧))ᵒ
-           redFM = constᵒE Zᵒ λ {isBlame → constᵒI (_ , (ξ-blame F))} in
-       inj₂ᵒ (inj₁ᵒ redFM)
+       inj₂ᵒ (inj₁ᵒ (constᵒE Zᵒ λ {isBlame → constᵒI (_ , (ξ-blame F))}))
 
     blameM⇒▷ℰN : ∀{N} → Blame M → (F ⟦ M ⟧ —→ N)
        → 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
     blameM⇒▷ℰN {N} isBlame FM→N =
         let eq = blame-frame FM→N in
         subst (λ N → 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym eq) (monoᵒ ℰ-blame)
+```
 
+The `ℰ-bind` lemma follows as a corollary of `ℰ-bind-aux`.
+
+```
 ℰ-bind : ∀{𝒫}{A}{B}{F}{M}
    → 𝒫 ⊢ᵒ ℰ⟦ B ⟧ M
    → 𝒫 ⊢ᵒ (∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧))
      ----------------------------------------------------------
    → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
 ℰ-bind {𝒫}{A}{B}{F}{M} ⊢ℰM ⊢𝒱V→ℰFV =
-  appᵒ (appᵒ (instᵒ{𝒫}{P = λ M → ℰ-fp A B F M} ℰ-bind-aux M) ⊢ℰM) ⊢𝒱V→ℰFV
+  appᵒ (appᵒ (instᵒ{𝒫}{P = λ M → ℰ-bind-M A B F M} ℰ-bind-aux M) ⊢ℰM) ⊢𝒱V→ℰFV
 ```
 
 ## More Compatibility Lemmas
 
-The next compatibility lemma to proof is the one for function
+The next compatibility lemma to prove is the one for function
 application.  For that we'll need the following elimination lemma for
 a value `V` in `𝒱⟦ A ⇒ B ⟧`.
 
@@ -1045,16 +1081,17 @@ safe-body 𝒫 N A B = ∀{W} → 𝒫 ⊢ᵒ (▷ᵒ (𝒱⟦ A ⟧ W)) →ᵒ 
                  (substᵒ 𝒱-fun ⊢𝒱V) W
 ```
 
-The proof of compatibility for application begins with two uses of the
-`ℰ-bind` lemma, once for subexpression `L` and again for `M`.  So we
-obtain that `L` reduces to value `V` and `M` reduces to `W` and that
-`𝒱⟦ A ⇒ B ⟧ V` and `𝒱⟦ A ⟧ W`.  At this point, our goal is to show
-that `ℰ⟦ B ⟧ (V · W)`.  Next we use the elimination lemma on `𝒱⟦ A ⇒ B
-⟧ V` which tells us that `V` is a lambda abstraction `ƛ N` with a
-semantically safe body `N`.  We thus obtain the `progress` part of
-`ℰ⟦ B ⟧ (V · W)` because `(ƛ N) · W —→ N [ W ]`.  For the preservation
-part, we need to show that `ℰ⟦ B ⟧ (N [ W ])`, but that follows from
-`𝒱⟦ A ⟧ W` and that `N` is a semantically safe body.
+The proof of compatibility for application, given below, starts with
+two uses of the `ℰ-bind` lemma, once for subexpression `L` and again
+for `M`.  So we obtain that `L` reduces to value `V` and `M` reduces
+to `W` and that `𝒱⟦ A ⇒ B ⟧ V` and `𝒱⟦ A ⟧ W`.  At this point, our
+goal is to show that `ℰ⟦ B ⟧ (V · W)`.  Next we use the elimination
+lemma on `𝒱⟦ A ⇒ B ⟧ V` which tells us that `V` is a lambda
+abstraction `ƛ N` with a semantically safe body `N`.  We thus obtain
+the `progress` part of `ℰ⟦ B ⟧ (V · W)` because `(ƛ N) · W —→ N [ W
+]`.  For the preservation part, we need to show that `ℰ⟦ B ⟧ (N [ W
+])`, but that follows from `𝒱⟦ A ⟧ W` and that `N` is a semantically
+safe body.
 
 ```
 compatible-app : ∀{Γ}{A}{B}{L}{M}
