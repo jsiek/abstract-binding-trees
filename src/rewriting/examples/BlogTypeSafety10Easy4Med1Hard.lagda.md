@@ -29,7 +29,7 @@ uses step-indexed logical relations because the presence of the
 unknown type (aka. dynamic type) prevents the use of logical relations
 that are only indexed by types. To reduce the clutter of reasoning
 about step indexing, we conduct the proof using a temporal logic, in
-the spirit of the LSLR logic of Dreyer, Ahmed, and Birkedal (2011),
+the spirit of the LSLR logic of Dreyer, Ahmed, and Birkedal (LMCS 2011),
 that we embed in Agda.
 
 This is a literate Agda file, so most of the details are here, but it

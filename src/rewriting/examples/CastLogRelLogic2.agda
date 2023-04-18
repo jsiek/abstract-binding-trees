@@ -231,24 +231,23 @@ lookup-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
    → 𝒫 ⊢ᵒ 𝒱⟦ A ⟧ V
      ---------------
    → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ V
-𝒱⇒ℰ {A}{𝒫}{V} 𝒫⊢𝒱V =
-    ⊢ᵒ-intro
-    λ n ⊨𝒫n →
-    let 𝒱V = (⊢ᵒ-elim 𝒫⊢𝒱V) n ⊨𝒫n in
-    (inj₁ 𝒱V) , λ { N zero x V→N → tt ;
-                     N (suc j) (s≤s j≤) V→N →
-                         ⊥-elim (value-irreducible (𝒱⇒Value A V 𝒱V) V→N)}
+𝒱⇒ℰ {A}{𝒫}{V} 𝒫⊢𝒱V = ℰ-intro prog pres
+    where
+    prog = inj₁ᵒ 𝒫⊢𝒱V
+    pres = Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ V—→N →
+             ⊢ᵒ-sucP (⊢ᵒ-weaken 𝒫⊢𝒱V) λ 𝒱V →
+                ⊥-elim (value-irreducible (𝒱⇒Value A V 𝒱V ) V—→N))
 
 {- ℰ-bind (Monadic Bind Lemma) -}
 
 𝒱V→ℰF[V] : Type → Type → Frame → Term → Setᵒ
 𝒱V→ℰF[V] A B F M = ∀ᵒ[ V ] (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ ℰ⟦ A ⟧ (F ⟦ V ⟧)
 
-ℰ-fp : Type → Type → Frame → Term → Setᵒ
-ℰ-fp A B F M = ℰ⟦ B ⟧ M →ᵒ 𝒱V→ℰF[V] A B F M →ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
+ℰ-bind-M : Type → Type → Frame → Term → Setᵒ
+ℰ-bind-M A B F M = ℰ⟦ B ⟧ M →ᵒ 𝒱V→ℰF[V] A B F M →ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
 
 ℰ-bind-prop : Type → Type → Frame → Setᵒ
-ℰ-bind-prop A B F = ∀ᵒ[ M ] ℰ-fp A B F M
+ℰ-bind-prop A B F = ∀ᵒ[ M ] ℰ-bind-M A B F M
 
 frame-prop-lemma : ∀{𝒫}{A}{B}{M}{F}
    → 𝒫 ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F
@@ -256,7 +255,7 @@ frame-prop-lemma : ∀{𝒫}{A}{B}{M}{F}
    → 𝒫 ⊢ᵒ ▷ᵒ 𝒱V→ℰF[V] A B F M
    → 𝒫 ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M ⟧))
 frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
-  appᵒ (▷→ (appᵒ (▷→ (instᵒ (▷∀{P = λ M → ℰ-fp A B F M} IH) M)) ℰM)) V→FV
+  appᵒ (▷→ (appᵒ (▷→ (instᵒ (▷∀{P = λ M → ℰ-bind-M A B F M} IH) M)) ℰM)) V→FV
 
 𝒱V→ℰF[V]-expansion : ∀{𝒫}{A}{B}{F}{M}{M′}
    → M —→ M′
@@ -359,7 +358,7 @@ frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
      ----------------------------------------------------------
    → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
 ℰ-bind {𝒫}{A}{B}{F}{M} ⊢ℰM ⊢𝒱V→ℰFV =
-  appᵒ (appᵒ (instᵒ{𝒫}{P = λ M → ℰ-fp A B F M} ℰ-bind-aux M)
+  appᵒ (appᵒ (instᵒ{𝒫}{P = λ M → ℰ-bind-M A B F M} ℰ-bind-aux M)
              ⊢ℰM)
        ⊢𝒱V→ℰFV
 
