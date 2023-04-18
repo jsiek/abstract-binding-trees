@@ -249,14 +249,6 @@ lookup-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
 ℰ-bind-prop : Type → Type → Frame → Setᵒ
 ℰ-bind-prop A B F = ∀ᵒ[ M ] ℰ-bind-M A B F M
 
-frame-prop-lemma : ∀{𝒫}{A}{B}{M}{F}
-   → 𝒫 ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F
-   → 𝒫 ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M
-   → 𝒫 ⊢ᵒ ▷ᵒ 𝒱V→ℰF[V] A B F M
-   → 𝒫 ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M ⟧))
-frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
-  appᵒ (▷→ (appᵒ (▷→ (instᵒ (▷∀{P = λ M → ℰ-bind-M A B F M} IH) M)) ℰM)) V→FV
-
 𝒱V→ℰF[V]-expansion : ∀{𝒫}{A}{B}{F}{M}{M′}
    → M —→ M′
    → 𝒫 ⊢ᵒ 𝒱V→ℰF[V] A B F M
@@ -313,27 +305,36 @@ frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
     redM⇒▷ℰN : ∀{N} → reducible M → (F ⟦ M ⟧ —→ N)
        → 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ N)
     redM⇒▷ℰN {N} rM FM→N =
-         let finv = frame-inv2{M}{N}{F} rM FM→N in
-         let M′ = proj₁ finv in
-         let M→M′ = proj₁ (proj₂ finv) in
-         let N≡ = proj₂ (proj₂ finv) in
+      let finv = frame-inv2{M}{N}{F} rM FM→N in
+      let M′ = proj₁ finv in
+      let M→M′ = proj₁ (proj₂ finv) in
+      let N≡ = proj₂ (proj₂ finv) in
 
-         let IH : 𝒫′ ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F
-             IH = Sᵒ (Sᵒ Zᵒ) in
-         let ℰM : 𝒫′ ⊢ᵒ ℰ⟦ B ⟧ M
-             ℰM = Sᵒ Zᵒ in
-         let ▷ℰM′ : 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M′
-             ▷ℰM′ = appᵒ (instᵒ{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ B ⟧ N)}
-                           (ℰ-preservation ℰM) M′)
-                         (constᵒI M→M′) in
-         let M→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ 𝒱V→ℰF[V] A B F M
-             M→V→𝒱V→ℰFV = Zᵒ in
-         let M′→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ 𝒱V→ℰF[V] A B F M′
-             M′→V→𝒱V→ℰFV = 𝒱V→ℰF[V]-expansion{𝒫′}{A}{B} M→M′ M→V→𝒱V→ℰFV in
-         let ▷ℰFM′ : 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))
-             ▷ℰFM′ = frame-prop-lemma IH ▷ℰM′ (monoᵒ M′→V→𝒱V→ℰFV) in
-         subst (λ N → 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym N≡) ▷ℰFM′
-
+      let IH : 𝒫′ ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F
+          IH = Sᵒ (Sᵒ Zᵒ) in
+      let ℰM : 𝒫′ ⊢ᵒ ℰ⟦ B ⟧ M
+          ℰM = Sᵒ Zᵒ in
+      let ▷ℰM′ : 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M′
+          ▷ℰM′ = appᵒ (instᵒ{P = λ N → (M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ B ⟧ N)}
+                        (ℰ-preservation ℰM) M′)
+                      (constᵒI M→M′) in
+      let M→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ 𝒱V→ℰF[V] A B F M
+          M→V→𝒱V→ℰFV = Zᵒ in
+      let M′→V→𝒱V→ℰFV : 𝒫′ ⊢ᵒ 𝒱V→ℰF[V] A B F M′
+          M′→V→𝒱V→ℰFV = 𝒱V→ℰF[V]-expansion{𝒫′}{A}{B} M→M′ M→V→𝒱V→ℰFV in
+      let ▷ℰFM′ : 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M′ ⟧))
+          ▷ℰFM′ = frame-prop-lemma IH ▷ℰM′ (monoᵒ M′→V→𝒱V→ℰFV) in
+      subst (λ N → 𝒫′ ⊢ᵒ ▷ᵒ ℰ⟦ A ⟧ N) (sym N≡) ▷ℰFM′
+      where
+      frame-prop-lemma : ∀{𝒫}{A}{B}{M}{F}
+         → 𝒫 ⊢ᵒ ▷ᵒ ℰ-bind-prop A B F
+         → 𝒫 ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ M
+         → 𝒫 ⊢ᵒ ▷ᵒ 𝒱V→ℰF[V] A B F M
+         → 𝒫 ⊢ᵒ ▷ᵒ (ℰ⟦ A ⟧ (F ⟦ M ⟧))
+      frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
+        appᵒ (▷→ (appᵒ (▷→ (instᵒ (▷∀{P = λ M → ℰ-bind-M A B F M} IH) M))
+                  ℰM)) V→FV
+       
    Mblame : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
    Mblame = ℰ-intro progressMblame
             (constᵒE Zᵒ λ blameM →

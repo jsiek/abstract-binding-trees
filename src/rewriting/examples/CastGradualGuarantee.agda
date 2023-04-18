@@ -191,7 +191,7 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
      → (𝒱→ℰF c d F M M′) ∷ ℰ⟦ d ⟧ M M′ ∷ ▷ᵒ ℰ-bind-prop c d F ∷ 𝒫
         ⊢ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) (F ⟦ M′ ⟧)
   Goal′{M}{M′} =
-     case4ᵒ (substᵒ ℰ-stmt (Sᵒ Zᵒ)) Mval MredL MredR {!!}
+     case4ᵒ (substᵒ ℰ-stmt (Sᵒ Zᵒ)) Mval MredL MredR Mblame
    where
    𝒫′ = (𝒱→ℰF c d F M M′) ∷ ℰ⟦ d ⟧ M M′ ∷ ▷ᵒ ℰ-bind-prop c d F ∷ 𝒫
 
@@ -207,14 +207,52 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
           Zᵒ 
 
    MredL : reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧(F ⟦ M ⟧)(F ⟦ M′ ⟧)
-   MredL = substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₁ᵒ {!!}))
-
+   MredL = substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₁ᵒ (redFM ,ᵒ presFM)))
+    where
+    redFM : reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′ ⊢ᵒ reducible (F ⟦ M ⟧) ᵒ
+    redFM = constᵒE (proj₁ᵒ Zᵒ) λ {(N , M→N) → constᵒI (F ⟦ N ⟧ , ξ F M→N)}
+    
+    presFM : reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′
+              ⊢ᵒ preserve-L c (F ⟦ M ⟧) (F ⟦ M′ ⟧)
+    presFM = Λᵒ[ N ] →ᵒI ▷ℰFM′
+     where
+     ▷ℰFM′ : ∀{N} → (F ⟦ M ⟧ —→ N)ᵒ ∷ reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′
+             ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ N (F ⟦ M′ ⟧))
+     ▷ℰFM′ {N} =
+       constᵒE Zᵒ λ FM→N →
+       constᵒE (proj₁ᵒ (Sᵒ Zᵒ)) λ rM →
+       let 𝒫″ = (F ⟦ M ⟧ —→ N)ᵒ ∷ reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′ in
+       let finv = frame-inv2 rM FM→N in
+       let N₁ = proj₁ finv in
+       let M→N₁ = proj₁ (proj₂ finv) in
+       let N≡ = proj₂ (proj₂ finv) in
+       {-
+               M   —→  N₁
+           F ⟦ M ⟧ —→  F ⟦ N₁ ⟧  ≡  N
+       -}
+       let ▷ℰN₁M′ : 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ d ⟧ N₁ M′)
+           ▷ℰN₁M′ = appᵒ (instᵒ{P = λ N → ((M —→ N)ᵒ →ᵒ ▷ᵒ (ℰ⟦ d ⟧ N M′))}
+                              (proj₂ᵒ{𝒫″} (Sᵒ Zᵒ)) N₁) (constᵒI M→N₁) in
+       let ▷M′→V→𝒱→ℰF : 𝒫″ ⊢ᵒ ▷ᵒ (𝒱→ℰF c d F N₁ M′)
+           ▷M′→V→𝒱→ℰF = monoᵒ (𝒱→ℰF-expansion-L{𝒫″}{c}{d}{F} M→N₁
+                                  (Sᵒ (Sᵒ Zᵒ))) in
+       let IH : 𝒫″ ⊢ᵒ ▷ᵒ ℰ-bind-prop c d F
+           IH = Sᵒ (Sᵒ (Sᵒ (Sᵒ Zᵒ))) in
+       let IH[N₁,M′] : 𝒫″ ⊢ᵒ ▷ᵒ (ℰ-bind-M c d F N₁ M′)
+           IH[N₁,M′] =
+             let F = λ M → (▷ᵒ (∀ᵒ[ M′ ] ℰ-bind-M c d F M M′)) in
+             instᵒ (▷∀ (instᵒ{P = F} (▷∀ IH) N₁)) M′ in
+       let ▷ℰFN₁FM′ : 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ (F ⟦ N₁ ⟧) (F ⟦ M′ ⟧))
+           ▷ℰFN₁FM′ = appᵒ (▷→ (appᵒ (▷→ IH[N₁,M′]) ▷ℰN₁M′)) ▷M′→V→𝒱→ℰF  in
+       subst (λ N → 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ N (F ⟦ M′ ⟧))) (sym N≡) ▷ℰFN₁FM′
+     
    MredR : reducible M′ ᵒ ×ᵒ preserve-R d M M′ ∷ 𝒫′
              ⊢ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) (F ⟦ M′ ⟧)
    MredR = substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₂ᵒ (inj₁ᵒ {!!})))
 
    Mblame : Blame M′ ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) (F ⟦ M′ ⟧)
    Mblame = substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₁ᵒ {!!}))
+   
 
 
 {-   
