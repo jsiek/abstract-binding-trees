@@ -338,7 +338,7 @@ frame-prop-lemma{𝒫}{A}{B}{M}{F} IH ℰM V→FV =
    Mblame = ℰ-intro progressMblame
             (constᵒE Zᵒ λ blameM →
              ⊢ᵒ-weaken (Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ FM→N →
-                                           ⊢ᵒ-weaken (blameM⇒▷ℰN blameM FM→N))))
+                                          ⊢ᵒ-weaken (blameM⇒▷ℰN blameM FM→N))))
     where
     progressMblame : (Blame M)ᵒ ∷ 𝒫′ ⊢ᵒ progress A (F ⟦ M ⟧)
     progressMblame =
