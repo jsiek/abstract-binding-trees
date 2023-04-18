@@ -42,6 +42,15 @@ pre-ℰ : Type → Term
 pre-ℰ A M = (pre-𝒱 A M ⊎ˢ (reducible M)ˢ ⊎ˢ (Blame M)ˢ)    -- Progress
              ×ˢ (∀ˢ[ N ] (M —→ N)ˢ →ˢ ▷ˢ (ℰˢ⟦ A ⟧ N))        -- Preservation
 
+{-
+idea: pre-ℰ change to
+
+       pre-𝒱 A M
+    ⊎ˢ (Blame M)ˢ
+    ⊎ˢ (∃ˢ[ N ] (M —→ N)ˢ →ˢ ▷ˢ (ℰˢ⟦ A ⟧ N))
+             
+-}
+
 pre-ℰ⊎𝒱 : ℰ⊎𝒱-type → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
 pre-ℰ⊎𝒱 (inj₁ (A , V)) = pre-𝒱 A V
 pre-ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
