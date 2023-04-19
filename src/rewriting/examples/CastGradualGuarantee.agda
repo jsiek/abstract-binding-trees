@@ -1,7 +1,7 @@
 {-# OPTIONS --rewriting #-}
 module rewriting.examples.CastGradualGuarantee where
 
-open import Data.List using (List; []; _∷_; length)
+open import Data.List using (List; []; _∷_; length; map)
 open import Data.Nat
 open import Data.Bool using (true; false) renaming (Bool to 𝔹)
 open import Data.Nat.Properties
@@ -95,6 +95,10 @@ preserve-R c M M′ = (∀ᵒ[ N′ ] ((M′ —→ N′)ᵒ →ᵒ ▷ᵒ (ℰ�
       ⊎ᵒ ((reducible M′)ᵒ ×ᵒ preserve-R c M M′)
       ⊎ᵒ (Blame M′)ᵒ
   ∎
+
+
+𝒱-base : ∀{ι}{c}{c′} → 𝒱⟦ ($ₜ ι , $ₜ ι , base⊑) ⟧ ($ c) ($ c′) ≡ᵒ (c ≡ c′) ᵒ
+𝒱-base{ι}{c}{c′} = ≡ᵒ-intro λ k → (λ x → x) , (λ x → x)
 
 {- Relate Open Terms -}
 
@@ -307,3 +311,61 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
       let eq = blame-frame Fb→N′ in
       let 𝒫″ = (F ⟦ blame ⟧ —→ N′)ᵒ ∷ (Blame blame)ᵒ ∷ 𝒫′ in
       subst (λ N′ → 𝒫″ ⊢ᵒ ▷ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) N′) (sym eq) (monoᵒ ℰ-blame))
+
+compatible-nat : ∀{Γ}{n : ℕ}
+   → Γ ⊨ $ (Num n) ⊑ $ (Num n) ⦂ ($ₜ ′ℕ , $ₜ ′ℕ , base⊑)
+compatible-nat {Γ}{n} γ γ′ = 𝒱⇒ℰ (substᵒ (≡ᵒ-sym 𝒱-base) (constᵒI refl))
+
+compatible-bool : ∀{Γ}{b : 𝔹}
+   → Γ ⊨ $ (Bool b) ⊑ $ (Bool b) ⦂ ($ₜ ′𝔹 , $ₜ ′𝔹 , base⊑)
+compatible-bool {Γ}{b} γ γ′ = 𝒱⇒ℰ (substᵒ (≡ᵒ-sym 𝒱-base) (constᵒI refl))
+
+compatible-blame : ∀{Γ}{A}{M}
+   → map proj₁ Γ ⊢ M ⦂ A
+     -------------------------------
+   → Γ ⊨ M ⊑ blame ⦂ (A , A , Refl⊑)
+compatible-blame ⊢M γ γ′ = ℰ-blame
+
+lookup-𝓖 : (Γ : List Prec) → (γ γ′ : Subst)
+  → ∀ {A}{A′}{A⊑A′}{y} → Γ ∋ y ⦂ (A , A′ , A⊑A′)
+  → 𝓖⟦ Γ ⟧ γ γ′ ⊢ᵒ 𝒱⟦ (A , A′ , A⊑A′) ⟧ (γ y) (γ′ y)
+lookup-𝓖 (.(A , A′ , A⊑A′) ∷ Γ) γ γ′ {A} {A′} {A⊑A′} {zero} refl = Zᵒ
+lookup-𝓖 (B ∷ Γ) γ γ′ {A} {A′} {A⊑A′} {suc y} ∋y =
+   Sᵒ (lookup-𝓖 Γ (λ x → γ (suc x)) (λ x → γ′ (suc x)) ∋y)
+
+compatibility-var : ∀ {Γ A A′ A⊑A′ x}
+  → Γ ∋ x ⦂ (A , A′ , A⊑A′)
+    -------------------------------
+  → Γ ⊨ ` x ⊑ ` x ⦂ (A , A′ , A⊑A′)
+compatibility-var {Γ}{A}{A′}{A⊑A′}{x} ∋x γ γ′
+    rewrite sub-var γ x | sub-var γ′ x = 𝒱⇒ℰ (lookup-𝓖 Γ γ γ′ ∋x)
+
+
+compatible-lambda : ∀{Γ : List Prec}{A}{B}{C}{D}{N N′ : Term}
+     {c : A ⊑ C}{d : B ⊑ D}
+   → ((A , C , c) ∷ Γ) ⊨ N ⊑ N′ ⦂ (B , D , d)
+     ------------------------------------------------
+   → Γ ⊨ (ƛ N) ⊑ (ƛ N′) ⦂ (A ⇒ B , C ⇒ D , fun⊑ c d)
+compatible-lambda{Γ}{A}{B}{C}{D}{N}{N′}{c}{d} ⊢N⊑N′ = {!!}
+
+
+fundamental : ∀ {Γ}{A}{A′}{A⊑A′ : A ⊑ A′} → (M M′ : Term)
+  → Γ ⊩ M ⊑ M′ ⦂ A⊑A′
+    ----------------------------
+  → Γ ⊨ M ⊑ M′ ⦂ (A , A′ , A⊑A′)
+fundamental {Γ} {A} {A′} {A⊑A′} .(` _) .(` _) (⊑-var ∋x) =
+   compatibility-var ∋x
+fundamental {Γ} {_} {_} {base⊑} ($ (Num n)) ($ (Num n)) ⊑-lit =
+   compatible-nat
+fundamental {Γ} {_} {_} {base⊑} ($ (Bool b)) ($ (Bool b)) ⊑-lit =
+   compatible-bool
+fundamental {Γ} {A} {A′} {A⊑A′} .(_ · _) .(_ · _) (⊑-app ⊢M⊑M′ ⊢M⊑M′₁) = {!!}
+fundamental {Γ} {.(_ ⇒ _)} {.(_ ⇒ _)} {.(fun⊑ _ _)} (ƛ N)(ƛ N′) (⊑-lam ⊢N⊑N′) =
+    compatible-lambda{N = N}{N′} (fundamental N N′ ⊢N⊑N′)
+fundamental {Γ} {.★} {A′} {.unk⊑} .(_ ⟨ _ !⟩) M′ (⊑-inj-L ⊢M⊑M′) = {!!}
+fundamental {Γ} {.★} {.★} {.unk⊑} M .(_ ⟨ _ !⟩) (⊑-inj-R ⊢M⊑M′) = {!!}
+fundamental {Γ} {.(gnd⇒ty _)} {A′} {A⊑A′} .(_ ⟨ _ ?⟩) M′ (⊑-proj-L ⊢M⊑M′) = {!!}
+fundamental {Γ} {A} {.(gnd⇒ty _)} {A⊑A′} M .(_ ⟨ _ ?⟩) (⊑-proj-R ⊢M⊑M′) = {!!}
+fundamental {Γ} {A} {.A} {.Refl⊑} M .blame (⊑-blame ⊢M∶A) =
+   compatible-blame ⊢M∶A
+

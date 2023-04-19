@@ -18,8 +18,6 @@ open import rewriting.examples.StepIndexedLogic2
 open import rewriting.examples.CastDeterministic
 open import rewriting.examples.CastLogRelLogic2
 
-{-# REWRITE sub-var #-}
-
 compatible-blame : ∀{Γ}{A}
      -------------
    → Γ ⊨ blame ⦂ A
@@ -29,7 +27,7 @@ compatibility-var : ∀ {Γ A x}
   → Γ ∋ x ⦂ A
     -----------
   → Γ ⊨ ` x ⦂ A
-compatibility-var {Γ}{A}{x} ∋x γ =
+compatibility-var {Γ}{A}{x} ∋x γ rewrite sub-var γ x =
      let ⊢𝒱γx : 𝓖⟦ Γ ⟧ γ ⊢ᵒ 𝒱⟦ A ⟧ (γ x)
          ⊢𝒱γx = lookup-𝓖 Γ γ ∋x in
      𝒱⇒ℰ ⊢𝒱γx
