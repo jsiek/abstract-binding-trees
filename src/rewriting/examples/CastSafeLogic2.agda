@@ -95,15 +95,13 @@ compatible-app {Γ}{A}{B}{L}{M} ⊨L ⊨M γ = ⊢ℰLM
      ⊢ᵒ-sucP ⊢𝒱W λ 𝒱Wsn →
      let w = 𝒱⇒Value A W 𝒱Wsn in
      𝒱-fun-elim ⊢𝒱V λ {N′ refl 𝒱W→ℰNW →
-     let prog : 𝓟₂ (ƛ N′) W ⊢ᵒ progress B (ƛ N′ · W)
-         prog = (inj₂ᵒ (inj₁ᵒ (constᵒI (_ , (β w))))) in
      let pres : 𝓟₂ (ƛ N′) W ⊢ᵒ preservation B (ƛ N′ · W)
          pres = Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ {r →
                 let ⊢▷ℰN′W = appᵒ 𝒱W→ℰNW (monoᵒ ⊢𝒱W) in
                 let eq = deterministic r (β w) in
                 ⊢ᵒ-weaken (subst (λ N → 𝓟₂ (ƛ N′) W ⊢ᵒ ▷ᵒ ℰ⟦ B ⟧ N) 
                                  (sym eq) ⊢▷ℰN′W)}) in
-     ℰ-intro prog pres
+     substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₂ᵒ (constᵒI (_ , (β w)) ,ᵒ pres)))
      }
 
 compatible-inject : ∀{Γ}{G}{M}
@@ -154,11 +152,9 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
    let ⊢w = proj₁ᵒ ⊢w×▷𝒱W in
    let ▷𝒱W = proj₂ᵒ ⊢w×▷𝒱W in
    ⊢ᵒ-sucP ⊢w λ{n} w →
-   let prog : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ progress (gnd⇒ty H) ((W ⟨ G !⟩) ⟨ H ?⟩)
-       prog = inj₂ᵒ (inj₁ᵒ (constᵒI (red-inj-proj w))) in
    let pres : 𝓟₁ (W ⟨ G !⟩) ⊢ᵒ preservation (gnd⇒ty H)((W ⟨ G !⟩) ⟨ H ?⟩)
        pres = Λᵒ[ N ] →ᵒI (constᵒE Zᵒ λ r → ⊢ᵒ-weaken (Goal r w ▷𝒱W)) in
-   ℰ-intro prog pres
+   substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₂ᵒ (constᵒI (red-inj-proj w) ,ᵒ pres)))
    }
     where
     Goal : ∀{W}{G}{H}{N}
@@ -198,13 +194,17 @@ sem-type-safety : ∀ {A} → (M N : Term)
   → # (ℰ⟦ A ⟧ M) (suc (len r))
     ---------------------------------------------
   → Value N  ⊎  (∃[ N′ ] (N —→ N′))  ⊎  N ≡ blame   
-sem-type-safety {A} M .M (.M END) (inj₁ 𝒱M , presM) =
+sem-type-safety {A} M .M (.M END) (inj₁ 𝒱M) =
     inj₁ (𝒱⇒Value A M 𝒱M)
-sem-type-safety {A} M .M (.M END) (inj₂ (inj₁ r) , presM) =
-    inj₂ (inj₁ r)
-sem-type-safety {A} M .M (.M END) (inj₂ (inj₂ isBlame) , presM) =
+sem-type-safety {A} M .M (.M END) (inj₂ (inj₁ isBlame)) =
     inj₂ (inj₂ refl)
-sem-type-safety {A} M N (_—→⟨_⟩_ .M {M′} M→M′ M′→N) (_ , presM) =
+sem-type-safety {A} M .M (.M END) (inj₂ (inj₂ (red , _))) =
+    inj₂ (inj₁ red)
+sem-type-safety {A} M N (_—→⟨_⟩_ .M {M′} M→M′ M′→N) (inj₁ 𝒱M) =
+  ⊥-elim (value-irreducible (𝒱⇒Value A M 𝒱M) M→M′)
+sem-type-safety {A} M N (_—→⟨_⟩_ .M {M′} M→M′ M′→N) (inj₂ (inj₁ isBlame)) =
+  ⊥-elim (blame-irreducible M→M′)
+sem-type-safety {A} M N (_—→⟨_⟩_ .M {M′} M→M′ M′→N) (inj₂ (inj₂ (_ , presM))) =
     let ℰM′ : # (ℰ⟦ A ⟧ M′) (suc (len M′→N))
         ℰM′ = presM M′ (suc (suc (len M′→N))) ≤-refl M→M′ in
     sem-type-safety M′ N M′→N ℰM′
