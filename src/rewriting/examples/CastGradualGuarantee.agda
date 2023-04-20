@@ -521,6 +521,7 @@ compatible-inj-L : ∀{Γ}{G A′}{c : gnd⇒ty G ⊑ A′}{M M′}
      ------------------------------------
    → Γ ⊨ M ⟨ G !⟩ ⊑ M′ ⦂ (★ , A′ , unk⊑)
 compatible-inj-L{Γ}{G}{A′}{M}{M′} ⊨M⊑M′ γ γ′ =
+   ℰ-bind{F = ` □⟨ G !⟩}{□} (⊨M⊑M′ γ γ′)
    {!!}
 
 fundamental : ∀ {Γ}{A}{A′}{A⊑A′ : A ⊑ A′} → (M M′ : Term)
