@@ -211,6 +211,15 @@ S ᵒ = record { # = λ { zero → ⊤ ; (suc k) → S }
              ; tz = tt
              }
 
+◁ᵒ : Setᵒ → Setᵒ
+◁ᵒ P = record { # = λ { zero → ⊤ ; (suc k) → # P (suc (suc k)) }
+              ; down = λ { zero ◁Pk .zero z≤n → tt
+                         ; (suc k) ◁Pk zero j≤k → tt
+                         ; (suc k) ◁Pk (suc j) j≤k →
+                            down P (suc (suc k)) ◁Pk (suc (suc j)) (s≤s j≤k)}
+              ; tz = tt
+              }
+
 ↓ᵒ : ℕ → Setᵒ → Setᵒ
 ↓ᵒ k S = record { # = ↓ k (# S)
                 ; down = λ { zero x .zero z≤n → tt
@@ -1755,16 +1764,15 @@ abstract
      let Qn = 𝒫⊢P→Q n ⊨𝒫n n ≤-refl Pn in
      Qn
 
-  {- TODO: remove the following -}
   ▷→▷ : ∀{𝒫}{P Q : Setᵒ}
      → 𝒫 ⊢ᵒ ▷ᵒ P
-     → 𝒫 ⊢ᵒ P →ᵒ Q
+     → P ∷ 𝒫 ⊢ᵒ Q
        ------------
      → 𝒫 ⊢ᵒ ▷ᵒ Q
-  ▷→▷ {𝒫}{P}{Q} ▷P P→Q n ⊨𝒫n =
+  ▷→▷ {𝒫}{P}{Q} ▷P P⊢Q n ⊨𝒫n =
     let ▷Q = appᵒ{𝒫}{▷ᵒ P}{▷ᵒ Q}
                 (▷→{𝒫}{P}{Q}
-                    (monoᵒ{𝒫}{P →ᵒ Q} P→Q)) ▷P in
+                    (monoᵒ{𝒫}{P →ᵒ Q} (→ᵒI{𝒫}{P}{Q} P⊢Q))) ▷P in
     ▷Q n ⊨𝒫n
 
   ⊢ᵒ-∀-intro : ∀{𝒫 : List Setᵒ }{A}{P : A → Setᵒ}
@@ -1862,7 +1870,6 @@ abstract
             (Sᵒ{Q ∷ 𝒫}{R}{P ⊎ᵒ Q} Q∷𝒫⊢R) in
       caseᵒ{(P ⊎ᵒ Q) ∷ 𝒫}{P}{Q}{R} ⊢P⊎Q P⊢R Q⊢R
 
-{-
 abstract
   ◁▷ᵒ : ∀{S : Setᵒ} → ◁ᵒ (▷ᵒ S) ≡ᵒ S
   ◁▷ᵒ {S} zero = ⇔-intro (λ x → tz S) (λ x → tt)
@@ -1893,7 +1900,6 @@ abstract
      → 𝒫 ⊢ᵒ P ᵒ
   ◁Pᵒ ⊢◁P zero ⊨𝒫n = tt
   ◁Pᵒ ⊢◁P (suc n) ⊨𝒫n = ⊢◁P (suc n) ⊨𝒫n
--}
 
 ⊢ᵒ-sucP : ∀{𝒫}{P Q : Setᵒ}
    → 𝒫 ⊢ᵒ P
