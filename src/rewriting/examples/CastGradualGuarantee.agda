@@ -179,9 +179,17 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
 
 {- ℰ-bind (Monadic Bind Lemma) -}
 
-𝒱→ℰF : Prec → Prec → Frame → Frame → Term → Term → Setᵒ
+data PEFrame : Set where
+  `_ : Frame → PEFrame
+  □ : PEFrame
+
+_⦉_⦊ : PEFrame → Term → Term
+(` F) ⦉ M ⦊ = F ⟦ M ⟧
+□ ⦉ M ⦊ = M
+
+𝒱→ℰF : Prec → Prec → PEFrame → PEFrame → Term → Term → Setᵒ
 𝒱→ℰF c d F F′ M M′ = ∀ᵒ[ V ] ∀ᵒ[ V′ ] (M —↠ V)ᵒ →ᵒ (M′ —↠ V′)ᵒ
-                   →ᵒ 𝒱⟦ d ⟧ V V′ →ᵒ ℰ⟦ c ⟧ (F ⟦ V ⟧) (F′ ⟦ V′ ⟧)
+                   →ᵒ 𝒱⟦ d ⟧ V V′ →ᵒ ℰ⟦ c ⟧ (F ⦉ V ⦊) (F′ ⦉ V′ ⦊)
 
 𝒱→ℰF-expansion-L : ∀{𝒫}{c}{d}{F}{F′}{M}{M′}{N}
    → M —→ N
@@ -191,7 +199,7 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
 𝒱→ℰF-expansion-L {𝒫}{c}{d}{F}{F′}{M}{M′}{N} M→N 𝒱→ℰF[MM′] =
   Λᵒ[ V ] Λᵒ[ V′ ]
   let 𝒱→ℰF[NM′] : 𝒱⟦ d ⟧ V V′ ∷ (M′ —↠ V′)ᵒ ∷ (N —↠ V)ᵒ ∷ 𝒫
-               ⊢ᵒ ℰ⟦ c ⟧  (F ⟦ V ⟧) (F′ ⟦ V′ ⟧)
+               ⊢ᵒ ℰ⟦ c ⟧  (F ⦉ V ⦊) (F′ ⦉ V′ ⦊)
       𝒱→ℰF[NM′] = ⊢ᵒ-sucP (Sᵒ Zᵒ) λ M′—↠V′ →
                ⊢ᵒ-sucP (Sᵒ (Sᵒ Zᵒ)) λ N—↠V →
                let M—↠V = constᵒI (M —→⟨ M→N ⟩ N—↠V) in
@@ -208,7 +216,7 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
 𝒱→ℰF-expansion-R {𝒫}{c}{d}{F}{F′}{M}{M′}{N′} M′→N′ 𝒱→ℰF[MM′] =
   Λᵒ[ V ] Λᵒ[ V′ ]
   let 𝒱→ℰF[MN′] : 𝒱⟦ d ⟧ V V′ ∷ (N′ —↠ V′)ᵒ ∷ (M —↠ V)ᵒ ∷ 𝒫
-               ⊢ᵒ ℰ⟦ c ⟧  (F ⟦ V ⟧) (F′ ⟦ V′ ⟧)
+               ⊢ᵒ ℰ⟦ c ⟧  (F ⦉ V ⦊) (F′ ⦉ V′ ⦊)
       𝒱→ℰF[MN′] = ⊢ᵒ-sucP (Sᵒ Zᵒ) λ N′—↠V′ →
                ⊢ᵒ-sucP (Sᵒ (Sᵒ Zᵒ)) λ M—↠V →
                let M′—↠V′ = constᵒI (M′ —→⟨ M′→N′ ⟩ N′—↠V′) in
@@ -222,11 +230,42 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
 ℰ-blame {𝒫}{c}{M} = substᵒ (≡ᵒ-sym ℰ-stmt)
                             (inj₂ᵒ (inj₂ᵒ (inj₂ᵒ (constᵒI isBlame))))
 
-ℰ-bind-M : Prec → Prec → Frame → Frame → Term → Term → Setᵒ
-ℰ-bind-M c d F F′ M M′ = ℰ⟦ d ⟧ M M′ →ᵒ 𝒱→ℰF c d F F′ M M′
-    →ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) (F′ ⟦ M′ ⟧)
+ξ′ : ∀ {M N : Term} {M′ N′ : Term}
+    → (F : PEFrame)
+    → M′ ≡ F ⦉ M ⦊
+    → N′ ≡ F ⦉ N ⦊
+    → M —→ N
+      --------
+    → M′ —→ N′
+ξ′ (` F) refl refl M→N = ξ F M→N
+ξ′ □ refl refl M→N = M→N
 
-ℰ-bind-prop : Prec → Prec → Frame → Frame → Setᵒ
+ξ′-blame : ∀ {M′ : Term}
+   → (F : PEFrame)
+   → M′ ≡ F ⦉ blame ⦊
+     ------------------------
+   → M′ —→ blame ⊎ M′ ≡ blame
+ξ′-blame (` F) refl = inj₁ (ξ-blame F)
+ξ′-blame □ refl = inj₂ refl
+
+frame-inv3 : ∀{L N : Term}{F : PEFrame}
+   → reducible L
+   → F ⦉ L ⦊ —→ N
+   → ∃[ L′ ] ((L —→ L′) × (N ≡ F ⦉ L′ ⦊))
+frame-inv3 {L}{N}{□} rL FL→N = _ , (FL→N , refl)
+frame-inv3 {L}{N}{` F} rL FL→N = frame-inv2 rL FL→N
+
+blame-frame2 : ∀{F}{N}
+   → (F ⦉ blame ⦊) —→ N
+   → N ≡ blame
+blame-frame2 {□}{N} Fb→N = ⊥-elim (blame-irreducible Fb→N)
+blame-frame2 {` F}{N} Fb→N = blame-frame Fb→N
+
+ℰ-bind-M : Prec → Prec → PEFrame → PEFrame → Term → Term → Setᵒ
+ℰ-bind-M c d F F′ M M′ = ℰ⟦ d ⟧ M M′ →ᵒ 𝒱→ℰF c d F F′ M M′
+    →ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
+
+ℰ-bind-prop : Prec → Prec → PEFrame → PEFrame → Setᵒ
 ℰ-bind-prop c d F F′ = ∀ᵒ[ M ] ∀ᵒ[ M′ ] ℰ-bind-M c d F F′ M M′
 
 ℰ-bind-aux : ∀{𝒫}{c}{d}{F}{F′} → 𝒫 ⊢ᵒ ℰ-bind-prop c d F F′
@@ -237,40 +276,40 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
   where
   Goal′ : ∀{M}{M′}
      → (𝒱→ℰF c d F F′ M M′) ∷ ℰ⟦ d ⟧ M M′ ∷ ▷ᵒ ℰ-bind-prop c d F F′ ∷ 𝒫
-        ⊢ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) (F′ ⟦ M′ ⟧)
+        ⊢ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
   Goal′{M}{M′} =
-     case4ᵒ (substᵒ ℰ-stmt (Sᵒ Zᵒ)) Mval MredL MredR Mblame
+     case4ᵒ (substᵒ ℰ-stmt (Sᵒ Zᵒ)) Mval MredL MredR (Mblame{F′ = F′})
    where
    𝒫′ = (𝒱→ℰF c d F F′ M M′) ∷ ℰ⟦ d ⟧ M M′ ∷ ▷ᵒ ℰ-bind-prop c d F F′ ∷ 𝒫
 
-   Mval : 𝒱⟦ d ⟧ M M′ ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) (F′ ⟦ M′ ⟧)
+   Mval : 𝒱⟦ d ⟧ M M′ ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
    Mval =
      let Cont = λ V → ∀ᵒ[ V′ ] (M —↠ V)ᵒ →ᵒ (M′ —↠ V′)ᵒ
-                   →ᵒ 𝒱⟦ d ⟧ V V′ →ᵒ ℰ⟦ c ⟧ (F ⟦ V ⟧) (F′ ⟦ V′ ⟧) in
+                   →ᵒ 𝒱⟦ d ⟧ V V′ →ᵒ ℰ⟦ c ⟧ (F ⦉ V ⦊) (F′ ⦉ V′ ⦊) in
      let Cont′ = λ V′ → (M —↠ M)ᵒ →ᵒ (M′ —↠ V′)ᵒ
-                   →ᵒ 𝒱⟦ d ⟧ M V′ →ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) (F′ ⟦ V′ ⟧) in
+                   →ᵒ 𝒱⟦ d ⟧ M V′ →ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ V′ ⦊) in
      appᵒ (appᵒ (appᵒ (instᵒ{P = Cont′} (instᵒ{P = Cont} (Sᵒ Zᵒ) M) M′)
                       (constᵒI (M END)))
                 (constᵒI (M′ END)))
           Zᵒ 
 
-   MredL : reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧(F ⟦ M ⟧)(F′ ⟦ M′ ⟧)
+   MredL : reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧(F ⦉ M ⦊)(F′ ⦉ M′ ⦊)
    MredL = substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₁ᵒ (redFM ,ᵒ presFM)))
     where
-    redFM : reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′ ⊢ᵒ reducible (F ⟦ M ⟧) ᵒ
-    redFM = constᵒE (proj₁ᵒ Zᵒ) λ {(N , M→N) → constᵒI (F ⟦ N ⟧ , ξ F M→N)}
+    redFM : reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′ ⊢ᵒ reducible (F ⦉ M ⦊) ᵒ
+    redFM = constᵒE (proj₁ᵒ Zᵒ) λ {(N , M→N) → constᵒI (F ⦉ N ⦊ , ξ′ F refl refl M→N)}
     
     presFM : reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′
-              ⊢ᵒ preserve-L c (F ⟦ M ⟧) (F′ ⟦ M′ ⟧)
+              ⊢ᵒ preserve-L c (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
     presFM = Λᵒ[ N ] →ᵒI ▷ℰFM′
      where
-     ▷ℰFM′ : ∀{N} → (F ⟦ M ⟧ —→ N)ᵒ ∷ reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′
-             ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ N (F′ ⟦ M′ ⟧))
+     ▷ℰFM′ : ∀{N} → (F ⦉ M ⦊ —→ N)ᵒ ∷ reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′
+             ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ N (F′ ⦉ M′ ⦊))
      ▷ℰFM′ {N} =
        constᵒE Zᵒ λ FM→N →
        constᵒE (proj₁ᵒ (Sᵒ Zᵒ)) λ rM →
-       let 𝒫″ = (F ⟦ M ⟧ —→ N)ᵒ ∷ reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′ in
-       let finv = frame-inv2 rM FM→N in
+       let 𝒫″ = (F ⦉ M ⦊ —→ N)ᵒ ∷ reducible M ᵒ ×ᵒ preserve-L d M M′ ∷ 𝒫′ in
+       let finv = frame-inv3{F = F} rM FM→N in
        let N₁ = proj₁ finv in
        let M→N₁ = proj₁ (proj₂ finv) in
        let N≡ = proj₂ (proj₂ finv) in
@@ -290,28 +329,28 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
            IH[N₁,M′] =
              let F₁ = λ M → (▷ᵒ (∀ᵒ[ M′ ] ℰ-bind-M c d F F′ M M′)) in
              instᵒ (▷∀ (instᵒ{P = F₁} (▷∀ IH) N₁)) M′ in
-       let ▷ℰFN₁FM′ : 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ (F ⟦ N₁ ⟧) (F′ ⟦ M′ ⟧))
+       let ▷ℰFN₁FM′ : 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ (F ⦉ N₁ ⦊) (F′ ⦉ M′ ⦊))
            ▷ℰFN₁FM′ = appᵒ (▷→ (appᵒ (▷→ IH[N₁,M′]) ▷ℰN₁M′)) ▷M′→V→𝒱→ℰF  in
-       subst (λ N → 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ N (F′ ⟦ M′ ⟧))) (sym N≡) ▷ℰFN₁FM′
+       subst (λ N → 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ N (F′ ⦉ M′ ⦊))) (sym N≡) ▷ℰFN₁FM′
      
    MredR : reducible M′ ᵒ ×ᵒ preserve-R d M M′ ∷ 𝒫′
-             ⊢ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) (F′ ⟦ M′ ⟧)
+             ⊢ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
    MredR = substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₂ᵒ (inj₁ᵒ (redFM′ ,ᵒ presFM′))))
     where
-    redFM′ : reducible M′ ᵒ ×ᵒ preserve-R d M M′ ∷ 𝒫′ ⊢ᵒ reducible (F′ ⟦ M′ ⟧) ᵒ
-    redFM′ = constᵒE (proj₁ᵒ Zᵒ) λ {(N , M′→N) → constᵒI (F′ ⟦ N ⟧ , ξ F′ M′→N)}
+    redFM′ : reducible M′ ᵒ ×ᵒ preserve-R d M M′ ∷ 𝒫′ ⊢ᵒ reducible (F′ ⦉ M′ ⦊) ᵒ
+    redFM′ = constᵒE (proj₁ᵒ Zᵒ) λ {(N , M′→N) → constᵒI (F′ ⦉ N ⦊ , ξ′ F′ refl refl M′→N)}
 
     presFM′ : reducible M′ ᵒ ×ᵒ preserve-R d M M′ ∷ 𝒫′
-              ⊢ᵒ preserve-R c (F ⟦ M ⟧) (F′ ⟦ M′ ⟧)
+              ⊢ᵒ preserve-R c (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
     presFM′ = Λᵒ[ N′ ] →ᵒI ▷ℰFMN′
      where
-     ▷ℰFMN′ : ∀{N′} → (F′ ⟦ M′ ⟧ —→ N′)ᵒ ∷ reducible M′ ᵒ ×ᵒ preserve-R d M M′
-                      ∷ 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ (F ⟦ M ⟧) N′)
+     ▷ℰFMN′ : ∀{N′} → (F′ ⦉ M′ ⦊ —→ N′)ᵒ ∷ reducible M′ ᵒ ×ᵒ preserve-R d M M′
+                      ∷ 𝒫′ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ (F ⦉ M ⦊) N′)
      ▷ℰFMN′ {N′} =
        constᵒE Zᵒ λ FM′→N′ →
        constᵒE (proj₁ᵒ (Sᵒ Zᵒ)) λ rM′ →
-       let 𝒫″ =(F′ ⟦ M′ ⟧ —→ N′)ᵒ ∷ reducible M′ ᵒ ×ᵒ preserve-R d M M′ ∷ 𝒫′ in
-       let finv = frame-inv2 rM′ FM′→N′ in
+       let 𝒫″ =(F′ ⦉ M′ ⦊ —→ N′)ᵒ ∷ reducible M′ ᵒ ×ᵒ preserve-R d M M′ ∷ 𝒫′ in
+       let finv = frame-inv3{F = F′} rM′ FM′→N′ in
        let N₁ = proj₁ finv in
        let M′→N₁ = proj₁ (proj₂ finv) in
        let N′≡F[N₁] = proj₂ (proj₂ finv) in
@@ -328,34 +367,38 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
              let F₁ = λ M → (▷ᵒ (∀ᵒ[ M′ ] ℰ-bind-M c d F F′ M M′)) in
              let F₂ = λ M′ → ▷ᵒ ℰ-bind-M c d F F′ M M′ in
              instᵒ{P = F₂} (▷∀ (instᵒ{P = F₁} (▷∀ IH) M)) N₁ in
-       let ▷ℰFMFN₁ : 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ (F ⟦ M ⟧) (F′ ⟦ N₁ ⟧))
+       let ▷ℰFMFN₁ : 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ N₁ ⦊))
            ▷ℰFMFN₁ = appᵒ (▷→ (appᵒ (▷→ IH[M,N₁]) ▷ℰMN₁)) ▷𝒱→ℰF[M,N₁] in
-       subst(λ N′ → 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ (F ⟦ M ⟧) N′)) (sym N′≡F[N₁]) ▷ℰFMFN₁ 
+       subst(λ N′ → 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ (F ⦉ M ⦊) N′)) (sym N′≡F[N₁]) ▷ℰFMFN₁ 
 
-   Mblame : Blame M′ ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) (F′ ⟦ M′ ⟧)
-   Mblame = substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₂ᵒ (inj₁ᵒ
+   Mblame : ∀{F′} → Blame M′ ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
+   Mblame {F′}
+      with F′
+   ... | □ = substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₂ᵒ (inj₂ᵒ Zᵒ)))
+   ... | ` F′ =
+    substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₂ᵒ (inj₁ᵒ
                            (constᵒE Zᵒ λ {isBlame → redFblame ,ᵒ presFblame}))))
     where
     redFblame : (Blame blame)ᵒ ∷ 𝒫′ ⊢ᵒ (reducible (F′ ⟦ blame ⟧))ᵒ
     redFblame =
      constᵒE Zᵒ λ {isBlame → constᵒI (_ , (ξ-blame F′)) }
     
-    presFblame : (Blame blame)ᵒ ∷ 𝒫′ ⊢ᵒ preserve-R c (F ⟦ M ⟧) (F′ ⟦ blame ⟧)
+    presFblame : (Blame blame)ᵒ ∷ 𝒫′ ⊢ᵒ preserve-R c (F ⦉ M ⦊) (F′ ⟦ blame ⟧)
     presFblame = Λᵒ[ N′ ] →ᵒI (constᵒE Zᵒ λ Fb→N′ →
-      let eq = blame-frame Fb→N′ in
+      let eq = blame-frame{F = F′} Fb→N′ in
       let 𝒫″ = (F′ ⟦ blame ⟧ —→ N′)ᵒ ∷ (Blame blame)ᵒ ∷ 𝒫′ in
-      subst (λ N′ → 𝒫″ ⊢ᵒ ▷ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) N′) (sym eq) (monoᵒ ℰ-blame))
+      subst (λ N′ → 𝒫″ ⊢ᵒ ▷ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) N′) (sym eq) (monoᵒ ℰ-blame))
 
 ℰ-bind : ∀{𝒫}{c d : Prec}{F}{F′}{M}{M′}
    → 𝒫 ⊢ᵒ ℰ⟦ d ⟧ M M′ 
    → 𝒫 ⊢ᵒ (∀ᵒ[ V ] ∀ᵒ[ V′ ] (M —↠ V)ᵒ →ᵒ (M′ —↠ V′)ᵒ
-              →ᵒ 𝒱⟦ d ⟧ V V′ →ᵒ ℰ⟦ c ⟧ (F ⟦ V ⟧) (F′ ⟦ V′ ⟧))
+              →ᵒ 𝒱⟦ d ⟧ V V′ →ᵒ ℰ⟦ c ⟧ (F ⦉ V ⦊) (F′ ⦉ V′ ⦊))
      ----------------------------------------------------------
-   → 𝒫 ⊢ᵒ ℰ⟦ c ⟧ (F ⟦ M ⟧) (F′ ⟦ M′ ⟧)
+   → 𝒫 ⊢ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
 ℰ-bind {𝒫}{c}{d}{F}{F′}{M}{M′} ⊢ℰMM′ ⊢𝒱V→ℰFV =
   let F₁ = λ M → ∀ᵒ[ M′ ] ℰ-bind-M c d F F′ M M′ in
   let F₂ = λ M′ → ℰ-bind-M c d F F′ M M′ in
-  let xx = instᵒ{P = F₂} (instᵒ{𝒫}{P = F₁} ℰ-bind-aux M) M′ in
+  let xx = instᵒ{P = F₂} (instᵒ{𝒫}{P = F₁} (ℰ-bind-aux{F = F}{F′}) M) M′ in
   appᵒ (appᵒ xx ⊢ℰMM′) ⊢𝒱V→ℰFV
 
 compatible-nat : ∀{Γ}{n : ℕ}
@@ -412,7 +455,7 @@ compatible-app {Γ}{A}{A′}{B}{B′}{c}{d}{L}{L′}{M}{M′} ⊨L⊑L′ ⊨M�
  ⊢ℰLM⊑LM′
  where
  ⊢ℰLM⊑LM′ : 𝓖⟦ Γ ⟧ γ γ′ ⊢ᵒ ℰ⟦ B , B′ , d ⟧ (⟪ γ ⟫ (L · M)) (⟪ γ′ ⟫ (L′ · M′))
- ⊢ℰLM⊑LM′ = ℰ-bind {F = □· (⟪ γ ⟫ M)}{□· (⟪ γ′ ⟫ M′)} (⊨L⊑L′ γ γ′)
+ ⊢ℰLM⊑LM′ = ℰ-bind {F = ` (□· (⟪ γ ⟫ M))}{` (□· (⟪ γ′ ⟫ M′))} (⊨L⊑L′ γ γ′)
      (Λᵒ[ V ] Λᵒ[ V′ ] →ᵒI (→ᵒI (→ᵒI ⊢ℰVM)))
   where
   𝓟₁ = λ V V′ → 𝒱⟦ A ⇒ B , A′ ⇒ B′ , fun⊑ c d ⟧ V V′
@@ -420,7 +463,7 @@ compatible-app {Γ}{A}{A′}{B}{B′}{c}{d}{L}{L′}{M}{M′} ⊨L⊑L′ ⊨M�
   ⊢ℰVM : ∀{V}{V′} → 𝓟₁ V V′ ⊢ᵒ ℰ⟦ B , B′ , d ⟧ (V · ⟪ γ ⟫ M) (V′ · ⟪ γ′ ⟫ M′) 
   ⊢ℰVM {V}{V′} = ⊢ᵒ-sucP Zᵒ λ 𝒱VV′sn →
    let (v , v′) = 𝒱⇒Value (A ⇒ B , A′ ⇒ B′ , fun⊑ c d) V V′ 𝒱VV′sn in
-   ℰ-bind {F = v ·□}{F′ = v′ ·□} (Sᵒ (Sᵒ (Sᵒ (⊨M⊑M′ γ γ′))))
+   ℰ-bind {F = ` (v ·□)}{F′ = ` (v′ ·□)} (Sᵒ (Sᵒ (Sᵒ (⊨M⊑M′ γ γ′))))
            (Λᵒ[ V ] Λᵒ[ V′ ] →ᵒI (→ᵒI (→ᵒI ⊢ℰVWVW′)) )
    where
    𝓟₂ = λ V V′ W W′ → 𝒱⟦ A , A′ , c ⟧ W W′
@@ -473,6 +516,13 @@ compatible-app {Γ}{A}{A′}{B}{B′}{c}{d}{L}{L′}{M}{M′} ⊨L⊑L′ ⊨M�
     substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₁ᵒ (constᵒI (_ , (β w)) ,ᵒ pres-L)))
     }
 
+compatible-inj-L : ∀{Γ}{G A′}{c : gnd⇒ty G ⊑ A′}{M M′}
+   → Γ ⊨ M ⊑ M′ ⦂ (gnd⇒ty G , A′ , c)
+     ------------------------------------
+   → Γ ⊨ M ⟨ G !⟩ ⊑ M′ ⦂ (★ , A′ , unk⊑)
+compatible-inj-L{Γ}{G}{A′}{M}{M′} ⊨M⊑M′ γ γ′ =
+   {!!}
+
 fundamental : ∀ {Γ}{A}{A′}{A⊑A′ : A ⊑ A′} → (M M′ : Term)
   → Γ ⊩ M ⊑ M′ ⦂ A⊑A′
     ----------------------------
@@ -488,7 +538,8 @@ fundamental {Γ} {A} {A′} {A⊑A′} (L · M) (L′ · M′) (⊑-app ⊢L⊑L
                                      (fundamental M M′ ⊢M⊑M′)
 fundamental {Γ} {.(_ ⇒ _)} {.(_ ⇒ _)} {.(fun⊑ _ _)} (ƛ N)(ƛ N′) (⊑-lam ⊢N⊑N′) =
     compatible-lambda{N = N}{N′} (fundamental N N′ ⊢N⊑N′)
-fundamental {Γ} {.★} {A′} {.unk⊑} .(_ ⟨ _ !⟩) M′ (⊑-inj-L ⊢M⊑M′) = {!!}
+fundamental {Γ} {★} {A′} {unk⊑} (M ⟨ G !⟩) M′ (⊑-inj-L ⊢M⊑M′) =
+    compatible-inj-L{G =  G}{M = M}{M′} (fundamental M M′ ⊢M⊑M′)
 fundamental {Γ} {.★} {.★} {.unk⊑} M .(_ ⟨ _ !⟩) (⊑-inj-R ⊢M⊑M′) = {!!}
 fundamental {Γ} {.(gnd⇒ty _)} {A′} {A⊑A′} .(_ ⟨ _ ?⟩) M′ (⊑-proj-L ⊢M⊑M′) = {!!}
 fundamental {Γ} {A} {.(gnd⇒ty _)} {A⊑A′} M .(_ ⟨ _ ?⟩) (⊑-proj-R ⊢M⊑M′) = {!!}
