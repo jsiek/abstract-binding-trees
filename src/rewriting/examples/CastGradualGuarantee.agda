@@ -756,6 +756,20 @@ collapse-inv {V} {.blame} v (ξξ-blame □⟨ H ?⟩ ())
 collapse-inv {V} {.V} v (collapse x refl) = refl
 collapse-inv {V} {.blame} v (collide x x₁ refl) = ⊥-elim (x₁ refl)
 
+collide-inv : ∀{V}{N}{G}{H}
+   → G ≢ H
+   → Value V
+   → ((V ⟨ G !⟩) ⟨ H ?⟩) —→ N
+   → N ≡ blame
+collide-inv {V} {N} {G} {H} neq v (ξξ □⟨ H₁ ?⟩ refl x₁ red) =
+  ⊥-elim (value-irreducible (v 〈 G 〉) red)
+collide-inv {V} {.blame} {G} {H} neq v (ξξ-blame (□· M) ())
+collide-inv {V} {.blame} {G} {H} neq v (ξξ-blame (v₁ ·□) ())
+collide-inv {V} {.blame} {G} {H} neq v (ξξ-blame □⟨ G₁ !⟩ ())
+collide-inv {V} {.blame} {G} {H} neq v (ξξ-blame □⟨ H₁ ?⟩ ())
+collide-inv {V} {N} {G} {H} neq v (collapse x refl) = ⊥-elim (neq refl)
+collide-inv {V} {.blame} {G} {H} neq v (collide x x₁ refl) = refl
+
 compatible-proj-L : ∀{Γ}{H}{A′}{c : gnd⇒ty H ⊑ A′}{M}{M′}
    → Γ ⊨ M ⊑ M′ ⦂ (★ , A′ ,  unk⊑)
    → Γ ⊨ M ⟨ H ?⟩ ⊑ M′ ⦂ (gnd⇒ty H , A′ , c)
@@ -839,14 +853,47 @@ compatible-proj-R {Γ}{H′}{c}{M}{M′} ⊨M⊑M′ γ γ′ =
        → 𝒫₁ V V′ ⊢ᵒ ℰ⟦ ★ , gnd⇒ty H′ , unk⊑ ⟧ V (V′ ⟨ H′ ?⟩)
     Goal {V₁}{V₁′}{G} refl refl ⊢v₁×v₁′×▷𝒱V₁V₁′
         with G ≡ᵍ H′
-    ... | no neq = {!!}
+    ... | no neq =
+        ⊢ᵒ-sucP (proj₁ᵒ (proj₂ᵒ ⊢v₁×v₁′×▷𝒱V₁V₁′)) λ v₁′ →
+        substᵒ (≡ᵒ-sym ℰ-stmt)
+        (inj₂ᵒ (inj₂ᵒ (inj₁ᵒ (constᵒI (_ , collide v₁′ neq refl)
+          ,ᵒ (Λᵒ[ N′ ] (→ᵒI Goal2))))))
+     where
+     Goal2 : ∀{N′}
+        → (V′ ⟨ H′ ?⟩ —→ N′)ᵒ ∷ 𝒫₁ V V′
+           ⊢ᵒ ▷ᵒ ℰ⟦ ★ , gnd⇒ty H′ , unk⊑ ⟧ V N′
+     Goal2 {N′} =
+       ⊢ᵒ-sucP Zᵒ λ {red →
+       ⊢ᵒ-sucP (proj₁ᵒ (proj₂ᵒ (⊢ᵒ-weaken ⊢v₁×v₁′×▷𝒱V₁V₁′))) λ { v₁′ →
+       let N′≡blame = collide-inv neq v₁′ red in
+       subst (λ N′ → (((V₁′ ⟨ G !⟩) ⟨ H′ ?⟩) —→ N′) ᵒ ∷
+                        𝒫₁ (V₁ ⟨ G !⟩) (V₁′ ⟨ G !⟩)
+                       ⊢ᵒ (▷ᵒ ℰ⟦ ★ , gnd⇒ty H′ , unk⊑ ⟧ (V₁ ⟨ G !⟩) N′))
+             (sym N′≡blame)
+       (monoᵒ ℰ-blame)
+       }}
+       
     Goal {V₁}{V₁′}{G} refl refl ⊢v₁×v₁′×▷𝒱V₁V₁′ | yes refl =
         ⊢ᵒ-sucP (proj₁ᵒ (proj₂ᵒ ⊢v₁×v₁′×▷𝒱V₁V₁′)) λ v₁′ →
         substᵒ (≡ᵒ-sym ℰ-stmt)
         (inj₂ᵒ (inj₂ᵒ (inj₁ᵒ (constᵒI (_ , collapse v₁′ refl)
-          ,ᵒ (Λᵒ[ N′ ] (→ᵒI {!!}))))))
-
-
+          ,ᵒ (Λᵒ[ N′ ] (→ᵒI Goal2))))))
+     where
+     Goal2 : ∀{N′}
+        → (V′ ⟨ H′ ?⟩ —→ N′)ᵒ ∷ 𝒫₁ V V′
+           ⊢ᵒ ▷ᵒ ℰ⟦ ★ , gnd⇒ty H′ , unk⊑ ⟧ V N′
+     Goal2 {N′} =
+       ⊢ᵒ-sucP Zᵒ λ {red →
+       ⊢ᵒ-sucP (proj₁ᵒ (proj₂ᵒ (⊢ᵒ-weaken ⊢v₁×v₁′×▷𝒱V₁V₁′))) λ { v₁′ →
+       let N′≡V₁′ = collapse-inv v₁′ red in
+       let ⊢▷𝒱V₁V₁′ = (proj₂ᵒ (proj₂ᵒ (⊢ᵒ-weaken ⊢v₁×v₁′×▷𝒱V₁V₁′))) in
+       subst (λ N′ → (((V₁′ ⟨ G !⟩) ⟨ G ?⟩) —→ N′) ᵒ
+                     ∷ 𝒫₁ (V₁ ⟨ G !⟩) (V₁′ ⟨ G !⟩)
+                     ⊢ᵒ (▷ᵒ ℰ⟦ ★ , gnd⇒ty G , unk⊑ ⟧ (V₁ ⟨ G !⟩) N′))
+             (sym N′≡V₁′)
+       (▷→▷ ⊢▷𝒱V₁V₁′ (𝒱⇒ℰ (𝒱-dyn-L Zᵒ)))
+       }}
+       
 fundamental : ∀ {Γ}{A}{A′}{A⊑A′ : A ⊑ A′} → (M M′ : Term)
   → Γ ⊩ M ⊑ M′ ⦂ A⊑A′
     ----------------------------
