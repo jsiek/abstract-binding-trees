@@ -36,6 +36,18 @@ pre-𝒱 ($ₜ ι) ($ c)        = (ι ≡ typeof c)ˢ
 pre-𝒱 (A ⇒ B) (ƛ N)      = ∀ˢ[ W ] ▷ˢ (𝒱ˢ⟦ A ⟧ W) →ˢ ▷ˢ (ℰˢ⟦ B ⟧ (N [ W ]))
 pre-𝒱 A M                = ⊥ ˢ
 
+pre-ℰ′ : Type → Term
+       → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
+       
+pre-𝒱′ : Type → Term → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
+pre-𝒱′ ★ (V ⟨ G !⟩ )  = (Value V)ˢ ×ˢ ▷ˢ (𝒱ˢ⟦ gnd⇒ty G ⟧ V)
+pre-𝒱′ ($ₜ ι) ($ c)        = (ι ≡ typeof c)ˢ
+pre-𝒱′ (A ⇒ B) (ƛ N)      = ∀ˢ[ W ] pre-𝒱′ A W →ˢ pre-ℰ′ B (N [ W ])
+pre-𝒱′ A M                = ⊥ ˢ
+
+pre-ℰ′ A M = pre-𝒱′ A M ⊎ˢ (Blame M)ˢ
+            ⊎ˢ ((reducible M)ˢ ×ˢ (∀ˢ[ N ] (M —→ N)ˢ →ˢ ▷ˢ (ℰˢ⟦ A ⟧ N)))
+
 instance
   TermInhabited : Inhabited Term
   TermInhabited = record { elt = ` 0 }
@@ -44,21 +56,35 @@ pre-ℰ : Type → Term
        → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
 pre-ℰ A M = pre-𝒱 A M ⊎ˢ (Blame M)ˢ
             ⊎ˢ ((reducible M)ˢ ×ˢ (∀ˢ[ N ] (M —→ N)ˢ →ˢ ▷ˢ (ℰˢ⟦ A ⟧ N)))
-            
+
+
 pre-ℰ⊎𝒱 : ℰ⊎𝒱-type → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
 pre-ℰ⊎𝒱 (inj₁ (A , V)) = pre-𝒱 A V
 pre-ℰ⊎𝒱 (inj₂ (A , M)) = pre-ℰ A M
 
+pre-ℰ⊎𝒱′ : ℰ⊎𝒱-type → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
+pre-ℰ⊎𝒱′ (inj₁ (A , V)) = pre-𝒱′ A V
+pre-ℰ⊎𝒱′ (inj₂ (A , M)) = pre-ℰ′ A M
+
 ℰ⊎𝒱 : ℰ⊎𝒱-type → Setᵒ
 ℰ⊎𝒱 X = μᵒ pre-ℰ⊎𝒱 X
+
+ℰ⊎𝒱′ : ℰ⊎𝒱-type → Setᵒ
+ℰ⊎𝒱′ X = μᵒ pre-ℰ⊎𝒱′ X
 
 -- Semantically Well Typed Value
 𝒱⟦_⟧ : (A : Type) → Term → Setᵒ
 𝒱⟦ A ⟧ V = ℰ⊎𝒱 (inj₁ (A , V))
 
+𝒱′⟦_⟧ : (A : Type) → Term → Setᵒ
+𝒱′⟦ A ⟧ V = ℰ⊎𝒱′ (inj₁ (A , V))
+
 -- Semantically Well Typed Term
 ℰ⟦_⟧ : (A : Type) → Term → Setᵒ
 ℰ⟦ A ⟧ M = ℰ⊎𝒱 (inj₂ (A , M))
+
+ℰ′⟦_⟧ : (A : Type) → Term → Setᵒ
+ℰ′⟦ A ⟧ M = ℰ⊎𝒱′ (inj₂ (A , M))
 
 ℰ⊎𝒱-fixpointᵒ : ∀ X
    → ℰ⊎𝒱 X ≡ᵒ # (pre-ℰ⊎𝒱 X) (ℰ⊎𝒱 , ttᵖ)
@@ -304,6 +330,15 @@ lookup-𝓖 (B ∷ Γ) γ {A} {suc y} ∋y =
   appᵒ (appᵒ (instᵒ{𝒫}{P = λ M → ℰ-bind-M A B F M} ℰ-bind-aux M)
              ⊢ℰM)
        ⊢𝒱V→ℰFV
+
+
+ℰ-bind : ∀{𝒫}{A}{B}{F}{M}
+   → 𝒫 ⊢ᵒ ℰ⟦ B ⟧ M
+   → 𝒫 ⊢ᵒ ℱ⟦ B ↝ A ⟧ F
+   → 𝒫 ⊢ᵒ (∀ᵒ[ V ] ∀ᵒ[ F′ ] (M —↠ V)ᵒ →ᵒ 𝒱⟦ B ⟧ V →ᵒ (F —↠ F′)ᵒ
+             →ᵒ ℱ⟦ B ↝ A ⟧ F′  →ᵒ ℰ⟦ A ⟧ (F′ ⟦ V ⟧))
+     ------------------------------------------------------------------------
+   → 𝒫 ⊢ᵒ ℰ⟦ A ⟧ (F ⟦ M ⟧)
 
 -- {- The following lemma is currently not used. -}
 -- exp-▷ : ∀{𝒫}{A}{M N : Term}

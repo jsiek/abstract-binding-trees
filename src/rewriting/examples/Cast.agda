@@ -25,7 +25,7 @@ open import Relation.Binary.PropositionalEquality as Eq
   using (_≡_; _≢_; refl; sym; cong; cong₂; subst; trans)
 open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
-open import Sig
+open import Sig hiding (Result)
 open import Var
 
 module rewriting.examples.Cast where
@@ -179,6 +179,12 @@ sub-val : ∀ {V}
 sub-val σ (ƛ̬ N) = ƛ̬ ⟪ ext σ ⟫ N
 sub-val σ ($̬ c) = $̬ c
 sub-val σ (V 〈 g 〉)  =  (sub-val σ V) 〈 g 〉
+
+{----------------- Results ------------------------}
+
+data Result : Term → Set where
+  resVal : ∀{N} → Value N → Result N
+  resBlame : ∀{N} → N ≡ blame → Result N
 
 {----------------- Type System ------------------------}
 
@@ -399,9 +405,6 @@ data _—↠_ : Term → Term → Set where
       ---------
     → L —↠ N
 
---begin_ : ∀ {M N : Term} → (M —↠ N) → (M —↠ N)
---begin M—↠N = M—↠N
-
 {- Convenience function to build a sequence of length one. -}
 
 unit : ∀ {M N : Term} → (M —→ N) → (M —↠ N)
@@ -434,6 +437,10 @@ reducible M = ∃[ N ] (M —→ N)
 
 irred : (M : Term) → Set
 irred M = ¬ reducible M
+
+infix 2 _⇓_
+_⇓_ : Term → Term → Set
+M ⇓ R = (M —↠ R) × Result R
 
 len : ∀{M N : Term} → (M→N : M —↠ N) → ℕ
 len (_ END) = 0
@@ -726,3 +733,75 @@ blame-frame {□⟨ H ?⟩} {N} (ξξ □⟨ _ ?⟩ refl refl Fb→N) =
 blame-frame {□⟨ H ?⟩} {.blame} (ξξ-blame □⟨ _ ?⟩ x) = refl
 
 
+app-blame-L : ∀{L M}
+   → L —↠ blame
+   → L · M —↠ blame
+app-blame-L {.blame} {M} (.blame END) = unit (ξ-blame (□· M)) 
+app-blame-L {L} {M} (.L —→⟨ L→L′ ⟩ L—↠blame) =
+    (L · M —→⟨ ξ (□· M) L→L′ ⟩ app-blame-L L—↠blame)
+
+app-blame-R : ∀{L M V}
+   → L —↠ V
+   → Value V
+   → M —↠ blame
+   → L · M —↠ blame
+app-blame-R {V} {.blame} (V END) v (.blame END) = unit (ξ-blame (v ·□)) 
+app-blame-R {V} {M} (V END) v (.M —→⟨ M→M′ ⟩ VM—↠blame) =
+    (V · M —→⟨ ξ (v ·□) M→M′ ⟩ app-blame-R (V END) v VM—↠blame)
+app-blame-R {L} {M} (.L —→⟨ L→L′ ⟩ L—↠V) v VM—↠blame = 
+    (L · M —→⟨ ξ (□· M) L→L′ ⟩ app-blame-R L—↠V v VM—↠blame)
+
+app-beta : ∀{L}{M}{N}{W}{V}
+   → L —↠ ƛ N
+   → M —↠ W
+   → Value W
+   → N [ W ] —↠ V
+   → L · M —↠ V
+app-beta {.(ƛ N)} {M} {N} {.M} {V} (.(ƛ N) END) (.M END) w N[W]→V =
+    _ —→⟨ β w ⟩ N[W]→V
+app-beta {.(ƛ N)} {M} {N} {W} {V} (.(ƛ N) END) (.M —→⟨ M→M′ ⟩ M→W) w N[W]→V =
+    ((ƛ N) · M —→⟨ ξ ((ƛ̬ N) ·□) M→M′ ⟩ app-beta (_ END) M→W w N[W]→V)
+app-beta {L} {M} {N} {W} {V} (.L —→⟨ L→L′ ⟩ L→λ) M→W w N[W]→V =
+  (L · M —→⟨ ξ (□· M) L→L′ ⟩ app-beta L→λ M→W w N[W]→V)
+
+inj-blame : ∀{M}{G}
+   → M —↠ blame
+   → M ⟨ G !⟩ —↠ blame
+inj-blame {.blame} {G} (.blame END) = unit (ξ-blame (□⟨ G !⟩)) 
+inj-blame {M}{G} (.M —→⟨ M→M′ ⟩ M—↠blame) =
+    (M ⟨ G !⟩ —→⟨ ξ (□⟨ G !⟩) M→M′ ⟩ inj-blame M—↠blame)
+
+proj-blame : ∀{M}{H}
+   → M —↠ blame
+   → M ⟨ H ?⟩ —↠ blame
+proj-blame {.blame} {H} (.blame END) = unit (ξ-blame (□⟨ H ?⟩)) 
+proj-blame {M}{H} (.M —→⟨ M→M′ ⟩ M—↠blame) =
+    (M ⟨ H ?⟩ —→⟨ ξ (□⟨ H ?⟩) M→M′ ⟩ proj-blame M—↠blame)
+
+project-collide : ∀{M}{V}{G}{H}
+   → M —↠ (V ⟨ G !⟩)
+   → Value V
+   → G ≢ H
+   → (M ⟨ H ?⟩) —↠ blame
+project-collide {.(V ⟨ G !⟩)} {V} {G} {H} (.(V ⟨ G !⟩) END) v G≢H =
+    (_ —→⟨ collide v G≢H refl ⟩ _ END)
+project-collide {M} {V} {G} {H} (.M —→⟨ M→M′ ⟩ M→VG) v G≢H = 
+    (_ —→⟨ ξ (□⟨ H ?⟩) M→M′ ⟩ project-collide M→VG v G≢H)
+
+project-collapse : ∀{M}{V}{G}{H}
+   → M —↠ (V ⟨ G !⟩)
+   → Value V
+   → G ≡ H
+   → (M ⟨ H ?⟩) —↠ V
+project-collapse {.(V ⟨ G !⟩)} {V} {G} {H} (.(V ⟨ G !⟩) END) v refl =
+    (_ —→⟨ collapse v refl ⟩ _ END)
+project-collapse {M} {V} {G} {H} (.M —→⟨ M→M′ ⟩ M→VG) v refl = 
+    (_ —→⟨ ξ (□⟨ H ?⟩) M→M′ ⟩ project-collapse M→VG v refl)
+
+{- this is just ξ* -}
+reduce-inject : ∀{M V G}
+   → M —↠ V
+   → M ⟨ G !⟩ —↠ V ⟨ G !⟩
+reduce-inject {M} {.M} {G} (.M END) = _ END
+reduce-inject {M} {V} {G} (.M —→⟨ M→M′ ⟩ M→V) =
+    (M ⟨ G !⟩ —→⟨ ξ (□⟨ G !⟩) M→M′ ⟩ reduce-inject M→V)

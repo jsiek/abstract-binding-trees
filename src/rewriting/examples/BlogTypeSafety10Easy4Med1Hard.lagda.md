@@ -1242,7 +1242,7 @@ compatible-project {Γ}{H}{M} ⊨M γ = ℰMh?
         ⊥-elim (value-irreducible (w 〈 _ 〉) r)
     Goal {W} (ξξ-blame □⟨ H ?⟩ ())
     Goal {W}{G}{G}{W} (collapse{H} w′ refl) w ▷𝒱W =
-       ▷→▷ ▷𝒱W (→ᵒI (𝒱⇒ℰ Zᵒ))
+       ▷→▷ ▷𝒱W (𝒱⇒ℰ Zᵒ)
     Goal {W} (collide x x₁ x₂) w ▷𝒱W = monoᵒ ℰ-blame
 ```
 
