@@ -181,10 +181,11 @@ sub-val σ ($̬ c) = $̬ c
 sub-val σ (V 〈 g 〉)  =  (sub-val σ V) 〈 g 〉
 
 {----------------- Results ------------------------}
-
+{-
 data Result : Term → Set where
   resVal : ∀{N} → Value N → Result N
   resBlame : ∀{N} → N ≡ blame → Result N
+-}
 
 {----------------- Type System ------------------------}
 
@@ -438,9 +439,11 @@ reducible M = ∃[ N ] (M —→ N)
 irred : (M : Term) → Set
 irred M = ¬ reducible M
 
+{-
 infix 2 _⇓_
 _⇓_ : Term → Term → Set
 M ⇓ R = (M —↠ R) × Result R
+-}
 
 len : ∀{M N : Term} → (M→N : M —↠ N) → ℕ
 len (_ END) = 0
