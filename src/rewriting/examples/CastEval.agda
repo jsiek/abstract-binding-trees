@@ -59,11 +59,6 @@ _⊙_ : Term → Term → Maybe Term
 (ƛ N) ⊙ W = just (N [ W ])
 L ⊙ M = nothing
 
-inject : Term → Maybe Term
-inject (ƛ N) = just ((ƛ N) ⟨ ★⇒★ !⟩)
-inject ($ c) = just (($ c) ⟨ $ᵍ (typeof c) !⟩)
-inject M = nothing
-
 project : Ground → Term → Maybe Result
 project H (V ⟨ G !⟩)
     with G ≡ᵍ H
@@ -80,7 +75,7 @@ eval (L · M) (suc k) =
     letᵇ V := eval L k ; letᵇ W := eval M k ;
     letᵐ N := (V ⊙ W) ; eval N k
 eval (M ⟨ G !⟩) (suc k) =
-    letᵇ V := eval M k ; letᵐ V := inject V ; return V
+    letᵇ V := eval M k ; return (V ⟨ G !⟩)
 eval (M ⟨ H ?⟩) (suc k) =
     letᵇ V := eval M k ; project H V
 eval blame (suc k) = blame!
@@ -132,6 +127,99 @@ eval-mono {M ⟨ H ?⟩} {suc k} {t} eqM {suc k′} (s≤s k≤k′)
 ... | inj₂ (eqM , refl) rewrite eval-mono eqM k≤k′ = refl
 ... | inj₁ (V , eqM , eqLet) rewrite eval-mono eqM k≤k′ = eqLet
 eval-mono {blame} {suc k} {t} eqM {suc k′} (s≤s k≤k′) = eqM
+
+project-value : ∀ V H W → Value V → project H V ≡ just (halt (` W)) → Value W
+project-value .(_ ⟨ G !⟩) H W (v 〈 G 〉) eq
+    with G ≡ᵍ H | eq
+... | yes refl | refl = v
+... | no neq | ()
+
+eval-to-value : ∀ M V k → eval M k ≡ return V → Value V
+eval-to-value (M) V zero ()
+eval-to-value (` x) V (suc k) ()
+eval-to-value ($ c) V (suc k) refl = $̬ c
+eval-to-value (ƛ N) V (suc k) refl = ƛ̬ N
+eval-to-value (L · M) V (suc k) evalMk=V
+    with letB-halt-inv (eval L k) evalMk=V
+... | inj₂ (eqL , ())
+... | inj₁ (V′ , eqL , eqLet)
+    with letM-just-inv (eval M k) eqLet
+... | halt (` W) , eqM , eqLet2
+    with letM-just-inv (V′ ⊙ W) eqLet2
+... | N , VW=N , eqN = eval-to-value N V k eqN
+eval-to-value (M ⟨ G !⟩) V (suc k) evalMk=V
+    with letB-halt-inv (eval M k) evalMk=V
+... | inj₂ (eqM , ())
+... | inj₁ (V′ , eqM , refl) rewrite eqM =
+    let v′ = eval-to-value M V′ k eqM in
+    v′ 〈 G 〉
+eval-to-value (M ⟨ H ?⟩) V (suc k) evalMk=V
+    with letB-halt-inv (eval M k) evalMk=V
+... | inj₂ (eqM , ())
+... | inj₁ (V′ , eqM , eqProj) =
+    project-value V′ H V (eval-to-value M V′ k eqM) eqProj 
+eval-to-value blame V (suc k) ()
+
+eval-value : ∀ V → Value V → ∃[ k ] eval V k ≡ return V
+eval-value .(ƛ N) (ƛ̬ N) = 1 , refl
+eval-value .($ c) ($̬ c) = 1 , refl
+eval-value (V ⟨ G !⟩) (v 〈 G 〉)
+    with eval-value V v
+... | k , evV = (suc k) , Goal v evV
+    where
+    Goal : ∀{V}
+       → Value V
+       → eval V k ≡ just (halt (` V))
+       → (letᵇ V′ := eval V k ; return (V′ ⟨ G !⟩))
+             ≡ return (V ⟨ G !⟩)
+    Goal {V} v evV rewrite evV = refl
+
+⇓-value : ∀ V → Value V → V ⇓ V
+⇓-value V v = eval-value V v
+
+⇓-determ : ∀{M}{V}{V′}
+  → M ⇓ V
+  → M ⇓ V′
+    ------
+  → V ≡ V′ 
+⇓-determ {M}{V}{V′} (k , evalMk=V) (k′ , evalMk′=V′)
+    with k ≤? k′
+... | yes k≤k′ =
+      let evalMk′=V = eval-mono evalMk=V k≤k′ in
+      Goal (trans (sym evalMk′=V) evalMk′=V′)
+      where
+      Goal : just (halt (` V)) ≡ just (halt (` V′)) → V ≡ V′
+      Goal refl = refl
+... | no nlt =
+      let k′≤k = ≰⇒≥ nlt in
+      let evalMk=V′ = eval-mono evalMk′=V′ k′≤k in
+      Goal (trans (sym evalMk=V) evalMk=V′)
+      where
+      Goal : just (halt (` V)) ≡ just (halt (` V′)) → V ≡ V′
+      Goal refl = refl
+
+⇓-value-eq : ∀{V W} → Value V → V ⇓ W → W ≡ V
+⇓-value-eq {V}{W} v V⇓W = ⇓-determ V⇓W (⇓-value V v)
+
+eval-blame-not-value : ∀ M k → eval M k ≡ blame! → Value M → ⊥
+eval-blame-not-value .(ƛ N) zero () (ƛ̬ N)
+eval-blame-not-value .(ƛ N) (suc k) () (ƛ̬ N)
+eval-blame-not-value .($ c) zero () ($̬ c)
+eval-blame-not-value .($ c) (suc k) () ($̬ c)
+eval-blame-not-value (V ⟨ G !⟩) (suc (suc k)) eq (v 〈 G 〉)
+    with letB-halt-inv (eval V (suc k)) eq
+... | inj₁ (v′ , eqV , ())
+... | inj₂ (eqM , eqB) = eval-blame-not-value V (suc k) eqM v
+
+⇓ᵇ-not-value : ∀{M} → M ⇓ᵇ → Value M → ⊥
+⇓ᵇ-not-value {M} (k , evM=b) v = eval-blame-not-value M k evM=b v
+
+values-dont-diverge : ∀{V} → Value V → V ⇑ → ⊥
+values-dont-diverge {V} v V⇑
+    with eval-value V v
+... | k , eq
+    with trans (sym (V⇑ k)) eq
+... | ()    
 
 
 -- Termue-` : ∀{Γ}{A} (V : Γ ⊢v A)
@@ -224,23 +312,3 @@ eval-mono {blame} {suc k} {t} eqM {suc k′} (s≤s k≤k′) = eqM
 
 -- {- todo: eval-complete -}
 
-⇓-determ : ∀{M}{V}{V′}
-  → M ⇓ V
-  → M ⇓ V′
-    ------
-  → V ≡ V′ 
-⇓-determ {M}{V}{V′} (k , evalMk=V) (k′ , evalMk′=V′)
-    with k ≤? k′
-... | yes k≤k′ =
-      let evalMk′=V = eval-mono evalMk=V k≤k′ in
-      Goal (trans (sym evalMk′=V) evalMk′=V′)
-      where
-      Goal : just (halt (` V)) ≡ just (halt (` V′)) → V ≡ V′
-      Goal refl = refl
-... | no nlt =
-      let k′≤k = ≰⇒≥ nlt in
-      let evalMk=V′ = eval-mono evalMk′=V′ k′≤k in
-      Goal (trans (sym evalMk=V) evalMk=V′)
-      where
-      Goal : just (halt (` V)) ≡ just (halt (` V′)) → V ≡ V′
-      Goal refl = refl

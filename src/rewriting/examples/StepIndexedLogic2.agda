@@ -1412,9 +1412,9 @@ good-↓ {Γ}{ts}{i} S {A} x
                 ; good = good-↓ S
                 ; congr = λ d=d′ → cong-↓ᵒ k (congr S d=d′)}
 
-⇓ : ℕ → ∀{Γ} → RecEnv Γ → RecEnv Γ
-⇓ k {[]} ttᵖ = ttᵖ
-⇓ k {A ∷ Γ} (P , δ) = ↓ᵖ k P , ⇓ k δ
+⇓ˢ : ℕ → ∀{Γ} → RecEnv Γ → RecEnv Γ
+⇓ˢ k {[]} ttᵖ = ttᵖ
+⇓ˢ k {A ∷ Γ} (P , δ) = ↓ᵖ k P , ⇓ˢ k δ
 
 {---------------------- Predicate Application ----------------------------}
 
