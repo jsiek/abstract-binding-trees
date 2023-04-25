@@ -221,6 +221,19 @@ values-dont-diverge {V} v V⇑
     with trans (sym (V⇑ k)) eq
 ... | ()    
 
+⇓ᵇ-blame : blame ⇓ᵇ
+⇓ᵇ-blame = 1 , refl
+
+blame-eval-not-value : ∀{V} → blame ⇓ V → ⊥
+blame-eval-not-value {V} (zero , ())
+blame-eval-not-value {V} (suc k , ())
+
+blame-doesnt-diverge : blame ⇑ → ⊥
+blame-doesnt-diverge b⇑
+    with b⇑ 1
+... | ()   
+
+
 
 -- Termue-` : ∀{Γ}{A} (V : Γ ⊢v A)
 --    → Termue (trm (` V))
