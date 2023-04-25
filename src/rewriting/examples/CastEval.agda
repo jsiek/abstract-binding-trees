@@ -2,6 +2,7 @@
 module rewriting.examples.CastEval where
 
 open import Data.List using (List; []; _∷_; length; map)
+open import Data.Maybe
 open import Data.Nat
 open import Data.Bool using (true; false) renaming (Bool to 𝔹)
 open import Data.Nat.Properties
@@ -16,207 +17,230 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Var
 open import rewriting.examples.Cast
 
-_⊢_ : List Type → Type → Set
-Γ ⊢ A = Σ[ M ∈ Term ] Γ ⊢ M ⦂ A
+data Halt : Set where
+  `_ : Term → Halt
+  hblame : Halt
 
-data _⊢v_ : List Type → Type → Set where
-  val : ∀{Γ A} → (V : Term) → (Γ ⊢ V ⦂ A) → Value V → Γ ⊢v A
+data Result : Set where
+  halt : Halt → Result
+  timeout : Result
 
-data _⊢t_ : List Type → Type → Set where
-  tval : ∀{Γ A} → (Γ ⊢v A) → Γ ⊢t A
-  tblame : ∀{Γ A} → Γ ⊢t A
+trm : Halt → Term
+trm (` M) = M
+trm hblame = blame
 
-data _⊢r_ : List Type → Type → Set where
-  rterm : ∀{Γ A} → (Γ ⊢t A) → Γ ⊢r A
-  rtimeout : ∀{Γ A} → Γ ⊢r A
+letM : ∀{T U : Set} → Maybe T → (T → Maybe U) → Maybe U
+letM (just t) f = f t
+letM nothing f = nothing
 
-⊢v⇒⊢A : ∀{Γ A} → Γ ⊢v A → Γ ⊢ A
-⊢v⇒⊢A (val V ⊢V v) = (V , ⊢V)
+letM-syntax = letM
+infix 1 letM-syntax
+syntax letM-syntax M (λ x → N) = letᵐ x := M ; N
 
-⊢v⇒trm : ∀{Γ A} → Γ ⊢v A → Term
-⊢v⇒trm (val V ⊢V v) = V
-
-Value-⊢v⇒trm : ∀{Γ A}
-     (V : Γ ⊢v A)
-   → Value (⊢v⇒trm V)
-Value-⊢v⇒trm (val V ⊢V v) = v
-
-⊢v⇒wt : ∀{Γ A} → (d : Γ ⊢v A) → Γ ⊢ (⊢v⇒trm d) ⦂ A
-⊢v⇒wt (val V ⊢V v) = ⊢V
-
-trm : ∀{Γ A} → Γ ⊢t A → Term
-trm (tval ⊢v) = ⊢v⇒trm ⊢v
-trm tblame = blame
-
-letB : ∀{Γ A B} → Γ ⊢r A → (Γ ⊢v A → Γ ⊢r B) → Γ ⊢r B
-letB (rterm (tval ⊢V)) f = f ⊢V
-letB (rterm (tblame)) f = rterm tblame
-letB rtimeout f = rtimeout
-
+letB : Maybe Result → (Term → Maybe Result) → Maybe Result
+letB R f = letM R g
+  where
+  g : Result → Maybe Result
+  g (halt (` V)) = f V
+  g (halt hblame) = just (halt hblame)
+  g timeout = just timeout
+  
 letB-syntax = letB
 infix 1 letB-syntax
 syntax letB-syntax M (λ x → N) = letᵇ x := M ; N
 
-postulate wt-subst : ∀{Γ}{A}{B}{N}{W} → Γ ⊢ W ⦂ A → A ∷ Γ ⊢ N ⦂ B → Γ ⊢ N [ W ] ⦂ B
+return : Term → Maybe Result
+return V = just (halt (` V))
 
-_⊙_ : ∀{Γ A B} → Γ ⊢v (A ⇒ B) → Γ ⊢v A → Γ ⊢ B
-(val (ƛ N) (⊢ƛ ⊢N) (ƛ̬ N)) ⊙ (val W ⊢W w) = (N [ W ]) , wt-subst ⊢W ⊢N
+blame! :  Maybe Result
+blame! = just (halt hblame)
 
-inject : ∀{Γ G} → Γ ⊢v gnd⇒ty G → Γ ⊢v ★
-inject {Γ} {G} (val V ⊢V v) = val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉)
+_⊙_ : Term → Term → Maybe Term
+(ƛ N) ⊙ W = just (N [ W ])
+L ⊙ M = nothing
 
-project : ∀{Γ H} → Γ ⊢v ★ → Γ ⊢r gnd⇒ty H
-project {Γ} {H} (val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉))
+inject : Term → Maybe Term
+inject (ƛ N) = just ((ƛ N) ⟨ ★⇒★ !⟩)
+inject ($ c) = just (($ c) ⟨ $ᵍ (typeof c) !⟩)
+inject M = nothing
+
+project : Ground → Term → Maybe Result
+project H (V ⟨ G !⟩)
     with G ≡ᵍ H
-... | yes refl = rterm (tval (val V ⊢V v))
-... | no neq = rterm tblame
+... | yes refl = return V
+... | no neq = blame!
+project H M = nothing
 
-eval : ∀{A} → [] ⊢ A → ℕ → [] ⊢r A
-eval ⊢M zero = rtimeout
-eval (_ , ⊢` ()) (suc k)
-eval (_ , ⊢$ c) (suc k) = rterm (tval (val ($ c) (⊢$ c) ($̬ c)))
-eval (_ , ⊢ƛ ⊢N) (suc k) = rterm (tval (val (ƛ _) (⊢ƛ ⊢N) (ƛ̬ _)))
-eval ((L · M) , (⊢· ⊢L ⊢M)) (suc k) =
-    letᵇ ⊢V := eval (L , ⊢L) k ; letᵇ ⊢W := eval (M , ⊢M) k ; eval (⊢V ⊙ ⊢W) k
-eval ((M ⟨ G !⟩) , (⊢⟨!⟩ ⊢M)) (suc k) =
-    letᵇ ⊢V := eval (M , ⊢M) k ; rterm (tval (inject ⊢V))
-eval ((M ⟨ H ?⟩) , ⊢⟨?⟩ ⊢M _) (suc k) =
-    letᵇ ⊢V := eval (M , ⊢M) k ;
-    letᵇ ⊢W := project{H = H} ⊢V ; eval (⊢v⇒⊢A ⊢W) k
-eval (blame , ⊢blame) (suc k) = rterm tblame
+eval : Term → ℕ → Maybe Result
+eval M zero = just timeout
+eval (` x) (suc k) = nothing
+eval ($ c) (suc k) = return ($ c)
+eval (ƛ N) (suc k) = return (ƛ N)
+eval (L · M) (suc k) =
+    letᵇ V := eval L k ; letᵇ W := eval M k ;
+    letᵐ N := (V ⊙ W) ; eval N k
+eval (M ⟨ G !⟩) (suc k) =
+    letᵇ V := eval M k ; letᵐ V := inject V ; return V
+eval (M ⟨ H ?⟩) (suc k) =
+    letᵇ V := eval M k ; project H V
+eval blame (suc k) = blame!
 
-infixr 6 _⇓ᵗ_
-_⇓ᵗ_ : Term → Term → Set
-M ⇓ᵗ V = ∃[ k ] ∃[ A ] Σ[ ⊢M ∈ [] ⊢ M ⦂ A ] ∃[ ⊢V ] ∃[ v ]
-   eval (M , ⊢M) k ≡ rterm (tval (val V ⊢V v))
+infixr 6 _⇓_
+_⇓_ : Term → Term → Set
+M ⇓ V = ∃[ k ] eval M  k ≡ return V
 
 _⇓ᵇ : Term → Set
-M ⇓ᵇ = ∃[ k ] ∃[ A ] Σ[ ⊢M ∈ [] ⊢ M ⦂ A ] eval (M , ⊢M) k ≡ rterm tblame
+M ⇓ᵇ = ∃[ k ] eval M k ≡ blame!
 
 _⇑ : Term → Set
-M ⇑ = ∀{k}{A}{⊢M : [] ⊢ M ⦂ A} → eval (M , ⊢M) k ≡ rtimeout
+M ⇑ = ∀ k → eval M k ≡ just timeout
 
-letB-term-inv : ∀{Γ A B}{M : Γ ⊢r A}{f : Γ ⊢v A → Γ ⊢r B}{⊢t}
-   → letB M f ≡ rterm ⊢t
-   → (∃[ ⊢M ] (M ≡ rterm (tval ⊢M)) × (f ⊢M ≡ rterm ⊢t))
-     ⊎ (M ≡ rterm tblame × ⊢t ≡ tblame)
-letB-term-inv {M = rterm (tval (val V ⊢V v))} {f} {⊢t} eq =
-    inj₁ (val V ⊢V v , refl , eq)
-letB-term-inv {M = rterm tblame} {f} {⊢t} refl = inj₂ (refl , refl)
+letM-just-inv : ∀{T U : Set} (M : Maybe T){f : T → Maybe U}{t : U}
+   → letM M f ≡ just t
+   → (∃[ m ] (M ≡ just m) × (f m ≡ just t))
+letM-just-inv (just m) {f} {t} letJust rewrite letJust = m , refl , letJust
 
-eval-mono : ∀{k}{A}{M : [] ⊢ A}{⊢t} → (eval M k ≡ rterm ⊢t) → ∀{k′} → k ≤ k′
-   → eval M k′ ≡ rterm ⊢t
-eval-mono {suc k}{A}{(_ , ⊢` ())} 
-eval-mono {suc k} {.($ₜ typeof c)} {_ , ⊢$ c} refl {suc k′} (s≤s k≤k′) = refl
-eval-mono {suc k}{A}{(_ , ⊢ƛ ⊢N)} refl {suc k′} (s≤s k≤k′) = refl
-eval-mono {suc k}{A}{(L · M , ⊢· ⊢L ⊢M)} eq {suc k′} (s≤s k≤k′)
-    with letB-term-inv{M = eval (L , ⊢L) k} eq 
-... | inj₂ (eq3 , refl) rewrite eval-mono eq3 k≤k′ = refl
-... | inj₁ (⊢V , eq2 , eq1)
-    with letB-term-inv{M = eval (M , ⊢M) k} eq1
-... | inj₂ (eq4 , refl) rewrite eval-mono eq2 k≤k′ | eval-mono eq4 k≤k′ = refl
-... | inj₁ (xx , eqM , eq5) rewrite eval-mono eq2 k≤k′ | eval-mono eqM k≤k′
-       | eval-mono eq5 k≤k′ = refl
-eval-mono {suc k}{A}{((M ⟨ G !⟩) , ⊢⟨!⟩ ⊢M)} eq {suc k′} (s≤s k≤k′)
-    with letB-term-inv{M = eval (M , ⊢M) k} eq 
+letB-halt-inv : ∀ (M : Maybe Result){f : Term → Maybe Result}{t : Halt}
+   → letB M f ≡ just (halt t)
+   → (∃[ v ] (M ≡ return v) × (f v ≡ just (halt t)))
+     ⊎ (M ≡ blame! × t ≡ hblame)
+letB-halt-inv (just (halt (` V))) {f} {t} eq =
+    inj₁ (V , refl , eq)
+letB-halt-inv (just (halt hblame)) {f} {t} refl = inj₂ (refl , refl)
+
+eval-mono : ∀{M}{k}{t} → (eval M k ≡ just (halt t)) → ∀{k′} → k ≤ k′
+   → eval M k′ ≡ just (halt t)
+eval-mono {` x} {suc k} {t} () {suc k′} (s≤s k≤k′)
+eval-mono {$ c} {suc k} {t} refl {suc k′} (s≤s k≤k′) = refl
+eval-mono {ƛ N} {suc k} {t} refl {suc k′} (s≤s k≤k′) = refl
+eval-mono {L · M} {suc k} {t} eqM {suc k′} (s≤s k≤k′)
+    with letB-halt-inv (eval L k) eqM
+... | inj₂ (eqL , refl) rewrite eval-mono eqL k≤k′ = refl
+... | inj₁ (V , eqL , eqLet1)
+    with letB-halt-inv (eval M k) eqLet1
+... | inj₂ (eqM , refl) rewrite eval-mono eqL k≤k′ | eval-mono eqM k≤k′ = refl
+... | inj₁ (W , eqM , eqLet2) rewrite eval-mono eqL k≤k′ | eval-mono eqM k≤k′
+    with letM-just-inv (V ⊙ W) eqLet2
+... | m , eqVW , eqN rewrite eqVW =    
+      eval-mono eqN k≤k′
+eval-mono {M ⟨ G !⟩} {suc k} {t} eqM {suc k′} (s≤s k≤k′)
+    with letB-halt-inv (eval M k) eqM
 ... | inj₂ (eqM , refl) rewrite eval-mono eqM k≤k′ = refl
-... | inj₁ (⊢V , eqM , eqInj) rewrite eval-mono eqM k≤k′ = eqInj
-eval-mono {suc k}{A}{((M ⟨ H ?⟩) , ⊢⟨?⟩ ⊢M _)} eq {suc k′} (s≤s k≤k′)
-    with letB-term-inv{M = eval (M , ⊢M) k} eq 
+... | inj₁ (V , eqM , eqInj) rewrite eval-mono eqM k≤k′ = eqInj
+eval-mono {M ⟨ H ?⟩} {suc k} {t} eqM {suc k′} (s≤s k≤k′)
+    with letB-halt-inv (eval M k) eqM 
 ... | inj₂ (eqM , refl) rewrite eval-mono eqM k≤k′ = refl
-... | inj₁ (⊢V , eqM , eqLet) rewrite eval-mono eqM k≤k′
-    with letB-term-inv{M = project ⊢V} eqLet
-... | inj₂ (eqProj , refl) rewrite eqProj = refl
-... | inj₁ (⊢W , eqProj , eqW) rewrite eqProj = eval-mono eqW k≤k′
-eval-mono {suc k}{A}{(_ , ⊢blame)} refl {suc k′} (s≤s k≤k′) = refl
-
-Value-tval : ∀{Γ}{A} (V : Γ ⊢v A)
-   → Value (trm (tval V))
-Value-tval (val V ⊢V v) = v
-
-eval-app-inv : ∀{A}{B}{V : [] ⊢v (A ⇒ B)}{W : [] ⊢v A}{k}{⊢t}
-   → eval (V ⊙ W) k ≡ rterm ⊢t
-   → ∃[ N ] ∃[ ⊢N ] V ≡ val (ƛ N) (⊢ƛ ⊢N) (ƛ̬ N)
-       × eval (N [ ⊢v⇒trm W ] , wt-subst (⊢v⇒wt W) ⊢N) k ≡ rterm ⊢t
-eval-app-inv {A}{B}{val (ƛ N) (⊢ƛ ⊢N) (ƛ̬ N)}{val W ⊢W w}{k}{⊢t} evalV·W =
-  N , (⊢N , (refl , evalV·W))
-
-project-blame-inv : ∀{Γ}{V}{G}{H}{⊢V}{v}
-   → project{Γ}{H} (val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉)) ≡ rterm tblame
-   → G ≢ H
-project-blame-inv{G = G}{H} eqProj
-    with G ≡ᵍ H
-... | no neq = λ G=H → neq G=H
-... | yes refl
-    with eqProj
-... | ()
-
-project-value-inv : ∀{Γ}{V}{G}{H}{⊢V}{v}{W}
-   → project{Γ}{H} (val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉)) ≡ rterm (tval W)
-   → G ≡ H
-project-value-inv{G = G}{H} eqProj
-    with G ≡ᵍ H
-... | yes refl = refl
-... | no neq
-    with eqProj
-... | ()
-
-project-value-inv2 : ∀{Γ}{V}{G}{⊢V}{v}{W}
-   → project{Γ}{G} (val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉)) ≡ rterm (tval W)
-   → W ≡ (val V ⊢V v)
-project-value-inv2{G = G}{W = val W ⊢W w} eqProj 
-    with G ≡ᵍ G
-... | no neq
-    with eqProj
-... | ()
-project-value-inv2{G = G}{W = val W ⊢W w} eqProj  | yes refl
-    with eqProj
-... | refl = refl    
-
-eval-sound : ∀{A} → (M : [] ⊢ A) → ∀{k}{⊢t} → eval M k ≡ rterm ⊢t
-   → proj₁ M —↠ trm ⊢t
-eval-sound (M , ⊢M) {0}{⊢t} ()
-eval-sound (($ c) , ⊢$ c) {suc k}{tval (val ($ c′) _ _)} refl = _ END
-eval-sound ((L · M) , ⊢· ⊢L ⊢M) {suc k}{⊢t} eq
-    with letB-term-inv{M = eval (L , ⊢L) k} eq
-... | inj₂ (eqL , refl) = app-blame-L (eval-sound (L , ⊢L) {k} eqL)
-... | inj₁ (V , eqL , eqLet) rewrite eqL
-    with letB-term-inv{M = eval (M , ⊢M) k} eqLet
-... | inj₂ (eqM , refl) rewrite eqM =
-      let IHL = eval-sound (L , ⊢L) {k} eqL in
-      let IHM = eval-sound (M , ⊢M) {k} eqM in
-      app-blame-R IHL (Value-tval V) IHM
-... | inj₁ (W , eqM , eqLet2) rewrite eqM
-    with eval-app-inv{V = V}{W}{k} eq
-... | N , ⊢N , refl , evalN[W] =     
-      let IHL = eval-sound (L , ⊢L) {k} eqL in
-      let IHM = eval-sound (M , ⊢M) {k} eqM in
-      let IHNW = eval-sound (N [ ⊢v⇒trm W ] , wt-subst (⊢v⇒wt W) ⊢N) {k}
-                     evalN[W] in
-      app-beta IHL IHM (Value-⊢v⇒trm W) IHNW
-eval-sound ((ƛ N) , ⊢ƛ ⊢M) {suc k}{⊢t} refl = _ END
-eval-sound ((M ⟨ G !⟩) , ⊢⟨!⟩ ⊢M) {suc k}{⊢t} eq
-    with letB-term-inv{M = eval (M , ⊢M) k} eq
-... | inj₂ (eqM , refl) = inj-blame (eval-sound (M , ⊢M) {k} eqM)
-... | inj₁ ((val V ⊢V v) , eqM , refl) =
-    let IHM = eval-sound (M , ⊢M) {k} eqM in
-    reduce-inject IHM
-eval-sound ((M ⟨ H ?⟩) , ⊢⟨?⟩ ⊢M H) {suc k}{⊢t} eq
-    with letB-term-inv{M = eval (M , ⊢M) k} eq
-... | inj₂ (eqM , refl) = proj-blame (eval-sound (M , ⊢M) {k} eqM)
-... | inj₁ ((val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉)) , eqM , eq)
-    with letB-term-inv{M = project (val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉))} eq
-... | inj₂ (eqProj , refl) =
-      let IHM = eval-sound (M , ⊢M) {k} eqM in
-      let G≢H = project-blame-inv eqProj in
-      project-collide IHM v G≢H
-... | inj₁ (W , eqProj , eqW)
-    with eval-sound (⊢v⇒⊢A W) {k = k} eqW
-... | IHW 
-    with project-value-inv eqProj
-... | refl rewrite project-value-inv2 eqProj | value—↠ v IHW =
-     project-collapse (eval-sound (M , ⊢M) {k} eqM) v refl
-eval-sound (.blame , ⊢blame) {suc k}{⊢t} refl = _ END
+... | inj₁ (V , eqM , eqLet) rewrite eval-mono eqM k≤k′ = eqLet
+eval-mono {blame} {suc k} {t} eqM {suc k′} (s≤s k≤k′) = eqM
 
 
-{- todo: eval-complete -}
+-- Termue-` : ∀{Γ}{A} (V : Γ ⊢v A)
+--    → Termue (trm (` V))
+-- Termue-` (val V ⊢V v) = v
+
+-- eval-app-inv : ∀{A}{B}{V : [] ⊢v (A ⇒ B)}{W : [] ⊢v A}{k}{⊢t}
+--    → eval (V ⊙ W) k ≡ halt ⊢t
+--    → ∃[ N ] ∃[ ⊢N ] V ≡ val (ƛ N) (⊢ƛ ⊢N) (ƛ̬ N)
+--        × eval (N [ ⊢v⇒trm W ] , wt-subst (⊢v⇒wt W) ⊢N) k ≡ halt ⊢t
+-- eval-app-inv {A}{B}{val (ƛ N) (⊢ƛ ⊢N) (ƛ̬ N)}{val W ⊢W w}{k}{⊢t} evalV·W =
+--   N , (⊢N , (refl , evalV·W))
+
+-- project-blame-inv : ∀{Γ}{V}{G}{H}{⊢V}{v}
+--    → project{Γ}{H} (val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉)) ≡ halt hblame
+--    → G ≢ H
+-- project-blame-inv{G = G}{H} eqProj
+--     with G ≡ᵍ H
+-- ... | no neq = λ G=H → neq G=H
+-- ... | yes refl
+--     with eqProj
+-- ... | ()
+
+-- project-value-inv : ∀{Γ}{V}{G}{H}{⊢V}{v}{W}
+--    → project{Γ}{H} (val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉)) ≡ halt (` W)
+--    → G ≡ H
+-- project-value-inv{G = G}{H} eqProj
+--     with G ≡ᵍ H
+-- ... | yes refl = refl
+-- ... | no neq
+--     with eqProj
+-- ... | ()
+
+-- project-value-inv2 : ∀{Γ}{V}{G}{⊢V}{v}{W}
+--    → project{Γ}{G} (val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉)) ≡ halt (` W)
+--    → W ≡ (val V ⊢V v)
+-- project-value-inv2{G = G}{W = val W ⊢W w} eqProj 
+--     with G ≡ᵍ G
+-- ... | no neq
+--     with eqProj
+-- ... | ()
+-- project-value-inv2{G = G}{W = val W ⊢W w} eqProj  | yes refl
+--     with eqProj
+-- ... | refl = refl    
+
+-- eval-sound : ∀{A} → (M : [] ⊢ A) → ∀{k}{⊢t} → eval M k ≡ halt ⊢t
+--    → proj₁ M —↠ trm ⊢t
+-- eval-sound (M , ⊢M) {0}{⊢t} ()
+-- eval-sound (($ c) , ⊢$ c) {suc k}{` (val ($ c′) _ _)} refl = _ END
+-- eval-sound ((L · M) , ⊢· ⊢L ⊢M) {suc k}{⊢t} eq
+--     with letB-halt-inv{M = eval (L , ⊢L) k} eq
+-- ... | inj₂ (eqL , refl) = app-blame-L (eval-sound (L , ⊢L) {k} eqL)
+-- ... | inj₁ (V , eqL , eqLet) rewrite eqL
+--     with letB-halt-inv{M = eval (M , ⊢M) k} eqLet
+-- ... | inj₂ (eqM , refl) rewrite eqM =
+--       let IHL = eval-sound (L , ⊢L) {k} eqL in
+--       let IHM = eval-sound (M , ⊢M) {k} eqM in
+--       app-blame-R IHL (Termue-` V) IHM
+-- ... | inj₁ (W , eqM , eqLet2) rewrite eqM
+--     with eval-app-inv{V = V}{W}{k} eq
+-- ... | N , ⊢N , refl , evalN[W] =     
+--       let IHL = eval-sound (L , ⊢L) {k} eqL in
+--       let IHM = eval-sound (M , ⊢M) {k} eqM in
+--       let IHNW = eval-sound (N [ ⊢v⇒trm W ] , wt-subst (⊢v⇒wt W) ⊢N) {k}
+--                      evalN[W] in
+--       app-beta IHL IHM (Termue-⊢v⇒trm W) IHNW
+-- eval-sound ((ƛ N) , ⊢ƛ ⊢M) {suc k}{⊢t} refl = _ END
+-- eval-sound ((M ⟨ G !⟩) , ⊢⟨!⟩ ⊢M) {suc k}{⊢t} eq
+--     with letB-halt-inv{M = eval (M , ⊢M) k} eq
+-- ... | inj₂ (eqM , refl) = inj-blame (eval-sound (M , ⊢M) {k} eqM)
+-- ... | inj₁ ((val V ⊢V v) , eqM , refl) =
+--     let IHM = eval-sound (M , ⊢M) {k} eqM in
+--     reduce-inject IHM
+-- eval-sound ((M ⟨ H ?⟩) , ⊢⟨?⟩ ⊢M H) {suc k}{⊢t} eq
+--     with letB-halt-inv{M = eval (M , ⊢M) k} eq
+-- ... | inj₂ (eqM , refl) = proj-blame (eval-sound (M , ⊢M) {k} eqM)
+-- ... | inj₁ ((val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉)) , eqM , eq)
+--     with letB-halt-inv{M = project (val (V ⟨ G !⟩) (⊢⟨!⟩ ⊢V) (v 〈 G 〉))} eq
+-- ... | inj₂ (eqProj , refl) =
+--       let IHM = eval-sound (M , ⊢M) {k} eqM in
+--       let G≢H = project-blame-inv eqProj in
+--       project-collide IHM v G≢H
+-- ... | inj₁ (W , eqProj , eqW)
+--     with eval-sound (⊢v⇒⊢A W) {k = k} eqW
+-- ... | IHW 
+--     with project-value-inv eqProj
+-- ... | refl rewrite project-value-inv2 eqProj | value—↠ v IHW =
+--      project-collapse (eval-sound (M , ⊢M) {k} eqM) v refl
+-- eval-sound (.blame , ⊢blame) {suc k}{⊢t} refl = _ END
+
+-- {- todo: eval-complete -}
+
+⇓-determ : ∀{M}{V}{V′}
+  → M ⇓ V
+  → M ⇓ V′
+    ------
+  → V ≡ V′ 
+⇓-determ {M}{V}{V′} (k , evalMk=V) (k′ , evalMk′=V′)
+    with k ≤? k′
+... | yes k≤k′ =
+      let evalMk′=V = eval-mono evalMk=V k≤k′ in
+      Goal (trans (sym evalMk′=V) evalMk′=V′)
+      where
+      Goal : just (halt (` V)) ≡ just (halt (` V′)) → V ≡ V′
+      Goal refl = refl
+... | no nlt =
+      let k′≤k = ≰⇒≥ nlt in
+      let evalMk=V′ = eval-mono evalMk′=V′ k′≤k in
+      Goal (trans (sym evalMk=V) evalMk=V′)
+      where
+      Goal : just (halt (` V)) ≡ just (halt (` V′)) → V ≡ V′
+      Goal refl = refl
