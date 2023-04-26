@@ -130,3 +130,27 @@ M ⇑ = ∀ k → M ⇑ k
 ⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {.blame} (collide⇓ M⇓V x) (collide⇓ M⇓V′ x₁) =
     refl
 ⇓-determ {.blame} {.blame} {.blame} blame⇓ blame⇓ = refl
+
+⇓-value-eq : ∀{V W} → Value V → V ⇓ W → W ≡ V
+⇓-value-eq {V}{W} v V⇓W = ⇓-determ V⇓W (⇓-value V v)
+
+inj⇑-inv : ∀{M G} → M ⟨ G !⟩ ⇑ → M ⇑
+inj⇑-inv {M}{G} MG⇑ k
+    with MG⇑ (suc k)
+... | inj⇑ M⇑k = M⇑k
+
+values-dont-diverge : ∀{V} → Value V → V ⇑ → ⊥
+values-dont-diverge {V} v V⇑
+    with V⇑ (suc zero) | v
+... | inj⇑{M = V′} V′⇑0 | v′ 〈 _ 〉 = values-dont-diverge v′ (inj⇑-inv V⇑)
+
+--blame-eval-not-value : ∀{V} → blame ⇓ V → ⊥
+--blame-eval-not-value {V} 
+--blame-eval-not-value {V} 
+
+blame-doesnt-diverge : blame ⇑ → ⊥
+blame-doesnt-diverge b⇑
+    with b⇑ 1
+... | ()
+
+
