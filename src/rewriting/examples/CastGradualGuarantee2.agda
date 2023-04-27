@@ -363,6 +363,16 @@ compatible-lambda{Γ}{dir}{A}{B}{C}{D}{N}{N′}{c}{d} ⊨N⊑N′ γ γ′ = ⊢
       ⊢ᵒ-swap (constᵒE-L (cont V′ M′⇓V′)))))))
   (constᵒE Zᵒ λ M′⇓blame → Sᵒ (cont2 M′⇓blame))
 
+ℰ↪⇓blame-elim : ∀{𝒫}{A}{A′}{c : A ⊑ A′}{M}{M′}{R}
+   → 𝒫 ⊢ᵒ ℰ⟦ A , A′ , c ⟧ ↪ M M′
+   → M ⇓ blame
+   → (M′ ⇓ blame → 𝒫 ⊢ᵒ R)
+   → 𝒫 ⊢ᵒ R
+ℰ↪⇓blame-elim {𝒫}{A}{A′}{c}{M}{M′} ⊢ℰMM′ M⇓blame cont = 
+  let X = (appᵒ (proj₁ᵒ (proj₂ᵒ (substᵒ ℰ↪-stmt ⊢ℰMM′)))
+                 (constᵒI M⇓blame)) in
+  constᵒE X λ M′⇓blame → cont M′⇓blame
+
 compatible-app : ∀{Γ}{dir}{A A′ B B′}{c : A ⊑ A′}{d : B ⊑ B′}{L L′ M M′}
    → Γ ∣ dir ⊨ L ⊑ L′ ⦂ (A ⇒ B , A′ ⇒ B′ , fun⊑ c d)
    → Γ ∣ dir ⊨ M ⊑ M′ ⦂ (A , A′ , c)
@@ -371,6 +381,7 @@ compatible-app : ∀{Γ}{dir}{A A′ B B′}{c : A ⊑ A′}{d : B ⊑ B′}{L L
 compatible-app {Γ}{↪}{A}{A′}{B}{B′}{c}{d}{L}{L′}{M}{M′}
  ⊨L⊑L′ ⊨M⊑M′ γ γ′ = substᵒ (≡ᵒ-sym ℰ↪-stmt) ({!!} ,ᵒ (Bl ,ᵒ {!!}))
  where
+ 
  Bl : 𝓖⟦ Γ ⟧ ↪ γ γ′ ⊢ᵒ ((⟪ γ ⟫ (L · M)) ⇓ blame)ᵒ
                      →ᵒ ((⟪ γ′ ⟫ (L′ · M′)) ⇓ blame)ᵒ
  Bl = →ᵒI (⊢ᵒ-sucP Zᵒ (λ LM⇓blame → G LM⇓blame))
@@ -386,14 +397,8 @@ compatible-app {Γ}{↪}{A}{A′}{B}{B′}{c}{d}{L}{L′}{M}{M′}
         𝒱-fun-elim Zᵒ λ {N₁ N′ refl refl body →
         ℰ↪⇓-elim (Sᵒ (Sᵒ (⊨M⊑M′ γ γ′))) M⇓W w
         (λ W′ M′⇓W′ w′ →
-          let 𝒫₂ = 𝒱⟦ A , A′ , c ⟧ ↪ W W′ ∷
-                    𝒱⟦ A ⇒ B , A′ ⇒ B′ , fun⊑ c d ⟧ ↪ (ƛ N) (ƛ N′) ∷ 𝒫₁ in
-          let ⊢ℰNWN′W′ : 𝒫₂ ⊢ᵒ ℰ⟦ B , B′ , d ⟧ ↪ (N [ W ]) (N′ [ W′ ])
-              ⊢ℰNWN′W′ = appᵒ (Sᵒ (body W W′)) Zᵒ in
-          let ⊢N′W′⇓blame : 𝒫₂ ⊢ᵒ ((N′ [ W′ ]) ⇓ blame)ᵒ
-              ⊢N′W′⇓blame = appᵒ (proj₁ᵒ (proj₂ᵒ (substᵒ ℰ↪-stmt ⊢ℰNWN′W′)))
-                                  (constᵒI NW⇓blame) in
-          constᵒE ⊢N′W′⇓blame  λ N′W′⇓blame →
+          ℰ↪⇓blame-elim (appᵒ (Sᵒ (body W W′)) Zᵒ) NW⇓blame
+          λ N′W′⇓blame →
           constᵒI (app⇓ L′⇓V′ M′⇓W′ w′ N′W′⇓blame))
         (λ M′⇓blame → constᵒI (app⇓-blame-R L′⇓V′ v′ M′⇓blame))
         })
@@ -405,14 +410,8 @@ compatible-app {Γ}{↪}{A}{A′}{B}{B′}{c}{d}{L}{L′}{M}{M′}
   ... | app⇓-blame-R{V = V} L⇓V v M⇓blame =
       ℰ↪⇓-elim (Sᵒ (⊨L⊑L′ γ γ′)) L⇓V v
       (λ V′ L′⇓V′ v′ →
-        let 𝒫₂ = 𝒱⟦ A ⇒ B , A′ ⇒ B′ , fun⊑ c d ⟧ ↪ V V′ ∷ 𝒫₁ in
-        let ⊢M′⇓blame : 𝒫₂ ⊢ᵒ ((⟪ γ′ ⟫ M′) ⇓ blame)ᵒ 
-            ⊢M′⇓blame = Sᵒ (Sᵒ (appᵒ (proj₁ᵒ (proj₂ᵒ 
-                                      (substᵒ ℰ↪-stmt (⊨M⊑M′ γ γ′))))
-                                    (constᵒI M⇓blame))) in
-        constᵒE ⊢M′⇓blame λ M′⇓blame →
-        constᵒI (app⇓-blame-R L′⇓V′ v′ M′⇓blame)
-        )
+        ℰ↪⇓blame-elim (Sᵒ (Sᵒ (⊨M⊑M′ γ γ′))) M⇓blame λ M′⇓blame → 
+        constᵒI (app⇓-blame-R L′⇓V′ v′ M′⇓blame))
       (λ L′⇓blame → constᵒI (app⇓-blame-L L′⇓blame))
 
 compatible-app {Γ}{↩}{A}{A′}{B}{B′}{c}{d}{L}{L′}{M}{M′}
