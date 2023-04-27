@@ -1689,6 +1689,11 @@ abstract
     → 𝒫 ⊢ᵒ Q
   proj₂ᵒ 𝒫⊢P×Q n ⊨𝒫n = proj₂ (𝒫⊢P×Q n ⊨𝒫n)
 
+  ×-elim-L : ∀{P}{Q}{𝒫}{R}
+     → P ∷ Q ∷ 𝒫 ⊢ᵒ R
+     → (P ×ᵒ Q) ∷ 𝒫 ⊢ᵒ R
+  ×-elim-L {P}{Q}{𝒫}{R} PQ𝒫⊢R n ((Pn , Qn) , 𝒫n) = PQ𝒫⊢R n (Pn , (Qn , 𝒫n))
+  
   inj₁ᵒ : ∀{𝒫 : List Setᵒ }{P Q : Setᵒ}
     → 𝒫 ⊢ᵒ P
       ------------
@@ -1810,6 +1815,25 @@ abstract
       with ⊢∃P (suc n) ⊨𝒫n
   ... | (a , Pasn) = cont a (suc n) (Pasn , ⊨𝒫n)
 
+  {- making P explicit, inference not working -}
+  ⊢ᵒ-∃-elim-new : ∀{𝒫 : List Setᵒ }{A}{R : Setᵒ}{{_ : Inhabited A}}
+    → (P : A → Setᵒ)
+    → 𝒫 ⊢ᵒ ∃ᵒ P
+    → (∀ a → P a ∷ 𝒫 ⊢ᵒ R)
+      ---------------------
+    → 𝒫 ⊢ᵒ R
+  ⊢ᵒ-∃-elim-new{R = R} P ⊢∃P cont zero ⊨𝒫n = tz R
+  ⊢ᵒ-∃-elim-new P ⊢∃P cont (suc n) ⊨𝒫n
+      with ⊢∃P (suc n) ⊨𝒫n
+  ... | (a , Pasn) = cont a (suc n) (Pasn , ⊨𝒫n)
+
+  ⊢ᵒ-∃-elim-L : ∀{𝒫 : List Setᵒ }{A}{R : Setᵒ}{{_ : Inhabited A}}
+    → (P : A → Setᵒ)
+    → (∀ a → P a ∷ 𝒫 ⊢ᵒ R)
+      ---------------------
+    → (∃ᵒ P) ∷ 𝒫 ⊢ᵒ R
+  ⊢ᵒ-∃-elim-L {R = R} P Pa⊢R n ((a , Pan) , ⊨𝒫n) = Pa⊢R a n (Pan , ⊨𝒫n)
+
 abstract
   Zᵒ : ∀{𝒫 : List Setᵒ}{S : Setᵒ}
      → S ∷ 𝒫 ⊢ᵒ S
@@ -1855,6 +1879,12 @@ abstract
      → 𝒫 ⊢ᵒ R
   constᵒE {𝒫} {S} {R} ⊢S S→⊢R zero 𝒫n = tz R
   constᵒE {𝒫} {S} {R} ⊢S S→⊢R (suc n) 𝒫n = S→⊢R (⊢S (suc n) 𝒫n) (suc n) 𝒫n
+
+  constᵒE-L : ∀ {𝒫}{S : Set}{R : Setᵒ}
+     → (S → 𝒫 ⊢ᵒ R)
+     → S ᵒ ∷ 𝒫 ⊢ᵒ R
+  constᵒE-L {𝒫} {S} {R} S→𝒫R zero (s , 𝒫n) = tz R
+  constᵒE-L {𝒫} {S} {R} S→𝒫R (suc n) (s , 𝒫n) = S→𝒫R s (suc n) 𝒫n
 
   caseᵒ-L : ∀{𝒫 : List Setᵒ }{P Q R : Setᵒ}
     → P ∷ 𝒫 ⊢ᵒ R
