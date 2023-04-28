@@ -177,7 +177,7 @@ P →ᵒ Q = record { # = λ k → ∀ j → j ≤ k → # P j → # Q j
                    ; tz = λ a → tz (P a) }
 
 ∀ᵒ-syntax = ∀ᵒ
-infix 1 ∀ᵒ-syntax
+infix 2 ∀ᵒ-syntax
 syntax ∀ᵒ-syntax (λ x → P) = ∀ᵒ[ x ] P
 
 record Inhabited (A : Set) : Set where
@@ -192,7 +192,7 @@ open Inhabited {{...}} public
                      }
 
 ∃ᵒ-syntax = ∃ᵒ
-infix 1 ∃ᵒ-syntax
+infix 2 ∃ᵒ-syntax
 syntax ∃ᵒ-syntax (λ x → P) = ∃ᵒ[ x ] P
 
 _ᵒ : Set → Setᵒ
@@ -1058,6 +1058,24 @@ S ˢ = record { # = λ δ → S ᵒ
              ; good = λ x → const-good S x
              ; congr = λ d=d′ → ≡ᵒ-refl refl
              }
+
+{---------------------- Only Step-indexed  ------------------------------------}
+
+step-indexed-good : ∀{Γ}{ts : Times Γ}{A}
+   → (S : Setᵒ)
+   → (x : Γ ∋ A)
+   → good-one x (timeof x ts) (λ δ → S)
+step-indexed-good{Γ}{ts} S x
+    with timeof x ts
+... | Now = λ δ j k x₁ → ≡ᵒ-refl refl
+... | Later = λ δ j k x₁ → ≡ᵒ-refl refl
+
+_ⁱ : ∀{Γ} → Setᵒ → Setˢ Γ (laters Γ)
+S ⁱ = record { # = λ δ → S
+             ; good = λ x → step-indexed-good S x
+             ; congr = λ d=d′ → ≡ᵒ-refl refl
+             }
+
 {---------------------- Conjunction -----------------------------------------}
 
 choose : Time → Time → Time
@@ -1555,7 +1573,7 @@ fixpointᵒ P a = ≡ˢ-elim (fixpointˢ P a) ttᵖ
 Πᵒ (P ∷ 𝒫) = P ×ᵒ Πᵒ 𝒫 
 
 abstract 
-  infix 2 _⊢ᵒ_
+  infix 1 _⊢ᵒ_
   _⊢ᵒ_ : List Setᵒ → Setᵒ → Set
   𝒫 ⊢ᵒ P = ∀ n → # (Πᵒ 𝒫) n → # P n
 
@@ -1752,6 +1770,7 @@ abstract
   case-Lᵒ {𝒫} {P} {Q} {R} P⊢R Q⊢R n (inj₁ Pn , 𝒫n) = P⊢R n (Pn , 𝒫n)
   case-Lᵒ {𝒫} {P} {Q} {R} P⊢R Q⊢R n (inj₂ Qn , 𝒫n) = Q⊢R n (Qn , 𝒫n)
 
+  {- todo: consider making P explicit -Jeremy -}
   →ᵒI : ∀{𝒫 : List Setᵒ }{P Q : Setᵒ}
     → P ∷ 𝒫 ⊢ᵒ Q
       ------------
@@ -1786,12 +1805,27 @@ abstract
     → 𝒫 ⊢ᵒ ∀ᵒ P
   ⊢ᵒ-∀-intro ∀Pa n ⊨𝒫n a = ∀Pa a n ⊨𝒫n
 
+  ⊢ᵒ-∀-intro-new : ∀{𝒫 : List Setᵒ }{A}
+    → (P : A → Setᵒ)
+    → (∀ a → 𝒫 ⊢ᵒ P a)
+      ----------------------
+    → 𝒫 ⊢ᵒ ∀ᵒ P
+  ⊢ᵒ-∀-intro-new P ∀Pa n ⊨𝒫n a = ∀Pa a n ⊨𝒫n
+
   instᵒ : ∀{𝒫 : List Setᵒ }{A}{P : A → Setᵒ}
     → 𝒫 ⊢ᵒ ∀ᵒ P
     → (a : A)
       ---------
     → 𝒫 ⊢ᵒ P a
   instᵒ ⊢∀P a n ⊨𝒫n = ⊢∀P n ⊨𝒫n a
+
+  instᵒ-new : ∀{𝒫 : List Setᵒ }{A}
+    → (P : A → Setᵒ)
+    → 𝒫 ⊢ᵒ ∀ᵒ P
+    → (a : A)
+      ---------
+    → 𝒫 ⊢ᵒ P a
+  instᵒ-new P ⊢∀P a n ⊨𝒫n = ⊢∀P n ⊨𝒫n a
 
 Λᵒ-syntax = ⊢ᵒ-∀-intro
 infix 1 Λᵒ-syntax
@@ -1804,6 +1838,14 @@ abstract
       ----------
     → 𝒫 ⊢ᵒ ∃ᵒ P
   ⊢ᵒ-∃-intro a ⊢Pa n ⊨𝒫n = a , (⊢Pa n ⊨𝒫n)
+
+  ⊢ᵒ-∃-intro-new : ∀{𝒫 : List Setᵒ }{A}{{_ : Inhabited A}}
+    → (P : A → Setᵒ)
+    → (a : A)
+    → 𝒫 ⊢ᵒ P a
+      ----------
+    → 𝒫 ⊢ᵒ ∃ᵒ P
+  ⊢ᵒ-∃-intro-new P a ⊢Pa n ⊨𝒫n = a , (⊢Pa n ⊨𝒫n)
 
   ⊢ᵒ-∃-elim : ∀{𝒫 : List Setᵒ }{A}{P : A → Setᵒ}{R : Setᵒ}{{_ : Inhabited A}}
     → 𝒫 ⊢ᵒ ∃ᵒ P

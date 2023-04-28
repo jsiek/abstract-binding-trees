@@ -79,6 +79,11 @@ _≡ᵍ_ : ∀ (G : Ground) (H : Ground) → Dec (G ≡ H)
 ★⇒★ ≡ᵍ ($ᵍ ι) = no λ ()
 ★⇒★ ≡ᵍ ★⇒★ = yes refl
 
+dyn? : (A : Type) → Dec (A ≡ ★)
+dyn? ★ = yes refl
+dyn? ($ₜ ι) = no (λ ()) 
+dyn? (A ⇒ B) = no (λ ()) 
+
 {----------------------- Type Precision ------------------------}
 
 infixr 6 _⊑_
@@ -108,6 +113,23 @@ AntiSym⊑ unk⊑ unk⊑ = refl
 AntiSym⊑ base⊑ base⊑ = refl
 AntiSym⊑ {A ⇒ B}{A' ⇒ B'} (fun⊑ a a₁) (fun⊑ b b₁) =
   cong₂ (_⇒_) (AntiSym⊑ a b) (AntiSym⊑ a₁ b₁)
+
+_⊑?_ : (A : Type) → (B : Type) → Dec (A ⊑ B)
+★ ⊑? B = yes unk⊑
+($ₜ ι) ⊑? ★ = no λ ()
+($ₜ ι) ⊑? ($ₜ ι′)
+    with ι ≡$? ι′
+... | yes refl = yes base⊑
+... | no neq = no λ { base⊑ → ⊥-elim (neq refl)}
+($ₜ ι) ⊑? (B ⇒ B′) = no λ ()
+(A ⇒ A′) ⊑? ★ = no λ ()
+(A ⇒ A′) ⊑? ($ₜ ι) = no λ ()
+(A ⇒ A′) ⊑? (B ⇒ B′)
+    with A ⊑? B | A′ ⊑? B′
+... | yes A⊑B | yes A′⊑B′ = yes (fun⊑ A⊑B A′⊑B′)
+... | yes A⊑B | no A′⋢B′ = no λ {(fun⊑ x y) → ⊥-elim (A′⋢B′ y)}
+... | no A⋢B | yes A′⊑B′ = no λ {(fun⊑ x y) → ⊥-elim (A⋢B x)}
+... | no A⋢B | no A′⋢B′ = no λ {(fun⊑ x y) → ⊥-elim (A⋢B x)}
 
 {------------------------ Terms --------------------------------}
 
