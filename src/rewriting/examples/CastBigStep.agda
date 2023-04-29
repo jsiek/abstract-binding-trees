@@ -17,6 +17,8 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Var
 open import rewriting.examples.Cast
 
+
+
 infixr 6 _⇓_
 data _⇓_ : Term → Term → ℕ → Set where
   zero⇓ : ∀{M}{N}
@@ -98,10 +100,30 @@ data _⇓_ : Term → Term → ℕ → Set where
 -- _⇑ : Term → Set
 -- M ⇑ = ∀ k → M ⇑ k
 
--- ⇓-value : ∀ V → Value V → V ⇓ V
--- ⇓-value .(ƛ N) (ƛ̬ N) = lam⇓
--- ⇓-value .($ c) ($̬ c) = lit⇓
--- ⇓-value (V ⟨ G !⟩) (v 〈 G 〉) = inj⇓ (⇓-value V v) v
+⇓-value : ∀ V → Value V → ∀{k} → (V ⇓ V) k
+⇓-value V v {zero} = zero⇓
+⇓-value .(ƛ N) (ƛ̬ N) {suc k} = lam⇓
+⇓-value .($ c) ($̬ c) {suc k}= lit⇓
+⇓-value (V ⟨ G !⟩) (v 〈 G 〉) {suc k}
+    with ⇓-value V v {k}
+... | V⇓V = inj⇓ V⇓V v
+
+_⟱_ : Term → Term → Set
+M ⟱ V = ∀ k → (M ⇓ V) k
+
+⟱-value : ∀ V → Value V → V ⟱ V
+⟱-value V v k = ⇓-value V v
+
+⟱-app : ∀{L M N W V}
+   → L ⟱ ƛ N
+   → M ⟱ W
+   → Value W
+   → (N [ W ]) ⟱ V
+     --------------
+   → (L · M) ⟱ V
+⟱-app {L} {M} {N} {W} {V} L↓λN M↓W w NW↓V zero = zero⇓
+⟱-app {L} {M} {N} {W} {V} L↓λN M↓W w NW↓V (suc k) =
+    app⇓ (L↓λN k) (M↓W k) w (NW↓V k)
 
 -- ⇓-determ : ∀{M}{V}{V′}
 --   → M ⇓ V

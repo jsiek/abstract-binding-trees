@@ -15,31 +15,43 @@ open import Relation.Binary.PropositionalEquality as Eq
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Var
 open import rewriting.examples.Cast
-open import rewriting.examples.CastBigStep
+open import rewriting.examples.CastBigStepResult
 open import rewriting.examples.StepIndexedLogic2
 
+infixr 6 _⇓_
+_⇓_ : Term → Result → ℕ → Set
+(M ⇓ R) 0 = ⊤
+(M ⇓ R) (suc k) = Halt R × ∃[ n ] (M ⇓ᵏ R) (n ∸ (suc k))
+
 downClosed⇓ : ∀ M R → downClosed (M ⇓ R)
-downClosed⇓ M R zero M⇓Rk .zero z≤n = M⇓Rk
-downClosed⇓ M R (suc k) M⇓Rk .zero z≤n = zero⇓
-downClosed⇓ .($ _) .($ _) (suc k) lit⇓ (suc j) (s≤s j≤k) = lit⇓
-downClosed⇓ .(ƛ _) .(ƛ _) (suc k) lam⇓ (suc j) (s≤s j≤k) = lam⇓
-downClosed⇓ (L · M) R (suc k) (app⇓{N = N}{W} L⇓λN M⇓W w NW⇓R)
-    (suc j) (s≤s j≤k) =
-  app⇓ (downClosed⇓ L (ƛ N) k L⇓λN j j≤k)
-       (downClosed⇓ M W k M⇓W j j≤k) w (downClosed⇓ (N [ W ]) R k NW⇓R j j≤k)
-downClosed⇓ (L · M) .blame (suc k) (app⇓-blame-L L⇓Bk) (suc j) (s≤s j≤k) =
-  app⇓-blame-L (downClosed⇓ L blame k L⇓Bk j j≤k)
-downClosed⇓ (L · M) .blame (suc k) (app⇓-blame-R{V = V} L⇓Vk v M⇓Bk) (suc j) (s≤s j≤k) = app⇓-blame-R (downClosed⇓ L V k L⇓Vk j j≤k ) v
-                       (downClosed⇓ M blame k M⇓Bk j j≤k)
-downClosed⇓ (M ⟨ _ !⟩) (V ⟨ _ !⟩) (suc k) (inj⇓ M⇓Rk x) (suc j) (s≤s j≤k) =
-   inj⇓ (downClosed⇓ M V k M⇓Rk j j≤k) x
-downClosed⇓ (M ⟨ _ !⟩) .blame (suc k) (inj⇓-blame M⇓Bk) (suc j) (s≤s j≤k) =
-   inj⇓-blame (downClosed⇓ M blame k M⇓Bk j j≤k)
-downClosed⇓ (M ⟨ _ ?⟩) .blame (suc k) (proj⇓-blame M⇓Bk) (suc j) (s≤s j≤k) =
-   proj⇓-blame (downClosed⇓ M blame k M⇓Bk j j≤k)
-downClosed⇓ (M ⟨ _ ?⟩) R (suc k) (collapse⇓{V = V} M⇓Vk) (suc j) (s≤s j≤k) =
-   collapse⇓ (downClosed⇓ M (R ⟨ _ !⟩) k M⇓Vk j j≤k)
-downClosed⇓ (M ⟨ _ ?⟩) .blame (suc k) (collide⇓{V = V} M⇓V!k x)
-   (suc j) (s≤s j≤k) =
-   collide⇓ (downClosed⇓ M (V ⟨ _ !⟩) k M⇓V!k j j≤k) x
-downClosed⇓ .blame .blame (suc k) blame⇓ (suc j) (s≤s j≤k) = blame⇓
+downClosed⇓ M R zero M⇓ zero z≤n = tt
+downClosed⇓ M R (suc k) (H , n , M⇓Rn-k) zero z≤n = tt
+downClosed⇓ M R (suc k) (H , n , M⇓Rn-k) (suc j) (s≤s j≤k) =
+    H , n , ⇓ᵏhalt-upClosed M⇓Rn-k H (∸-monoʳ-≤ n (s≤s j≤k))
+
+infix 8 _⇓ᵒ_
+_⇓ᵒ_ : Term → Result → Setᵒ
+M ⇓ᵒ N = record { # = (M ⇓ N)
+                ; down = downClosed⇓ M N
+                ; tz = tt
+                }
+
+_⇑ : Term → ℕ → Set
+(M ⇑) k = (M ⇓ᵏ timeout) k
+
+downClosed⇑ : ∀ M → downClosed (M ⇑)
+downClosed⇑ M k M⇑ j j≤k = ⇓ᵏtimeout-downClosed M⇑ j≤k
+
+infix 8 _⇑ᵒ
+_⇑ᵒ : Term → Setᵒ
+M ⇑ᵒ = record { # = (M ⇑)
+              ; down = downClosed⇑ M
+              ; tz = ⇓ᵏzero
+              }
+
+
+{-
+⇓ᵒ-value : ∀ {𝒫} → ∀ V → Value V → 𝒫 ⊢ᵒ V ⇓ᵒ V
+⇓ᵒ-value {𝒫} V v = ⊢ᵒ-intro λ n 𝒫n → ⇓-value V v
+
+-}
