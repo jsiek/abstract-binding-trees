@@ -23,6 +23,16 @@ _⇓_ : Term → Result → ℕ → Set
 (M ⇓ R) 0 = ⊤
 (M ⇓ R) (suc k) = Halt R × ∃[ n ] (M ⇓ᵏ R) (n ∸ (suc k))
 
+⇓-value : ∀ V k → Value V → (V ⇓ val V) k
+⇓-value V zero v = tt
+⇓-value V (suc k) v
+    with ⇓ᵏ-value V v
+... | l , V⇓Vl = valueH , l + suc k , Goal
+    where
+    Goal : (V ⇓ᵏ val V) (l + suc k ∸ suc k)
+    Goal rewrite +-∸-assoc l {suc k}{suc k} ≤-refl | n∸n≡0 k | +-identityʳ l =
+        V⇓Vl
+
 downClosed⇓ : ∀ M R → downClosed (M ⇓ R)
 downClosed⇓ M R zero M⇓ zero z≤n = tt
 downClosed⇓ M R (suc k) (H , n , M⇓Rn-k) zero z≤n = tt
