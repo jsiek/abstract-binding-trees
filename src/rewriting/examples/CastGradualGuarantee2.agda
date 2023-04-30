@@ -16,6 +16,7 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Var
 open import rewriting.examples.Cast
 open import rewriting.examples.CastBigStepResult
+open import rewriting.examples.CastBigStepLogic
 open import rewriting.examples.StepIndexedLogic2
 
 data Dir : Set where
@@ -61,8 +62,8 @@ pre-𝒱 ((A ⇒ B) , (A′ ⇒ B′) , fun⊑ A⊑A′ B⊑B′) d (ƛ N) (ƛ N
 pre-𝒱 (A , A′ , A⊑A′) d V V′ = ⊥ ˢ
 
 pre-ℛ c dir (val V) (val V′) = pre-𝒱 c dir V V′
-pre-ℛ c dir R (raise blameᵉ) = ⊤ ˢ
-pre-ℛ c dir (raise timeout) (raise timeout) = ⊤ ˢ
+pre-ℛ c dir R blameR = ⊤ ˢ
+pre-ℛ c dir timeout timeout = ⊤ ˢ
 pre-ℛ c dir R R′ = ⊥ ˢ
 
 instance
@@ -71,12 +72,12 @@ instance
 
 instance
   ResultInhabited : Inhabited Result
-  ResultInhabited = record { elt = raise timeout }
+  ResultInhabited = record { elt = timeout }
 
 pre-ℰ c ↪ M M′ =
-      (∀ˢ[ R ] (M ⇓ R)ˢ →ˢ (∃ˢ[ R′ ] (M′ ⇓ R′)ˢ ×ˢ pre-ℛ c ↪ R R′))
+      (∀ˢ[ R ] (M ⇓ᵒ R)ⁱ →ˢ (∃ˢ[ R′ ] (M′ ⇓ᵒ R′)ⁱ ×ˢ pre-ℛ c ↪ R R′))
 pre-ℰ c ↩ M M′ =
-      (∀ˢ[ R′ ] (M′ ⇓ R′)ˢ →ˢ (∃ˢ[ R ] (M ⇓ R)ˢ ×ˢ pre-ℛ c ↩ R R′))
+      (∀ˢ[ R′ ] (M′ ⇓ᵒ R′)ⁱ →ˢ (∃ˢ[ R ] (M ⇓ᵒ R)ⁱ ×ˢ pre-ℛ c ↩ R R′))
 
 pre-ℰ⊎𝒱 : ℰ⊎𝒱-type → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
 pre-ℰ⊎𝒱 (inj₁ (c , d , V , V′)) = pre-𝒱 c d V V′
@@ -93,28 +94,30 @@ pre-ℰ⊎𝒱 (inj₂ (c , d , M , M′)) = pre-ℰ c d M M′
 
 ℛ⟦_⟧ : (c : Prec) → Dir → Result → Result → Setᵒ
 ℛ⟦ c ⟧ d (val V) (val V′) = 𝒱⟦ c ⟧ d V V′
-ℛ⟦ c ⟧ d R (raise blameᵉ) = ⊤ ᵒ 
-ℛ⟦ c ⟧ d (raise timeout) (raise timeout) = ⊤ ᵒ 
+ℛ⟦ c ⟧ d R blameR = ⊤ ᵒ 
+ℛ⟦ c ⟧ d timeout timeout = ⊤ ᵒ 
 ℛ⟦ c ⟧ d R R′ = ⊥ ᵒ 
 
 ℛ-pre-ℛ-eq : ∀{c}{d}{R}{R′}
     → #(pre-ℛ c d R R′) (ℰ⊎𝒱 , ttᵖ) ≡ᵒ ℛ⟦ c ⟧ d R R′
 ℛ-pre-ℛ-eq {c} {d} {val V} {val V′} =
     ≡ᵒ-sym (fixpointᵒ pre-ℰ⊎𝒱 (inj₁ (c , d , V , V′)))
-ℛ-pre-ℛ-eq {c} {d} {val V} {raise blameᵉ} = ≡ᵒ-refl refl
-ℛ-pre-ℛ-eq {c} {d} {val V} {raise timeout} = ≡ᵒ-refl refl
-ℛ-pre-ℛ-eq {c} {d} {raise E} {val V} = ≡ᵒ-refl refl
-ℛ-pre-ℛ-eq {c} {d} {raise E} {raise blameᵉ} = ≡ᵒ-refl refl
-ℛ-pre-ℛ-eq {c} {d} {raise blameᵉ} {raise timeout} = ≡ᵒ-refl refl
-ℛ-pre-ℛ-eq {c} {d} {raise timeout} {raise timeout} = ≡ᵒ-refl refl
+ℛ-pre-ℛ-eq {c} {d} {val V} {blameR} = ≡ᵒ-refl refl
+ℛ-pre-ℛ-eq {c} {d} {val V} {timeout} = ≡ᵒ-refl refl
+ℛ-pre-ℛ-eq {c} {d} {blameR} {val V} = ≡ᵒ-refl refl
+ℛ-pre-ℛ-eq {c} {d} {timeout} {val V} = ≡ᵒ-refl refl
+ℛ-pre-ℛ-eq {c} {d} {blameR} {blameR} = ≡ᵒ-refl refl
+ℛ-pre-ℛ-eq {c} {d} {timeout} {blameR} = ≡ᵒ-refl refl
+ℛ-pre-ℛ-eq {c} {d} {blameR} {timeout} = ≡ᵒ-refl refl
+ℛ-pre-ℛ-eq {c} {d} {timeout} {timeout} = ≡ᵒ-refl refl
 
 {------------- Equations for ℰ and 𝒱 -----------------------------------------}
 
 ℰ↪-def : Prec → Term → Term → Setᵒ
-ℰ↪-def c M M′ = (∀ᵒ[ R ] (M ⇓ R)ᵒ →ᵒ (∃ᵒ[ R′ ] (M′ ⇓ R′)ᵒ ×ᵒ ℛ⟦ c ⟧ ↪ R R′))
+ℰ↪-def c M M′ = (∀ᵒ[ R ] (M ⇓ᵒ R) →ᵒ (∃ᵒ[ R′ ] (M′ ⇓ᵒ R′) ×ᵒ ℛ⟦ c ⟧ ↪ R R′))
 
 ℰ↩-def : Prec → Term → Term → Setᵒ
-ℰ↩-def c M M′ = (∀ᵒ[ R′ ] (M′ ⇓ R′)ᵒ →ᵒ (∃ᵒ[ R ] (M ⇓ R)ᵒ ×ᵒ ℛ⟦ c ⟧ ↩ R R′))
+ℰ↩-def c M M′ = (∀ᵒ[ R′ ] (M′ ⇓ᵒ R′) →ᵒ (∃ᵒ[ R ] (M ⇓ᵒ R) ×ᵒ ℛ⟦ c ⟧ ↩ R R′))
 
 ℰ↪-stmt : ∀{c}{M M′} → ℰ⟦ c ⟧ ↪ M M′ ≡ᵒ ℰ↪-def c M M′
 ℰ↪-stmt {c}{M}{M′} =
@@ -124,8 +127,8 @@ pre-ℰ⊎𝒱 (inj₂ (c , d , M , M′)) = pre-ℰ c d M M′
   # (pre-ℰ⊎𝒱 X₂) (ℰ⊎𝒱 , ttᵖ)                       ⩦⟨ EQ ⟩
   ℰ↪-def c M M′                                      ∎
   where
-  EQ = cong-∀ λ R → cong-→{S = (M ⇓ R)ᵒ} (≡ᵒ-refl refl)
-        (cong-∃ λ R′ → cong-×ᵒ{S = (M′ ⇓ R′)ᵒ} (≡ᵒ-refl refl)
+  EQ = cong-∀ λ R → cong-→{S = (M ⇓ᵒ R)} (≡ᵒ-refl refl)
+        (cong-∃ λ R′ → cong-×ᵒ{S = (M′ ⇓ᵒ R′)} (≡ᵒ-refl refl)
                                                 (ℛ-pre-ℛ-eq{c}{↪}{R}{R′}))
 
 ℰ↩-stmt : ∀{c}{M M′} → ℰ⟦ c ⟧ ↩ M M′ ≡ᵒ ℰ↩-def c M M′
@@ -136,8 +139,8 @@ pre-ℰ⊎𝒱 (inj₂ (c , d , M , M′)) = pre-ℰ c d M M′
   # (pre-ℰ⊎𝒱 X₂) (ℰ⊎𝒱 , ttᵖ)                       ⩦⟨ EQ ⟩
   ℰ↩-def c M M′                                      ∎
   where
-  EQ = cong-∀ λ R′ → cong-→{S = (M′ ⇓ R′)ᵒ} (≡ᵒ-refl refl)
-        (cong-∃ λ R → cong-×ᵒ{S = (M ⇓ R)ᵒ} (≡ᵒ-refl refl)
+  EQ = cong-∀ λ R′ → cong-→{S = (M′ ⇓ᵒ R′)} (≡ᵒ-refl refl)
+        (cong-∃ λ R → cong-×ᵒ{S = (M ⇓ᵒ R)} (≡ᵒ-refl refl)
                                  (ℛ-pre-ℛ-eq{c}{↩}{R}{R′}))
 
 𝒱-dyn-dyn : ∀{G}{d}{V}{V′}
@@ -313,6 +316,15 @@ _∣_⊨_⊑_⦂_ : List Prec → Dir → Term → Term → Prec → Set
 
 {- Related values are related expressions -}
 
+𝒱⇒ℰ : ∀{c : Prec}{d}{𝒫}{V V′}
+   → 𝒫 ⊢ᵒ 𝒱⟦ c ⟧ d V V′
+     -------------------
+   → 𝒫 ⊢ᵒ ℰ⟦ c ⟧ d V V′
+𝒱⇒ℰ {c}{↪}{𝒫}{V}{V′} ⊢𝒱VV′ =
+  substᵒ (≡ᵒ-sym ℰ↪-stmt) (Λᵒ[ R ] (→ᵒI {!!}))
+𝒱⇒ℰ {c}{↩}{𝒫}{V}{V′} ⊢𝒱VV′ = substᵒ (≡ᵒ-sym ℰ↩-stmt) {!!}
+
+{-
 𝒱⇒ℰ-pred : Dir → Setᵒ
 𝒱⇒ℰ-pred d = ∀ᵒ[ V ] ∀ᵒ[ V′ ] ∀ᵒ[ c ] (𝒱⟦ c ⟧ d V V′) →ᵒ (ℰ⟦ c ⟧ d V V′)
 
@@ -355,7 +367,8 @@ _∣_⊨_⊑_⦂_ : List Prec → Dir → Term → Term → Prec → Set
   ... | no A′nd = {!!}
   Goal {V} {V′} {.($ₜ _) , .($ₜ _) , base⊑} {d} {n} = {!!}
   Goal {V} {V′} {.(_ ⇒ _) , .(_ ⇒ _) , fun⊑ A⊑A′ A⊑A′₁} {d} {n} = {!!}
-  
+-}
+
 -- --   Goal {.(_ ⟨ G !⟩)} {.(_ ⟨ G₁ !⟩)} {.★ , ★ , unk⊑} {d} 𝒱VV′ (v 〈 G 〉) (v′ 〈 G₁ 〉) = {!!}
 -- --   Goal {V} {V′} {.★ , $ₜ ι , unk⊑} {d} 𝒱VV′ v v′ = {!!}
 -- --   Goal {V} {V′} {.★ , A′ ⇒ A′₁ , unk⊑} {d} 𝒱VV′ v v′ = {!!}

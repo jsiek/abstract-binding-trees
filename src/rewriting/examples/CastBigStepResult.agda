@@ -268,9 +268,27 @@ data _⇓ᵏ_ : Term → Result → ℕ → Set where
     proj⇓ᵏ-raise (⇓ᵏtimeout-downClosed M⇑k j≤k) ex
 
 
+⇓ᵏ-value-eq : ∀{V}{R}{k} → Value V → (V ⇓ᵏ R) k → R ≡ val V
+⇓ᵏ-value-eq {V}{R}{k} v V⇓R
+    with ⇓ᵏ-value V v
+... | j , V⇓Vj
+    with j ≤? k
+... | yes lt
+    with ⇓ᵏ-determ V⇓R (⇓ᵏval-upClosed V⇓Vj lt)
+... | refl = refl
+⇓ᵏ-value-eq {V}{R}{k} v V⇓R | j , V⇓Vj
+    | no nlt
+    with R
+... | timeout = {!!}
+... | blameR
+    with ⇓ᵏ-determ V⇓Vj (⇓ᵏblame-upClosed V⇓R (<⇒≤ (≰⇒> nlt)))
+... | ()
+⇓ᵏ-value-eq {V}{R}{k} v V⇓R | j , V⇓Vj | no nlt
+    | val W
+    with ⇓ᵏ-determ V⇓Vj (⇓ᵏval-upClosed V⇓R (<⇒≤ (≰⇒> nlt)))
+... | refl = refl
 
--- -- ⇓ᵏ-value-eq : ∀{V W} → Value V → V ⇓ᵏ W → W ≡ V
--- -- ⇓ᵏ-value-eq {V}{W} v V⇓ᵏW = ⇓ᵏ-determ V⇓ᵏW (⇓ᵏ-value V v)
+
 
 -- -- inj⇑-inv : ∀{M G} → M ⟨ G !⟩ ⇑∀ → M ⇑∀
 -- -- inj⇑-inv {M}{G} MG⇑ k
