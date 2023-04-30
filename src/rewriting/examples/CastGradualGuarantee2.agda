@@ -211,47 +211,72 @@ pre-ℰ⊎𝒱 (inj₂ (c , d , M , M′)) = pre-ℰ c d M M′
 
 {------------- Elim for 𝒱, by cases on A ⊑ A′ --------------------------------}
 
-𝒱-base-elim : ∀{𝒫}{V}{V′}{dir}{R}{k}{ι}
-  → #(𝒱⟦ $ₜ ι , $ₜ ι , base⊑ ⟧ dir V V′) (suc k)
+𝒱-base-elim : ∀{𝒫}{V}{V′}{dir}{R}{ι}
+  → 𝒫 ⊢ᵒ 𝒱⟦ $ₜ ι , $ₜ ι , base⊑ ⟧ dir V V′
   → (∀ c → V ≡ $ c → V′ ≡ $ c → 𝒫 ⊢ᵒ R)
   → 𝒫 ⊢ᵒ R
-𝒱-base-elim {𝒫}{$ c}{$ c′}{dir}{R}{k}{ι} refl cont = cont c refl refl
+𝒱-base-elim {𝒫}{V}{V′}{dir}{R}{ι} ⊢𝒱VV′ cont =
+  ⊢ᵒ-sucP ⊢𝒱VV′ λ 𝒱VV′ → aux 𝒱VV′ cont
+  where
+  aux : ∀{𝒫}{V}{V′}{dir}{R}{k}{ι}
+    → #(𝒱⟦ $ₜ ι , $ₜ ι , base⊑ ⟧ dir V V′) (suc k)
+    → (∀ c → V ≡ $ c → V′ ≡ $ c → 𝒫 ⊢ᵒ R)
+    → 𝒫 ⊢ᵒ R
+  aux {𝒫}{$ c}{$ c′}{dir}{R}{k}{ι} refl cont = cont c refl refl
 
-𝒱-dyn-dyn-elim : ∀{𝒫}{V}{V′}{dir}{R}{k}
+𝒱-dyn-dyn-elim : ∀{𝒫}{V}{V′}{dir}{R}
    → 𝒫 ⊢ᵒ 𝒱⟦ ★ , ★ , unk⊑ ⟧ dir V V′
-   → #(𝒱⟦ ★ , ★ , unk⊑ ⟧ dir V V′) (suc k)
    → (∀ V₁ V′₁ G → Value V₁ → Value V′₁ → V ≡ V₁ ⟨ G !⟩ → V′ ≡ V′₁ ⟨ G !⟩
        → 𝒫 ⊢ᵒ ▷ᵒ 𝒱⟦ gnd⇒ty G , gnd⇒ty G , Refl⊑ ⟧ dir V₁ V′₁ → 𝒫 ⊢ᵒ R)
    → 𝒫 ⊢ᵒ R
-𝒱-dyn-dyn-elim {𝒫}{V ⟨ G !⟩}{V′ ⟨ H !⟩}{dir}{R} ⊢𝒱VV′ 𝒱VV′ cont
-    with G ≡ᵍ H | 𝒱VV′
-... | yes refl | (v , v′ , _) =
-      let ▷𝒱VV′ = proj₂ᵒ (proj₂ᵒ (substᵒ 𝒱-dyn-dyn ⊢𝒱VV′)) in
-      cont V V′ G v v′ refl refl ▷𝒱VV′
-... | no neq | ()
+𝒱-dyn-dyn-elim {𝒫}{V}{V′}{dir}{R} ⊢𝒱VV′ cont =
+  ⊢ᵒ-sucP ⊢𝒱VV′ λ 𝒱VV′ → aux 𝒱VV′ ⊢𝒱VV′ cont
+  where
+  aux : ∀{𝒫}{V}{V′}{dir}{R}{k}
+     → #(𝒱⟦ ★ , ★ , unk⊑ ⟧ dir V V′) (suc k)
+     → 𝒫 ⊢ᵒ 𝒱⟦ ★ , ★ , unk⊑ ⟧ dir V V′
+     → (∀ V₁ V′₁ G → Value V₁ → Value V′₁ → V ≡ V₁ ⟨ G !⟩ → V′ ≡ V′₁ ⟨ G !⟩
+         → 𝒫 ⊢ᵒ ▷ᵒ 𝒱⟦ gnd⇒ty G , gnd⇒ty G , Refl⊑ ⟧ dir V₁ V′₁ → 𝒫 ⊢ᵒ R)
+     → 𝒫 ⊢ᵒ R
+  aux {𝒫}{V ⟨ G !⟩}{V′ ⟨ H !⟩}{dir}{R} 𝒱VV′ ⊢𝒱VV′ cont
+      with G ≡ᵍ H | 𝒱VV′
+  ... | yes refl | (v , v′ , _) =
+        let ▷𝒱VV′ = proj₂ᵒ (proj₂ᵒ (substᵒ 𝒱-dyn-dyn ⊢𝒱VV′)) in
+        cont V V′ G v v′ refl refl ▷𝒱VV′
+  ... | no neq | ()
 
-𝒱-dyn-any-elim : ∀{𝒫}{V}{V′}{A′}{dir}{R}{k}
+𝒱-dyn-any-elim : ∀{𝒫}{V}{V′}{A′}{dir}{R}
    → A′ ≢ ★
    → 𝒫 ⊢ᵒ 𝒱⟦ ★ , A′ , unk⊑ ⟧ dir V V′
-   → #(𝒱⟦ ★ , A′ , unk⊑ ⟧ dir V V′) (suc k)
    → (∀ V₁ G → Value V₁ → V ≡ V₁ ⟨ G !⟩ → Value V′ → (G⊑A′ : gnd⇒ty G ⊑ A′)
        → 𝒫 ⊢ᵒ ▷ᵒ 𝒱⟦ gnd⇒ty G , A′ , G⊑A′ ⟧ dir V₁ V′
        → 𝒫 ⊢ᵒ R)
    → 𝒫 ⊢ᵒ R
-𝒱-dyn-any-elim {𝒫} {V} {V′} {★} {dir} {R} {k} nd ⊢𝒱VV′ 𝒱VV′ cont =
-   ⊥-elim (nd refl)
-𝒱-dyn-any-elim {𝒫} {V ⟨ G !⟩} {V′} {$ₜ ι} {dir} {R} {k} nd ⊢𝒱VV′ 𝒱VV′ cont
-    with gnd⇒ty G ⊑? ($ₜ ι) | 𝒱VV′
-... | yes lt | (v , v′ , _) =
-      let ▷𝒱VV′ = proj₂ᵒ (proj₂ᵒ (substᵒ (𝒱-dyn-any lt) ⊢𝒱VV′)) in
-      cont V G v refl v′ lt ▷𝒱VV′
-... | no nlt | ()
-𝒱-dyn-any-elim {𝒫} {V ⟨ G !⟩} {V′} {A′ ⇒ B′} {dir} {R} {k} nd ⊢𝒱VV′ 𝒱VV′ cont
-    with gnd⇒ty G ⊑? (A′ ⇒ B′) | 𝒱VV′
-... | yes lt | (v , v′ , _) =
-      let ▷𝒱VV′ = proj₂ᵒ (proj₂ᵒ (substᵒ (𝒱-dyn-any lt) ⊢𝒱VV′)) in
-      cont V G v refl v′ lt ▷𝒱VV′
-... | no nlt | ()
+𝒱-dyn-any-elim {𝒫}{V}{V′}{A′}{dir}{R} And ⊢𝒱VV′ cont =
+  ⊢ᵒ-sucP ⊢𝒱VV′ λ 𝒱VV′ → aux 𝒱VV′ And ⊢𝒱VV′ cont
+  where
+  aux : ∀{𝒫}{V}{V′}{A′}{dir}{R}{k}
+     → #(𝒱⟦ ★ , A′ , unk⊑ ⟧ dir V V′) (suc k)
+     → A′ ≢ ★
+     → 𝒫 ⊢ᵒ 𝒱⟦ ★ , A′ , unk⊑ ⟧ dir V V′
+     → (∀ V₁ G → Value V₁ → V ≡ V₁ ⟨ G !⟩ → Value V′ → (G⊑A′ : gnd⇒ty G ⊑ A′)
+         → 𝒫 ⊢ᵒ ▷ᵒ 𝒱⟦ gnd⇒ty G , A′ , G⊑A′ ⟧ dir V₁ V′
+         → 𝒫 ⊢ᵒ R)
+     → 𝒫 ⊢ᵒ R
+  aux {𝒫} {V} {V′} {★} {dir} {R} {k} 𝒱VV′ nd ⊢𝒱VV′ cont =
+     ⊥-elim (nd refl)
+  aux {𝒫} {V ⟨ G !⟩} {V′} {$ₜ ι} {dir} {R} {k}  𝒱VV′ nd ⊢𝒱VV′ cont
+      with gnd⇒ty G ⊑? ($ₜ ι) | 𝒱VV′
+  ... | yes lt | (v , v′ , _) =
+        let ▷𝒱VV′ = proj₂ᵒ (proj₂ᵒ (substᵒ (𝒱-dyn-any lt) ⊢𝒱VV′)) in
+        cont V G v refl v′ lt ▷𝒱VV′
+  ... | no nlt | ()
+  aux {𝒫} {V ⟨ G !⟩} {V′} {A′ ⇒ B′} {dir} {R} {k} 𝒱VV′ nd ⊢𝒱VV′ cont
+      with gnd⇒ty G ⊑? (A′ ⇒ B′) | 𝒱VV′
+  ... | yes lt | (v , v′ , _) =
+        let ▷𝒱VV′ = proj₂ᵒ (proj₂ᵒ (substᵒ (𝒱-dyn-any lt) ⊢𝒱VV′)) in
+        cont V G v refl v′ lt ▷𝒱VV′
+  ... | no nlt | ()
 
 𝒱-fun-elim : ∀{𝒫}{A}{B}{A′}{B′}{c : A ⊑ A′}{d : B ⊑ B′}{dir}{V}{V′}{R}
    → 𝒫 ⊢ᵒ 𝒱⟦ A ⇒ B , A′ ⇒ B′ , fun⊑ c d ⟧ dir V V′
@@ -262,9 +287,9 @@ pre-ℰ⊎𝒱 (inj₂ (c , d , M , M′)) = pre-ℰ c d M M′
      --------------------------------------------------------------------
    → 𝒫 ⊢ᵒ R
 𝒱-fun-elim {𝒫}{A}{B}{A′}{B′}{c}{d}{dir}{V}{V′}{R} ⊢𝒱VV′ cont =
-  ⊢ᵒ-sucP ⊢𝒱VV′ λ { 𝒱VV′sn → G {V}{V′} 𝒱VV′sn ⊢𝒱VV′ cont }
+  ⊢ᵒ-sucP ⊢𝒱VV′ λ { 𝒱VV′sn → aux {V}{V′} 𝒱VV′sn ⊢𝒱VV′ cont }
   where
-  G : ∀{V}{V′}{n}
+  aux : ∀{V}{V′}{n}
      → # (𝒱⟦  A ⇒ B , A′ ⇒ B′ , fun⊑ c d ⟧ dir V V′) (suc n)
      → 𝒫 ⊢ᵒ 𝒱⟦ A ⇒ B , A′ ⇒ B′ , fun⊑ c d ⟧ dir V V′
      → (∀ N N′ → V ≡ ƛ N → V′ ≡ ƛ N′ 
@@ -272,7 +297,7 @@ pre-ℰ⊎𝒱 (inj₂ (c , d , M , M′)) = pre-ℰ c d M M′
                              →ᵒ (ℰ⟦ B , B′ , d ⟧ dir (N [ W ]) (N′ [ W′ ])))
              → 𝒫 ⊢ᵒ R)
      → 𝒫 ⊢ᵒ R
-  G {ƛ N}{ƛ N′}{n} 𝒱VV′ ⊢𝒱VV′ cont = cont N N′ refl refl λ W W′ →
+  aux {ƛ N}{ƛ N′}{n} 𝒱VV′ ⊢𝒱VV′ cont = cont N N′ refl refl λ W W′ →
      instᵒ (instᵒ (substᵒ 𝒱-fun ⊢𝒱VV′) W) W′ 
 
 {------------------- Relate Open Terms -------------------------------------}
@@ -316,29 +341,81 @@ _∣_⊨_⊑_⦂_ : List Prec → Dir → Term → Term → Prec → Set
 
 {- Related values are related expressions -}
 
-𝒱↪-timeout : ∀{𝒫}{V}{V′}
-   → V ⟹ᵒ timeout ∷ 𝒫 ⊢ᵒ V′ ⟹ᵒ timeout
-𝒱↪-timeout {𝒫}{V}{V′} = {!!}
-  --⊢ᵒ-intro λ { zero (V⇑ , ⊨𝒫n) → tt}
+𝒱⇒ℰ-pred : Dir → Setᵒ
+𝒱⇒ℰ-pred d = ∀ᵒ[ c ] ∀ᵒ[ V ] ∀ᵒ[ V′ ] 𝒱⟦ c ⟧ d V V′ →ᵒ ℰ⟦ c ⟧ d V V′
 
-𝒱↩-timeout : ∀{𝒫}{V}{V′}
-   → V′ ⟹ᵒ timeout ∷ 𝒫 ⊢ᵒ V ⟹ᵒ timeout
-𝒱↩-timeout {𝒫}{V}{V′} = {!!}
-  --⊢ᵒ-intro λ { zero (V⇑ , ⊨𝒫n) → tt}
-
+𝒱⇒ℰᵒ : ∀{𝒫}{d}
+   → 𝒫 ⊢ᵒ ∀ᵒ[ c ] ∀ᵒ[ V ] ∀ᵒ[ V′ ] 𝒱⟦ c ⟧ d V V′ →ᵒ ℰ⟦ c ⟧ d V V′
+𝒱⇒ℰᵒ {𝒫}{d} = lobᵒ (Λᵒ[ c ] Λᵒ[ V ] Λᵒ[ V′ ] (→ᵒI Goal))
+ where
+ Goal : ∀{c}{V}{V′}
+    → 𝒱⟦ c ⟧ d V V′ ∷ (▷ᵒ (𝒱⇒ℰ-pred d)) ∷ 𝒫 ⊢ᵒ ℰ⟦ c ⟧ d V V′
+ Goal {.★ , A′ , unk⊑} {V} {V′}
+      with dyn? A′
+ ... | yes refl =
+     𝒱-dyn-dyn-elim{V = V}{V′}{d} Zᵒ λ{V₁ V′₁ G v₁ v′₁ refl refl ⊢▷𝒱V₁V′₁ →
+     let ⊢▷ℰV₁V′₁ : 𝒫₁ ⊢ᵒ ▷ᵒ ℰ⟦ gnd⇒ty G , gnd⇒ty G , Refl⊑ ⟧ d V₁ V′₁
+         ⊢▷ℰV₁V′₁ = {!!} in
+     Goal2 ⊢▷ℰV₁V′₁ 
+     }
+  where
+  𝒫₁ = 𝒱⟦ ★ , ★ , unk⊑ ⟧ d V V′ ∷ (▷ᵒ (𝒱⇒ℰ-pred d)) ∷ 𝒫
+  Goal2 : ∀{𝒫}{V₁}{V′₁}{G}{d}
+     → 𝒫 ⊢ᵒ ▷ᵒ ℰ⟦ gnd⇒ty G , gnd⇒ty G , Refl⊑ ⟧ d V₁ V′₁
+     → 𝒫 ⊢ᵒ ℰ⟦ ★ , ★ , unk⊑ ⟧ d (V₁ ⟨ G !⟩) (V′₁ ⟨ G !⟩)
+  Goal2 {𝒫}{V₁}{V′₁}{G}{↪} ⊢ℰV₁V′₁ =
+      ⊢ᵒ-intro Goal3
+   where
+   Goal3 : (n : ℕ)
+      → # (Πᵒ 𝒫) n → # (ℰ⟦ ★ , ★ , unk⊑ ⟧ ↪ (V₁ ⟨ G !⟩) (V′₁ ⟨ G !⟩)) n
+   Goal3 zero ⊨𝒫n (val V) .zero z≤n V₁!⟹Rj =
+       let S = (# (pre-𝒱 (★ , ★ , unk⊑) ↪ V (V′₁ ⟨ G !⟩)) (⊤ᵖ , ttᵖ)) in
+       (val (V′₁ ⟨ G !⟩)) , (tt , (tz S))
+   Goal3 zero ⊨𝒫n blameR .zero z≤n V₁!⟹Rj =
+       (val (V′₁ ⟨ G !⟩)) , (tt , tt)
+   Goal3 zero ⊨𝒫n timeout .zero z≤n V₁!⟹Rj =
+       (val (V′₁ ⟨ G !⟩)) , (tt , tt)
+   Goal3 (suc n) ⊨𝒫n R .zero z≤n V₁!⟹Rj =
+       let S = (# (pre-ℛ (★ , ★ , unk⊑) ↪ R (val (V′₁ ⟨ G !⟩)))
+                ((λ a →
+                  # (pre-ℰ⊎𝒱 a)
+                   (iter n (λ μP a₁ → # (pre-ℰ⊎𝒱 a₁) (μP , ttᵖ)) ⊤ᵖ , ttᵖ))
+                   , ttᵖ)) in
+       (val (V′₁ ⟨ G !⟩)) , (tt , tz S)
+   Goal3 (suc n) ⊨𝒫n (val V) (suc j) (s≤s j≤n) (h , q , V₁!⇓V) = {!!}
+   Goal3 (suc n) ⊨𝒫n blameR (suc j) (s≤s j≤n) V₁!⟹Rj = {!!}
+   Goal3 (suc n) ⊨𝒫n timeout (suc j) (s≤s j≤n) V₁!⟹Rj = {!!}
+{-
+    λ { n x (val x₃) j x₁ x₂ → {!!}
+                 ; n x blameR j x₁ x₂ → {!!}
+                 ; n x timeout zero x₁ x₂ → timeout , (⇓ᵏzero , tt)
+                 ; zero x timeout (suc j) () x₂
+                 ; (suc n) x timeout (suc j)(s≤s j≤n) (inj⇓ᵏ-raise V₁⇓tmo ex) →
+                    let (R′ , V′⟹R′ , ℛtmoR′) =
+                           ⊢ᵒ-elim ⊢ℰV₁V′₁ (suc n) x timeout j j≤n V₁⇓tmo in
+                    timeout , (inj⇓ᵏ-raise {!!} timeoutX , tt)
+                 }
+                 -}
+  Goal2 {𝒫}{V₁}{V′₁}{G}{↩} ⊢ℰV₁V′₁ = ⊢ᵒ-intro λ n x → {!!}
+  
+ Goal {.★ , A′ , unk⊑} {V} {V′}
+     | no A′≢★ = {!!}
+ Goal {$ₜ ι , $ₜ ι , base⊑} {V} {V′} = {!!}
+ Goal {A ⇒ B , A′ ⇒ B′ , fun⊑ A⊑A′ B⊑B′} {V} {V′} = {!!}
+{-
 𝒱⇒ℰ : ∀{c : Prec}{d}{𝒫}{V V′}
    → 𝒫 ⊢ᵒ 𝒱⟦ c ⟧ d V V′
      -------------------
    → 𝒫 ⊢ᵒ ℰ⟦ c ⟧ d V V′
 𝒱⇒ℰ {c}{↪}{𝒫}{V}{V′} ⊢𝒱VV′ = 
   substᵒ (≡ᵒ-sym ℰ↪-stmt) (Λᵒ[ R ] (→ᵒI{P = V ⟹ᵒ R}
-  {!!}))
-  {-
-  substᵒ (≡ᵒ-sym ℰ↪-stmt) (Λᵒ[ R ] (→ᵒI{P = V ⟹ᵒ R}
-  (⊢ᵒ-sucP Zᵒ λ {(h , (k , V⇓Rk-sn)) →
-   ⊢ᵒ-sucP (Sᵒ ⊢𝒱VV′) λ 𝒱VV′ →
-   let (v , v′) = 𝒱⇒Value c V V′ 𝒱VV′ in
-   Goal{k = k} v v′ V⇓Rk-sn ⊢𝒱VV′ })))
+  (⊢ᵒ-sucP (Sᵒ ⊢𝒱VV′) λ 𝒱VV′ →
+  let (v , v′) = 𝒱⇒Value c V V′ 𝒱VV′ in
+  (⊢ᵒ-sucP Zᵒ λ V⟹Rsn →
+  ⟹E V R V⟹Rsn
+  (λ {(h , (k , V⇓Rk-sn)) → Goal{k = k} v v′ V⇓Rk-sn ⊢𝒱VV′})
+  (λ V⇑ → {!!})
+  ))))
   where
   Goal : ∀{R}{k}{n} → Value V → Value V′ → (V ⇓ᵏ R) (k ∸ suc n)
      → 𝒫 ⊢ᵒ 𝒱⟦ c ⟧ ↪ V V′
@@ -351,7 +428,7 @@ _∣_⊨_⊑_⦂_ : List Prec → Dir → Term → Term → Prec → Set
   ... | inj₂ refl =
         ⊢ᵒ-∃-intro-new (λ R′ → V′ ⟹ᵒ R′ ×ᵒ ℛ⟦ c ⟧ ↪ timeout R′) timeout
         (𝒱↪-timeout ,ᵒ constᵒI tt)
-  -}
+
 𝒱⇒ℰ {c}{↩}{𝒫}{V}{V′} ⊢𝒱VV′ =
   substᵒ (≡ᵒ-sym ℰ↩-stmt) (Λᵒ[ R′ ] (→ᵒI{P = V′ ⟹ᵒ R′} {!!}))
 {-
@@ -372,6 +449,7 @@ substᵒ (≡ᵒ-sym ℰ↩-stmt) (Λᵒ[ R′ ] →ᵒI{P = V′ ⟹ᵒ R′}
   ... | inj₂ refl =
         ⊢ᵒ-∃-intro-new (λ R → V ⟹ᵒ R ×ᵒ ℛ⟦ c ⟧ ↩ R timeout) timeout
         (𝒱↩-timeout ,ᵒ constᵒI tt)
+-}
 -}
 
 {---------- Blame is more precise than any term ------------------------------}

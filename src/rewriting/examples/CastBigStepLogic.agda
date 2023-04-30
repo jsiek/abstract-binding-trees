@@ -98,3 +98,21 @@ M ⟹ᵒ R = record { # = (M ⟹ R)
                 ; down = downClosed⟹ M R
                 ; tz = trueZero⟹ M R
                 }
+
+⟹E : ∀ M R {k} {P : Set}
+   → (M ⟹ R) k
+   → ((M ⇓ R) k → P)
+   → ((M ⇑) k → P)
+   → P
+⟹E M (val V) M⟹R cont⇓ cont⇑ = cont⇓ M⟹R
+⟹E M blameR M⟹R cont⇓ cont⇑ = cont⇓ M⟹R
+⟹E M timeout M⟹R cont⇓ cont⇑ = cont⇑ M⟹R
+
+{-
+values-dont-diverge : ∀{V}{k}
+   → Value V
+   → (V ⇑) (suc k)
+   → ⊥
+values-dont-diverge{V}{k} (v 〈 _ 〉) (inj⇓ᵏ-raise V⇑ x) =
+    values-dont-diverge{k = k} v {!!} 
+-}

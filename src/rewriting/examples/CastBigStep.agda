@@ -20,69 +20,65 @@ open import rewriting.examples.Cast
 
 
 infixr 6 _⇓_
-data _⇓_ : Term → Term → ℕ → Set where
-  zero⇓ : ∀{M}{N}
-       -------------
-     → (M ⇓ N) zero
+data _⇓_ : Term → Term → Set where
+  lit⇓ : ∀{c}
+       -----------
+     → ($ c ⇓ $ c)
      
-  lit⇓ : ∀{c k}
-       -------------------
-     → ($ c ⇓ $ c) (suc k)
+  lam⇓ : ∀{N}
+       -----------
+     → (ƛ N ⇓ ƛ N)
      
-  lam⇓ : ∀{N k}
-       -------------------
-     → (ƛ N ⇓ ƛ N) (suc k)
-     
-  app⇓ : ∀{L M N W V k}
-     → (L ⇓ ƛ N) k
-     → (M ⇓ W) k
+  app⇓ : ∀{L M N W V}
+     → L ⇓ ƛ N
+     → M ⇓ W
      → Value W
-     → (N [ W ] ⇓ V) k
+     → N [ W ] ⇓ V
+       -----------
+     → L · M ⇓ V
+     
+  app⇓-blame-L : ∀{L M}
+     → L ⇓ blame
+       -------------
+     → L · M ⇓ blame
+     
+  app⇓-blame-R : ∀{L M V}
+     → L ⇓ V
+     → Value V
+     → M ⇓ blame
+       -------------
+     → L · M ⇓ blame
+     
+  inj⇓ : ∀{M V G}
+     → M ⇓ V
+     → Value V
        -------------------
-     → (L · M ⇓ V) (suc k)
+     → M ⟨ G !⟩ ⇓ V ⟨ G !⟩
      
-  app⇓-blame-L : ∀{L M k}
-     → (L ⇓ blame) k
-       -----------------------
-     → (L · M ⇓ blame) (suc k)
+  inj⇓-blame : ∀{M G}
+     → (M ⇓ blame)
+       ----------------
+     → M ⟨ G !⟩ ⇓ blame
      
-  app⇓-blame-R : ∀{L M V k}
-     → (L ⇓ V) k
-     → Value V
-     → (M ⇓ blame) k
-       -----------------------
-     → (L · M ⇓ blame) (suc k)
-     
-  inj⇓ : ∀{M V G k}
-     → (M ⇓ V) k
-     → Value V
-       -----------------------------
-     → (M ⟨ G !⟩ ⇓ V ⟨ G !⟩) (suc k)
-     
-  inj⇓-blame : ∀{M G k}
-     → (M ⇓ blame) k
-       --------------------------
-     → (M ⟨ G !⟩ ⇓ blame) (suc k)
-     
-  proj⇓-blame : ∀{M H k}
-     → (M ⇓ blame) k
-       --------------------------
-     → (M ⟨ H ?⟩ ⇓ blame) (suc k)
+  proj⇓-blame : ∀{M H}
+     → M ⇓ blame
+       ----------------
+     → M ⟨ H ?⟩ ⇓ blame
   
-  collapse⇓ : ∀{M V G k}
-     → (M ⇓ V ⟨ G !⟩) k
-       ----------------------
-     → (M ⟨ G ?⟩ ⇓ V) (suc k)
+  collapse⇓ : ∀{M V G}
+     → M ⇓ V ⟨ G !⟩
+       ------------
+     → M ⟨ G ?⟩ ⇓ V
   
-  collide⇓ : ∀{M V G H k}
-     → (M ⇓ V ⟨ G !⟩) k
+  collide⇓ : ∀{M V G H}
+     → M ⇓ V ⟨ G !⟩
      → G ≢ H
-       --------------------------
-     → (M ⟨ H ?⟩ ⇓ blame) (suc k)
+       ----------------
+     → M ⟨ H ?⟩ ⇓ blame
   
-  blame⇓ : ∀{k}
-       -----------------------
-     → (blame ⇓ blame) (suc k)
+  blame⇓ : 
+       -------------
+       blame ⇓ blame
 
 -- infixr 6 _⇑_
 -- data _⇑_ : Term → ℕ → Set where
@@ -100,108 +96,113 @@ data _⇓_ : Term → Term → ℕ → Set where
 -- _⇑ : Term → Set
 -- M ⇑ = ∀ k → M ⇑ k
 
-⇓-value : ∀ V → Value V → ∀{k} → (V ⇓ V) k
-⇓-value V v {zero} = zero⇓
-⇓-value .(ƛ N) (ƛ̬ N) {suc k} = lam⇓
-⇓-value .($ c) ($̬ c) {suc k}= lit⇓
-⇓-value (V ⟨ G !⟩) (v 〈 G 〉) {suc k}
-    with ⇓-value V v {k}
-... | V⇓V = inj⇓ V⇓V v
+-- ⇓-value : ∀ V → Value V → ∀{k} → (V ⇓ V) k
+-- ⇓-value V v {zero} = zero⇓
+-- ⇓-value .(ƛ N) (ƛ̬ N) {suc k} = lam⇓
+-- ⇓-value .($ c) ($̬ c) {suc k}= lit⇓
+-- ⇓-value (V ⟨ G !⟩) (v 〈 G 〉) {suc k}
+--     with ⇓-value V v {k}
+-- ... | V⇓V = inj⇓ V⇓V v
 
-_⟱_ : Term → Term → Set
-M ⟱ V = ∀ k → (M ⇓ V) k
+-- _⟱_ : Term → Term → Set
+-- M ⟱ V = ∀ k → (M ⇓ V) k
 
-⟱-value : ∀ V → Value V → V ⟱ V
-⟱-value V v k = ⇓-value V v
+-- ⟱-value : ∀ V → Value V → V ⟱ V
+-- ⟱-value V v k = ⇓-value V v
 
-⟱-app : ∀{L M N W V}
-   → L ⟱ ƛ N
-   → M ⟱ W
-   → Value W
-   → (N [ W ]) ⟱ V
-     --------------
-   → (L · M) ⟱ V
-⟱-app {L} {M} {N} {W} {V} L↓λN M↓W w NW↓V zero = zero⇓
-⟱-app {L} {M} {N} {W} {V} L↓λN M↓W w NW↓V (suc k) =
-    app⇓ (L↓λN k) (M↓W k) w (NW↓V k)
+-- ⟱-app : ∀{L M N W V}
+--    → L ⟱ ƛ N
+--    → M ⟱ W
+--    → Value W
+--    → (N [ W ]) ⟱ V
+--      --------------
+--    → (L · M) ⟱ V
+-- ⟱-app {L} {M} {N} {W} {V} L↓λN M↓W w NW↓V zero = zero⇓
+-- ⟱-app {L} {M} {N} {W} {V} L↓λN M↓W w NW↓V (suc k) =
+--     app⇓ (L↓λN k) (M↓W k) w (NW↓V k)
 
--- ⇓-determ : ∀{M}{V}{V′}
---   → M ⇓ V
---   → M ⇓ V′
---     ------
---   → V ≡ V′ 
--- ⇓-determ {$ c} {.($ _)} {.($ _)} lit⇓ lit⇓ = refl
--- ⇓-determ {ƛ N} {.(ƛ _)} {.(ƛ _)} lam⇓ lam⇓ = refl
--- ⇓-determ {(L · M)} {V} {V′} (app⇓ L⇓λN M⇓W w NW⇓V)
---                             (app⇓ L⇓λN′ M⇓W′ w′ NW′⇓V′)
---     with ⇓-determ L⇓λN L⇓λN′ | ⇓-determ M⇓W M⇓W′
--- ... | refl | refl
---     with ⇓-determ NW⇓V NW′⇓V′
--- ... | refl = refl
--- ⇓-determ {.(_ · _)} {V} {.blame} (app⇓ L⇓λN M⇓W w NW⇓V)
---                                  (app⇓-blame-L L⇓blame)
---     with ⇓-determ L⇓λN L⇓blame
--- ... | ()    
--- ⇓-determ {.(_ · _)} {V} {.blame} (app⇓ L⇓λN M⇓W w NW⇓V)
---                                  (app⇓-blame-R L⇓V v M⇓blame)
---     with ⇓-determ M⇓W M⇓blame | w
--- ... | refl | ()
--- ⇓-determ {.(_ · _)} {.blame} {V′} (app⇓-blame-L L⇓blame)
---                                   (app⇓ L⇓λN M⇓V′₁ x M⇓V′₂)
---     with ⇓-determ L⇓λN L⇓blame
--- ... | ()
--- ⇓-determ {.(_ · _)} {.blame} {.blame} (app⇓-blame-L M⇓V)
---                                       (app⇓-blame-L M⇓V′) = refl
--- ⇓-determ {.(_ · _)} {.blame} {.blame} (app⇓-blame-L L⇓V)
---                                       (app⇓-blame-R L⇓blame v M⇓V′₁)  = refl
--- ⇓-determ {.(_ · _)} {.blame} {V′} (app⇓-blame-R M⇓V v M⇓blame)
---                                   (app⇓ M⇓V′ M⇓W w M⇓V′₂)
---     with ⇓-determ M⇓W M⇓blame | w
--- ... | refl | ()
--- ⇓-determ {.(_ · _)} {.blame} {.blame} (app⇓-blame-R L⇓λN v M⇓V₁)
---                                       (app⇓-blame-L L⇓blame) = refl
--- ⇓-determ {.(_ · _)} {.blame} {.blame} (app⇓-blame-R M⇓V v M⇓V₁)
---                                        (app⇓-blame-R M⇓V′ v′ M⇓V′₁) = refl
--- ⇓-determ {.(_ ⟨ _ !⟩)} {.(_ ⟨ _ !⟩)} {.(_ ⟨ _ !⟩)} (inj⇓ M⇓V x)
---                          (inj⇓ M⇓V′ x₁)
---     with ⇓-determ M⇓V M⇓V′
--- ... | refl = refl
--- ⇓-determ {.(_ ⟨ _ !⟩)} {.(_ ⟨ _ !⟩)} {.blame} (inj⇓ M⇓V v)
---                                           (inj⇓-blame M⇓blame)
---     with ⇓-determ M⇓V M⇓blame | v
--- ... | refl | ()
--- ⇓-determ {.(_ ⟨ _ !⟩)} {.blame} {.(_ ⟨ _ !⟩)} (inj⇓-blame M⇓blame)
---                (inj⇓ M⇓V v) 
---     with ⇓-determ M⇓V M⇓blame | v
--- ... | refl | ()
--- ⇓-determ {.(_ ⟨ _ !⟩)} {.blame} {.blame} (inj⇓-blame M⇓blame)
---                     (inj⇓-blame M⇓V′) = refl
--- ⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {.blame} (proj⇓-blame M⇓V) (proj⇓-blame M⇓V′) = refl
--- ⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {V′} (proj⇓-blame M⇓V) (collapse⇓ M⇓V′)
---     with ⇓-determ M⇓V M⇓V′
--- ... | ()
--- ⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {.blame} (proj⇓-blame M⇓V) (collide⇓ M⇓V′ x) =
---     refl
--- ⇓-determ {.(_ ⟨ _ ?⟩)} {V} {.blame} (collapse⇓ M⇓V) (proj⇓-blame M⇓V′)
---     with ⇓-determ M⇓V M⇓V′
--- ... | ()
--- ⇓-determ {.(_ ⟨ _ ?⟩)} {V} {V′} (collapse⇓ M⇓V) (collapse⇓ M⇓V′)
---     with ⇓-determ M⇓V M⇓V′
--- ... | refl = refl
--- ⇓-determ {.(_ ⟨ _ ?⟩)} {V} {.blame} (collapse⇓ M⇓V) (collide⇓ M⇓V′ x)
---     with ⇓-determ M⇓V M⇓V′
--- ... | refl = ⊥-elim (x refl)
--- ⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {.blame} (collide⇓ M⇓V x) (proj⇓-blame M⇓V′) =
---     refl
--- ⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {V′} (collide⇓ M⇓V x) (collapse⇓ M⇓V′)
---     with ⇓-determ M⇓V M⇓V′
--- ... | refl = ⊥-elim (x refl)
--- ⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {.blame} (collide⇓ M⇓V x) (collide⇓ M⇓V′ x₁) =
---     refl
--- ⇓-determ {.blame} {.blame} {.blame} blame⇓ blame⇓ = refl
+⇓-determ : ∀{M}{V}{V′}
+  → M ⇓ V
+  → M ⇓ V′
+    ------
+  → V ≡ V′ 
+⇓-determ {$ c} {.($ _)} {.($ _)} lit⇓ lit⇓ = refl
+⇓-determ {ƛ N} {.(ƛ _)} {.(ƛ _)} lam⇓ lam⇓ = refl
+⇓-determ {(L · M)} {V} {V′} (app⇓ L⇓λN M⇓W w NW⇓V)
+                            (app⇓ L⇓λN′ M⇓W′ w′ NW′⇓V′)
+    with ⇓-determ L⇓λN L⇓λN′ | ⇓-determ M⇓W M⇓W′
+... | refl | refl
+    with ⇓-determ NW⇓V NW′⇓V′
+... | refl = refl
+⇓-determ {.(_ · _)} {V} {.blame} (app⇓ L⇓λN M⇓W w NW⇓V)
+                                 (app⇓-blame-L L⇓blame)
+    with ⇓-determ L⇓λN L⇓blame
+... | ()    
+⇓-determ {.(_ · _)} {V} {.blame} (app⇓ L⇓λN M⇓W w NW⇓V)
+                                 (app⇓-blame-R L⇓V v M⇓blame)
+    with ⇓-determ M⇓W M⇓blame | w
+... | refl | ()
+⇓-determ {.(_ · _)} {.blame} {V′} (app⇓-blame-L L⇓blame)
+                                  (app⇓ L⇓λN M⇓V′₁ x M⇓V′₂)
+    with ⇓-determ L⇓λN L⇓blame
+... | ()
+⇓-determ {.(_ · _)} {.blame} {.blame} (app⇓-blame-L M⇓V)
+                                      (app⇓-blame-L M⇓V′) = refl
+⇓-determ {.(_ · _)} {.blame} {.blame} (app⇓-blame-L L⇓V)
+                                      (app⇓-blame-R L⇓blame v M⇓V′₁)  = refl
+⇓-determ {.(_ · _)} {.blame} {V′} (app⇓-blame-R M⇓V v M⇓blame)
+                                  (app⇓ M⇓V′ M⇓W w M⇓V′₂)
+    with ⇓-determ M⇓W M⇓blame | w
+... | refl | ()
+⇓-determ {.(_ · _)} {.blame} {.blame} (app⇓-blame-R L⇓λN v M⇓V₁)
+                                      (app⇓-blame-L L⇓blame) = refl
+⇓-determ {.(_ · _)} {.blame} {.blame} (app⇓-blame-R M⇓V v M⇓V₁)
+                                       (app⇓-blame-R M⇓V′ v′ M⇓V′₁) = refl
+⇓-determ {.(_ ⟨ _ !⟩)} {.(_ ⟨ _ !⟩)} {.(_ ⟨ _ !⟩)} (inj⇓ M⇓V x)
+                         (inj⇓ M⇓V′ x₁)
+    with ⇓-determ M⇓V M⇓V′
+... | refl = refl
+⇓-determ {.(_ ⟨ _ !⟩)} {.(_ ⟨ _ !⟩)} {.blame} (inj⇓ M⇓V v)
+                                          (inj⇓-blame M⇓blame)
+    with ⇓-determ M⇓V M⇓blame | v
+... | refl | ()
+⇓-determ {.(_ ⟨ _ !⟩)} {.blame} {.(_ ⟨ _ !⟩)} (inj⇓-blame M⇓blame)
+               (inj⇓ M⇓V v) 
+    with ⇓-determ M⇓V M⇓blame | v
+... | refl | ()
+⇓-determ {.(_ ⟨ _ !⟩)} {.blame} {.blame} (inj⇓-blame M⇓blame)
+                    (inj⇓-blame M⇓V′) = refl
+⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {.blame} (proj⇓-blame M⇓V) (proj⇓-blame M⇓V′) = refl
+⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {V′} (proj⇓-blame M⇓V) (collapse⇓ M⇓V′)
+    with ⇓-determ M⇓V M⇓V′
+... | ()
+⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {.blame} (proj⇓-blame M⇓V) (collide⇓ M⇓V′ x) =
+    refl
+⇓-determ {.(_ ⟨ _ ?⟩)} {V} {.blame} (collapse⇓ M⇓V) (proj⇓-blame M⇓V′)
+    with ⇓-determ M⇓V M⇓V′
+... | ()
+⇓-determ {.(_ ⟨ _ ?⟩)} {V} {V′} (collapse⇓ M⇓V) (collapse⇓ M⇓V′)
+    with ⇓-determ M⇓V M⇓V′
+... | refl = refl
+⇓-determ {.(_ ⟨ _ ?⟩)} {V} {.blame} (collapse⇓ M⇓V) (collide⇓ M⇓V′ x)
+    with ⇓-determ M⇓V M⇓V′
+... | refl = ⊥-elim (x refl)
+⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {.blame} (collide⇓ M⇓V x) (proj⇓-blame M⇓V′) =
+    refl
+⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {V′} (collide⇓ M⇓V x) (collapse⇓ M⇓V′)
+    with ⇓-determ M⇓V M⇓V′
+... | refl = ⊥-elim (x refl)
+⇓-determ {.(_ ⟨ _ ?⟩)} {.blame} {.blame} (collide⇓ M⇓V x) (collide⇓ M⇓V′ x₁) =
+    refl
+⇓-determ {.blame} {.blame} {.blame} blame⇓ blame⇓ = refl
 
--- ⇓-value-eq : ∀{V W} → Value V → V ⇓ W → W ≡ V
--- ⇓-value-eq {V}{W} v V⇓W = ⇓-determ V⇓W (⇓-value V v)
+⇓-value : ∀ V → Value V → V ⇓ V
+⇓-value .(ƛ N) (ƛ̬ N) = lam⇓
+⇓-value .($ c) ($̬ c) = lit⇓
+⇓-value (V ⟨ G !⟩) (v 〈 G 〉) = inj⇓ (⇓-value V v) v
+
+⇓-value-eq : ∀{V W} → Value V → V ⇓ W → W ≡ V
+⇓-value-eq {V}{W} v V⇓W = ⇓-determ V⇓W (⇓-value V v)
 
 -- inj⇑-inv : ∀{M G} → M ⟨ G !⟩ ⇑ → M ⇑
 -- inj⇑-inv {M}{G} MG⇑ k
