@@ -289,6 +289,9 @@ data _⇓ᵏ_ : Term → Result → ℕ → Set where
     with ⇓ᵏ-determ V⇓Vj (⇓ᵏval-upClosed V⇓R (<⇒≤ (≰⇒> nlt)))
 ... | refl = inj₁ refl
 
+⇓ᵏ-blame-eq : ∀{R}{k} → (blame ⇓ᵏ R) k → R ≡ blameR ⊎ R ≡ timeout
+⇓ᵏ-blame-eq {.timeout} {zero} ⇓ᵏzero = inj₂ refl
+⇓ᵏ-blame-eq {.blameR} {suc k} blame⇓ᵏ = inj₁ refl
 
 
 -- -- inj⇑-inv : ∀{M G} → M ⟨ G !⟩ ⇑∀ → M ⇑∀

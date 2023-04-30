@@ -33,6 +33,23 @@ _⇓_ : Term → Result → ℕ → Set
     Goal rewrite +-∸-assoc l {suc k}{suc k} ≤-refl | n∸n≡0 k | +-identityʳ l =
         V⇓Vl
 
+sk∸k=1 : ∀ k → suc k ∸ k ≡ suc zero
+sk∸k=1 zero = refl
+sk∸k=1 (suc k) = sk∸k=1 k
+
+⇓-blame : ∀{k} → (blame ⇓ blameR) k
+⇓-blame {zero} = tt
+⇓-blame {suc k} = blameH , ((suc (suc k)) , Goal)
+    where
+    Goal : (blame ⇓ᵏ blameR) (suc k ∸ k)
+    Goal rewrite sk∸k=1 k = blame⇓ᵏ
+
+{- false
+⇓-timeout : ∀{M}{k} → (M ⇓ timeout) k
+⇓-timeout {M} {zero} = tt
+⇓-timeout {M} {suc k} = {!!} , {!!}
+-}
+
 downClosed⇓ : ∀ M R → downClosed (M ⇓ R)
 downClosed⇓ M R zero M⇓ zero z≤n = tt
 downClosed⇓ M R (suc k) (H , n , M⇓Rn-k) zero z≤n = tt
@@ -41,8 +58,8 @@ downClosed⇓ M R (suc k) (H , n , M⇓Rn-k) (suc j) (s≤s j≤k) =
 
 infix 8 _⇓ᵒ_
 _⇓ᵒ_ : Term → Result → Setᵒ
-M ⇓ᵒ N = record { # = (M ⇓ N)
-                ; down = downClosed⇓ M N
+M ⇓ᵒ R = record { # = (M ⇓ R)
+                ; down = downClosed⇓ M R
                 ; tz = tt
                 }
 
@@ -59,7 +76,25 @@ M ⇑ᵒ = record { # = (M ⇑)
               ; tz = ⇓ᵏzero
               }
 
-{-
-⇓ᵒ-value : ∀ {𝒫} → ∀ V → Value V → 𝒫 ⊢ᵒ V ⇓ᵒ V
-⇓ᵒ-value {𝒫} V v = ⊢ᵒ-intro λ n 𝒫n → ⇓-value V v
--}
+infix 6 _⟹_
+_⟹_ : Term → Result → ℕ → Set
+(M ⟹ val V) k = (M ⇓ val V) k
+(M ⟹ blameR) k = (M ⇓ blameR) k
+(M ⟹ timeout) k = (M ⇑) k
+
+downClosed⟹ : ∀ M R → downClosed (M ⟹ R)
+downClosed⟹ M (val V) = downClosed⇓ M (val V)
+downClosed⟹ M blameR = downClosed⇓ M blameR
+downClosed⟹ M timeout = downClosed⇑ M
+
+trueZero⟹ : ∀ M R → (M ⟹ R) 0
+trueZero⟹ M (val V) = tt
+trueZero⟹ M blameR = tt
+trueZero⟹ M timeout = ⇓ᵏzero
+
+infix 8 _⟹ᵒ_
+_⟹ᵒ_ : Term → Result → Setᵒ
+M ⟹ᵒ R = record { # = (M ⟹ R)
+                ; down = downClosed⟹ M R
+                ; tz = trueZero⟹ M R
+                }
