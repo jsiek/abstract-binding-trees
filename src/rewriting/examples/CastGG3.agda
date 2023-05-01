@@ -312,7 +312,11 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
        let ⇑W = ℰWW′ n ≤-refl ⇑W′ in
        ⇑inj ⇑W}
       ))}
- Goal {.($ₜ _) , .($ₜ _) , base⊑} {V} {V′} = {!!}
+ Goal {.($ₜ _) , .($ₜ _) , base⊑} {V} {V′} =
+     𝒱-base-elim Zᵒ λ{ c refl refl →
+     substᵒ (≡ᵒ-sym ℰ-stmt) (→ᵒI{P = ⇑ᵒ ($ c)}
+            (⊢ᵒ-intro λ { .zero (⇑zero , asms) → ⇑zero}))
+     }
  Goal {.(_ ⇒ _) , .(_ ⇒ _) , fun⊑ A⊑A′ A⊑A′₁} {V} {V′} = {!!}
 
 
