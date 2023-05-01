@@ -293,7 +293,14 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
      with dyn? A′ 
  ... | no A′≢★ =
       𝒱-dyn-any-elim A′≢★ Zᵒ λ{W G w refl w′ G⊑A′ ⊢▷𝒱WW′ →
-      {!!}
+      substᵒ (≡ᵒ-sym ℰ-stmt) (→ᵒI{P = ⇑ᵒ V′}
+      (⊢ᵒ-intro λ { zero (⇑V′n , _) → ⇑zero
+                  ; (suc n) (⇑V′sn , 𝒱W!V′ , ▷𝒱⇒ℰ , asms) →
+       let 𝒱WV′ = ⊢ᵒ-elim ⊢▷𝒱WW′ (suc n) (𝒱W!V′ , (▷𝒱⇒ℰ , asms)) in
+       let ℰWV′ = ▷𝒱⇒ℰ (gnd⇒ty G , A′ , G⊑A′) W V′ n ≤-refl 𝒱WV′ in
+       let ⇑V′n = downClosed⇑ (suc n) ⇑V′sn n (n≤1+n n) in
+       let ⇑W = ℰWV′ n ≤-refl ⇑V′n in
+       ⇑inj ⇑W}))
       }
  ... | yes refl =
       𝒱-dyn-dyn-elim{V = V}{V′} Zᵒ λ{W W′ G w w′ refl refl ⊢▷𝒱WW′ →
