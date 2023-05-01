@@ -482,16 +482,12 @@ compatible-app {Γ}{A}{A′}{B}{B′}{c}{d}{L}{L′}{M}{M′} ⊨L⊑L′ ⊨M�
       let 𝒫₄ = EX W W′ ∷ 𝒫₃ in
       let 𝒱VV′ = proj₂ᵒ (proj₂ᵒ (Sᵒ Zᵒ)) in
       𝒱-fun-elim{𝒫₄} 𝒱VV′ λ {N N″ refl refl body →
-      let 𝒱WW′ : 𝒫₄ ⊢ᵒ 𝒱⟦ A , A′ , c ⟧ W W′
-          𝒱WW′ = proj₂ᵒ (proj₂ᵒ Zᵒ) in
+      let 𝒱WW′ = proj₂ᵒ (proj₂ᵒ Zᵒ) in
       let ℰNWNW′ = appᵒ (body W W′) 𝒱WW′ in
-      let ▷⇑NW′ : 𝒫₄ ⊢ᵒ ▷ᵒ (⇑ᵒ (N′ [ W′ ]))
-          ▷⇑NW′ = (Sᵒ (Sᵒ (Sᵒ (Sᵒ (Sᵒ Zᵒ)))))  in
+      let ▷⇑NW′ = (Sᵒ (Sᵒ (Sᵒ (Sᵒ (Sᵒ Zᵒ)))))  in
       let ▷⇑NW = ℰ-diverge-later{𝒫₄} ℰNWNW′ ▷⇑NW′ in
-      let M⇓W : 𝒫₄ ⊢ᵒ (⟪ γ ⟫ M ⇓ W)ᵒ
-          M⇓W = proj₁ᵒ Zᵒ in
-      let w : 𝒫₄ ⊢ᵒ (Value W)ᵒ
-          w = proj₁ᵒ (proj₂ᵒ Zᵒ) in
+      let M⇓W = proj₁ᵒ Zᵒ in
+      let w = proj₁ᵒ (proj₂ᵒ Zᵒ) in
       ⊢ᵒ⇑app (Sᵒ L⇓V) M⇓W w ▷⇑NW
       })
       
