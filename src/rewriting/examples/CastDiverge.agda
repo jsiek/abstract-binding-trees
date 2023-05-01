@@ -19,6 +19,8 @@ open import rewriting.examples.Cast
 open import rewriting.examples.CastBigStep
 open import rewriting.examples.StepIndexedLogic2
 
+{----- Diverge ------}
+
 data ⇑ : Term → ℕ → Set where
   ⇑zero : ∀{M} → ⇑ M zero
   ⇑app : ∀{L M N W k}
@@ -45,8 +47,60 @@ downClosed⇑ (suc k) (⇑inj ⇑M) (suc j) (s≤s j≤k) =
 downClosed⇑ (suc k) (⇑proj ⇑M) (suc j) (s≤s j≤k) =
     ⇑proj (downClosed⇑ k ⇑M j j≤k)
 
+{----- Diverge in SIL ------}
+
 ⇑ᵒ : Term → Setᵒ
 ⇑ᵒ M = record { # = ⇑ M
               ; down = downClosed⇑ 
               ; tz = ⇑zero
               }
+
+{---- Lift Divergence Rules into SIL -----}
+
+⊢ᵒ⇑app-L : ∀{𝒫}{L}{M}
+ → 𝒫 ⊢ᵒ ▷ᵒ (⇑ᵒ L)
+ → 𝒫 ⊢ᵒ ⇑ᵒ (L · M)
+⊢ᵒ⇑app-L {𝒫}{L}{M} ⊢▷⇑L = ⊢ᵒ-intro
+  λ { zero 𝒫z → ⇑zero
+    ; (suc n) 𝒫sn → ⇑app-L (⊢ᵒ-elim ⊢▷⇑L (suc n) 𝒫sn) }
+
+⊢ᵒ⇑app-R : ∀{𝒫}{L}{M}{N}
+ → 𝒫 ⊢ᵒ (L ⇓ ƛ N)ᵒ
+ → 𝒫 ⊢ᵒ ▷ᵒ (⇑ᵒ M)
+ → 𝒫 ⊢ᵒ ⇑ᵒ (L · M)
+⊢ᵒ⇑app-R {𝒫}{L}{M}{N} ⊢L⇓ ⊢▷⇑M = ⊢ᵒ-intro
+  λ { zero _ → ⇑zero
+    ; (suc n) 𝒫sn →
+      ⇑app-R (⊢ᵒ-elim ⊢L⇓ (suc n) 𝒫sn) (⊢ᵒ-elim ⊢▷⇑M (suc n) 𝒫sn ) }
+
+⊢ᵒ⇑app : ∀{𝒫}{L}{M}{N}{W}
+ → 𝒫 ⊢ᵒ (L ⇓ ƛ N)ᵒ
+ → 𝒫 ⊢ᵒ (M ⇓ W)ᵒ
+ → 𝒫 ⊢ᵒ (Value W)ᵒ
+ → 𝒫 ⊢ᵒ ▷ᵒ (⇑ᵒ (N [ W ]))
+ → 𝒫 ⊢ᵒ ⇑ᵒ (L · M)
+⊢ᵒ⇑app {𝒫}{L}{M}{N} ⊢L⇓ ⊢M⇓ ⊢w ⊢▷⇑NW = ⊢ᵒ-intro
+  λ { zero _ → ⇑zero
+    ; (suc n) 𝒫sn →
+      ⇑app (⊢ᵒ-elim ⊢L⇓ (suc n) 𝒫sn)
+           (⊢ᵒ-elim ⊢M⇓ (suc n) 𝒫sn)
+           (⊢ᵒ-elim ⊢w (suc n) 𝒫sn)
+           (⊢ᵒ-elim ⊢▷⇑NW (suc n) 𝒫sn) }
+
+⊢⇑app-inv : ∀{𝒫}{L}{M}{R}
+ → (▷ᵒ (⇑ᵒ L) ∷ 𝒫 ⊢ᵒ R)
+ → (∀ N → (L ⇓ ƛ N)ᵒ ∷ ▷ᵒ (⇑ᵒ M) ∷ 𝒫 ⊢ᵒ R)
+ → (∀ N W → (L ⇓ ƛ N)ᵒ ∷ (M ⇓ W)ᵒ ∷ (Value W)ᵒ ∷ ▷ᵒ (⇑ᵒ (N [ W ]))
+       ∷ 𝒫 ⊢ᵒ R)
+ → ⇑ᵒ (L · M) ∷ 𝒫 ⊢ᵒ R
+⊢⇑app-inv {𝒫}{L}{M}{R} c1 c2 c3 =
+  ⊢ᵒ-intro λ
+  { zero x → tz R
+  ; (suc n) (⇑app-L ⇑Ln , 𝒫sn) →
+     ⊢ᵒ-elim c1 (suc n) (⇑Ln , 𝒫sn)
+  ; (suc n) (⇑app-R L⇓ ⇑Mn , 𝒫sn) →
+     ⊢ᵒ-elim (c2 _) (suc n) (L⇓ , ⇑Mn , 𝒫sn)
+  ; (suc n) (⇑app L⇓ M⇓ w ⇑NWn , 𝒫sn) → 
+     ⊢ᵒ-elim (c3 _ _) (suc n) (L⇓ , M⇓ , w , ⇑NWn , 𝒫sn)
+  }
+
