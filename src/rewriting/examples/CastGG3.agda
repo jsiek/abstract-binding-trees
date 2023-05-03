@@ -11,7 +11,7 @@ open import Data.Unit.Polymorphic using () renaming (⊤ to topᵖ; tt to ttᵖ)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality as Eq
-  using (_≡_; _≢_; refl; sym; cong; subst; trans)
+  using (_≡_; _≢_; refl; sym; cong; cong₂; subst; trans)
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Var
 open import rewriting.examples.Cast
@@ -550,22 +550,89 @@ compatible-inj-L{Γ}{G}{A′}{c}{M}{M′} ⊨M⊑M′ γ γ′ =
   substᵒ (≡ᵒ-sym ℰ-stmt) (Diverge ,ᵒ ToValue)
   where
   Diverge : 𝓖⟦ Γ ⟧ γ γ′ ⊢ᵒ ⇑⇒⇑ ((⟪ γ ⟫ M) ⟨ G !⟩) (⟪ γ′ ⟫ M′)
-  Diverge = {!!}
+  Diverge = →ᵒI {P = ⇑ᵒ (⟪ γ′ ⟫ M′)} (⊢⇑inj
+    let ⇑M = appᵒ (ℰ-diverge (Sᵒ (⊨M⊑M′ γ γ′))) Zᵒ in
+    monoᵒ ⇑M)
 
   ToValue : 𝓖⟦ Γ ⟧ γ γ′ ⊢ᵒ ⇓⇒⇓𝒱 (★ , A′ , unk⊑) ((⟪ γ ⟫ M) ⟨ G !⟩)(⟪ γ′ ⟫ M′)
-  ToValue = {!!}
+  ToValue = Λᵒ[ V′ ] (→ᵒI {P = ((⟪ γ′ ⟫ M′) ⇓ V′)ᵒ} (→ᵒI {P = (Value V′)ᵒ}
+    (⊢ᵒ-sucP Zᵒ λ v′ → 
+    (⊢ᵒ-sucP (Sᵒ Zᵒ) λ M′⇓V′ → 
+    ℰ-converge (Sᵒ (Sᵒ (⊨M⊑M′ γ γ′))) (constᵒI M′⇓V′) (constᵒI v′) λ V →
+    ⊢ᵒ-∃-intro-new (λ W → (⟪ γ ⟫ M ⟨ G !⟩ ⇓ W)ᵒ ×ᵒ (Value W)ᵒ
+                            ×ᵒ 𝒱⟦ ★ , A′ , unk⊑ ⟧ W V′)
+    (V ⟨ G !⟩)
+    (⊢ᵒ-sucP (proj₁ᵒ Zᵒ) λ M⇓V →
+    (⊢ᵒ-sucP (proj₁ᵒ (proj₂ᵒ Zᵒ)) λ v →
+    (constᵒI (inj⇓ M⇓V v) ,ᵒ (constᵒI (v 〈 _ 〉) ,ᵒ
+      substᵒ (≡ᵒ-sym (𝒱-dyn-any c))
+      (constᵒI v ,ᵒ (constᵒI v′ ,ᵒ monoᵒ (proj₂ᵒ (proj₂ᵒ Zᵒ))))))))))))
+
+gnd-not-dyn : ∀{G}
+   → gnd⇒ty G ≢ ★
+gnd-not-dyn {$ᵍ ι} = λ ()
+gnd-not-dyn {★⇒★} = λ ()
+
+gnd-unique : ∀{G H A}
+   → gnd⇒ty G ⊑ A
+   → gnd⇒ty H ⊑ A
+   → G ≡ H
+gnd-unique {$ᵍ ι} {H} {★} () H⊑A
+gnd-unique {★⇒★} {H} {★} () H⊑A
+gnd-unique {$ᵍ ι} {$ᵍ .ι} {$ₜ .ι} base⊑ base⊑ = refl
+gnd-unique {★⇒★} {★⇒★} {A ⇒ B} (fun⊑ G⊑A G⊑A₁) (fun⊑ H⊑A H⊑A₁) = refl
+
+⊑-gnd-unique : ∀{G H}
+   → gnd⇒ty G ⊑ gnd⇒ty H
+   → G ≡ H
+⊑-gnd-unique {$ᵍ ι} {$ᵍ .ι} base⊑ = refl
+⊑-gnd-unique {★⇒★} {★⇒★} G⊑H = refl
+
+A⊑A-unique : ∀{A}
+    (c : A ⊑ A)
+  → c ≡ Refl⊑
+A⊑A-unique {.★} unk⊑ = refl
+A⊑A-unique {.($ₜ _)} base⊑ = refl
+A⊑A-unique {.(_ ⇒ _)} (fun⊑ c d) = cong₂ fun⊑ (A⊑A-unique c) (A⊑A-unique d)
 
 compatible-inj-R : ∀{Γ}{G}{c : ★ ⊑ gnd⇒ty G }{M M′}
    → Γ ⊨ M ⊑ M′ ⦂ (★ , gnd⇒ty G , c)
    → Γ ⊨ M ⊑ M′ ⟨ G !⟩ ⦂ (★ , ★ , unk⊑)
-compatible-inj-R{Γ}{G}{c }{M}{M′} ⊨M⊑M′ γ γ′ =
+compatible-inj-R{Γ}{G}{unk⊑}{M}{M′} ⊨M⊑M′ γ γ′ =
   substᵒ (≡ᵒ-sym ℰ-stmt) (Diverge ,ᵒ ToValue)
   where
   Diverge : 𝓖⟦ Γ ⟧ γ γ′ ⊢ᵒ ⇑⇒⇑ (⟪ γ ⟫ M) (⟪ γ′ ⟫ M′ ⟨ G !⟩)
   Diverge = {!!}
 
   ToValue : 𝓖⟦ Γ ⟧ γ γ′ ⊢ᵒ ⇓⇒⇓𝒱 (★ , ★ , unk⊑) (⟪ γ ⟫ M) (⟪ γ′ ⟫ M′ ⟨ G !⟩)
-  ToValue = {!!}
+  ToValue = Λᵒ[ V′ ] (→ᵒI {P = ((⟪ γ′ ⟫ M′ ⟨ G !⟩) ⇓ V′)ᵒ}
+    (→ᵒI {P = (Value V′)ᵒ}
+    (⊢ᵒ-sucP Zᵒ λ v′ → 
+    (⊢ᵒ-sucP (Sᵒ Zᵒ) λ {(inj⇓{V = W′} M′⇓W′ w′) →
+    ℰ-converge (Sᵒ (Sᵒ (⊨M⊑M′ γ γ′))) (constᵒI M′⇓W′) (constᵒI w′) λ V →
+    ⊢ᵒ-∃-intro-new (λ W → (⟪ γ ⟫ M ⇓ W)ᵒ ×ᵒ (Value W)ᵒ
+                            ×ᵒ 𝒱⟦ ★ , ★ , unk⊑ ⟧ W V′)
+    V
+    (𝒱-dyn-any-elim (gnd-not-dyn{G}) (proj₂ᵒ (proj₂ᵒ Zᵒ))
+    λ {V₁ G′ v₁ refl w″ G′⊑A′ ▷𝒱V₁V′ →
+    proj₁ᵒ Zᵒ ,ᵒ (constᵒI (v₁ 〈 _ 〉) ,ᵒ Goal v₁ w″ G′⊑A′ ▷𝒱V₁V′)})}))))
+    where
+    𝒫₁ = λ V₁ G′ W′ → (⟪ γ ⟫ M ⇓ (V₁ ⟨ G′ !⟩)) ᵒ ×ᵒ
+              Value (V₁ ⟨ G′ !⟩) ᵒ ×ᵒ 𝒱⟦ ★ , gnd⇒ty G , unk⊑ ⟧ (V₁ ⟨ G′ !⟩) W′
+          ∷  Value (W′ ⟨ G !⟩) ᵒ ∷ ((⟪ γ′ ⟫ M′ ⟨ G !⟩) ⇓ (W′ ⟨ G !⟩)) ᵒ
+          ∷ 𝓖⟦ Γ ⟧ γ γ′
+    Goal : ∀{V₁ G′ W′}
+       → Value V₁
+       → Value W′
+       → (G′⊑A′ : gnd⇒ty G′ ⊑ gnd⇒ty G)
+       → 𝒫₁ V₁ G′ W′ ⊢ᵒ (▷ᵒ 𝒱⟦ gnd⇒ty G′ , gnd⇒ty G , G′⊑A′ ⟧ V₁ W′)
+       → 𝒫₁ V₁ G′ W′ ⊢ᵒ 𝒱⟦ ★ , ★ , unk⊑ ⟧ (V₁ ⟨ G′ !⟩) (W′ ⟨ G !⟩)
+    Goal {V₁}{G′}{W′} v₁ w′ G′⊑A′ ▷𝒱V₁V′
+        with ⊑-gnd-unique G′⊑A′
+    ... | refl
+        with A⊑A-unique G′⊑A′
+    ... | refl = (substᵒ (≡ᵒ-sym (𝒱-dyn-dyn{G′}))
+                    (constᵒI v₁ ,ᵒ (constᵒI w′ ,ᵒ ▷𝒱V₁V′)))
 
 compatible-proj-L : ∀{Γ}{H}{A′}{c : gnd⇒ty H ⊑ A′}{M}{M′}
    → Γ ⊨ M ⊑ M′ ⦂ (★ , A′ ,  unk⊑)
