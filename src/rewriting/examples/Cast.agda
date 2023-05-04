@@ -131,6 +131,33 @@ _⊑?_ : (A : Type) → (B : Type) → Dec (A ⊑ B)
 ... | no A⋢B | yes A′⊑B′ = no λ {(fun⊑ x y) → ⊥-elim (A⋢B x)}
 ... | no A⋢B | no A′⋢B′ = no λ {(fun⊑ x y) → ⊥-elim (A⋢B x)}
 
+gnd-not-dyn : ∀{G}
+   → gnd⇒ty G ≢ ★
+gnd-not-dyn {$ᵍ ι} = λ ()
+gnd-not-dyn {★⇒★} = λ ()
+
+gnd-unique : ∀{G H A}
+   → gnd⇒ty G ⊑ A
+   → gnd⇒ty H ⊑ A
+   → G ≡ H
+gnd-unique {$ᵍ ι} {H} {★} () H⊑A
+gnd-unique {★⇒★} {H} {★} () H⊑A
+gnd-unique {$ᵍ ι} {$ᵍ .ι} {$ₜ .ι} base⊑ base⊑ = refl
+gnd-unique {★⇒★} {★⇒★} {A ⇒ B} (fun⊑ G⊑A G⊑A₁) (fun⊑ H⊑A H⊑A₁) = refl
+
+⊑-gnd-unique : ∀{G H}
+   → gnd⇒ty G ⊑ gnd⇒ty H
+   → G ≡ H
+⊑-gnd-unique {$ᵍ ι} {$ᵍ .ι} base⊑ = refl
+⊑-gnd-unique {★⇒★} {★⇒★} G⊑H = refl
+
+A⊑A-unique : ∀{A}
+    (c : A ⊑ A)
+  → c ≡ Refl⊑
+A⊑A-unique {.★} unk⊑ = refl
+A⊑A-unique {.($ₜ _)} base⊑ = refl
+A⊑A-unique {.(_ ⇒ _)} (fun⊑ c d) = cong₂ fun⊑ (A⊑A-unique c) (A⊑A-unique d)
+
 {------------------------ Terms --------------------------------}
 
 data Lit : Set where
