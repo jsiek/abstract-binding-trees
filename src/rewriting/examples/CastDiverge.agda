@@ -30,9 +30,7 @@ data ⇑ : Term → ℕ → Set where
      → ⇑ (L · M) (suc k)
   ⇑app-L : ∀{L M k} → ⇑ L k → ⇑ (L · M) (suc k)
   ⇑app-R : ∀{L M N k} → L ⇓ ƛ N → ⇑ M k → ⇑ (L · M) (suc k)
-  ⇑inj : ∀{M G k}
-     → ⇑ M (suc k)  {- was ⇑ M k   -Jeremy -}
-     → ⇑ (M ⟨ G !⟩) (suc k)
+  ⇑inj : ∀{M G k} → ⇑ M k → ⇑ (M ⟨ G !⟩) (suc k)
   ⇑proj : ∀{M H k} → ⇑ M k → ⇑ (M ⟨ H ?⟩) (suc k)
 
 downClosed⇑ : ∀ {M} → downClosed (⇑ M)
@@ -45,7 +43,7 @@ downClosed⇑ (suc k) (⇑app-L ⇑M) (suc j) (s≤s j≤k) =
 downClosed⇑ (suc k) (⇑app-R x ⇑M) (suc j) (s≤s j≤k) =
     ⇑app-R x (downClosed⇑ k ⇑M j j≤k)
 downClosed⇑ (suc k) (⇑inj ⇑M) (suc j) (s≤s j≤k) =
-    ⇑inj (downClosed⇑ (suc k) ⇑M (suc j) (s≤s j≤k))
+    ⇑inj (downClosed⇑ k ⇑M j j≤k)
 downClosed⇑ (suc k) (⇑proj ⇑M) (suc j) (s≤s j≤k) =
     ⇑proj (downClosed⇑ k ⇑M j j≤k)
 
@@ -107,15 +105,15 @@ downClosed⇑ (suc k) (⇑proj ⇑M) (suc j) (s≤s j≤k) =
   }
 
 ⊢⇑inj : ∀{𝒫}{M}{G}
- → 𝒫 ⊢ᵒ (⇑ᵒ M)
+ → 𝒫 ⊢ᵒ ▷ᵒ (⇑ᵒ M)
  → 𝒫 ⊢ᵒ ⇑ᵒ (M ⟨ G !⟩)
-⊢⇑inj {𝒫}{M}{G} ⊢⇑M = ⊢ᵒ-intro
+⊢⇑inj {𝒫}{M}{G} ⊢▷⇑M = ⊢ᵒ-intro
   λ { zero 𝒫n → ⇑zero
-    ; (suc n) 𝒫n → ⇑inj (⊢ᵒ-elim ⊢⇑M (suc n) 𝒫n)}
+    ; (suc n) 𝒫n → ⇑inj (⊢ᵒ-elim ⊢▷⇑M (suc n) 𝒫n)}
 
 ⊢⇑inj-inv : ∀{𝒫}{M}{G}{R}
-  → (⇑ᵒ M) ∷ 𝒫 ⊢ᵒ R
+  → ▷ᵒ (⇑ᵒ M) ∷ 𝒫 ⊢ᵒ R
   → ⇑ᵒ (M ⟨ G !⟩) ∷ 𝒫 ⊢ᵒ R
-⊢⇑inj-inv {𝒫}{M}{G}{R} ⇑M⊢R = ⊢ᵒ-intro
+⊢⇑inj-inv {𝒫}{M}{G}{R} ▷⇑M⊢R = ⊢ᵒ-intro
   λ { zero _ → tz R
-    ; (suc n) (⇑inj ⇑Mn , 𝒫sn) → ⊢ᵒ-elim ⇑M⊢R (suc n) (⇑Mn , 𝒫sn) }
+    ; (suc n) (⇑inj ⇑Mn , 𝒫sn) → ⊢ᵒ-elim ▷⇑M⊢R (suc n) (⇑Mn , 𝒫sn) }
