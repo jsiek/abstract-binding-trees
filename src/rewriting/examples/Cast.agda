@@ -89,8 +89,11 @@ dyn? (A ⇒ B) = no (λ ())
 infixr 6 _⊑_
 data _⊑_ : Type → Type → Set where
 
-  unk⊑ : ∀{B} → ★ ⊑ B
-  
+  unk⊑unk : ★ ⊑ ★
+
+  {- gnd⇒ty G ⊑ B prevents overlap with unk⊑unk -Jeremy -}
+  unk⊑any : ∀{G}{B} → gnd⇒ty G ⊑ B → ★ ⊑ B 
+
   base⊑ : ∀{ι} → $ₜ ι ⊑ $ₜ ι
 
   fun⊑ : ∀{A B C D}
@@ -99,23 +102,40 @@ data _⊑_ : Type → Type → Set where
      → A ⇒ B ⊑ C ⇒ D
 
 Refl⊑ : ∀{A} → A ⊑ A
-Refl⊑ {★} = unk⊑
+Refl⊑ {★} = unk⊑unk
 Refl⊑ {$ₜ ι} = base⊑
 Refl⊑ {A ⇒ B} = fun⊑ Refl⊑ Refl⊑
 
 Trans⊑ : ∀ {A B C} → A ⊑ B → B ⊑ C → A ⊑ C
-Trans⊑ unk⊑ b = unk⊑
+Trans⊑ unk⊑unk unk⊑unk = unk⊑unk
+Trans⊑ unk⊑unk (unk⊑any b) = unk⊑any b
+Trans⊑ (unk⊑any nd) unk⊑unk = unk⊑unk
+Trans⊑ (unk⊑any {$ᵍ ι} ()) (unk⊑any {H} b)
+Trans⊑ (unk⊑any {★⇒★} ()) (unk⊑any {H} b)
+Trans⊑ (unk⊑any nd) base⊑ = unk⊑any nd
+Trans⊑ (unk⊑any nd) (fun⊑ b b₁) = unk⊑any (Trans⊑ nd (fun⊑ b b₁))
 Trans⊑ base⊑ b = b
 Trans⊑ (fun⊑ a a₁) (fun⊑ b b₁) = fun⊑ (Trans⊑ a b) (Trans⊑ a₁ b₁)
 
 AntiSym⊑ : ∀ {A B} → A ⊑ B → B ⊑ A → A ≡ B
-AntiSym⊑ unk⊑ unk⊑ = refl
+AntiSym⊑ unk⊑unk unk⊑unk = refl
+AntiSym⊑ unk⊑unk (unk⊑any ga) = refl
+AntiSym⊑ (unk⊑any nd) unk⊑unk = refl
+AntiSym⊑ (unk⊑any nd) (unk⊑any ba) = refl
 AntiSym⊑ base⊑ base⊑ = refl
 AntiSym⊑ {A ⇒ B}{A' ⇒ B'} (fun⊑ a a₁) (fun⊑ b b₁) =
   cong₂ (_⇒_) (AntiSym⊑ a b) (AntiSym⊑ a₁ b₁)
 
+★⊑ : (A : Type) → ★ ⊑ A
+★⊑ ★ = unk⊑unk
+★⊑ ($ₜ ι) = unk⊑any base⊑
+★⊑ (A ⇒ B) = unk⊑any (fun⊑ (★⊑ A) (★⊑ B))
+
 _⊑?_ : (A : Type) → (B : Type) → Dec (A ⊑ B)
-★ ⊑? B = yes unk⊑
+★ ⊑? ★ = yes unk⊑unk
+★ ⊑? ($ₜ ι) = yes (unk⊑any base⊑)
+★ ⊑? (B ⇒ C) = yes (unk⊑any (fun⊑ (★⊑ B) (★⊑ C)))
+
 ($ₜ ι) ⊑? ★ = no λ ()
 ($ₜ ι) ⊑? ($ₜ ι′)
     with ι ≡$? ι′
@@ -154,7 +174,9 @@ gnd-unique {★⇒★} {★⇒★} {A ⇒ B} (fun⊑ G⊑A G⊑A₁) (fun⊑ H�
 A⊑A-unique : ∀{A}
     (c : A ⊑ A)
   → c ≡ Refl⊑
-A⊑A-unique {.★} unk⊑ = refl
+A⊑A-unique {.★} unk⊑unk = refl
+A⊑A-unique {.★} (unk⊑any {$ᵍ ι} ())
+A⊑A-unique {.★} (unk⊑any {★⇒★} ())
 A⊑A-unique {.($ₜ _)} base⊑ = refl
 A⊑A-unique {.(_ ⇒ _)} (fun⊑ c d) = cong₂ fun⊑ (A⊑A-unique c) (A⊑A-unique d)
 
@@ -334,22 +356,22 @@ data _⊩_⊑_⦂_ where
 
   ⊑-inj-L : ∀{Γ M M′}{G B}{c : (gnd⇒ty G) ⊑ B}
      → Γ ⊩ M ⊑ M′ ⦂ c
-       ---------------------------
-     → Γ ⊩ M ⟨ G !⟩ ⊑ M′ ⦂ unk⊑{B}
+       -------------------------------
+     → Γ ⊩ M ⟨ G !⟩ ⊑ M′ ⦂ (unk⊑any c)
 
   ⊑-inj-R : ∀{Γ M M′}{G}{c : ★ ⊑ (gnd⇒ty G)}
      → Γ ⊩ M ⊑ M′ ⦂ c
        ---------------------------
-     → Γ ⊩ M ⊑ M′ ⟨ G !⟩ ⦂ unk⊑{★}
+     → Γ ⊩ M ⊑ M′ ⟨ G !⟩ ⦂ unk⊑unk
 
   ⊑-proj-L : ∀{Γ M M′ H B}{c : (gnd⇒ty H) ⊑ B}
-     → Γ ⊩ M ⊑ M′ ⦂ unk⊑{B}
-       ---------------------
+     → Γ ⊩ M ⊑ M′ ⦂ unk⊑any c
+       ----------------------
      → Γ ⊩ M ⟨ H ?⟩ ⊑ M′ ⦂ c
 
   ⊑-proj-R : ∀{Γ M M′ H}{c : ★ ⊑ (gnd⇒ty H)}
-     → Γ ⊩ M ⊑ M′ ⦂ unk⊑{★}
-       ---------------------
+     → Γ ⊩ M ⊑ M′ ⦂ unk⊑unk
+       -----------------------
      → Γ ⊩ M ⊑ M′ ⟨ H ?⟩  ⦂ c
 
   ⊑-blame : ∀{Γ M A}
@@ -857,3 +879,4 @@ reduce-inject : ∀{M V G}
 reduce-inject {M} {.M} {G} (.M END) = _ END
 reduce-inject {M} {V} {G} (.M —→⟨ M→M′ ⟩ M→V) =
     (M ⟨ G !⟩ —→⟨ ξ (□⟨ G !⟩) M→M′ ⟩ reduce-inject M→V)
+
