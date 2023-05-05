@@ -167,6 +167,29 @@ gnd-unique {★⇒★} {H} {★} () H⊑A
 gnd-unique {$ᵍ ι} {$ᵍ .ι} {$ₜ .ι} base⊑ base⊑ = refl
 gnd-unique {★⇒★} {★⇒★} {A ⇒ B} (fun⊑ G⊑A G⊑A₁) (fun⊑ H⊑A H⊑A₁) = refl
 
+dyn-prec-unique : ∀{A}
+  → (c : ★ ⊑ A)
+  → (d : ★ ⊑ A)
+  → c ≡ d
+dyn-prec-unique {★} unk⊑unk unk⊑unk = refl
+dyn-prec-unique {★} unk⊑unk (unk⊑any {$ᵍ ι} ())
+dyn-prec-unique {★} unk⊑unk (unk⊑any {★⇒★} ())
+dyn-prec-unique {★} (unk⊑any {$ᵍ ι} ()) d
+dyn-prec-unique {★} (unk⊑any {★⇒★} ()) d
+dyn-prec-unique {$ₜ ι} (unk⊑any {$ᵍ .ι} base⊑) (unk⊑any {$ᵍ .ι} base⊑) = refl
+dyn-prec-unique {A ⇒ A₁} (unk⊑any {★⇒★} (fun⊑ c c₁)) (unk⊑any {★⇒★} (fun⊑ d d₁))
+    with dyn-prec-unique c d | dyn-prec-unique c₁ d₁
+... | refl | refl = refl
+
+gnd-prec-unique : ∀{G A}
+   → (c : gnd⇒ty G ⊑ A)
+   → (d : gnd⇒ty G ⊑ A)
+   → c ≡ d
+gnd-prec-unique {$ᵍ ι} {.($ₜ ι)} base⊑ base⊑ = refl
+gnd-prec-unique {★⇒★} {.(_ ⇒ _)} (fun⊑ c c₁) (fun⊑ d d₁)
+    with dyn-prec-unique c d | dyn-prec-unique c₁ d₁
+... | refl | refl = refl
+
 ⊑-gnd-unique : ∀{G H}
    → gnd⇒ty G ⊑ gnd⇒ty H
    → G ≡ H

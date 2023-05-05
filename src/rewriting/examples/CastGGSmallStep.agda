@@ -16,6 +16,7 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Var
 open import rewriting.examples.Cast
 open import rewriting.examples.CastPrecision
+open import rewriting.examples.CastDeterministic
 open import rewriting.examples.StepIndexedLogic2
 
 ℰ⇐⊎𝒱⇐-type : Set
@@ -368,6 +369,12 @@ compatible-app : ∀{Γ}{A A′ B B′}{c : A ⊑ A′}{d : B ⊑ B′}{L L′ M
 compatible-app {Γ}{A}{A′}{B}{B′}{c}{d}{L}{L′}{M}{M′}
   ⊢⇐L⊑L′ ⊢⇐M⊑M′ γ γ′ ⊢γ ⊢γ′ = {!!}
 
+blame-irred : ∀{M}{N}
+   → Blame M
+   → M —→ N
+   → ⊥
+blame-irred isBlame red = blame-irreducible red
+
 compatible-inj-L : ∀{Γ : List Prec}{G A′}{c : gnd⇒ty G ⊑ A′}{M M′ : Term}
    → Γ ⊩ M ⊑ M′ ⦂ c
    → Γ ⊢⇐ M ⊑ M′ ⦂ (gnd⇒ty G , A′ , c)
@@ -377,8 +384,30 @@ compatible-inj-L{Γ}{G}{A′}{c}{M}{M′} ⊢M⊑M′ ⊢⇐M⊑M′ γ γ′ �
     with precision→typed ⊢M⊑M′
 ... | ⊢M , ⊢M′
     with progress (sub-pres-type{σ = γ′} ⊢M′ ⊢γ′)
+{- Case: M′ is blame -}
 ... | error b = substᵒ (≡ᵒ-sym ℰ⇐-stmt) (inj₂ᵒ (inj₂ᵒ (constᵒI b)))
-... | step M′—→N = {!!}
+{- Case: M′ can take a step -}
+... | step{N = N′} M′—→N′ = substᵒ (≡ᵒ-sym ℰ⇐-stmt) (inj₂ᵒ (inj₁ᵒ Step))
+  where
+  Step : 𝓖⇐⟦ Γ ⟧ γ γ′ ⊢ᵒ step⇐ (★ , A′ , unk⊑any c)
+                                (⟪ γ ⟫ M ⟨ G !⟩) (⟪ γ′ ⟫ M′)
+  Step =
+   ⊢ᵒ-∃-intro-new (λ N′ → (⟪ γ′ ⟫ M′ —→ N′)ᵒ
+                          ×ᵒ ▷ᵒ (ℰ⇐⟦ ★ , A′ , unk⊑any c ⟧ (⟪ γ ⟫ M ⟨ G !⟩) N′))
+                   N′
+                   
+   (case3ᵒ (substᵒ ℰ⇐-stmt (⊢⇐M⊑M′ γ γ′ ⊢γ ⊢γ′))
+   {- Subcase: M′ is a value, contradiction -}
+   (⊢ᵒ-sucP (proj₁ᵒ Zᵒ) λ m′ → ⊥-elim (value-irreducible m′ M′—→N′))
+   {- Subcase: M′ can take a step -}
+   (⊢ᵒ-∃-elim-L (λ N″ → (⟪ γ′ ⟫ M′ —→ N″)ᵒ ×ᵒ
+                        ▷ᵒ (ℰ⇐⟦ gnd⇒ty G , A′ , c ⟧ (⟪ γ ⟫ M) N″))
+   λ N″ → 
+    {- nts.         ▷ ℰ (M ⟨ G !⟩) N′      -}
+   (constᵒI M′—→N′ ,ᵒ {!!}))
+   {- Subcase: M′ is blame, contradiction -}   
+   (⊢ᵒ-sucP Zᵒ λ b → ⊥-elim (blame-irred b M′—→N′)))
+{- Case: M′ is a value -}
 compatible-inj-L{Γ}{G}{A′}{c}{M}{M′} ⊢M⊑M′ ⊢⇐M⊑M′ γ γ′ ⊢γ ⊢γ′
     | ⊢M , ⊢M′
     | done m′ = substᵒ (≡ᵒ-sym ℰ⇐-stmt) (inj₁ᵒ (constᵒI m′ ,ᵒ Catchup))
