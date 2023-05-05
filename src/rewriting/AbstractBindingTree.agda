@@ -40,37 +40,33 @@ data Args where
   cons : ∀{b bs} → Arg b → Args bs → Args (b ∷ bs)
 
 {----------------------------------------------------------------------------
- Renaming (for internal use)
+ Renaming
 ----------------------------------------------------------------------------}
 
-module Renaming where
+Rename : Set
+Rename = Var → Var
 
-  Rename : Set
-  Rename = Var → Var
+infixr 6 _•ᵣ_
+_•ᵣ_ : Var → Rename → Rename
+(y •ᵣ ρ) 0 = y
+(y •ᵣ ρ) (suc x) = ρ x
 
-  infixr 6 _•ᵣ_
-  _•ᵣ_ : Var → Rename → Rename
-  (y •ᵣ ρ) 0 = y
-  (y •ᵣ ρ) (suc x) = ρ x
+⟰ᵣ : Rename → Rename
+⟰ᵣ ρ x = suc (ρ x)
 
-  ⟰ᵣ : Rename → Rename
-  ⟰ᵣ ρ x = suc (ρ x)
+extr : Rename → Rename
+extr ρ = 0 •ᵣ ⟰ᵣ ρ
 
-  extr : Rename → Rename
-  extr ρ = 0 •ᵣ ⟰ᵣ ρ
+rename : Rename → ABT → ABT
+rename-arg : Rename → {b : Sig} → Arg b → Arg b
+rename-args : Rename → {bs : List Sig} → Args bs → Args bs
 
-  rename : Rename → ABT → ABT
-  rename-arg : Rename → {b : Sig} → Arg b → Arg b
-  rename-args : Rename → {bs : List Sig} → Args bs → Args bs
-
-  rename ρ (` x) = ` ρ x
-  rename ρ (op ⦅ args ⦆) = op ⦅ rename-args ρ args ⦆
-  rename-arg ρ (ast M) = ast (rename ρ M)
-  rename-arg ρ (bind M) = bind (rename-arg (extr ρ) M)
-  rename-args ρ nil = nil
-  rename-args ρ (cons arg args) = cons (rename-arg ρ arg) (rename-args ρ args)
-
-open Renaming
+rename ρ (` x) = ` ρ x
+rename ρ (op ⦅ args ⦆) = op ⦅ rename-args ρ args ⦆
+rename-arg ρ (ast M) = ast (rename ρ M)
+rename-arg ρ (bind M) = bind (rename-arg (extr ρ) M)
+rename-args ρ nil = nil
+rename-args ρ (cons arg args) = cons (rename-arg ρ arg) (rename-args ρ args)
 
 {----------------------------------------------------------------------------
  Substitution
@@ -236,14 +232,13 @@ abstract {- experimenting with making ren abstract -Jeremy -}
   ren-def : ∀ ρ x → ren ρ x ≡ ` ρ x
   ren-def ρ x = refl
 
+↑ : Subst
+↑ = ren suc
+
+up-def : ↑ ≡ ren suc
+up-def = refl
+
 abstract
-  
-  ↑ : Subst
-  ↑ = ren suc
-
-  up-def : ↑ ≡ ren suc
-  up-def = refl
-
   infixr 5 _⨟_
   _⨟_ : Subst → Subst → Subst
   σ ⨟ τ = Private._⨟_ σ τ

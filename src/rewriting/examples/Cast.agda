@@ -91,7 +91,9 @@ data _⊑_ : Type → Type → Set where
 
   unk⊑unk : ★ ⊑ ★
 
-  {- gnd⇒ty G ⊑ B prevents overlap with unk⊑unk -Jeremy -}
+  {- gnd⇒ty G ⊑ B prevents overlap with unk⊑unk,
+     but more importantly it lets us use recursion
+     in the logical relation! -Jeremy -}
   unk⊑any : ∀{G}{B} → gnd⇒ty G ⊑ B → ★ ⊑ B 
 
   base⊑ : ∀{ι} → $ₜ ι ⊑ $ₜ ι
@@ -231,8 +233,6 @@ value : ∀ {V : Term}
     -------------
   → Term
 value {V = V} v  =  V  
-
-open Renaming
 
 rename-val : ∀ {V : Term}
   → (ρ : Rename)

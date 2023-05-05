@@ -130,3 +130,59 @@ progress (⊢⟨?⟩ ⊢M H)
 progress ⊢blame                           = error isBlame
 
 
+{- renaming preserves types -}
+
+wtren : Rename → List Type → List Type → Set
+wtren ρ Γ Δ = ∀ {B} x → Γ ∋ x ⦂ B → Δ ∋ ρ x ⦂ B
+
+ext-ren : ∀{Γ}{Δ}{ρ}{B}
+  → wtren ρ Γ Δ
+  → wtren (extr ρ) (B ∷ Γ) (B ∷ Δ)
+ext-ren {Γ} {Δ} {ρ} {B} ⊢ρ zero ∋x = ∋x
+ext-ren {Γ} {Δ} {ρ} {B} ⊢ρ (suc x) ∋x = ⊢ρ x ∋x
+
+ren-pres-type : ∀{Γ}{Δ}{A}{M}{ρ}
+  → Γ ⊢ M ⦂ A
+  → wtren ρ Γ Δ
+  → Δ ⊢ ⟪ ren ρ ⟫ M ⦂ A
+ren-pres-type {Γ}{Δ} {A} {.(` _)}{ρ} (⊢`{x = x} ∋x) ⊢ρ
+  rewrite sub-var (ren ρ) x | ren-def ρ x = ⊢` (⊢ρ x ∋x)
+ren-pres-type {Γ}{Δ} {.($ₜ typeof c)} {.($ c)} (⊢$ c) ⊢ρ = ⊢$ c
+ren-pres-type {Γ}{Δ} {A} {.(_ · _)} (⊢· ⊢L ⊢M) ⊢ρ =
+  ⊢· (ren-pres-type ⊢L ⊢ρ) (ren-pres-type ⊢M ⊢ρ)
+ren-pres-type {Γ}{Δ} {.(_ ⇒ _)} {.(ƛ _)}{ρ = ρ} (⊢ƛ ⊢M) ⊢ρ =
+  ⊢ƛ (ren-pres-type{ρ = extr ρ} ⊢M (ext-ren{Δ = Δ}{ρ} ⊢ρ))
+ren-pres-type {Γ}{Δ} {.★} {.(_ ⟨ _ !⟩)} (⊢⟨!⟩ ⊢M) ⊢ρ =
+  ⊢⟨!⟩ (ren-pres-type ⊢M ⊢ρ)
+ren-pres-type {Γ}{Δ} {.(gnd⇒ty H)} {.(_ ⟨ H ?⟩)} (⊢⟨?⟩ ⊢M H) ⊢ρ = 
+  ⊢⟨?⟩ (ren-pres-type ⊢M ⊢ρ) H
+ren-pres-type {Γ}{Δ} {A} {.blame} ⊢blame ⊢ρ = ⊢blame
+
+{- substitution preserves types -}
+
+wtsub : Subst → List Type → List Type → Set
+wtsub σ Γ Δ = ∀ {B} x → Γ ∋ x ⦂ B → Δ ⊢ σ x ⦂ B
+
+ext-sub : ∀{Γ}{Δ}{σ}{B}
+  → wtsub σ Γ Δ
+  → wtsub (ext σ) (B ∷ Γ) (B ∷ Δ)
+ext-sub {Γ} {Δ} {σ} {B} ⊢σ zero refl = ⊢` refl
+ext-sub {Γ} {Δ} {σ} {B} ⊢σ {A} (suc x) ∋x rewrite seq-def σ ↑ x =
+  ren-pres-type{ρ = suc} (⊢σ x ∋x) λ x₁ x₂ → x₂
+
+sub-pres-type : ∀{Γ}{Δ}{A}{M}{σ}
+  → Γ ⊢ M ⦂ A
+  → wtsub σ Γ Δ
+  → Δ ⊢ ⟪ σ ⟫ M ⦂ A
+sub-pres-type {Γ} {Δ} {A} {.(` _)} {σ} (⊢`{x = x} ∋x) ⊢σ
+  rewrite sub-var σ x = ⊢σ x ∋x
+sub-pres-type {Γ} {Δ} {.($ₜ typeof c)} {.($ c)} {σ} (⊢$ c) ⊢σ = ⊢$ c
+sub-pres-type {Γ} {Δ} {A} {.(_ · _)} {σ} (⊢· ⊢L ⊢M) ⊢σ =
+  ⊢· (sub-pres-type ⊢L ⊢σ) (sub-pres-type ⊢M ⊢σ)
+sub-pres-type {Γ} {Δ} {.(_ ⇒ _)} {.(ƛ _)} {σ} (⊢ƛ ⊢M) ⊢σ =
+  ⊢ƛ (sub-pres-type{σ = ext σ} ⊢M (ext-sub ⊢σ))
+sub-pres-type {Γ} {Δ} {.★} {.(_ ⟨ _ !⟩)} {σ} (⊢⟨!⟩ ⊢M) ⊢σ =
+  ⊢⟨!⟩ (sub-pres-type ⊢M ⊢σ)
+sub-pres-type {Γ} {Δ} {.(gnd⇒ty H)} {.(_ ⟨ H ?⟩)} {σ} (⊢⟨?⟩ ⊢M H) ⊢σ =
+  ⊢⟨?⟩ (sub-pres-type ⊢M ⊢σ) H
+sub-pres-type {Γ} {Δ} {A} {.blame} {σ} ⊢blame ⊢σ = ⊢blame
