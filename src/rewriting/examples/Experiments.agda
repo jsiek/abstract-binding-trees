@@ -37,16 +37,19 @@ pre-𝒱 (.★ , .★ , unk⊑unk) (V ⟨ G !⟩) (V′ ⟨ H !⟩)
                  (Value V)ˢ ×ˢ (Value V′)ˢ
                  ×ˢ (▷ˢ (𝒱ˢ⟦ (g , g , Refl⊑) ⟧ V V′))
 ... | no neq = ⊥ ˢ
+pre-𝒱 (.★ , .★ , unk⊑unk) V V′ = ⊥ ˢ
 pre-𝒱 (.★ , .A′ , unk⊑any{G}{A′} G⊑A′) (V ⟨ H !⟩) V′
     with G ≡ᵍ H
 ... | yes refl = (Value V)ˢ ×ˢ (Value V′)ˢ
                       ×ˢ ▷ˢ (𝒱ˢ⟦ (gnd⇒ty G , A′ , G⊑A′) ⟧ V V′)
 ... | no new = ⊥ ˢ
+pre-𝒱 (.★ , .A′ , unk⊑any{G}{A′} G⊑A′) V V′ = ⊥ ˢ
 pre-𝒱 ($ₜ ι , $ₜ ι , base⊑) ($ c) ($ c′) = (c ≡ c′) ˢ
+pre-𝒱 ($ₜ ι , $ₜ ι , base⊑) V V′ = ⊥ ˢ
 pre-𝒱 ((A ⇒ B) , (A′ ⇒ B′) , fun⊑ A⊑A′ B⊑B′) (ƛ N) (ƛ N′) =
     ∀ˢ[ W ] ∀ˢ[ W′ ] ▷ˢ (𝒱ˢ⟦ (A , A′ , A⊑A′) ⟧ W W′)
                   →ˢ ▷ˢ (ℰˢ⟦ (B , B′ , B⊑B′) ⟧ (N [ W ]) (N′ [ W′ ])) 
-pre-𝒱 (A , A′ , A⊑A′) V V′ = ⊥ ˢ
+pre-𝒱 ((A ⇒ B) , (A′ ⇒ B′) , fun⊑ A⊑A′ B⊑B′) V V′ = ⊥ ˢ 
 
 instance
   TermInhabited : Inhabited Term
@@ -141,3 +144,32 @@ fundamental {Γ} {A} {A′} {A⊑A′} M⊑M′ = {!!}
 ... | inj₂ (inj₁ (M′₂ , M′→M′₂ , ▷ℰMM′₂))
     rewrite deterministic M′→M′₁ M′→M′₂ =
     ℰ-preserve-multi M M′₂ N′ M′₁→N′ ▷ℰMM′₂
+
+ℰ-catchup : ∀{c}{k}
+  → (M V′ : Term)
+  → Value V′
+  → #(ℰ⟦ c ⟧ M V′) (suc k)
+  → ∃[ V ] ((M —↠ V) × (Value V) × #(𝒱⟦ c ⟧ V V′) (suc k))
+ℰ-catchup {c}{k} M V′ v′ ℰMV′ 
+    rewrite ℰ-suc{c}{M}{V′}{k}
+    with ℰMV′
+... | inj₂ (inj₂ isBlame) = ⊥-elim (blame-not-value v′ refl)
+... | inj₂ (inj₁ (V′₂ , V′→V′₂ , _)) = ⊥-elim (value-irreducible v′ V′→V′₂)
+... | inj₁ (v′ , V , M→V , v , 𝒱VV′) = V , M→V , v , 𝒱VV′
+
+{-
+  If the more precise term goes to a value, so does the less precise term.
+ -}
+GG2a : ∀{A}{A′}{A⊑A′ : A ⊑ A′}{M}{M′}{V′}
+   → [] ⊩ M ⊑ M′ ⦂ A⊑A′
+   → M′ —↠ V′
+   → Value V′
+   → ∃[ V ] (M —↠ V) × (Value V) × # (𝒱⟦ A , A′ , A⊑A′ ⟧ V V′) 1
+GG2a {A}{A′}{A⊑A′}{M}{M′}{V′} M⊑M′ M′→V′ v′ =
+  let ⊨M⊑M′ = fundamental M M′ M⊑M′ in
+  let ℰMM′ = ⊢ᵒ-elim (⊨M⊑M′ id id) (suc (len M′→V′)) tt in
+  let ℰMV′ = ℰ-preserve-multi{k = 0} M M′ V′ M′→V′
+             (subst (λ X → # (ℰ⟦ A , A′ , A⊑A′ ⟧ M M′) (suc X))
+                (sym (+-identityʳ (len M′→V′))) ℰMM′) in
+  ℰ-catchup M V′ v′ ℰMV′
+
