@@ -500,6 +500,17 @@ data _—↠_ : Term → Term → Set where
       ---------
     → L —↠ N
 
+{- One or more reduction steps -}
+
+infix  2 _—→+_
+data _—→+_ : Term → Term → Set where
+
+  _—→⟨_⟩_ : (L : Term) {M N : Term}
+    → L —→ M
+    → M —↠ N
+      ---------
+    → L —→+ N
+
 {- Convenience function to build a sequence of length one. -}
 
 unit : ∀ {M N : Term} → (M —→ N) → (M —↠ N)
@@ -601,6 +612,13 @@ blame-irreducible {.blame} (ξξ-blame (□· M) ())
 blame-irreducible {.blame} (ξξ-blame (v ·□) ())
 blame-irreducible {.blame} (ξξ-blame □⟨ G !⟩ ())
 blame-irreducible {.blame} (ξξ-blame □⟨ H ?⟩ ())
+
+blame-irred : ∀{M}{N}
+   → Blame M
+   → M —→ N
+   → ⊥
+blame-irred isBlame red = blame-irreducible red
+
 
 app-multi-inv : ∀{L M N}
   → (r1 : L · M —↠ N)
@@ -902,4 +920,5 @@ reduce-inject : ∀{M V G}
 reduce-inject {M} {.M} {G} (.M END) = _ END
 reduce-inject {M} {V} {G} (.M —→⟨ M→M′ ⟩ M→V) =
     (M ⟨ G !⟩ —→⟨ ξ (□⟨ G !⟩) M→M′ ⟩ reduce-inject M→V)
+
 

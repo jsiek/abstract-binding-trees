@@ -150,3 +150,15 @@ frame-inv2 {L} {N} {□⟨ H ?⟩} (L′ , L→L′) (collapse v refl) =
 frame-inv2 {L} {.blame} {□⟨ H ?⟩} (L′ , L→L′) (collide v neq refl) =
     ⊥-elim (value-irreducible (v 〈 _ 〉) L→L′)
 
+diamond-value : ∀{M N V}
+   → M —↠ V
+   → Value V
+   → M —↠ N
+   → N —↠ V
+diamond-value {M} {.M} {.M} (.M END) v (.M END) = M END
+diamond-value {M} {N} {.M} (.M END) v (.M —→⟨ M→N₁ ⟩ M→N) =
+   ⊥-elim (value-irreducible v M→N₁)
+diamond-value {M} {.M} {V} (.M —→⟨ x ⟩ M→V) v (.M END) = M —→⟨ x ⟩ M→V
+diamond-value {M} {N} {V} (.M —→⟨ x ⟩ M→V) v (.M —→⟨ x₁ ⟩ M→N)
+    with deterministic x x₁
+... | refl = diamond-value M→V v M→N

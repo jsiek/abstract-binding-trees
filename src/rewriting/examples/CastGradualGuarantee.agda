@@ -48,14 +48,6 @@ pre-𝒱 ((A ⇒ B) , (A′ ⇒ B′) , fun⊑ A⊑A′ B⊑B′) (ƛ N) (ƛ N�
                   →ˢ ▷ˢ (ℰˢ⟦ (B , B′ , B⊑B′) ⟧ (N [ W ]) (N′ [ W′ ])) 
 pre-𝒱 (A , A′ , A⊑A′) V V′ = ⊥ ˢ
 
-{-
-pre-ℰ : Prec → Term → Term → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
-pre-ℰ c M M′ = pre-𝒱 c M M′
-            ⊎ˢ ((reducible M)ˢ ×ˢ (∀ˢ[ N ] (M —→ N)ˢ →ˢ ▷ˢ (ℰˢ⟦ c ⟧ N M′)))
-            ⊎ˢ ((reducible M′)ˢ ×ˢ (∀ˢ[ N′ ] (M′ —→ N′)ˢ →ˢ ▷ˢ (ℰˢ⟦ c ⟧ M N′)))
-            ⊎ˢ (Blame M′)ˢ
--}
-
 instance
   TermInhabited : Inhabited Term
   TermInhabited = record { elt = ` 0 }
@@ -97,15 +89,18 @@ preserve-R c M M′ = (∀ᵒ[ N′ ] ((M′ —→ N′)ᵒ →ᵒ ▷ᵒ (ℰ�
   ℰ⟦ c ⟧ M M′                                                 ⩦⟨ ≡ᵒ-refl refl ⟩
   μᵒ pre-ℰ⊎𝒱 X₂                                      ⩦⟨ fixpointᵒ pre-ℰ⊎𝒱 X₂ ⟩
   # (pre-ℰ⊎𝒱 X₂) (ℰ⊎𝒱 , ttᵖ)
-                                  ⩦⟨ {!!} ⟩
+                                  ⩦⟨ EQ ⟩
         (((Value M′)ᵒ ×ᵒ (∃ᵒ[ V ] (M —↠ V)ᵒ ×ᵒ (Value V)ᵒ ×ᵒ 𝒱⟦ c ⟧ V M′))
          ⊎ᵒ (∃ᵒ[ N′ ] (M′ —→ N′)ᵒ ×ᵒ ▷ᵒ (ℰ⟦ c ⟧ M N′))
          ⊎ᵒ (Blame M′)ᵒ)
   ∎
-  {-
-  cong-⊎ᵒ ((≡ᵒ-sym (fixpointᵒ pre-ℰ⊎𝒱 X₁)))
-                                       (cong-⊎ᵒ (≡ᵒ-refl refl) (≡ᵒ-refl refl))
-                             -}
+  where
+  X₁ = λ V → (inj₁ (c , V , M′))
+  X₂ = inj₂ (c , M , M′)
+  EQ = cong-⊎ᵒ (cong-×ᵒ (≡ᵒ-refl refl) (cong-∃ (λ V → cong-×ᵒ (≡ᵒ-refl refl)
+                   (cong-×ᵒ (≡ᵒ-refl refl)
+                           (≡ᵒ-sym (fixpointᵒ pre-ℰ⊎𝒱 (X₁ V)))))))
+               (≡ᵒ-refl refl)
 
 𝒱-dyn-dyn : ∀{G}{V}{V′}
   → 𝒱⟦ ★ , ★ , unk⊑unk ⟧ (V ⟨ G !⟩) (V′ ⟨ G !⟩)
@@ -228,11 +223,18 @@ _⊨_⊑_⦂_ : List Prec → Term → Term → Prec → Set
 
 {- Related values are related expressions -}
 
-𝒱⇒ℰ : ∀{c : Prec}{𝒫}{V V′}
+𝒱⇒ℰ : ∀{c : Prec}{𝒫}{V}{V′}
    → 𝒫 ⊢ᵒ 𝒱⟦ c ⟧ V V′
      -----------------
    → 𝒫 ⊢ᵒ ℰ⟦ c ⟧ V V′
-𝒱⇒ℰ {c}{𝒫}{V}{V′} ⊢𝒱VV′ = substᵒ (≡ᵒ-sym ℰ-stmt) {!!} -- (inj₁ᵒ ⊢𝒱VV′)
+𝒱⇒ℰ {c} {𝒫} {V} {V′} ⊢𝒱VV′ =
+  substᵒ (≡ᵒ-sym ℰ-stmt) (inj₁ᵒ
+  (⊢ᵒ-sucP ⊢𝒱VV′ λ 𝒱VV′ →
+  let (v , v′) = 𝒱⇒Value c V V′ 𝒱VV′ in
+  constᵒI v′ ,ᵒ
+  ⊢ᵒ-∃-intro-new (λ X → (V —↠ X)ᵒ ×ᵒ (Value X)ᵒ ×ᵒ 𝒱⟦ c ⟧ X V′)
+  V
+  (constᵒI (V END) ,ᵒ (constᵒI v ,ᵒ ⊢𝒱VV′))))
 
 {- ℰ-bind (Monadic Bind Lemma) -}
 
@@ -284,8 +286,7 @@ _⦉_⦊ : PEFrame → Term → Term
 
 
 ℰ-blame : ∀{𝒫}{c}{M} → 𝒫 ⊢ᵒ ℰ⟦ c ⟧ M blame
-ℰ-blame {𝒫}{c}{M} = substᵒ (≡ᵒ-sym ℰ-stmt)
-                            {!!} -- (inj₂ᵒ (inj₂ᵒ (inj₂ᵒ (constᵒI isBlame))))
+ℰ-blame {𝒫}{c}{M} = substᵒ (≡ᵒ-sym ℰ-stmt) (inj₂ᵒ (inj₂ᵒ (constᵒI isBlame)))
 
 ξ′ : ∀ {M N : Term} {M′ N′ : Term}
     → (F : PEFrame)
@@ -334,11 +335,20 @@ blame-frame2 {` F}{N} Fb→N = blame-frame Fb→N
   Goal′ : ∀{M}{M′}
      → (𝒱→ℰF c d F F′ M M′) ∷ ℰ⟦ d ⟧ M M′ ∷ ▷ᵒ ℰ-bind-prop c d F F′ ∷ 𝒫
         ⊢ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
-  Goal′{M}{M′} = {!!}
-     -- case4ᵒ (substᵒ ℰ-stmt (Sᵒ Zᵒ)) Mval MredL MredR (Mblame{F′ = F′})
+  Goal′{M}{M′} = case3ᵒ (substᵒ ℰ-stmt (Sᵒ Zᵒ)) Catchup Eval (Mblame{F′ = F′})
+     --Mval MredL MredR (Mblame{F′ = F′})
    where
    𝒫′ = (𝒱→ℰF c d F F′ M M′) ∷ ℰ⟦ d ⟧ M M′ ∷ ▷ᵒ ℰ-bind-prop c d F F′ ∷ 𝒫
 
+   Catchup : ((Value M′)ᵒ ×ᵒ (∃ᵒ[ V ] (M —↠ V)ᵒ ×ᵒ (Value V)ᵒ ×ᵒ 𝒱⟦ d ⟧ V M′))
+             ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
+   Catchup = substᵒ (≡ᵒ-sym ℰ-stmt) {!!}
+
+   Eval : (∃ᵒ[ N′ ] (M′ —→ N′)ᵒ ×ᵒ ▷ᵒ (ℰ⟦ d ⟧ M N′))
+             ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
+   Eval = {!!}
+
+{-
    Mval : 𝒱⟦ d ⟧ M M′ ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
    Mval =
      let Cont = λ V → ∀ᵒ[ V′ ] (M —↠ V)ᵒ →ᵒ (M′ —↠ V′)ᵒ
@@ -428,7 +438,7 @@ blame-frame2 {` F}{N} Fb→N = blame-frame Fb→N
        let ▷ℰFMFN₁ : 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ N₁ ⦊))
            ▷ℰFMFN₁ = appᵒ (▷→ (appᵒ (▷→ IH[M,N₁]) ▷ℰMN₁)) ▷𝒱→ℰF[M,N₁] in
        subst(λ N′ → 𝒫″ ⊢ᵒ ▷ᵒ (ℰ⟦ c ⟧ (F ⦉ M ⦊) N′)) (sym N′≡F[N₁]) ▷ℰFMFN₁ 
-
+-}
    Mblame : ∀{F′} → Blame M′ ᵒ ∷ 𝒫′ ⊢ᵒ ℰ⟦ c ⟧ (F ⦉ M ⦊) (F′ ⦉ M′ ⦊)
    Mblame {F′}
       with F′
@@ -460,6 +470,7 @@ blame-frame2 {` F}{N} Fb→N = blame-frame Fb→N
   let xx = instᵒ{P = F₂} (instᵒ{𝒫}{P = F₁} (ℰ-bind-aux{F = F}{F′}) M) M′ in
   appᵒ (appᵒ xx ⊢ℰMM′) ⊢𝒱V→ℰFV
 
+{-
 compatible-nat : ∀{Γ}{n : ℕ}
    → Γ ⊨ $ (Num n) ⊑ $ (Num n) ⦂ ($ₜ ′ℕ , $ₜ ′ℕ , base⊑)
 compatible-nat {Γ}{n} γ γ′ = 𝒱⇒ℰ (substᵒ (≡ᵒ-sym 𝒱-base) (constᵒI refl))
@@ -865,53 +876,4 @@ empty-ctx-▷ {P} ⊢▷P = ⊢ᵒ-intro λ {n tt → ⊢ᵒ-elim ⊢▷P (suc n
 
 diverge : Term → Set
 diverge M = ∀ N → M —↠ N → ∃[ N′ ] (N —→ N′)
-
-
-
-{-
-⊢𝒱-dyn-dyn-elim : ∀{𝒫}{V₁}{V₂}{G}
-   → 𝒫 ⊢ᵒ 𝒱⟦ ★ , ★ , unk⊑unk ⟧ (V₁ ⟨ G !⟩ ) (V₂ ⟨ G !⟩)
-   → 𝒫 ⊢ᵒ ▷ᵒ 𝒱⟦ gnd⇒ty G , gnd⇒ty G , Refl⊑ ⟧ V₁ V₂
-⊢𝒱-dyn-dyn-elim{𝒫}{V₁}{V₂}{G} ⊢𝒱V₁GV₂G =
-    𝒱-dyn-dyn-elim ⊢𝒱V₁GV₂G
-    λ { V₁ V₂ G v₁ v₂ refl refl ▷𝒱V₁V₂ → ▷𝒱V₁V₂ }
-
-⊢𝒱-dyn-any-elim : ∀{𝒫}{V}{V′}{G}{A′}
-   → (G⊑A′ : gnd⇒ty G ⊑ A′)
-   → 𝒫 ⊢ᵒ 𝒱⟦ ★ , A′ , unk⊑any G⊑A′ ⟧ (V ⟨ G !⟩) V′
-   → 𝒫 ⊢ᵒ ▷ᵒ 𝒱⟦ gnd⇒ty G , A′ , G⊑A′ ⟧ V V′
-⊢𝒱-dyn-any-elim G⊑A′ ⊢𝒱VGV′ = {!!}
-
-
-
-𝒱→⊑ : ∀{A}{A′}{V}{V′}
-   → (c : A ⊑ A′)
-   → Value V
-   → Value V′
-   → [] ⊢ᵒ 𝒱⟦ A , A′ , c ⟧ V V′
-   → [] ⊩ V ⊑ V′ ⦂ c
-𝒱→⊑ c V V′ ⊢𝒱VV′ =
-  aux c V V′ ⊢𝒱VV′ (⊢ᵒ-elim ⊢𝒱VV′ (suc zero) tt)
-  where
-  aux : ∀{A}{A′}{V}{V′} (c : A ⊑ A′) → Value V → Value V′
-     → [] ⊢ᵒ 𝒱⟦ A , A′ , c ⟧ V V′
-     → #(𝒱⟦ A , A′ , c ⟧ V V′) 1
-     → [] ⊩ V ⊑ V′ ⦂ c
-  aux unk⊑unk (v 〈 G 〉) (v′ 〈 H 〉) ⊢𝒱VV′ 𝒱VV′
-      with G ≡ᵍ H
-  ... | no neq = ⊥-elim 𝒱VV′
-  ... | yes refl
-      with 𝒱VV′
-  ... | (v , v′ , 𝒱vv′) =
-      ⊑-inj-R (⊑-inj-L
-          (𝒱→⊑ Refl⊑ v v′ (empty-ctx-▷ (⊢𝒱-dyn-dyn-elim ⊢𝒱VV′))))
-  aux (unk⊑any{G} c) (v 〈 H 〉) v′ ⊢𝒱VV′ 𝒱VV′
-      with G ≡ᵍ H
-  ... | no neq = ⊥-elim 𝒱VV′
-  ... | yes refl =
-      let xx = ⊢𝒱-dyn-any-elim c ⊢𝒱VV′ in
-      ⊑-inj-L (𝒱→⊑ c v v′ (empty-ctx-▷ xx))
-  aux base⊑ ($̬ c) ($̬ c₁) ⊢𝒱VV′ 𝒱VV′ = {!!}
-  aux (fun⊑ c c₁) (ƛ̬ N) (ƛ̬ N₁) ⊢𝒱VV′ 𝒱VV′ = {!!}
-  
 -}
