@@ -57,8 +57,9 @@ instance
 
 {- Right-to-left version -}
 pre-ℰ : Prec → Term → Term → Setˢ ℰ⊎𝒱-ctx (cons Later ∅)
-pre-ℰ c M M′ = 
-    ((Value M′)ˢ ×ˢ (∃ˢ[ V ] (M —↠ V)ˢ ×ˢ (Value V)ˢ ×ˢ pre-𝒱 c V M′))
+pre-ℰ c M M′ =
+     ((Value M)ˢ ×ˢ (Value M′)ˢ × (pre-𝒱 c M M′))
+  ⊎ˢ ((Value M′)ˢ ×ˢ (∃ˢ[ N ] (M —→ N)ˢ ×ˢ ▷ˢ ℰˢ⟦ c ⟧ V M′))
   ⊎ˢ (∃ˢ[ N′ ] (M′ —→ N′)ˢ ×ˢ ▷ˢ (ℰˢ⟦ c ⟧ M N′))
   ⊎ˢ (Blame M′)ˢ
 

@@ -15,7 +15,8 @@ An abstract binding tree `ABT` consists of two kinds of nodes:
 * Operators: An operator node is tagged with the kind of operator and
   it has zero or more children, depending on the kind of operator.
 
-The `ABT` data type is defined in the [`Syntax`](./src/Syntax.agda)
+The `ABT` data type is defined in the
+[`AbstractBindingTree`](./src/AbstractBindingTree.agda)
 module, which is parameterized by the kinds of operators and their
 signatures, which specifies things like the number of child nodes for
 each kind of operator.
