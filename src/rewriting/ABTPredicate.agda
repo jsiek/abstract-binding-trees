@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K --rewriting #-}
+{-# OPTIONS --rewriting #-}
 open import Data.List using (List; []; _∷_; length; map; foldl)
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; _⊔_; z≤n; s≤s)
 open import Data.Nat.Properties
@@ -23,7 +23,7 @@ module rewriting.ABTPredicate {I : Set}
   where
 
 open import rewriting.AbstractBindingTree Op sig
-open Renaming
+--open Renaming
 
 private
   variable
