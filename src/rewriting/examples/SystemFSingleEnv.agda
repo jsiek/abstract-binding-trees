@@ -144,16 +144,6 @@ ren-pres-ok {Γ} {Γ′} {ρ} {.(_ ⇒ _)} (⊢-⇒ ⊢A ⊢B) ⊢ρ =
 ren-pres-ok {Γ} {Γ′} {ρ} {.(∀̇ _)} (⊢-∀ ⊢A) ⊢ρ =
     ⊢-∀ (ren-pres-ok{ρ = extrᵗ ρ} ⊢A (ext-okren{ρ = ρ} ⊢ρ))
 
-wtsub : Subst → TyEnv → TyEnv → Set
-wtsub σ Γ Δ = ∀ {B} x → Γ ∋ x ⦂ trm B → Δ ⊢ σ x ⦂ B
-
-sub-pres-type : ∀{Γ}{Δ}{A}{M}{σ}
-  → Γ ⊢ M ⦂ A
-  → wtsub σ Γ Δ
-  → Δ ⊢ ⟪ σ ⟫ M ⦂ A
-sub-pres-type {Γ}{Δ}{A}{M}{σ} ⊢M ⊢σ = {!!}
-
-
 data SubInst : Substᵗ → TyEnv → TyEnv → Set where
   si-base : ∀{Γ}
      → (A : Type)
@@ -165,6 +155,8 @@ data SubInst : Substᵗ → TyEnv → TyEnv → Set where
   si-typ : ∀{σ}{Γ}{Γ′}
      → SubInst σ Γ Γ′
      → SubInst (extᵗ σ) (typ ∷ Γ) (typ ∷ Γ′)
+  si-up : ∀{Γ}
+     → SubInst (renᵗ suc) Γ (typ ∷ Γ)
   
 data Weaken : TyEnv → TyEnv → Set where
   wtrm : ∀{Γ}{B} → Weaken Γ (trm B ∷ Γ)
@@ -225,6 +217,9 @@ si-lookup {σ} {.(trm _ ∷ _)} {_} {A} {.(suc _)} (si-trm si) (trmStrm ∋x) =
 si-lookup {σ}{typ ∷ Γ}{typ ∷ Γ′}{A} (si-typ{σ′} si) (typtrm{A = A′}{x = x} ∋x)=
    let IH = si-lookup si ∋x in
    weaken-trm{Γ′}{x}{A′}{σ′} IH
+si-lookup si-up trmZ = typtrm trmZ
+si-lookup si-up (trmStrm ∋x) = typtrm (trmStrm ∋x)
+si-lookup si-up (typtrm ∋x) = typtrm (typtrm ∋x)
 
 weaken-ok : ∀{Γ}{Γ′}{A} → Γ ⊢ A ok → Weaken Γ Γ′ → Γ′ ⊢ A ok
 weaken-ok {Γ}{Γ′} {.Nat} ⊢-Nat wkΓΓ′ = ⊢-Nat
@@ -249,6 +244,12 @@ si-apply (si-typ{σ}{Γ}{Γ′} si) (typStyp{x = x} ∋x) =
   where
   EQ : extᵗ σ (suc x) ≡ ⟪ renᵗ suc ⟫ᵗ (σ x)
   EQ rewrite seq-defᵗ σ ↑ᵗ x = refl
+si-apply si-up typZ rewrite ren-defᵗ suc zero =
+    ⊢-Var (typStyp typZ)
+si-apply si-up (typStyp{x = x} ∋x) rewrite ren-defᵗ suc (suc x) =
+    ⊢-Var (typStyp (typStyp ∋x))
+si-apply si-up (trmStyp{x = x} ∋x) rewrite ren-defᵗ suc x =
+    ⊢-Var (typStyp (trmStyp ∋x))
 
 subᵗ-inst : ∀{σ}{Γ}{Γ′}{A}
    → SubInst σ Γ Γ′
@@ -288,6 +289,109 @@ inst : ∀{Γ}{N}{A}{B}
    → Γ ⊢ N ⦂ (A ⦗ B ⦘)
 inst {Γ}{N}{A}{B} ⊢N ⊢B = sub-inst (B •ᵗ idᵗ) ⊢N (si-base B ⊢B)
 
+wtren : Rename → TyEnv → TyEnv → Set
+wtren ρ Γ Δ = (∀ {B} x → Γ ∋ x ⦂ trm B → Δ ∋ ρ x ⦂ trm B)
+            × (∀ x → Γ ∋ x ⦂ typ → Δ ∋ x ⦂ typ)
+
+ext-wtren : ∀{ρ}{Γ}{Δ}
+   → wtren ρ Γ Δ
+   → wtren ρ (typ ∷ Γ) (typ ∷ Δ)
+ext-wtren {ρ}{Γ}{Δ} ⟨ ⊢ρ₁ , ⊢ρ₂ ⟩ =
+    ⟨ (λ { x (typtrm ∋x) → typtrm (⊢ρ₁ x ∋x)})
+    , (λ { zero typZ → typZ
+         ; (suc x) (typStyp ∋x) → typStyp (⊢ρ₂ x ∋x)}) ⟩
+
+trm-wtren : ∀{ρ}{Γ}{Δ}{A}
+   → wtren ρ Γ Δ
+   → wtren (extr ρ) (trm A ∷ Γ) (trm A ∷ Δ)
+trm-wtren {ρ}{Γ}{Δ} ⟨ ⊢ρ₁ , ⊢ρ₂ ⟩ =
+    ⟨ (λ { zero trmZ → trmZ
+         ; (suc x) (trmStrm ∋x) → trmStrm (⊢ρ₁ x ∋x)})
+    , (λ { x (trmStyp ∋x) → trmStyp (⊢ρ₂ x ∋x)}) ⟩
+
+wtsub : Subst → TyEnv → TyEnv → Set
+wtsub σ Γ Δ = (∀ {B} x → Γ ∋ x ⦂ trm B → Δ ⊢ σ x ⦂ B)
+            × (∀ x → Γ ∋ x ⦂ typ → Δ ∋ x ⦂ typ)
+
+ext-wtsub : ∀{σ}{Γ}{Δ}
+   → wtsub σ Γ Δ
+   → wtsub σ (typ ∷ Γ) (typ ∷ Δ)
+ext-wtsub{σ}{Γ}{Δ} ⟨ ⊢σ₁ , ⊢σ₂ ⟩ =
+    ⟨ (λ { x (typtrm ∋x) →
+        sub-inst (renᵗ suc) (⊢σ₁ x ∋x) si-up})
+    , (λ { zero typZ → typZ
+         ; (suc x) (typStyp ∋x) → typStyp (⊢σ₂ x ∋x)}) ⟩
+
+sub-pres-ok : ∀{Γ}{Δ}{A}{σ}
+   → wtsub σ Γ Δ
+   → Γ ⊢ A ok
+   → Δ ⊢ A ok
+sub-pres-ok {Γ} {Δ} {.Nat} {σ} ⊢σ ⊢-Nat = ⊢-Nat
+sub-pres-ok {Γ} {Δ} {^ x} {σ} ⊢σ (⊢-Var ∋x) = ⊢-Var (proj₂ ⊢σ x ∋x)
+sub-pres-ok {Γ} {Δ} {A ⇒ B} {σ} ⊢σ (⊢-⇒ ⊢A ⊢B) =
+    ⊢-⇒ (sub-pres-ok ⊢σ ⊢A) (sub-pres-ok ⊢σ ⊢B)
+sub-pres-ok {Γ} {Δ} {∀̇ A} {σ} ⊢σ (⊢-∀ ⊢A) =
+    ⊢-∀ (sub-pres-ok (ext-wtsub ⊢σ) ⊢A)
+
+wtren-pres-ok : ∀{Γ}{Γ′}{ρ}{A}
+  → wtren ρ Γ Γ′
+  → Γ ⊢ A ok
+  → Γ′ ⊢ A ok
+wtren-pres-ok {Γ} {Γ′} {ρ} {.Nat} ⊢ρ ⊢-Nat = ⊢-Nat
+wtren-pres-ok {Γ} {Γ′} {ρ} {^ x} ⊢ρ (⊢-Var ∋x) = ⊢-Var (proj₂ ⊢ρ x ∋x)
+wtren-pres-ok {Γ} {Γ′} {ρ} {.(_ ⇒ _)} ⊢ρ (⊢-⇒ ⊢A ⊢B) =
+    ⊢-⇒ (wtren-pres-ok ⊢ρ ⊢A) (wtren-pres-ok ⊢ρ ⊢B)
+wtren-pres-ok {Γ} {Γ′} {ρ} {.(∀̇ _)} ⊢ρ (⊢-∀ ⊢A) =
+  ⊢-∀ (wtren-pres-ok (ext-wtren ⊢ρ) ⊢A)
+
+ren-pres-type : ∀{Γ}{Δ}{A}{M}{ρ}
+  → Γ ⊢ M ⦂ A
+  → wtren ρ Γ Δ
+  → Δ ⊢ ⟪ ren ρ ⟫ M ⦂ A
+ren-pres-type {Γ} {Δ} {.Nat} {.($ n)} {ρ} (⊢-nat n) ⊢ρ = ⊢-nat n
+ren-pres-type {Γ} {Δ} {A} {` x} {ρ} (⊢-var ∋x) ⊢ρ rewrite sub-var (ren ρ) x
+    | ren-def ρ x =
+    ⊢-var (proj₁ ⊢ρ x ∋x)
+ren-pres-type {Γ} {Δ} {.(_ ⇒ _)} {ƛ N} {ρ} (⊢-lam ⊢A ⊢N) ⊢ρ =
+    ⊢-lam (wtren-pres-ok ⊢ρ ⊢A) (ren-pres-type ⊢N (trm-wtren ⊢ρ))
+ren-pres-type {Γ} {Δ} {A} {L · M} {ρ} (⊢-app ⊢L ⊢M) ⊢ρ =
+    ⊢-app (ren-pres-type ⊢L ⊢ρ) (ren-pres-type ⊢M ⊢ρ)
+ren-pres-type {Γ} {Δ} {.(∀̇ _)} {Λ N} {ρ} (⊢-tyabs ⊢N) ⊢ρ =
+    ⊢-tyabs (ren-pres-type ⊢N (ext-wtren ⊢ρ))
+ren-pres-type {Γ} {Δ} {_} {L [·]} {ρ} (⊢-tyapp ⊢L ⊢B) ⊢ρ =
+    ⊢-tyapp (ren-pres-type ⊢L ⊢ρ) (wtren-pres-ok ⊢ρ ⊢B)
+
+trm-wtsub : ∀{σ}{Γ}{Δ}{A}
+   → wtsub σ Γ Δ
+   → wtsub (ext σ) (trm A ∷ Γ) (trm A ∷ Δ)
+trm-wtsub {σ}{Γ}{Δ}{A} ⟨ ⊢σ₁ , ⊢σ₂ ⟩ =
+    ⟨ (λ { zero trmZ → ⊢-var trmZ
+         ; {B} (suc x) (trmStrm ∋x) →
+           let σx⦂B = ⊢σ₁ x ∋x in
+           let ↑σx⦂B = ren-pres-type{Δ = trm A ∷ Δ}{ρ = suc} σx⦂B
+                       ⟨ (λ x₁ x₂ → trmStrm x₂) , (λ x → trmStyp) ⟩ in
+           subst (λ X → trm A ∷ Δ ⊢ X ⦂ B) (EQ x) ↑σx⦂B })
+    , (λ { x (trmStyp ∋x) → trmStyp (⊢σ₂ x ∋x)}) ⟩
+    where
+    EQ : ∀ x → ⟪ ren suc ⟫ (σ x) ≡ ext σ (suc x)
+    EQ x rewrite seq-def σ (ren suc) x = refl
+
+sub-pres-type : ∀{Γ}{Δ}{A}{M}{σ}
+  → Γ ⊢ M ⦂ A
+  → wtsub σ Γ Δ
+  → Δ ⊢ ⟪ σ ⟫ M ⦂ A
+sub-pres-type {Γ} {Δ} {.Nat} {.($ n)} {σ} (⊢-nat n) ⊢σ = ⊢-nat n
+sub-pres-type {Γ} {Δ} {A} {` x} {σ} (⊢-var ∋x) ⊢σ rewrite sub-var σ x =
+  (proj₁ ⊢σ) x ∋x
+sub-pres-type {Γ} {Δ} {.(_ ⇒ _)} {ƛ N} {σ} (⊢-lam ⊢A ⊢N) ⊢σ =
+    ⊢-lam (sub-pres-ok ⊢σ ⊢A) (sub-pres-type ⊢N (trm-wtsub ⊢σ))
+sub-pres-type {Γ} {Δ} {A} {L · M} {σ} (⊢-app ⊢L ⊢M) ⊢σ =
+    ⊢-app (sub-pres-type ⊢L ⊢σ) (sub-pres-type ⊢M ⊢σ)
+sub-pres-type {Γ} {Δ} {∀̇ A} {Λ N} {σ} (⊢-tyabs ⊢N) ⊢σ =
+    ⊢-tyabs (sub-pres-type ⊢N (ext-wtsub ⊢σ))
+sub-pres-type {Γ} {Δ} {_} {L [·]} {σ} (⊢-tyapp ⊢L ⊢B) ⊢σ =
+    ⊢-tyapp (sub-pres-type ⊢L ⊢σ) (sub-pres-ok ⊢σ ⊢B)
+
 preservation : ∀{Γ}{M}{N}{A}
   → Γ ⊢ M ⦂ A
   → M —→ N
@@ -298,9 +402,14 @@ preservation ⊢M (ξ (□· M) L→L′)
 preservation ⊢M (ξ (v ·□) M→M′)
     with ⊢M
 ... | ⊢-app ⊢L ⊢M = ⊢-app ⊢L (preservation ⊢M M→M′)
-preservation ⊢M (ξ (□[·]) M→M′) = {!!}
-preservation ⊢M (ξ (ƛ□) M→M′) = {!!}
+preservation ⊢M (ξ (□[·]) L→L′)
+    with ⊢M
+... | ⊢-tyapp ⊢L ⊢B = ⊢-tyapp (preservation ⊢L L→L′) ⊢B
+preservation ⊢M (ξ (ƛ□) N→N′)
+    with ⊢M
+... | ⊢-lam ⊢A ⊢N = ⊢-lam ⊢A (preservation ⊢N N→N′)
 preservation (⊢-app{M = W} (⊢-lam ⊢A ⊢N) ⊢W) β-ƛ =
-  sub-pres-type{σ = W • id} ⊢N λ { zero trmZ → ⊢W
-                                 ; (suc x) (trmStrm ∋x) → ⊢-var ∋x}
+  sub-pres-type{σ = W • id} ⊢N ⟨ (λ { zero trmZ → ⊢W
+                                   ; (suc x) (trmStrm ∋x) → ⊢-var ∋x})
+                               , (λ { y (trmStyp ∋y) → ∋y}) ⟩
 preservation (⊢-tyapp (⊢-tyabs ⊢N) ⊢B) β-Λ = inst ⊢N ⊢B
