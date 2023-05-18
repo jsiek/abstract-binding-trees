@@ -53,7 +53,6 @@ data Op : Set where
   op-app : Op
   op-tyabs : Op
   op-tyapp : Op
-  op-nu : Op
 
 sig : Op → List Sig
 sig (op-nat n) = []
@@ -61,7 +60,6 @@ sig op-lam = (ν ■) ∷ []
 sig op-app = ■ ∷ ■ ∷ []
 sig op-tyabs = ■ ∷ []
 sig op-tyapp = ■ ∷ []
-sig op-nu = ■ ∷ (ν ■) ∷ []
 
 open import rewriting.AbstractBindingTree Op sig renaming (ABT to Term) public
 
@@ -70,10 +68,7 @@ pattern ƛ N  = op-lam ⦅ cons (bind (ast N)) nil ⦆
 infixl 7  _·_
 pattern _·_ L M = op-app ⦅ cons (ast L) (cons (ast M) nil) ⦆
 pattern Λ N  = op-tyabs ⦅ cons (ast N) nil ⦆
---infixl 7  _․_
 pattern _[·] L = op-tyapp ⦅ cons (ast L) nil ⦆
---pattern ν A N  = op-nu A ⦅ cons (ast A) (cons (bind (ast N)) nil) ⦆
-
 
 {----------------------- Values ------------------------}
 
