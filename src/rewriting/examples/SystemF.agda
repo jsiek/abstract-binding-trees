@@ -6,10 +6,13 @@
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; length; map)
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
+open import Data.Product using (_×_; proj₁; proj₂; ∃-syntax)
+  renaming (_,_ to ⟨_,_⟩ )
 open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec) renaming ([] to []̌; _∷_ to _∷̌_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
+open import Relation.Binary.PropositionalEquality as Eq
+  using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Function using (_∘_)
 open import Sig
 
 module rewriting.examples.SystemF where
@@ -321,6 +324,29 @@ wt-suc : ∀ Σ → wtrenᵗ suc Σ (tt ∷ Σ)
 wt-suc (x ∷ Σ) zero refl = refl
 wt-suc (x₁ ∷ Σ) (suc x) ∋x = ∋x
 
+map-fusion : ∀ {A B C : Set} (ls : List A) (f : A → B) (g : B → C)
+   → map g (map f ls) ≡ map (g ∘ f) ls
+map-fusion [] f g = refl
+map-fusion (a ∷ ls) f g = cong₂ _∷_ refl (map-fusion ls f g)
+
+map-commute-suc-ext : ∀ Γ σ
+  → map ⟪ renᵗ suc ⟫ᵗ (map ⟪ σ ⟫ᵗ Γ)
+    ≡ map ⟪ extᵗ σ ⟫ᵗ (map ⟪ renᵗ suc ⟫ᵗ Γ)
+map-commute-suc-ext Γ σ =
+  let xx : map ⟪ renᵗ suc ⟫ᵗ (map ⟪ σ ⟫ᵗ Γ)
+           ≡ map (⟪ renᵗ suc ⟫ᵗ ∘ ⟪ σ ⟫ᵗ) Γ 
+      xx = map-fusion Γ ⟪ σ ⟫ᵗ  ⟪ renᵗ suc ⟫ᵗ in
+  let yy : (⟪ renᵗ suc ⟫ᵗ ∘ ⟪ σ ⟫ᵗ) ≡ (⟪ extᵗ σ ⟫ᵗ ∘ ⟪ renᵗ suc ⟫ᵗ)
+      yy = refl in
+  let zz = sym (map-fusion Γ ⟪ renᵗ suc ⟫ᵗ ⟪ extᵗ σ ⟫ᵗ) in
+  trans xx (trans (cong (λ X → map X Γ) yy) zz)
+
+tysub-reflect-type : ∀{Σ}{Σ′}{Γ}{M}{A}{σ : Substᵗ}
+   → Σ′ ∣ map ⟪ σ ⟫ᵗ Γ ⊢ M ⦂ ⟪ σ ⟫ᵗ A
+   → wtsubᵗ σ Σ Σ′
+   → Σ ∣ Γ ⊢ M ⦂ A
+tysub-reflect-type {Σ}{Σ′}{Γ}{M}{A}{σ} ⊢M ⊢σ = {!!}
+
 tysub-pres-type : ∀{Σ}{Σ′}{Γ}{M}{A}{σ : Substᵗ}
    → Σ ∣ Γ ⊢ M ⦂ A
    → wtsubᵗ σ Σ Σ′
@@ -338,17 +364,11 @@ tysub-pres-type {Σ}{Σ′} {Γ} {Λ N} {∀̇ A}{σ} (⊢-tyabs ⊢N) ⊢σ =
        N⦂₁ = tysub-pres-type{tt ∷ Σ}{tt ∷ Σ′}{map ⟪ renᵗ suc ⟫ᵗ Γ}{N}{A}
                      {extᵗ σ} ⊢N (ext-subᵗ ⊢σ) in
    let N⦂ : tt ∷ Σ′ ∣ map ⟪ renᵗ suc ⟫ᵗ (map ⟪ σ ⟫ᵗ Γ) ⊢ N ⦂ ⟪ extᵗ σ ⟫ᵗ A
-       N⦂ = {!!} in
+       N⦂ = subst (λ X → tt ∷ Σ′ ∣ X ⊢ N ⦂ ⟪ extᵗ σ ⟫ᵗ A)
+                  (sym (map-commute-suc-ext Γ σ)) N⦂₁ in
    ⊢-tyabs N⦂
-   
-tysub-pres-type {Σ}{Σ′} {Γ} {L [·]} {_} (⊢-tyapp{A = A}{B} ⊢L ⊢B) ⊢σ = {!!}
-{-
-   let ⊢L₂ : tt ∷ Σ ∣ map ⟪ renᵗ suc ⟫ᵗ Γ ⊢ L ⦂ ⟪ renᵗ suc ⟫ᵗ (∀̇ A)
-       ⊢L₂ = tysub-pres-type ⊢L ⊢σ in
-   let ⊢B₂ : tt ∷ Σ ⊢ ⟪ renᵗ suc ⟫ᵗ B ok
-       ⊢B₂ = (ren-pres-wf{ρ = suc} ⊢B (wt-suc Σ)) in
-   ⊢-tyapp ⊢L₂ ⊢B₂
--}
+tysub-pres-type {Σ}{Σ′} {Γ} {L [·]} {_} (⊢-tyapp{A = A}{B} ⊢L ⊢B) ⊢σ =
+    ⊢-tyapp (tysub-pres-type ⊢L ⊢σ) (sub-pres-wf ⊢B ⊢σ)
 
 {- renaming preserves types -}
 
@@ -360,6 +380,21 @@ ext-ren : ∀{Γ}{Δ}{ρ}{B}
   → wtren (extr ρ) (B ∷ Γ) (B ∷ Δ)
 ext-ren {Γ} {Δ} {ρ} {B} ⊢ρ zero ∋x = ∋x
 ext-ren {Γ} {Δ} {ρ} {B} ⊢ρ (suc x) ∋x = ⊢ρ x ∋x
+
+map-∋-in : ∀{Γ}{f : Type → Type}{x}{B}
+   → map f Γ ∋ x ⦂ B
+   → ∃[ A ] Γ ∋ x ⦂ A × f A ≡ B
+map-∋-in {C ∷ Γ} {f} {zero} refl = ⟨ C , ⟨ refl , refl ⟩ ⟩
+map-∋-in {C ∷ Γ} {f} {suc x} map∋x = map-∋-in{Γ}{f}{x} map∋x
+
+wtren-map : ∀ ρ Γ Δ {σ}
+   → wtren ρ Γ Δ
+   → wtren ρ (map ⟪ σ ⟫ᵗ Γ) (map ⟪ σ ⟫ᵗ Δ)
+wtren-map ρ Γ Δ {σ} ⊢ρ {B} x ∋x
+    with map-∋-in {Γ}{⟪ σ ⟫ᵗ}{x}{B} ∋x
+... | ⟨ A , ⟨ Γ∋x , refl ⟩ ⟩ =
+  let Δ∋ρx⦂A = ⊢ρ x Γ∋x in
+  map-∋{Δ}{ρ x}{A}{σ} Δ∋ρx⦂A
 
 ren-pres-type : ∀{Σ}{Γ}{Δ}{A}{M}{ρ}
   → Σ ∣ Γ ⊢ M ⦂ A
@@ -373,7 +408,9 @@ ren-pres-type {Σ}{Γ}{Δ} {A} {.(_ · _)} (⊢-app ⊢L ⊢M) ⊢ρ =
 ren-pres-type {Σ}{Γ}{Δ} {.(_ ⇒ _)} {.(ƛ _)}{ρ = ρ} (⊢-lam ⊢A ⊢M) ⊢ρ =
   ⊢-lam ⊢A (ren-pres-type{ρ = extr ρ} ⊢M (ext-ren{Δ = Δ}{ρ} ⊢ρ))
 ren-pres-type {Σ}{Γ}{Δ} {A} {(Λ N)}{ρ} (⊢-tyabs ⊢N) ⊢ρ =
-  ⊢-tyabs (ren-pres-type ⊢N {!!})
+  let ⊢ρmap = wtren-map ρ Γ Δ {renᵗ suc} ⊢ρ in
+  let IH = ren-pres-type{ρ = ρ} ⊢N ⊢ρmap in
+  ⊢-tyabs IH
 ren-pres-type {Σ}{Γ}{Δ} {A} {L [·]}{ρ} (⊢-tyapp ⊢L B) ⊢ρ =
   ⊢-tyapp (ren-pres-type ⊢L ⊢ρ) B
 
@@ -389,6 +426,7 @@ ext-sub {Σ}{Γ} {Δ} {σ} {B} ⊢σ zero refl = ⊢-var refl
 ext-sub {Σ}{Γ} {Δ} {σ} {B} ⊢σ {A} (suc x) ∋x rewrite seq-def σ ↑ x =
   ren-pres-type{ρ = suc} (⊢σ x ∋x) λ x₁ x₂ → x₂
 
+{-
 extᵗ-sub : ∀{Σ}{Γ}{Δ}{σ}
   → wtsub σ Σ Γ Δ
   → wtsub σ (tt ∷ Σ) Γ Δ
@@ -396,6 +434,18 @@ extᵗ-sub {Σ} {A ∷ Γ} {Δ} {σ} ⊢σ zero refl =
   let xx = ⊢σ zero refl in
   {!!}
 extᵗ-sub {Σ} {Γ} {Δ} {σ} ⊢σ (suc x) ∋x = {!!}
+-}
+
+wtsub-map : ∀ (σ : Subst) Σ Σ′ Γ Δ {ρ}
+   → wtrenᵗ ρ Σ Σ′
+   → wtsub σ Σ Γ Δ
+   → wtsub σ Σ′ (map ⟪ renᵗ ρ ⟫ᵗ Γ) (map ⟪ renᵗ ρ ⟫ᵗ Δ)
+wtsub-map σ Σ Σ′ Γ Δ {ρ} ⊢ρ ⊢σ {B} x ∋x
+    with map-∋-in {Γ}{⟪ renᵗ ρ ⟫ᵗ}{x}{B} ∋x
+... | ⟨ A , ⟨ Γ∋x , refl ⟩ ⟩ =
+  let ΣΔ⊢σx⦂A = ⊢σ x Γ∋x in
+  tysub-pres-type{σ = renᵗ ρ} ΣΔ⊢σx⦂A λ y Σ∋y → 
+    subst (λ X → Σ′ ⊢ X ok) (sym (ren-defᵗ ρ y)) (⊢-Var (⊢ρ y Σ∋y))
 
 sub-pres-type : ∀{Σ}{Γ}{Δ}{A}{M}{σ}
   → Σ ∣ Γ ⊢ M ⦂ A
@@ -409,7 +459,8 @@ sub-pres-type {Σ}{Γ} {Δ} {A} {.(_ · _)} {σ} (⊢-app ⊢L ⊢M) ⊢σ =
 sub-pres-type {Σ}{Γ} {Δ} {.(_ ⇒ _)} {.(ƛ _)} {σ} (⊢-lam ⊢A ⊢M) ⊢σ =
   ⊢-lam ⊢A (sub-pres-type{σ = ext σ} ⊢M (ext-sub ⊢σ))
 sub-pres-type {Σ}{Γ}{Δ} {A} {(Λ N)}{σ} (⊢-tyabs ⊢N) ⊢σ =
-  ⊢-tyabs (sub-pres-type{σ = σ} ⊢N {!!})
+  let ⊢σ′ = wtsub-map σ Σ (tt ∷ Σ) Γ Δ {suc} (wt-suc Σ) ⊢σ in
+  ⊢-tyabs (sub-pres-type{σ = σ} ⊢N ⊢σ′)
 sub-pres-type {Σ}{Γ}{Δ} {A} {L [·]}{σ} (⊢-tyapp ⊢L B) ⊢σ =
   ⊢-tyapp (sub-pres-type ⊢L ⊢σ) B
 
@@ -418,11 +469,16 @@ sub-pres-type {Σ}{Γ}{Δ} {A} {L [·]}{σ} (⊢-tyapp ⊢L B) ⊢σ =
 --wtsubᵗ : Subst → TyEnv → TyEnv → Set
 --wtsubᵗ σ Γ Δ = ∀ x → Γ ∋ x ⦂ typ
 
+
 type-subst : ∀{Σ}{Γ}{N}{A}{B}
-   → tt ∷ Σ ∣ Γ ⊢ N ⦂ A
+   → tt ∷ Σ ∣ map ⟪ renᵗ suc ⟫ᵗ Γ ⊢ N ⦂ A
    → Σ ⊢ B ok
-   → Σ ∣ Γ ⊢ N ⦂ A ⦗ B ⦘
-type-subst{Γ}{N}{A} ⊢N ⊢B = {!!}
+   → Σ ∣ Γ ⊢ N ⦂ ⟪ B •ᵗ idᵗ ⟫ᵗ A -- A ⦗ B ⦘ 
+type-subst {Σ}{Γ}{N}{A}{B} ⊢N ⊢B =
+    let xx = tysub-reflect-type{Σ}{tt ∷ Σ}{σ = B •ᵗ idᵗ} {!!} {!!} in
+    {!!}
+
+
 
 {-------------      Proof of Preservation    -------------}
 
@@ -442,7 +498,7 @@ preservation ⊢M (ξ (ƛ□) M→M′) = {!!}
 
 preservation (⊢-app{M = W} (⊢-lam ⊢A ⊢N) ⊢W) β-ƛ =
   sub-pres-type{σ = W • id} ⊢N λ { zero refl → ⊢W ; (suc x) ∋x → ⊢-var ∋x}
-preservation (⊢-tyapp (⊢-tyabs ⊢N) ⊢B) β-Λ = type-subst {!!} ⊢B
+preservation (⊢-tyapp (⊢-tyabs ⊢N) ⊢B) β-Λ = type-subst ⊢N ⊢B
 
 
 
