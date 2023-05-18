@@ -1,7 +1,4 @@
 {-# OPTIONS --rewriting #-}
-{-
-  UNDER CONSTRUCTION
--}
 
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; length; map; _++_)
@@ -16,7 +13,7 @@ open import Relation.Binary.PropositionalEquality as Eq
 open import Function using (_∘_)
 open import Sig
 
-module rewriting.examples.SystemFSingleEnv where
+module rewriting.examples.SystemFSafe where
 
 open import rewriting.examples.SystemF
 
