@@ -1,7 +1,4 @@
 {-# OPTIONS --rewriting #-}
-{-
-  UNDER CONSTRUCTION
--}
 
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; length; map; _++_)
