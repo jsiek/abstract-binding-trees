@@ -18,15 +18,15 @@ open import Sig
 open import Structures
 open import Var
 
-module AbstractBindingTree (Op : Set) (sig : Op → List Sig) where
+module AbstractBindingTree {ℓ} (Op : Set ℓ) (sig : Op → List Sig) where
 
-data Args : List Sig → Set
+data Args : List Sig → Set ℓ
 
-data ABT : Set where
+data ABT : Set ℓ where
   `_ : Var → ABT
   _⦅_⦆ : (op : Op) → Args (sig op) → ABT
 
-data Arg : Sig → Set where
+data Arg : Sig → Set ℓ where
   ast : ABT → Arg ■
   bind : ∀{b} → Arg b → Arg (ν b)
   clear : ∀{b} → Arg b → Arg (∁ b)
@@ -83,13 +83,13 @@ append₊ {suc n} {m} (cons x xs) ys = cons x (append₊ xs ys)
   (for expressing contextual equivalence, not for evaluation contexts)
  ---------------------------------------------------------------------------}
 
-data CArgs : (sig : List Sig) → Set
+data CArgs : (sig : List Sig) → Set ℓ
 
-data Ctx : Set where
+data Ctx : Set ℓ where
   CHole : Ctx
   COp : (op : Op) → CArgs (sig op) → Ctx
 
-data CArg : (b : Sig) → Set where
+data CArg : (b : Sig) → Set ℓ where
   CAst : Ctx → CArg ■
   CBind : ∀{b} → CArg b → CArg (ν b)
   CClear : ∀{b} → CArg b → CArg (∁ b)
@@ -134,7 +134,7 @@ ctx-depth-arg (CClear arg) k = ctx-depth-arg arg 0
 ctx-depth-args (tcons arg cargs _) k = ctx-depth-args cargs k
 ctx-depth-args (ccons carg args _) k = ctx-depth-arg carg k
 
-record Quotable {ℓ} (V : Set ℓ) : Set ℓ where
+record Quotable {ℓ′} (V : Set ℓ′) : Set (ℓ Agda.Primitive.⊔ ℓ′) where
   field “_” : V → ABT
 
 open Quotable {{...}} public

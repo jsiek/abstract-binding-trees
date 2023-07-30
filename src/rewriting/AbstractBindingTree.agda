@@ -1,17 +1,18 @@
-{-# OPTIONS --without-K --rewriting #-}
+{-# OPTIONS --rewriting #-}
 open import Agda.Primitive using (Level; lzero; lsuc)
 open import Data.Bool using (Bool; true; false; _∨_)
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_; replicate) renaming (map to lmap)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_; _∸_; _≟_)
-open import Data.Nat.Properties using (+-suc; +-identityʳ)
-open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩ )
+open import Data.Nat.Properties using (+-suc; +-identityʳ; suc-injective)
+open import Data.Product using (_×_; proj₁; proj₂; ∃-syntax; Σ-syntax)
+  renaming (_,_ to ⟨_,_⟩ )
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit.Polymorphic using (⊤; tt)
 open import Data.Vec using (Vec; []; _∷_)
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; sym; cong; cong₂; cong-app)
+open Eq using (_≡_; _≢_; refl; sym; cong; cong₂; cong-app; subst)
 open Eq.≡-Reasoning
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import ScopedTuple
@@ -22,16 +23,15 @@ open import Structures using (extensionality)
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
 
-module rewriting.AbstractBindingTree (Op : Set) (sig : Op → List Sig) where
+module rewriting.AbstractBindingTree {ℓ} (Op : Set ℓ) (sig : Op → List Sig) where
 
+data Args : List Sig → Set ℓ
 
-data Args : List Sig → Set
-
-data ABT : Set where
+data ABT : Set ℓ where
   `_ : Var → ABT
   _⦅_⦆ : (op : Op) → Args (sig op) → ABT
 
-data Arg : Sig → Set where
+data Arg : Sig → Set ℓ where
   ast : ABT → Arg ■
   bind : ∀{b} → Arg b → Arg (ν b)
 
@@ -72,7 +72,7 @@ rename-args ρ (cons arg args) = cons (rename-arg ρ arg) (rename-args ρ args)
  Substitution
 ----------------------------------------------------------------------------}
 
-Subst : Set
+Subst : Set ℓ
 Subst = Var → ABT
 
 infixr 6 _•_
@@ -409,3 +409,72 @@ FV-arg (ast M) y = FV M y
 FV-arg (bind arg) y = FV-arg arg (suc y)
 FV-args nil y = ⊥
 FV-args (cons arg args) y = FV-arg arg y ⊎ FV-args args y
+
+FV-rename-fwd : ∀ (ρ : Rename) M y → FV M y
+   → FV (rename ρ M) (ρ y)
+FV-rename-fwd ρ (` x) y refl = refl
+FV-rename-fwd ρ (op ⦅ args ⦆) y fvMy = fvr-args ρ (sig op) args y fvMy
+  where
+  fvr-arg : ∀ (ρ : Rename) b (arg : Arg b) y
+      → FV-arg arg y → FV-arg (rename-arg ρ arg) (ρ y)
+  fvr-args : ∀ (ρ : Rename) bs (args : Args bs) y
+      → FV-args args y → FV-args (rename-args ρ args) (ρ y)
+  fvr-arg ρ ■ (ast M) y fvarg = FV-rename-fwd ρ M y fvarg
+  fvr-arg ρ (ν b) (bind arg) y fvarg =
+      fvr-arg (extr ρ) b arg (suc y) fvarg
+  fvr-args ρ [] nil y ()
+  fvr-args ρ (b ∷ bs) (cons arg args) y (inj₁ fvargy) =
+      inj₁ (fvr-arg ρ b arg y fvargy)
+  fvr-args ρ (b ∷ bs) (cons arg args) y (inj₂ fvargsy) =
+      inj₂ (fvr-args ρ bs args y fvargsy)
+
+FV-rename : ∀ (ρ : Rename) M y → FV (rename ρ M) y
+   → Σ[ x ∈ Var ] ρ x ≡ y × FV M x
+FV-rename ρ (` x) y refl = ⟨ x , ⟨ refl , refl ⟩ ⟩
+FV-rename ρ (op ⦅ args ⦆) y fv = fvr-args ρ (sig op) args y fv
+  where
+  fvr-arg : ∀ (ρ : Rename) b (arg : Arg b) y
+     → FV-arg (rename-arg ρ arg) y → Σ[ x ∈ Var ] (ρ) x ≡ y × FV-arg arg x
+  fvr-args : ∀ (ρ : Rename) bs (args : Args bs) y
+     → FV-args (rename-args ρ args) y → Σ[ x ∈ Var ] (ρ) x ≡ y × FV-args args x
+  fvr-arg ρ b (ast M) y fv = FV-rename ρ M y fv 
+  fvr-arg ρ (ν b) (bind arg) y fv 
+      with fvr-arg (extr ρ) b arg (suc y) fv
+  ... | ⟨ 0 , eq ⟩  
+      with eq
+  ... | ()
+  fvr-arg ρ (ν b) (bind arg) y fv 
+      | ⟨ suc x , ⟨ eq , sx∈arg ⟩ ⟩ =
+        ⟨ x , ⟨ suc-injective eq , sx∈arg ⟩ ⟩
+  fvr-args ρ [] nil y ()
+  fvr-args ρ (b ∷ bs) (cons arg args) y (inj₁ fv)
+      with fvr-arg ρ b arg y fv
+  ... | ⟨ x , ⟨ ρx , x∈arg ⟩ ⟩ = 
+        ⟨ x , ⟨ ρx , (inj₁ x∈arg) ⟩ ⟩
+  fvr-args ρ (b ∷ bs) (cons arg args) y (inj₂ fv)
+      with fvr-args ρ bs args y fv
+  ... | ⟨ x , ⟨ ρx , x∈args ⟩ ⟩ = 
+        ⟨ x , ⟨ ρx , (inj₂ x∈args) ⟩ ⟩
+
+rename-FV-⊥ : ∀ y (ρ : Rename) M → (∀ x → (ρ) x ≢ y) → FV (rename ρ M) y → ⊥
+rename-FV-⊥ y ρ M ρx≢y fvρM 
+    with FV-rename ρ M y fvρM
+... | ⟨ x , ⟨ ρxy , x∈M ⟩ ⟩ = ⊥-elim (ρx≢y x ρxy)
+
+FV-↑1-0 : ∀ M → FV (rename suc M) 0 → ⊥
+FV-↑1-0 M = rename-FV-⊥ 0 suc M (λ { x () })
+
+abstract
+  FV-ren : ∀ (ρ : Rename) M y → FV (⟪ ren ρ ⟫ M) y
+     → ∃[ x ] ρ x ≡ y × FV M x
+  FV-ren ρ M y y∈FVρM = FV-rename ρ M y y∈FVρM
+
+  FV-ren-fwd : ∀ (ρ : Rename) M y → FV M y
+     → FV (⟪ ren ρ ⟫ M) (ρ y)
+  FV-ren-fwd ρ M y y∈M = FV-rename-fwd ρ M y y∈M
+
+  FV-suc-0 : ∀ M → FV (⟪ ren suc ⟫ M) 0 → ⊥
+  FV-suc-0 M = rename-FV-⊥ 0 suc M (λ { x () })
+
+
+
