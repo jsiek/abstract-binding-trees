@@ -359,7 +359,8 @@ compatible-lambda{Γ}{A}{B}{C}{D}{N}{N′}{c}{d} ⊢⇐N⊑N′ γ γ′ ⊢γ �
   where
   𝓔N[W]N′[W′] : ∀{W W′} → 𝒱⇐⟦ A , C , c ⟧ W W′ ∷ 𝓖⇐⟦ Γ ⟧ γ γ′
        ⊢ᵒ  ℰ⇐⟦ B , D , d ⟧ ((⟪ ext γ ⟫ N) [ W ]) ((⟪ ext γ′ ⟫ N′) [ W′ ])
-  𝓔N[W]N′[W′] {W}{W′} = appᵒ (Sᵒ (→ᵒI (⊢⇐N⊑N′ (W • γ) (W′ • γ′) {!!} {!!}))) Zᵒ
+  𝓔N[W]N′[W′] {W}{W′} = appᵒ (Sᵒ (→ᵒI (⊢⇐N⊑N′ (W • γ) (W′ • γ′)
+    (λ { zero ∋x → {!!} ; (suc x) ∋x → {!!} }) {!!}))) Zᵒ
 
 compatible-app : ∀{Γ}{A A′ B B′}{c : A ⊑ A′}{d : B ⊑ B′}{L L′ M M′}
    → Γ ⊢⇐ L ⊑ L′ ⦂ (A ⇒ B , A′ ⇒ B′ , fun⊑ c d)
@@ -369,11 +370,11 @@ compatible-app : ∀{Γ}{A A′ B B′}{c : A ⊑ A′}{d : B ⊑ B′}{L L′ M
 compatible-app {Γ}{A}{A′}{B}{B′}{c}{d}{L}{L′}{M}{M′}
   ⊢⇐L⊑L′ ⊢⇐M⊑M′ γ γ′ ⊢γ ⊢γ′ = {!!}
 
-blame-irred : ∀{M}{N}
-   → Blame M
-   → M —→ N
-   → ⊥
-blame-irred isBlame red = blame-irreducible red
+-- blame-irred : ∀{M}{N}
+--    → Blame M
+--    → M —→ N
+--    → ⊥
+-- blame-irred isBlame red = blame-irreducible red
 
 compatible-inj-L : ∀{Γ : List Prec}{G A′}{c : gnd⇒ty G ⊑ A′}{M M′ : Term}
    → Γ ⊩ M ⊑ M′ ⦂ c
