@@ -115,3 +115,5 @@ up-subst-id M N = refl
 commute-subst : ∀(L M N : ABT) → N [ M ]₀ [ L ]₀ ≡ N [ L ]₁ [ M [ L ]₀ ]₀
 commute-subst L M N = refl
 
+exts-subst-cons : ∀(σ : Subst)(N V : ABT) → N [ σ ↑ ▷ • ] [ V ]₀ ≡ N [ σ ▷ V ]
+exts-subst-cons σ N V = refl
