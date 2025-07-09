@@ -171,6 +171,16 @@ module ABTOps (Op : Set) (sig : Op → List Sig)  where
   sub-assoc : ∀ {σ τ θ : Subst} → (σ ⨟ τ) ⨟ θ ≡ σ ⨟ τ ⨟ θ
   sub-assoc {σ}{τ}{θ} = extensionality (λ x → sub-sub {σ x}{τ}{θ})
 
+  sub-commute-↑1 : ∀ σ M
+    → ⟪ ext σ ⟫ (⟪ ↑ 1 ⟫ M) ≡ ⟪ ↑ 1 ⟫ (⟪ σ ⟫ M)
+  sub-commute-↑1 σ M =
+    begin
+    ⟪ ext σ ⟫ (⟪ ↑ 1 ⟫ M) ≡⟨ sub-sub {M} {↑ 1} {ext σ} ⟩
+    ⟪ ↑ 1 ⨟ ext σ ⟫ M ≡⟨ cong (λ □ → ⟪ ↑ 1 ⨟ □ ⟫ M) (exts-cons-shift σ) ⟩
+    ⟪ ↑ 1 ⨟ (` 0 • (σ ⨟ ↑ 1)) ⟫ M ≡⟨ cong (λ □ → ⟪ □ ⟫ M) (sub-tail (` 0) _) ⟩
+    ⟪ σ ⨟ ↑ 1 ⟫ M ≡⟨ sym (sub-sub {M} {σ} {↑ 1}) ⟩
+    ⟪ ↑ 1 ⟫ (⟪ σ ⟫ M) ∎
+
   subst-zero : ABT → Subst
   subst-zero M = M • id
 
